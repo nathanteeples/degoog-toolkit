@@ -162,6 +162,36 @@ function bindInputFocus(input, dropdown) {
       fetchAndShowHistory(input, dropdown);
     }
   });
+  // Arrow-key navigation highlights history items but doesn't update the input.
+  // Intercept Enter to search the highlighted entry.
+  input.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    if (dropdown.style.display === "none" || !dropdown.offsetParent) return;
+    // degoog highlights AC items with an inline background or a class; check
+    // for the most common indicators that a history row is "active".
+    const highlighted = dropdown.querySelector(
+      ".ac-item--history.active, .ac-item--history.selected, .ac-item--history[aria-selected=\"true\"], .ac-item--history:hover"
+    );
+    if (!highlighted) return;
+    const entry = highlighted.dataset.entry;
+    if (!entry) return;
+    e.preventDefault();
+    e.stopPropagation();
+    input.value = entry;
+    dropdown.style.display = "none";
+    if (dropdown.parentElement) {
+      dropdown.parentElement.classList.remove("ac-open");
+    }
+    const form = input.closest("form");
+    if (form) {
+      form.requestSubmit
+        ? form.requestSubmit()
+        : form.dispatchEvent(new Event("submit", { cancelable: true }));
+      return;
+    }
+    const resultsBtn = document.getElementById("results-search-btn");
+    if (resultsBtn) resultsBtn.click();
+  });
 }
 
 function bindHomeForm(form, input) {

@@ -39,13 +39,14 @@
     }
 
     const coin = slot.querySelector("[data-coinflip-coin]");
+    const faces = Array.from(slot.querySelectorAll(".coinflip-slot__face"));
     const spins = Array.from(slot.querySelectorAll("[data-coinflip-spin]"));
     const resultEl = slot.querySelector("[data-coinflip-result]");
     const ticker = slot.querySelector("[data-coinflip-ticker]");
     const button = slot.querySelector("[data-coinflip-reroll]");
     const flips = Math.max(4, parseInt(slot.dataset.flips || "7", 10) || 7);
 
-    if (!coin || spins.length === 0 || !resultEl || !ticker) return;
+    if (!coin || faces.length === 0 || spins.length === 0 || !resultEl || !ticker) return;
 
     const start = rotationFor(normalizeResult(slot.dataset.result));
     const target = rotationFor(result);
@@ -74,7 +75,9 @@
       const brightness = 0.96 + lift * 0.16;
 
       coin.style.transform = coinTransform(yDegrees, xDegrees, yOffset);
-      coin.style.filter = `brightness(${brightness.toFixed(3)})`;
+      faces.forEach((face) => {
+        face.style.filter = `brightness(${brightness.toFixed(3)})`;
+      });
       spins.forEach((spin) => {
         spin.style.transform = `rotateZ(${360 * t}deg)`;
       });
@@ -109,12 +112,13 @@
 
   function setCoinPose(slot, result) {
     const coin = slot.querySelector("[data-coinflip-coin]");
+    const faces = slot.querySelectorAll(".coinflip-slot__face");
     const spins = slot.querySelectorAll("[data-coinflip-spin]");
     if (!coin) return;
     const cleanResult = normalizeResult(result);
     coin.dataset.side = cleanResult;
     coin.style.transform = coinTransform(rotationFor(cleanResult), -7, 0);
-    coin.style.filter = "";
+    faces.forEach((face) => { face.style.filter = ""; });
     spins.forEach((spin) => {
       spin.style.transform = "rotateZ(0deg)";
     });
