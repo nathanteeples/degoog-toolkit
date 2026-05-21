@@ -17,17 +17,19 @@ const FALLBACK_TEMPLATE = `
     <div class="coinflip-slot__stage">
       <div class="coinflip-slot__coin-scene" aria-hidden="true">
         <div class="coinflip-slot__coin" data-coinflip-coin>
-          <div class="coinflip-slot__face coinflip-slot__face--heads">
-            <span class="coinflip-slot__face-ring coinflip-slot__face-ring--outer"></span>
-            <span class="coinflip-slot__face-ring coinflip-slot__face-ring--inner"></span>
-            <span class="coinflip-slot__face-mark">H</span>
-            <span class="coinflip-slot__face-label">HEADS</span>
-          </div>
-          <div class="coinflip-slot__face coinflip-slot__face--tails">
-            <span class="coinflip-slot__face-ring coinflip-slot__face-ring--outer"></span>
-            <span class="coinflip-slot__face-ring coinflip-slot__face-ring--inner"></span>
-            <span class="coinflip-slot__face-mark">T</span>
-            <span class="coinflip-slot__face-label">TAILS</span>
+          <div class="coinflip-slot__disc" data-coinflip-disc>
+            <div class="coinflip-slot__face coinflip-slot__face--heads">
+              <span class="coinflip-slot__face-ring coinflip-slot__face-ring--outer"></span>
+              <span class="coinflip-slot__face-ring coinflip-slot__face-ring--inner"></span>
+              <span class="coinflip-slot__face-mark">H</span>
+              <span class="coinflip-slot__face-label">HEADS</span>
+            </div>
+            <div class="coinflip-slot__face coinflip-slot__face--tails">
+              <span class="coinflip-slot__face-ring coinflip-slot__face-ring--outer"></span>
+              <span class="coinflip-slot__face-ring coinflip-slot__face-ring--inner"></span>
+              <span class="coinflip-slot__face-mark">T</span>
+              <span class="coinflip-slot__face-label">TAILS</span>
+            </div>
           </div>
         </div>
         <div class="coinflip-slot__shadow"></div>

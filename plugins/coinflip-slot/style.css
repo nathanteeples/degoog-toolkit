@@ -120,15 +120,25 @@
     z-index: 1;
     width: 142px;
     height: 142px;
-    transform: rotateX(-7deg) rotateY(0deg);
+    transform: translateY(0) rotateX(-7deg) rotateY(0deg);
+    transform-origin: 50% 50%;
     transform-style: preserve-3d;
     will-change: transform, filter;
 }
 
-.coinflip-slot__coin::before {
+.coinflip-slot__disc {
+    position: absolute;
+    inset: 0;
+    transform: rotateZ(0deg);
+    transform-origin: 50% 50%;
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.coinflip-slot__disc::before {
     content: "";
     position: absolute;
-    inset: 8px -7px;
+    inset: -4px;
     border-radius: 50%;
     background:
         linear-gradient(
@@ -144,7 +154,18 @@
     box-shadow:
         inset 8px 0 13px rgba(255, 255, 255, 0.28),
         inset -9px 0 14px rgba(0, 0, 0, 0.32);
-    transform: translateZ(-8px);
+    opacity: 0.74;
+    transform: translateZ(-9px);
+    -webkit-mask: radial-gradient(
+        farthest-side,
+        transparent calc(100% - 15px),
+        #000 calc(100% - 14px)
+    );
+    mask: radial-gradient(
+        farthest-side,
+        transparent calc(100% - 15px),
+        #000 calc(100% - 14px)
+    );
 }
 
 .coinflip-slot__face {
@@ -181,6 +202,7 @@
         inset -16px -18px 26px rgba(20, 24, 28, 0.32),
         0 16px 24px rgba(0, 0, 0, 0.18);
     backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
     overflow: hidden;
     transform: translateZ(8px);
 }
@@ -231,6 +253,26 @@
 
 .coinflip-slot__face--tails {
     transform: rotateY(180deg) translateZ(8px);
+    background:
+        radial-gradient(
+            circle at 34% 24%,
+            rgba(255, 255, 255, 0.95) 0,
+            rgba(255, 255, 255, 0.58) 12%,
+            transparent 32%
+        ),
+        radial-gradient(
+            circle at 68% 78%,
+            rgba(28, 34, 40, 0.38) 0,
+            transparent 42%
+        ),
+        repeating-radial-gradient(
+            circle at center,
+            transparent 0 9px,
+            rgba(255, 255, 255, 0.15) 10px 11px,
+            rgba(55, 63, 70, 0.1) 12px 13px,
+            transparent 14px 20px
+        ),
+        linear-gradient(145deg, #f4f5f6 0%, #a8b0b6 38%, #68717a 100%);
 }
 
 .coinflip-slot__face-ring {
@@ -277,6 +319,15 @@
     letter-spacing: 0;
     line-height: 1;
     text-shadow: 0 1px 1px rgba(255, 255, 255, 0.66);
+}
+
+.coinflip-slot__face--tails .coinflip-slot__face-mark {
+    color: #929ba1;
+}
+
+.coinflip-slot__coin[data-side="tails"] .coinflip-slot__face--tails,
+.coinflip-slot__coin[data-side="heads"] .coinflip-slot__face--heads {
+    filter: saturate(1.02) contrast(1.03);
 }
 
 .coinflip-slot__shadow {
