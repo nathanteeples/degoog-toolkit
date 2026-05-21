@@ -82,7 +82,7 @@
     display: grid;
     justify-items: center;
     gap: 8px;
-    min-width: 18ch;
+    min-width: 28ch;
     padding: 12px 14px;
     border-radius: 8px;
     background:
@@ -96,8 +96,8 @@
 
 .coinflip-slot__coin {
     margin: 0;
-    min-width: 18ch;
-    min-height: 6.9em;
+    min-width: 26ch;
+    min-height: 13.8em;
     color: color-mix(in srgb, var(--warning, #fbbc04) 72%, currentColor);
     font-family:
         ui-monospace,
@@ -107,7 +107,7 @@
         Consolas,
         "Liberation Mono",
         monospace;
-    font-size: 0.84rem;
+    font-size: 0.78rem;
     font-weight: 700;
     line-height: 1.15;
     text-align: left;
@@ -163,7 +163,7 @@
     }
 
     .coinflip-slot__coin {
-        font-size: 0.72rem;
+        font-size: 0.62rem;
     }
 
     .coinflip-slot__result {
