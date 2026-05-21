@@ -31,6 +31,7 @@ All engines connect to your SearXNG instance via the JSON API.
 - **TMDB** — rich movie, TV, and actor panels when film database or film-site links appear in results
 - **Weather** — current weather with interactive tabbed charts (temperature, precipitation, wind, humidity), a 7-day forecast, rich current conditions (pressure, UV, visibility, dew point, cloud cover, wind gusts), a sunrise/sunset arc, and configurable units for temperature, wind speed, pressure and precipitation
 - **Speedtest** — minimal internet speed test with selectable servers, latency, download-first flow, a circular gauge, and the `!speedtest` bang command
+- **Coinflip** — animated ASCII coin flip for quick heads-or-tails decisions
 
 **Speedtest** exposes:
 

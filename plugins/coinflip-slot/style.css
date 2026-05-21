@@ -1,0 +1,180 @@
+.coinflip-slot {
+    container-type: inline-size;
+    color: var(--text-primary, CanvasText);
+}
+
+.coinflip-slot__panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+    padding: 18px;
+    border: 1px solid
+        var(
+            --border-light,
+            var(--border, color-mix(in srgb, currentColor 20%, transparent))
+        );
+    border-radius: 8px;
+    background: var(--bg-light, var(--bg, Canvas));
+    overflow: hidden;
+}
+
+.coinflip-slot__copy {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+}
+
+.coinflip-slot__eyebrow {
+    color: var(
+        --text-secondary,
+        color-mix(in srgb, currentColor 62%, transparent)
+    );
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.coinflip-slot__result {
+    color: var(--text-primary, inherit);
+    font-size: 2.2rem;
+    font-weight: 760;
+    line-height: 1;
+    min-height: 1.05em;
+    overflow-wrap: anywhere;
+}
+
+.coinflip-slot__button {
+    justify-self: start;
+    min-height: 2.25rem;
+    padding: 0 14px;
+    border: 1px solid
+        var(--border, color-mix(in srgb, currentColor 30%, transparent));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--primary, #4285f4) 10%, transparent);
+    color: var(--text-primary, inherit);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 650;
+    transition:
+        background-color 0.16s ease,
+        border-color 0.16s ease,
+        color 0.16s ease,
+        transform 0.16s ease;
+}
+
+.coinflip-slot__button:hover,
+.coinflip-slot__button:focus-visible {
+    border-color: var(--primary, #4285f4);
+    background: color-mix(in srgb, var(--primary, #4285f4) 16%, transparent);
+    color: var(--primary, #4285f4);
+    outline: none;
+}
+
+.coinflip-slot__button:active {
+    transform: translateY(1px);
+}
+
+.coinflip-slot__stage {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    min-width: 18ch;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--primary, #4285f4) 8%, transparent),
+            transparent
+        ),
+        var(--bg, Canvas);
+}
+
+.coinflip-slot__coin {
+    margin: 0;
+    min-width: 18ch;
+    min-height: 6.9em;
+    color: color-mix(in srgb, var(--warning, #fbbc04) 72%, currentColor);
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        "Liberation Mono",
+        monospace;
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.15;
+    text-align: left;
+    text-shadow: 0 1px 0 color-mix(in srgb, var(--bg, Canvas) 85%, transparent);
+    white-space: pre;
+}
+
+.coinflip-slot__ticker {
+    min-height: 1.2em;
+    color: var(
+        --text-secondary,
+        color-mix(in srgb, currentColor 62%, transparent)
+    );
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        "Liberation Mono",
+        monospace;
+    font-size: 0.76rem;
+    font-weight: 650;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.coinflip-slot.is-flipping .coinflip-slot__coin {
+    animation: coinflip-slot-hop 0.42s ease-in-out infinite alternate;
+}
+
+.coinflip-slot.is-flipping .coinflip-slot__ticker {
+    color: var(--primary, #4285f4);
+}
+
+@keyframes coinflip-slot-hop {
+    from {
+        transform: translateY(2px);
+    }
+    to {
+        transform: translateY(-5px);
+    }
+}
+
+@container (max-width: 430px) {
+    .coinflip-slot__panel {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .coinflip-slot__stage {
+        justify-self: stretch;
+    }
+
+    .coinflip-slot__coin {
+        font-size: 0.72rem;
+    }
+
+    .coinflip-slot__result {
+        font-size: 1.8rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .coinflip-slot__button,
+    .coinflip-slot__coin {
+        animation: none;
+        transition: none;
+    }
+}
