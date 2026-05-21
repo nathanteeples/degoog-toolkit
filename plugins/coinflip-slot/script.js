@@ -39,26 +39,18 @@
     }
 
     const coin = slot.querySelector("[data-coinflip-coin]");
-    const disc = slot.querySelector("[data-coinflip-disc]");
+    const spins = Array.from(slot.querySelectorAll("[data-coinflip-spin]"));
     const resultEl = slot.querySelector("[data-coinflip-result]");
     const ticker = slot.querySelector("[data-coinflip-ticker]");
     const button = slot.querySelector("[data-coinflip-reroll]");
     const flips = Math.max(4, parseInt(slot.dataset.flips || "7", 10) || 7);
 
-    if (!coin || !disc || !resultEl || !ticker) return;
-    if (!coin.animate || !disc.animate) {
-      land(slot, result);
-      return;
-    }
+    if (!coin || spins.length === 0 || !resultEl || !ticker) return;
 
     const start = rotationFor(normalizeResult(slot.dataset.result));
     const target = rotationFor(result);
     const finish = finishAngle(start, target, flips);
-    const centerSpin = 360;
-    const tailReveal = nextTailAngleAfter(start);
-    const travel = finish - start;
-    const midAngle = Math.max(tailReveal + 180, start + travel * 0.42);
-    const lateAngle = Math.max(midAngle + 360, start + travel * 0.76);
+    const duration = 1250 + Math.min(flips, 9) * 80;
 
     slot.classList.add("is-flipping");
     resultEl.textContent = "Flipping...";
@@ -66,70 +58,36 @@
     if (button) button.disabled = true;
     coin.dataset.side = "spinning";
 
-    const flipAnimation = coin.animate(
-      [
-        {
-          transform: coinTransform(start, -10, 0),
-          filter: "brightness(0.96)",
-          easing: "cubic-bezier(.54,0,.72,.18)",
-        },
-        {
-          transform: coinTransform(tailReveal, 12, -16),
-          filter: "brightness(1.12)",
-          offset: 0.28,
-          easing: "cubic-bezier(.18,.72,.18,1)",
-        },
-        {
-          transform: coinTransform(tailReveal + 16, 15, -18),
-          filter: "brightness(1.15)",
-          offset: 0.36,
-          easing: "cubic-bezier(.16,.76,.22,1)",
-        },
-        {
-          transform: coinTransform(Math.floor(midAngle), -13, -26),
-          filter: "brightness(1.06)",
-          offset: 0.62,
-          easing: "cubic-bezier(.18,.76,.22,1)",
-        },
-        {
-          transform: coinTransform(Math.floor(lateAngle), 8, -12),
-          filter: "brightness(1.09)",
-          offset: 0.82,
-          easing: "cubic-bezier(.18,.76,.22,1)",
-        },
-        {
-          transform: coinTransform(finish, -7, 0),
-          filter: "brightness(1)",
-        },
-      ],
-      {
-        duration: 1250 + Math.min(flips, 9) * 80,
-        easing: "linear",
-        fill: "forwards",
-      },
-    );
+    const state = { frameId: 0 };
+    activeAnimations.set(slot, state);
+    const startTime = performance.now();
 
-    const spinAnimation = disc.animate(
-      [
-        { transform: "rotateZ(0deg)" },
-        { transform: `rotateZ(${centerSpin}deg)` },
-      ],
-      {
-        duration: 1250 + Math.min(flips, 9) * 80,
-        easing: "cubic-bezier(.18,.76,.22,1)",
-        fill: "forwards",
-      },
-    );
+    function frame(now) {
+      if (activeAnimations.get(slot) !== state) return;
 
-    activeAnimations.set(slot, { flipAnimation, spinAnimation });
-    flipAnimation.onfinish = function () {
-      const active = activeAnimations.get(slot);
-      if (!active || active.flipAnimation !== flipAnimation) return;
-      activeAnimations.delete(slot);
-      flipAnimation.cancel();
-      spinAnimation.cancel();
-      land(slot, result);
-    };
+      const t = Math.min((now - startTime) / duration, 1);
+      const yProgress = yAxisProgress(t);
+      const yDegrees = start + (finish - start) * yProgress;
+      const lift = Math.sin(Math.PI * t);
+      const xDegrees = -7 + lift * 22;
+      const yOffset = -lift * 24;
+      const brightness = 0.96 + lift * 0.16;
+
+      coin.style.transform = coinTransform(yDegrees, xDegrees, yOffset);
+      coin.style.filter = `brightness(${brightness.toFixed(3)})`;
+      spins.forEach((spin) => {
+        spin.style.transform = `rotateZ(${360 * t}deg)`;
+      });
+
+      if (t < 1) {
+        state.frameId = requestAnimationFrame(frame);
+      } else {
+        activeAnimations.delete(slot);
+        land(slot, result);
+      }
+    }
+
+    state.frameId = requestAnimationFrame(frame);
   }
 
   function land(slot, result) {
@@ -151,12 +109,15 @@
 
   function setCoinPose(slot, result) {
     const coin = slot.querySelector("[data-coinflip-coin]");
-    const disc = slot.querySelector("[data-coinflip-disc]");
+    const spins = slot.querySelectorAll("[data-coinflip-spin]");
     if (!coin) return;
     const cleanResult = normalizeResult(result);
     coin.dataset.side = cleanResult;
     coin.style.transform = coinTransform(rotationFor(cleanResult), -7, 0);
-    if (disc) disc.style.transform = "rotateZ(0deg)";
+    coin.style.filter = "";
+    spins.forEach((spin) => {
+      spin.style.transform = "rotateZ(0deg)";
+    });
   }
 
   function coinTransform(yDegrees, xDegrees, yOffset) {
@@ -169,18 +130,16 @@
     return angle;
   }
 
-  function nextTailAngleAfter(start) {
-    let angle = 180;
-    while (angle <= start + 1) angle += 360;
-    return angle;
+  function yAxisProgress(t) {
+    const ramp = 0.18;
+    const velocity = 1 / (1 - ramp / 2);
+    if (t < ramp) return (velocity * t * t) / (2 * ramp);
+    return velocity * (t - ramp / 2);
   }
 
   function clearAnimation(slot) {
-    const animations = activeAnimations.get(slot);
-    if (animations) {
-      animations.flipAnimation?.cancel();
-      animations.spinAnimation?.cancel();
-    }
+    const state = activeAnimations.get(slot);
+    if (state?.frameId) cancelAnimationFrame(state.frameId);
     activeAnimations.delete(slot);
   }
 
