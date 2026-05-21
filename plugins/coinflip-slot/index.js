@@ -6,37 +6,6 @@ const QUERY_PATTERNS = [
   /^(?:please\s+)?(?:pick|choose)\s+(?:heads or tails|tails or heads)(?:\s+(?:please|now|for me|again))?$/i,
 ];
 
-const COIN_ART = {
-  heads: [
-    "      ▓▓▓▓▓▓▓▓▓▓      ",
-    "    ▓▓          ▓▓    ",
-    "  ▓▓  ░░▓▓  ▓▓░░  ▓▓  ",
-    "▓▓    ░░▓▓  ▓▓░░    ▓▓",
-    "▓▓  ░░░░▓▓  ▓▓░░░░  ▓▓",
-    "▓▓  ░░░░▓▓▓▓▓▓░░░░  ▓▓",
-    "▓▓  ░░░░▓▓  ▓▓░░░░  ▓▓",
-    "▓▓  ░░░░▓▓  ▓▓░░░░  ▓▓",
-    "  ▓▓  ░░▓▓  ▓▓░░  ▓▓  ",
-    "    ▓▓░░      ░░▓▓    ",
-    "      ▓▓▓▓▓▓▓▓▓▓      ",
-    "██████████████████████",
-  ].join("\n"),
-  tails: [
-    "      ▓▓▓▓▓▓▓▓▓▓      ",
-    "    ▓▓          ▓▓    ",
-    "  ▓▓    ░░▓▓░░░░░░▓▓  ",
-    "▓▓    ░░▓▓▓▓▓▓░░░░░░▓▓",
-    "▓▓  ░░░░▓▓░░░░░░░░░░▓▓",
-    "▓▓  ░░░░░░▓▓░░░░░░░░▓▓",
-    "▓▓  ░░░░░░░░▓▓░░░░░░▓▓",
-    "▓▓  ░░░░▓▓▓▓▓▓░░░░░░▓▓",
-    "  ▓▓  ░░░░▓▓░░░░░░▓▓  ",
-    "    ▓▓░░░░░░░░░░▓▓    ",
-    "      ▓▓▓▓▓▓▓▓▓▓      ",
-    "██████████████████████",
-  ].join("\n"),
-};
-
 const FALLBACK_TEMPLATE = `
 <div class="coinflip-slot" data-coinflip-slot data-result="{{result}}" data-flips="{{flips}}">
   <div class="coinflip-slot__panel">
@@ -46,7 +15,23 @@ const FALLBACK_TEMPLATE = `
       <button class="coinflip-slot__button" type="button" data-coinflip-reroll>Flip again</button>
     </div>
     <div class="coinflip-slot__stage">
-      <pre class="coinflip-slot__coin" data-coinflip-coin aria-hidden="true">{{initial_art}}</pre>
+      <div class="coinflip-slot__coin-scene" aria-hidden="true">
+        <div class="coinflip-slot__coin" data-coinflip-coin>
+          <div class="coinflip-slot__face coinflip-slot__face--heads">
+            <span class="coinflip-slot__face-ring coinflip-slot__face-ring--outer"></span>
+            <span class="coinflip-slot__face-ring coinflip-slot__face-ring--inner"></span>
+            <span class="coinflip-slot__face-mark">H</span>
+            <span class="coinflip-slot__face-label">HEADS</span>
+          </div>
+          <div class="coinflip-slot__face coinflip-slot__face--tails">
+            <span class="coinflip-slot__face-ring coinflip-slot__face-ring--outer"></span>
+            <span class="coinflip-slot__face-ring coinflip-slot__face-ring--inner"></span>
+            <span class="coinflip-slot__face-mark">T</span>
+            <span class="coinflip-slot__face-label">TAILS</span>
+          </div>
+        </div>
+        <div class="coinflip-slot__shadow"></div>
+      </div>
       <div class="coinflip-slot__ticker" data-coinflip-ticker>landed {{result}}</div>
     </div>
   </div>
@@ -56,7 +41,7 @@ export const slot = {
   id: "coinflip-slot",
   name: "Coinflip",
   description:
-    "Flips an animated ASCII coin for quick heads-or-tails decisions.",
+    "Flips a realistic animated CSS coin for quick heads-or-tails decisions.",
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
 
@@ -82,9 +67,7 @@ export const slot = {
       .split("{{result}}")
       .join(_esc(result))
       .split("{{flips}}")
-      .join(String(flips))
-      .split("{{initial_art}}")
-      .join(_esc(COIN_ART[result]));
+      .join(String(flips));
 
     return { title: "Coin flip", html };
   },

@@ -1,81 +1,14 @@
 (function () {
   "use strict";
 
-  const ART = {
-    heads: [
-      "      ▓▓▓▓▓▓▓▓▓▓      ",
-      "    ▓▓          ▓▓    ",
-      "  ▓▓  ░░▓▓  ▓▓░░  ▓▓  ",
-      "▓▓    ░░▓▓  ▓▓░░    ▓▓",
-      "▓▓  ░░░░▓▓  ▓▓░░░░  ▓▓",
-      "▓▓  ░░░░▓▓▓▓▓▓░░░░  ▓▓",
-      "▓▓  ░░░░▓▓  ▓▓░░░░  ▓▓",
-      "▓▓  ░░░░▓▓  ▓▓░░░░  ▓▓",
-      "  ▓▓  ░░▓▓  ▓▓░░  ▓▓  ",
-      "    ▓▓░░      ░░▓▓    ",
-      "      ▓▓▓▓▓▓▓▓▓▓      ",
-      "██████████████████████",
-    ].join("\n"),
-    tails: [
-      "      ▓▓▓▓▓▓▓▓▓▓      ",
-      "    ▓▓          ▓▓    ",
-      "  ▓▓    ░░▓▓░░░░░░▓▓  ",
-      "▓▓    ░░▓▓▓▓▓▓░░░░░░▓▓",
-      "▓▓  ░░░░▓▓░░░░░░░░░░▓▓",
-      "▓▓  ░░░░░░▓▓░░░░░░░░▓▓",
-      "▓▓  ░░░░░░░░▓▓░░░░░░▓▓",
-      "▓▓  ░░░░▓▓▓▓▓▓░░░░░░▓▓",
-      "  ▓▓  ░░░░▓▓░░░░░░▓▓  ",
-      "    ▓▓░░░░░░░░░░▓▓    ",
-      "      ▓▓▓▓▓▓▓▓▓▓      ",
-      "██████████████████████",
-    ].join("\n"),
-    edge: [
-      "          ▓▓          ",
-      "          ▓▓          ",
-      "          ▓▓          ",
-      "          ██          ",
-      "          ██          ",
-      "          ██          ",
-      "          ██          ",
-      "          ██          ",
-      "          ▓▓          ",
-      "          ▓▓          ",
-      "          ▓▓          ",
-      "██████████████████████",
-    ].join("\n"),
-    thin: [
-      "           ░          ",
-      "           ▒          ",
-      "           ▓          ",
-      "           █          ",
-      "           █          ",
-      "           █          ",
-      "           █          ",
-      "           █          ",
-      "           ▓          ",
-      "           ▒          ",
-      "           ░          ",
-      "██████████████████████",
-    ].join("\n"),
-  };
-
-  const FRAME_ORDER = [
-    "heads",
-    "edge",
-    "tails",
-    "thin",
-    "heads",
-    "edge",
-    "tails",
-    "edge",
-  ];
-  const activeTimers = new WeakMap();
+  const activeAnimations = new WeakMap();
 
   function initAll(root) {
     const scope = root || document;
     scope
-      .querySelectorAll(".coinflip-slot[data-coinflip-slot]:not([data-coinflip-init])")
+      .querySelectorAll(
+        ".coinflip-slot[data-coinflip-slot]:not([data-coinflip-init])",
+      )
       .forEach(initSlot);
   }
 
@@ -88,17 +21,17 @@
     if (button) {
       button.addEventListener("click", function () {
         const result = randomResult();
-        slot.dataset.result = result;
-        slot.dataset.flips = String(11 + randomInt(7));
+        slot.dataset.flips = String(6 + randomInt(4));
         animateFlip(slot, result);
       });
     }
 
+    setCoinPose(slot, initialResult);
     animateFlip(slot, initialResult);
   }
 
   function animateFlip(slot, result) {
-    clearTimer(slot);
+    clearAnimation(slot);
 
     if (prefersReducedMotion()) {
       land(slot, result);
@@ -108,54 +41,88 @@
     const coin = slot.querySelector("[data-coinflip-coin]");
     const resultEl = slot.querySelector("[data-coinflip-result]");
     const ticker = slot.querySelector("[data-coinflip-ticker]");
-    const flips = Math.max(8, parseInt(slot.dataset.flips || "12", 10) || 12);
+    const button = slot.querySelector("[data-coinflip-reroll]");
+    const flips = Math.max(4, parseInt(slot.dataset.flips || "7", 10) || 7);
 
     if (!coin || !resultEl || !ticker) return;
+    if (!coin.animate) {
+      land(slot, result);
+      return;
+    }
+
+    const start = rotationFor(normalizeResult(slot.dataset.result));
+    const target = rotationFor(result);
+    const finish = flips * 360 + target;
 
     slot.classList.add("is-flipping");
     resultEl.textContent = "Flipping...";
-    ticker.textContent = "heads? tails?";
+    ticker.textContent = "spinning";
+    if (button) button.disabled = true;
 
-    let frame = 0;
-    function tick() {
-      const phase = FRAME_ORDER[frame % FRAME_ORDER.length];
-      coin.textContent = ART[phase];
-      ticker.textContent = phase === "tails" ? "tails?" : "heads?";
-      frame += 1;
+    const animation = coin.animate(
+      [
+        {
+          transform: `rotateX(-10deg) rotateY(${start}deg) rotateZ(-2deg)`,
+          filter: "brightness(0.96)",
+        },
+        {
+          transform: `rotateX(12deg) rotateY(${Math.floor(finish * 0.42)}deg) rotateZ(5deg)`,
+          filter: "brightness(1.15)",
+          offset: 0.42,
+        },
+        {
+          transform: `rotateX(-7deg) rotateY(${finish}deg) rotateZ(0deg)`,
+          filter: "brightness(1)",
+        },
+      ],
+      {
+        duration: 1250 + Math.min(flips, 9) * 80,
+        easing: "cubic-bezier(.18,.76,.22,1)",
+        fill: "forwards",
+      },
+    );
 
-      if (frame <= flips) {
-        const delay = 54 + frame * 13;
-        activeTimers.set(slot, window.setTimeout(tick, delay));
-      } else {
-        activeTimers.set(slot, window.setTimeout(function () {
-          land(slot, result);
-        }, 120));
-      }
-    }
-
-    tick();
+    activeAnimations.set(slot, animation);
+    animation.onfinish = function () {
+      activeAnimations.delete(slot);
+      land(slot, result);
+    };
+    animation.oncancel = function () {
+      activeAnimations.delete(slot);
+    };
   }
 
   function land(slot, result) {
-    clearTimer(slot);
+    clearAnimation(slot);
 
-    const coin = slot.querySelector("[data-coinflip-coin]");
     const resultEl = slot.querySelector("[data-coinflip-result]");
     const ticker = slot.querySelector("[data-coinflip-ticker]");
+    const button = slot.querySelector("[data-coinflip-reroll]");
     const cleanResult = normalizeResult(result);
     const label = cleanResult === "heads" ? "Heads" : "Tails";
 
     slot.classList.remove("is-flipping");
     slot.dataset.result = cleanResult;
-    if (coin) coin.textContent = ART[cleanResult];
+    setCoinPose(slot, cleanResult);
     if (resultEl) resultEl.textContent = label;
     if (ticker) ticker.textContent = "landed " + cleanResult;
+    if (button) button.disabled = false;
   }
 
-  function clearTimer(slot) {
-    const timer = activeTimers.get(slot);
-    if (timer) window.clearTimeout(timer);
-    activeTimers.delete(slot);
+  function setCoinPose(slot, result) {
+    const coin = slot.querySelector("[data-coinflip-coin]");
+    if (!coin) return;
+    coin.style.transform = `rotateX(-7deg) rotateY(${rotationFor(result)}deg)`;
+  }
+
+  function clearAnimation(slot) {
+    const animation = activeAnimations.get(slot);
+    if (animation) animation.cancel();
+    activeAnimations.delete(slot);
+  }
+
+  function rotationFor(value) {
+    return normalizeResult(value) === "tails" ? 180 : 0;
   }
 
   function normalizeResult(value) {
@@ -192,7 +159,9 @@
           if (node.nodeType !== 1) continue;
           if (
             node.matches &&
-            node.matches(".coinflip-slot[data-coinflip-slot]:not([data-coinflip-init])")
+            node.matches(
+              ".coinflip-slot[data-coinflip-slot]:not([data-coinflip-init])",
+            )
           ) {
             initSlot(node);
           } else if (node.querySelectorAll) {
