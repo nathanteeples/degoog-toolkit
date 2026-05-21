@@ -197,8 +197,7 @@
     -webkit-backface-visibility: hidden;
     overflow: hidden;
     transform: translateZ(8px);
-    transform-style: preserve-3d;
-    -webkit-transform-style: preserve-3d;
+
 }
 
 .coinflip-slot__face-spin {
