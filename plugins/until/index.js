@@ -5,9 +5,16 @@ let template = "";
 const chrono = chronoEn?.casual ? chronoEn : chronoEn.default || chronoEn;
 const untilChrono = chrono.casual?.clone ? chrono.casual.clone() : chrono.casual;
 const DEFAULT_TOP_UNITS = 2;
-const MAX_TOP_UNITS = 7;
+const MAX_TOP_UNITS = 4;
 const settings = {
   topUnits: DEFAULT_TOP_UNITS,
+};
+const TOP_UNITS_SETTING = {
+  key: "topUnits",
+  label: "Main answer units",
+  type: "select",
+  options: ["1", "2", "3", "4"],
+  description: "How many decomposed units to show in the main answer. Default: 2.",
 };
 
 if (untilChrono?.parsers) {
@@ -141,44 +148,16 @@ const MONTH_PATTERN = Array.from(MONTHS.keys())
   .join("|");
 const YEAR_PATTERN = "[1-9]\\d{2,3}";
 const RELATION_PATTERN = "until|till|til|to|since";
-
-export const command = {
-  name: "Until",
-  description:
-    "Shows countdown answers for queries like !until days 3000, !until days since Christmas, or !until weeks July 6th, 2033.",
-  trigger: "until",
-  aliases: ["countdown", "timeuntil"],
-  settingsSchema: [
-    {
-      key: "topUnits",
-      label: "Top display units",
-      type: "select",
-      options: ["1", "2", "3", "4", "5", "6", "7"],
-      description:
-        "How many duration units to show in the main answer. Default: 2.",
-    },
-  ],
-
-  init(ctx) {
-    template = ctx.template || FALLBACK_TEMPLATE;
-  },
-
-  configure: configureSettings,
-
-  async execute(args) {
-    const parsed = parseUntilQuery(args, { allowTargetOnly: true });
-    if (!parsed) return { title: "", html: USAGE_HTML };
-    return renderUntil(parsed, new Date());
-  },
-};
+const COMMAND_PREFIX_RX = /^!(?:until|countdown|timeuntil)\b\s*/i;
 
 export const slot = {
   id: "until",
   name: "Until",
   description:
-    "Shows countdown answers for natural queries like years until 3000, days since Christmas, or weeks until July 6th, 2033.",
+    "Shows countdown answers for natural queries like years until 3000, days since Christmas, !until 5pm, or weeks until July 6th, 2033.",
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  settingsSchema: [TOP_UNITS_SETTING],
 
   init(ctx) {
     template = ctx.template || FALLBACK_TEMPLATE;
@@ -187,19 +166,25 @@ export const slot = {
   configure: configureSettings,
 
   trigger(query) {
+    if (isCommandQuery(query)) return true;
     return Boolean(parseUntilQuery(query, { allowTargetOnly: false }));
   },
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { title: "", html: "" };
-    const parsed = parseUntilQuery(query, { allowTargetOnly: false });
-    if (!parsed) return { title: "", html: "" };
+    const isCommand = isCommandQuery(query);
+    const parsed = parseUntilQuery(query, { allowTargetOnly: isCommand });
+    if (!parsed) {
+      return isCommand
+        ? { title: "", html: USAGE_HTML }
+        : { title: "", html: "" };
+    }
     return renderUntil(parsed, new Date());
   },
 };
 
 export const slotPlugin = slot;
-export default command;
+export default slot;
 
 function parseUntilQuery(input, options = {}) {
   const original = String(input || "").trim();
@@ -270,7 +255,11 @@ function parseMatch(targetText, unitText, direction = "future") {
 }
 
 function stripCommandPrefix(query) {
-  return query.replace(/^!(?:until|countdown|timeuntil)\b\s*/i, "");
+  return query.replace(COMMAND_PREFIX_RX, "");
+}
+
+function isCommandQuery(query) {
+  return COMMAND_PREFIX_RX.test(String(query || "").trim());
 }
 
 function normalizeQuery(query) {

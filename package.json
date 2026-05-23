@@ -63,7 +63,7 @@
       "path": "plugins/until",
       "name": "Until",
       "description": "Countdown answers for natural date queries like 'years until 3000', 'days since Christmas', 'hours until next Friday', or '!until 5pm'.",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "type": "slot"
     },
     {
