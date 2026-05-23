@@ -14,14 +14,14 @@
       "path": "plugins/currency-slot",
       "name": "Currency",
       "description": "Currency converter with live rates. Triggers on !cur / !currency / !convert and on bare natural queries like '100 usd to eur'. Natural language triggering is on by default and can be disabled in Settings.",
-      "version": "1.6.12",
+      "version": "1.6.13",
       "type": "slot"
     },
     {
       "path": "plugins/tmdb",
       "name": "TMDB",
       "description": "Shows rich info panels for movies, TV shows, and actors. Activates on natural-language queries (e.g. titles or actor names) and when film-site or database URLs appear in search results.",
-      "version": "2.0.7",
+      "version": "2.0.8",
       "type": "slot"
     },
     {

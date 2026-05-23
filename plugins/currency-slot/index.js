@@ -1,4 +1,15 @@
 let template = "";
+let externalFetch = (...args) => fetch(...args);
+
+const FRANKFURTER_BASE = "https://api.frankfurter.dev/v2";
+const COINGECKO_SIMPLE_PRICE =
+  "https://api.coingecko.com/api/v3/simple/price";
+const CRYPTO_CODES = new Set(["BTC", "ETH"]);
+const COIN_IDS = {
+  BTC: "bitcoin",
+  ETH: "ethereum",
+};
+const HISTORY_PERIODS = new Set(["1", "5", "30", "365", "1825", "max"]);
 
 // ── Static currency data (server-side display only) ───────────
 const CURRENCIES = {
@@ -408,13 +419,375 @@ function parseQuery(query) {
   };
 }
 
+function _jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+function _normaliseCurrencyCode(value) {
+  const code = String(value || "")
+    .trim()
+    .toUpperCase();
+  return CODES.includes(code) ? code : "";
+}
+
+function _normaliseHistoryDays(value) {
+  const days = String(value || "30").trim().toLowerCase();
+  return HISTORY_PERIODS.has(days) ? days : "";
+}
+
+function _getGroupForDays(days) {
+  const numericDays = days === "max" ? 10000 : parseInt(days, 10) || 30;
+  if (numericDays > 365) return "month";
+  if (numericDays > 90) return "week";
+  return "";
+}
+
+function _buildHistoryUrl(from, to, days) {
+  let startDate;
+  if (days === "max") {
+    startDate = "1999-01-04";
+  } else {
+    const numDays = parseInt(days, 10) || 30;
+    const dt = new Date(Date.now() - numDays * 86400000);
+    startDate = dt.toISOString().slice(0, 10);
+  }
+
+  const url = new URL(`${FRANKFURTER_BASE}/rates`);
+  url.searchParams.set("from", startDate);
+  url.searchParams.set("quotes", to);
+  url.searchParams.set("base", from);
+
+  const group = _getGroupForDays(days);
+  if (group) url.searchParams.set("group", group);
+
+  return url.toString();
+}
+
+async function _fetchJson(url, init = {}) {
+  const headers = {
+    Accept: "application/json",
+    ...(init.headers || {}),
+  };
+
+  let response;
+  try {
+    response = await externalFetch(url, {
+      ...init,
+      headers,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      status: 502,
+      error: "Provider request failed",
+      data: null,
+    };
+  }
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (e) {
+    // Provider returned invalid JSON or an empty error body.
+  }
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    error: response.ok ? "" : `Provider returned ${response.status}`,
+    data,
+  };
+}
+
+async function _fetchFiatRates(base, quotes) {
+  const quoteList = [...new Set(quotes)].filter(Boolean);
+  if (!base || quoteList.length === 0) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Missing currency pair",
+    };
+  }
+
+  const url = new URL(`${FRANKFURTER_BASE}/rates`);
+  url.searchParams.set("base", base);
+  url.searchParams.set("quotes", quoteList.join(","));
+
+  const response = await _fetchJson(url.toString());
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: 502,
+      error:
+        response.error || `Exchange rate provider returned ${response.status}`,
+    };
+  }
+
+  if (!Array.isArray(response.data)) {
+    return {
+      ok: false,
+      status: 502,
+      error: "Exchange rate provider returned an unexpected response",
+    };
+  }
+
+  const rates = {};
+  for (const entry of response.data) {
+    const quote = _normaliseCurrencyCode(entry?.quote);
+    const rate = Number(entry?.rate);
+    if (quote && Number.isFinite(rate) && rate > 0) rates[quote] = rate;
+  }
+
+  return { ok: true, rates };
+}
+
+async function _fetchConversionRate(from, to) {
+  if (!from || !to) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Missing currency pair",
+    };
+  }
+
+  if (from === to) {
+    return {
+      ok: true,
+      rate: 1,
+      provider: "local",
+    };
+  }
+
+  const fromIsCrypto = CRYPTO_CODES.has(from);
+  const toIsCrypto = CRYPTO_CODES.has(to);
+
+  if (!fromIsCrypto && !toIsCrypto) {
+    const response = await _fetchJson(
+      `${FRANKFURTER_BASE}/rate/${encodeURIComponent(from)}/${encodeURIComponent(to)}`,
+    );
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: 502,
+        error:
+          response.error || `Exchange rate provider returned ${response.status}`,
+      };
+    }
+
+    const rate = Number(response.data?.rate);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      return {
+        ok: false,
+        status: 404,
+        error: "Exchange rate is not available for this pair",
+      };
+    }
+
+    return {
+      ok: true,
+      rate,
+      provider: "frankfurter",
+    };
+  }
+
+  const cryptoCode = fromIsCrypto ? from : to;
+  const coinId = COIN_IDS[cryptoCode];
+  const vsCurrency = (fromIsCrypto ? to : from).toLowerCase();
+  if (!coinId || !vsCurrency) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Unsupported crypto currency pair",
+    };
+  }
+
+  const url = new URL(COINGECKO_SIMPLE_PRICE);
+  url.searchParams.set("ids", coinId);
+  url.searchParams.set("vs_currencies", vsCurrency);
+
+  const response = await _fetchJson(url.toString());
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: 502,
+      error:
+        response.error || `Crypto price provider returned ${response.status}`,
+    };
+  }
+
+  const price = Number(response.data?.[coinId]?.[vsCurrency]);
+  if (!Number.isFinite(price) || price <= 0) {
+    return {
+      ok: false,
+      status: 404,
+      error: "Crypto price is not available for this pair",
+    };
+  }
+
+  return {
+    ok: true,
+    rate: fromIsCrypto ? price : 1 / price,
+    provider: "coingecko",
+  };
+}
+
+async function _handleRateRoute(request) {
+  try {
+    const url = new URL(request.url);
+    const from = _normaliseCurrencyCode(url.searchParams.get("from"));
+    const to = _normaliseCurrencyCode(url.searchParams.get("to"));
+
+    if (!from || !to) {
+      return _jsonResponse(
+        {
+          ok: false,
+          status: 400,
+          error: "Missing or unsupported currency code",
+        },
+        400,
+      );
+    }
+
+    const result = await _fetchConversionRate(from, to);
+    if (!result.ok) {
+      const status = result.status || 502;
+      return _jsonResponse(
+        {
+          ok: false,
+          status,
+          error: result.error || "Exchange rate unavailable",
+        },
+        status,
+      );
+    }
+
+    return _jsonResponse({
+      ok: true,
+      status: 200,
+      from,
+      to,
+      rate: result.rate,
+      provider: result.provider,
+    });
+  } catch (error) {
+    return _jsonResponse(
+      {
+        ok: false,
+        status: 500,
+        error: "Internal error while fetching exchange rate",
+      },
+      500,
+    );
+  }
+}
+
+async function _handleHistoryRoute(request) {
+  try {
+    const url = new URL(request.url);
+    const from = _normaliseCurrencyCode(url.searchParams.get("from"));
+    const to = _normaliseCurrencyCode(url.searchParams.get("to"));
+    const days = _normaliseHistoryDays(url.searchParams.get("days"));
+
+    if (!from || !to || !days) {
+      return _jsonResponse(
+        {
+          ok: false,
+          status: 400,
+          error: "Missing or unsupported chart parameters",
+        },
+        400,
+      );
+    }
+
+    if (CRYPTO_CODES.has(from) || CRYPTO_CODES.has(to)) {
+      return _jsonResponse(
+        {
+          ok: false,
+          status: 422,
+          error: "Chart history is not available for crypto pairs",
+        },
+        422,
+      );
+    }
+
+    const response = await _fetchJson(_buildHistoryUrl(from, to, days));
+    if (!response.ok) {
+      return _jsonResponse(
+        {
+          ok: false,
+          status: 502,
+          error:
+            response.error || `Exchange rate provider returned ${response.status}`,
+        },
+        502,
+      );
+    }
+
+    if (!Array.isArray(response.data)) {
+      return _jsonResponse(
+        {
+          ok: false,
+          status: 502,
+          error: "Exchange rate provider returned an unexpected response",
+        },
+        502,
+      );
+    }
+
+    const data = response.data
+      .map((entry) => ({
+        date: String(entry?.date || ""),
+        rate: Number(entry?.rate),
+      }))
+      .filter((entry) => entry.date && Number.isFinite(entry.rate));
+
+    return _jsonResponse({
+      ok: true,
+      status: 200,
+      from,
+      to,
+      days,
+      data,
+    });
+  } catch (error) {
+    return _jsonResponse(
+      {
+        ok: false,
+        status: 500,
+        error: "Internal error while fetching chart history",
+      },
+      500,
+    );
+  }
+}
+
+export const routes = [
+  {
+    path: "rate",
+    method: "get",
+    handler: _handleRateRoute,
+  },
+  {
+    path: "history",
+    method: "get",
+    handler: _handleHistoryRoute,
+  },
+];
+
 // ── Slot export ───────────────────────────────────────────────
 export const slot = {
   id: "currency-slot",
   name: "Currency",
   description:
     "Currency converter with live rates. Supports !currency, or natural queries like '100 usd to eur'.",
-  isClientExposed: true,
+  isClientExposed: false,
   position: "above-results",
 
   settingsSchema: [
@@ -429,6 +802,9 @@ export const slot = {
 
   init(ctx) {
     template = ctx.template;
+    if (typeof ctx?.fetch === "function") {
+      externalFetch = (...args) => ctx.fetch(...args);
+    }
   },
 
   configure(settings) {
@@ -459,41 +835,27 @@ export const slot = {
       const to = parsed.to || _settings.defaultTo;
       const amount = parsed.amount || 1;
 
-      const quotes = [...new Set([to, ...POPULAR_PAIRS.flat()])]
-        .filter((c) => c !== from && c !== "BTC" && c !== "ETH")
-        .join(",");
+      const quotes = [...new Set([to, ...POPULAR_PAIRS.flat()])].filter(
+        (c) => c !== from && !CRYPTO_CODES.has(c),
+      );
 
       let rates = {};
       let result = null;
 
-      const fromIsCrypto = ["BTC", "ETH"].includes(from);
-      const toIsCrypto = ["BTC", "ETH"].includes(to);
+      const fromIsCrypto = CRYPTO_CODES.has(from);
+      const toIsCrypto = CRYPTO_CODES.has(to);
 
       if (!fromIsCrypto && !toIsCrypto) {
-        const res = await fetch(
-          `https://api.frankfurter.dev/v2/rates?base=${from}&quotes=${quotes},${to}`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          for (const entry of data) {
-            if (entry.quote && entry.rate != null)
-              rates[entry.quote] = entry.rate;
-          }
+        const rateResult = await _fetchFiatRates(from, quotes);
+        if (rateResult.ok) {
+          rates = rateResult.rates;
           result = rates[to] != null ? amount * rates[to] : null;
         }
       } else {
-        const coinId = from === "BTC" ? "bitcoin" : "ethereum";
-        const vsCurrency = toIsCrypto ? "usd" : to.toLowerCase();
-        const res = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=${vsCurrency}`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          const rate = data[coinId]?.[vsCurrency];
-          if (rate) {
-            rates[to] = toIsCrypto ? 1 / rate : rate;
-            result = amount * rates[to];
-          }
+        const rateResult = await _fetchConversionRate(from, to);
+        if (rateResult.ok) {
+          rates[to] = rateResult.rate;
+          result = amount * rates[to];
         }
       }
 

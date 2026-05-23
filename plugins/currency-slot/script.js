@@ -1,5 +1,6 @@
 (function () {
   const HISTORY_PERIODS = [1, 5, 30, 365, 1825, "max"];
+  const PLUGIN_API_BASE = `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
   const historyCache = new Map();
   const historyInFlight = new Map();
 
@@ -7,25 +8,13 @@
     return `${from}|${to}|${days}`;
   }
 
-  function getGroupForDays(days) {
-    const numericDays = days === "max" ? 10000 : parseInt(days, 10) || 30;
-    if (numericDays > 365) return "month";
-    if (numericDays > 90) return "week";
-    return "";
-  }
-
-  function buildHistoryUrl(from, to, days) {
-    let startDate;
-    if (days === "max") {
-      startDate = "1999-01-04";
-    } else {
-      const numDays = parseInt(days, 10) || 30;
-      const dt = new Date(Date.now() - numDays * 86400000);
-      startDate = dt.toISOString().slice(0, 10);
-    }
-    const group = getGroupForDays(days);
-    const groupParam = group ? `&group=${group}` : "";
-    return `https://api.frankfurter.dev/v2/rates?from=${startDate}&quotes=${to}&base=${from}${groupParam}`;
+  function pluginApiUrl(path, params) {
+    const search = new URLSearchParams();
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) search.set(key, String(value));
+    });
+    const query = search.toString();
+    return `${PLUGIN_API_BASE}/${path}${query ? `?${query}` : ""}`;
   }
 
   function fmt(n) {
@@ -62,32 +51,11 @@
 
   async function fetchRate(from, to) {
     try {
-      const fromIsCrypto = from === "BTC" || from === "ETH";
-      const toIsCrypto = to === "BTC" || to === "ETH";
-
-      if (!fromIsCrypto && !toIsCrypto) {
-        const res = await fetch(
-          `https://api.frankfurter.dev/v2/rate/${from}/${to}`,
-        );
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data.rate ?? null;
-      }
-
-      // Crypto path via CoinGecko
-      const coinId =
-        (fromIsCrypto ? from : to) === "BTC" ? "bitcoin" : "ethereum";
-      const vsCurrency = (fromIsCrypto ? to : from).toLowerCase();
-      const res = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=${vsCurrency}`,
-      );
+      const res = await fetch(pluginApiUrl("rate", { from, to }));
       if (!res.ok) return null;
       const data = await res.json();
-      const price = data[coinId]?.[vsCurrency];
-      if (!price) return null;
-      // If converting FROM crypto, the price IS the rate (e.g. BTC→USD = 60000)
-      // If converting TO crypto, invert (e.g. USD→BTC = 1/60000)
-      return fromIsCrypto ? price : 1 / price;
+      const rate = Number(data.rate);
+      return Number.isFinite(rate) && rate > 0 ? rate : null;
     } catch (e) {
       return null;
     }
@@ -725,9 +693,10 @@
       if (historyInFlight.has(key)) return historyInFlight.get(key);
 
       const req = (async () => {
-        const res = await fetch(buildHistoryUrl(from, to, days));
+        const res = await fetch(pluginApiUrl("history", { from, to, days }));
         if (!res.ok) return null;
-        const data = await res.json();
+        const payload = await res.json();
+        const data = Array.isArray(payload?.data) ? payload.data : null;
         if (!Array.isArray(data)) return null;
         const normalized = data.map((d) => ({ date: d.date, rate: d.rate }));
         historyCache.set(key, normalized);

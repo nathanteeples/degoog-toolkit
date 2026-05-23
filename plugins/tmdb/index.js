@@ -4,11 +4,19 @@ let omdbApiKey = "";
 let jellyfinUrl = "";
 let jellyfinApiKey = "";
 let template = "";
+let pluginRuntimeContext = null;
+let pluginRouteBase = "/api/plugin/tmdb";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const IMAGE_BASE = "https://image.tmdb.org/t/p";
 const JELLYFIN_LOGO =
   "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@refs/heads/main/svg/jellyfin.svg";
+const ASSET_PROXY_HOSTS = new Set([
+  "image.tmdb.org",
+  "cdn.jsdelivr.net",
+  "i.ytimg.com",
+  "img.youtube.com",
+]);
 
 // ── URL Patterns ──────────────────────────────────────────────────────────────
 const TMDB_PATTERN = /themoviedb\.org\/(movie|tv|person)\/(\d+)/;
@@ -89,11 +97,94 @@ const _esc = (s) => {
     .replace(/"/g, "&quot;");
 };
 
-const _imgUrl = (path, size) => {
+const _ctx = (ctx) => ctx || pluginRuntimeContext || null;
+
+const _fetchFor = (ctx) => {
+  if (typeof ctx?.fetch === "function") {
+    return (...args) => ctx.fetch(...args);
+  }
+  if (typeof pluginRuntimeContext?.fetch === "function") {
+    return (...args) => pluginRuntimeContext.fetch(...args);
+  }
+  return fetch;
+};
+
+const _setPluginRouteBase = (ctx) => {
+  const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
+  const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
+  if (folder) pluginRouteBase = `/api/plugin/${encodeURIComponent(folder)}`;
+};
+
+const _encodeAssetUrl = (url) =>
+  Buffer.from(String(url), "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+
+const _decodeAssetUrl = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const padded = raw.replace(/-/g, "+").replace(/_/g, "/");
+  try {
+    return Buffer.from(padded, "base64").toString("utf8");
+  } catch {
+    return "";
+  }
+};
+
+const _isConfiguredJellyfinAsset = (url) => {
+  if (!jellyfinUrl) return false;
+  try {
+    return new URL(url).origin === new URL(jellyfinUrl).origin;
+  } catch {
+    return false;
+  }
+};
+
+const _normalizeAssetUrl = (url) => {
+  if (!url || typeof url !== "string") return "";
+  try {
+    const parsed = new URL(url);
+    const isHttps = parsed.protocol === "https:";
+    const isJellyfin = _isConfiguredJellyfinAsset(parsed.toString());
+    if (!isHttps && !(isJellyfin && parsed.protocol === "http:")) return "";
+    if (ASSET_PROXY_HOSTS.has(parsed.hostname) || isJellyfin) {
+      return parsed.toString();
+    }
+  } catch {
+    return "";
+  }
+  return "";
+};
+
+const _localAssetProxyUrl = (url) =>
+  `${pluginRouteBase}/asset?u=${encodeURIComponent(_encodeAssetUrl(url))}`;
+
+const _proxiedAssetUrl = (url, ctx) => {
+  const clean = _normalizeAssetUrl(url);
+  if (!clean) return "";
+  const signerCtx =
+    typeof ctx?.signProxyUrl === "function" ? ctx : pluginRuntimeContext;
+  if (typeof signerCtx?.signProxyUrl === "function") {
+    try {
+      const signed = signerCtx.signProxyUrl(clean);
+      if (typeof signed === "string" && signed.trim()) return signed;
+    } catch {
+      // Fall through to the plugin-local proxy route.
+    }
+  }
+  return _localAssetProxyUrl(clean);
+};
+
+const _imgUrl = (path, size, ctx) => {
   if (!path || typeof path !== "string") return "";
   const p = path.trim();
   if (!p) return "";
-  return `${IMAGE_BASE}/${size}${p.startsWith("/") ? p : "/" + p}`;
+  return _proxiedAssetUrl(
+    `${IMAGE_BASE}/${size}${p.startsWith("/") ? p : "/" + p}`,
+    ctx,
+  );
 };
 
 // Use callback replacement to avoid issues with $ in content (lyrics-style)
@@ -224,7 +315,7 @@ const _tmdb = async (path, ctx) => {
   const base = "https://api.themoviedb.org/3";
   const sep = path.includes("?") ? "&" : "?";
   const url = `${base}/${path}${sep}api_key=${encodeURIComponent(tmdbApiKey)}&language=en-US`;
-  const fetchFn = ctx?.fetch || fetch;
+  const fetchFn = _fetchFor(ctx);
   const res = await fetchFn(url);
   if (!res.ok) return null;
   return res.json();
@@ -235,7 +326,7 @@ const _tmdb = async (path, ctx) => {
 const _omdbFetch = async (query, ctx) => {
   if (!omdbApiKey) return null;
   try {
-    const fetchFn = ctx?.fetch || fetch;
+    const fetchFn = _fetchFor(ctx);
     const u = new URL("https://www.omdbapi.com/");
     u.searchParams.set("apikey", omdbApiKey);
     u.searchParams.set("r", "json");
@@ -480,7 +571,7 @@ const _resolveFromQuery = async (query, ctx) => {
 const _jellyfinSearch = async (title, ctx) => {
   if (!jellyfinUrl || !jellyfinApiKey || !title) return null;
   try {
-    const fetchFn = ctx?.fetch || fetch;
+    const fetchFn = _fetchFor(ctx);
     const url =
       `${jellyfinUrl}/Items` +
       `?SearchTerm=${encodeURIComponent(title)}` +
@@ -521,24 +612,38 @@ const _pickTrailerVideo = (videos) => {
   return youtube[0];
 };
 
-/** Minimal YouTube embed for the movie hero (no extra card chrome below the iframe). */
-const _buildTrailerEmbed = (video, movieTitle) => {
+const _youtubeKey = (key) => {
+  const clean = String(key || "").trim();
+  return /^[A-Za-z0-9_-]{6,}$/.test(clean) ? clean : "";
+};
+
+/** Trailer callout that never embeds YouTube until the user clicks out. */
+const _buildTrailerLink = (video, movieTitle, ctx) => {
   if (!video || !video.key) return "";
-  const key = String(video.key || "").trim();
+  const key = _youtubeKey(video.key);
   if (!key) return "";
   const fallbackTitle = String(movieTitle || "Trailer").trim() || "Trailer";
   const clipName =
     String(video.name || "").trim() || `${fallbackTitle} trailer`;
   const safeTitle = _esc(clipName);
-  const src = _esc(
-    `https://www.youtube-nocookie.com/embed/${key}?rel=0&modestbranding=1`,
+  const href = _esc(
+    `https://www.youtube.com/watch?v=${encodeURIComponent(key)}`,
   );
+  const thumb = _proxiedAssetUrl(
+    `https://i.ytimg.com/vi/${key}/hqdefault.jpg`,
+    ctx,
+  );
+  const thumbHtml = thumb
+    ? `<img src="${_esc(thumb)}" alt="" loading="lazy" style="display:block;width:100%;height:100%;object-fit:cover;">`
+    : `<span aria-hidden="true" style="font-size:2rem;line-height:1;">&#9658;</span>`;
   return (
     `<div class="tmdb-trailer tmdb-trailer--hero">` +
-    `<iframe class="tmdb-trailer-frame tmdb-trailer-frame--hero" src="${src}" title="${safeTitle}" ` +
-    `loading="lazy" referrerpolicy="strict-origin-when-cross-origin" ` +
-    `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ` +
-    `allowfullscreen></iframe>` +
+    `<a class="tmdb-trailer-frame tmdb-trailer-frame--hero tmdb-trailer-link" href="${href}" ` +
+    `target="_blank" rel="noopener noreferrer" title="${safeTitle}" aria-label="Watch ${safeTitle} on YouTube" ` +
+    `style="position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text-primary);text-decoration:none;background:var(--bg-light, rgba(255,255,255,0.04));">` +
+    thumbHtml +
+    `<span style="position:absolute;inset:auto 0 0 0;padding:0.65rem 0.8rem;background:linear-gradient(180deg, transparent, rgba(0,0,0,0.72));color:white;font-weight:700;">Watch trailer &#8599;</span>` +
+    `</a>` +
     `</div>`
   );
 };
@@ -643,13 +748,13 @@ const _buildImageCombo = (poster, bd1, bd2) => {
 
 const _formatCastCountLabel = (n) => `${n} ${n === 1 ? "person" : "people"}`;
 
-const _buildCastStrip = (cast) => {
+const _buildCastStrip = (cast, ctx) => {
   if (!Array.isArray(cast) || cast.length === 0) return "";
   return cast
     .map((c) => {
       const name = _esc(c.name || "");
       const character = c.character ? _esc(c.character) : "";
-      const photoUrl = _imgUrl(c.profile_path, "w185");
+      const photoUrl = _imgUrl(c.profile_path, "w185", ctx);
       const imgHtml = photoUrl
         ? `<img src="${_esc(photoUrl)}" alt="" loading="lazy" class="tmdb-cast-photo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
         : "";
@@ -690,8 +795,8 @@ const _buildCastCarousel = (stripHtml) => {
   );
 };
 
-const _buildCastAccordion = (cast, label) => {
-  const strip = _buildCastStrip(cast);
+const _buildCastAccordion = (cast, label, ctx) => {
+  const strip = _buildCastStrip(cast, ctx);
   if (!strip) return "";
   const meta = _formatCastCountLabel(cast.length);
   return (
@@ -707,7 +812,7 @@ const _buildCastAccordion = (cast, label) => {
 // Renders the episode list for a season. Returned by the `season` route and
 // injected into the right-column TV panel episodes slot.
 // CSS grid: still | title/meta/synopsis; synopsis clamped (~2 lines) — full text on TMDB via card links.
-const _renderEpisodes = (seasonData, tvId) => {
+const _renderEpisodes = (seasonData, tvId, ctx) => {
   const episodes = Array.isArray(seasonData?.episodes)
     ? seasonData.episodes
     : [];
@@ -727,7 +832,7 @@ const _renderEpisodes = (seasonData, tvId) => {
       const air = ep.air_date || "";
       const runtime = ep.runtime ? _formatRuntime(ep.runtime) : "";
       const rating = ep.vote_average ? _ratingStr(ep.vote_average) : "";
-      const stillUrl = _imgUrl(ep.still_path, "w300");
+      const stillUrl = _imgUrl(ep.still_path, "w300", ctx);
       const stillHtml = stillUrl
         ? `<img src="${_esc(stillUrl)}" alt="" loading="lazy" class="tmdb-episode-still">`
         : `<div class="tmdb-episode-still tmdb-episode-still--empty"></div>`;
@@ -839,14 +944,14 @@ const _buildSeasonsRail = (details) => {
   );
 };
 
-const _buildFilmStrip = (items) => {
+const _buildFilmStrip = (items, ctx) => {
   if (!items || items.length === 0) return "";
   return items
     .slice(0, 24)
     .map((m) => {
       const title = _esc(m.title || m.name || "");
       const year = (m.release_date || m.first_air_date || "").slice(0, 4);
-      const posterUrl = _imgUrl(m.poster_path, "w185");
+      const posterUrl = _imgUrl(m.poster_path, "w185", ctx);
       const posterHtml = posterUrl
         ? `<img src="${_esc(posterUrl)}" alt="" loading="lazy" class="tmdb-film-img">`
         : `<span class="tmdb-film-placeholder">${_esc((title || "?").charAt(0))}</span>`;
@@ -864,12 +969,12 @@ const _buildFilmStrip = (items) => {
     .join("");
 };
 
-const _buildFilmographySection = (label, items) => {
+const _buildFilmographySection = (label, items, ctx) => {
   if (!items || items.length === 0) return "";
   return (
     `<h4 class="tmdb-section-heading">${_esc(label)}</h4>` +
     `<div class="tmdb-filmography-scroll">` +
-    `<div class="tmdb-filmography-strip">${_buildFilmStrip(items)}</div>` +
+    `<div class="tmdb-filmography-strip">${_buildFilmStrip(items, ctx)}</div>` +
     `</div>`
   );
 };
@@ -899,7 +1004,7 @@ const _wrapTabs = (tabs) => {
 
 // ── Entity Renderers ──────────────────────────────────────────────────────────
 
-const _renderPerson = (details, images, credits) => {
+const _renderPerson = (details, images, credits, ctx) => {
   const name = _esc(details.name || "");
   const knownFor = _esc(details.known_for_department || "");
   const birthday = _esc(details.birthday || "");
@@ -910,8 +1015,8 @@ const _renderPerson = (details, images, credits) => {
   const photoGrid = profiles
     .filter((img) => img && img.file_path)
     .map((img) => {
-      const src = _esc(_imgUrl(img.file_path, "w185"));
-      const fullSrc = _esc(_imgUrl(img.file_path, "original"));
+      const src = _esc(_imgUrl(img.file_path, "w185", ctx));
+      const fullSrc = _esc(_imgUrl(img.file_path, "original", ctx));
       return (
         `<div class="tmdb-person-photo">` +
         `<img src="${src}" alt="" loading="lazy" class="tmdb-person-photo-img" ` +
@@ -962,8 +1067,8 @@ const _renderPerson = (details, images, credits) => {
     );
 
   const filmographyPanel =
-    _buildFilmographySection("Movies", movieCast) +
-    _buildFilmographySection("TV Shows", tvCast);
+    _buildFilmographySection("Movies", movieCast, ctx) +
+    _buildFilmographySection("TV Shows", tvCast, ctx);
 
   const tabs = [{ label: "Overview", panel: overviewPanel }];
   if (filmographyPanel)
@@ -984,7 +1089,7 @@ const _renderPerson = (details, images, credits) => {
   );
 };
 
-const _buildRatingsHtml = (opts) => {
+const _buildRatingsHtml = (opts, ctx) => {
   const {
     voteAverage,
     voteCount,
@@ -1050,9 +1155,13 @@ const _buildRatingsHtml = (opts) => {
 
   if (jellyfinHref) {
     const jf = _esc(jellyfinHref);
+    const jellyfinLogo = _proxiedAssetUrl(JELLYFIN_LOGO, ctx);
+    const jellyfinIcon = jellyfinLogo
+      ? `<img class="tmdb-rating-jf-icon" src="${_esc(jellyfinLogo)}" alt="" width="18" height="18" loading="lazy">`
+      : "";
     parts.push(
       `<a href="${jf}" target="_blank" rel="noopener" class="tmdb-rating-item tmdb-rating-item--link tmdb-rating-item--jellyfin" aria-label="Open in Jellyfin">` +
-        `<img class="tmdb-rating-jf-icon" src="${_esc(JELLYFIN_LOGO)}" alt="" width="18" height="18" loading="lazy">` +
+        jellyfinIcon +
         `<span class="tmdb-rating-badge tmdb-rating-badge--jellyfin">Jellyfin</span>` +
         `</a>`,
     );
@@ -1069,6 +1178,7 @@ const _renderMovie = (
   jellyfinItem,
   omdbRatings,
   trailerVideo,
+  ctx,
 ) => {
   const title = _esc(details.title || details.name || "");
   const year = _esc((details.release_date || "").slice(0, 4));
@@ -1078,6 +1188,7 @@ const _renderMovie = (
   const poster = _imgUrl(
     details.poster_path || (images?.posters || [])[0]?.file_path || "",
     "w500",
+    ctx,
   );
   const imageCombo = _buildImageCombo(poster, "", "");
 
@@ -1103,19 +1214,23 @@ const _renderMovie = (
     ? `<div class="tmdb-created-by">${_esc(`Created by ${createdByNames}`)}</div>`
     : "";
 
-  const ratingsHtml = _buildRatingsHtml({
-    voteAverage: details.vote_average,
-    voteCount: details.vote_count,
-    imdb: omdbRatings?.imdb,
-    rottenTomatoes: omdbRatings?.rottenTomatoes,
-    letterboxdHref: `https://letterboxd.com/tmdb/${details.id}/`,
-    jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
-  });
+  const ratingsHtml = _buildRatingsHtml(
+    {
+      voteAverage: details.vote_average,
+      voteCount: details.vote_count,
+      imdb: omdbRatings?.imdb,
+      rottenTomatoes: omdbRatings?.rottenTomatoes,
+      letterboxdHref: `https://letterboxd.com/tmdb/${details.id}/`,
+      jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
+    },
+    ctx,
+  );
 
   const plotHtml = overview ? `<p class="tmdb-plot">${_esc(overview)}</p>` : "";
-  const trailerEmbed = _buildTrailerEmbed(
+  const trailerEmbed = _buildTrailerLink(
     trailerVideo,
     details.title || details.name || "",
+    ctx,
   );
   const heroInfoInner = createdByHtml + ratingsHtml + plotHtml;
 
@@ -1133,7 +1248,7 @@ const _renderMovie = (
       `</div>`;
 
   const cast = credits?.cast || [];
-  const castStrip = _buildCastStrip(cast);
+  const castStrip = _buildCastStrip(cast, ctx);
   const castCountLabel = _formatCastCountLabel(cast.length);
   const castSection = castStrip
     ? `<div class="tmdb-section">` +
@@ -1167,7 +1282,7 @@ const _renderMovie = (
   );
 };
 
-const _renderTv = (details, credits, images, jellyfinItem, omdbRatings) => {
+const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, ctx) => {
   const name = _esc(details.name || "");
   const year = _esc((details.first_air_date || "").slice(0, 4));
   const overview = details.overview || "";
@@ -1176,10 +1291,11 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings) => {
   const poster = _imgUrl(
     details.poster_path || (images?.posters || [])[0]?.file_path || "",
     "w500",
+    ctx,
   );
   const backdrops = (images?.backdrops || [])
     .slice(0, 2)
-    .map((b) => _imgUrl(b.file_path, "w780"));
+    .map((b) => _imgUrl(b.file_path, "w780", ctx));
   const imageCombo = _buildImageCombo(
     poster,
     backdrops[0] || "",
@@ -1202,19 +1318,22 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings) => {
     ? `<div class="tmdb-subtitle">${_esc(subtitleParts.join(" \u00b7 "))}</div>`
     : "";
 
-  const ratingsHtml = _buildRatingsHtml({
-    voteAverage: details.vote_average,
-    voteCount: details.vote_count,
-    imdb: omdbRatings?.imdb,
-    rottenTomatoes: omdbRatings?.rottenTomatoes,
-    letterboxdHref: null,
-    jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
-  });
+  const ratingsHtml = _buildRatingsHtml(
+    {
+      voteAverage: details.vote_average,
+      voteCount: details.vote_count,
+      imdb: omdbRatings?.imdb,
+      rottenTomatoes: omdbRatings?.rottenTomatoes,
+      letterboxdHref: null,
+      jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
+    },
+    ctx,
+  );
 
   const plotHtml = overview ? `<p class="tmdb-plot">${_esc(overview)}</p>` : "";
 
   const cast = credits?.cast || [];
-  const castStrip = _buildCastStrip(cast);
+  const castStrip = _buildCastStrip(cast, ctx);
   const castCountLabel = _formatCastCountLabel(cast.length);
   const castSection = castStrip
     ? `<div class="tmdb-section">` +
@@ -1320,6 +1439,7 @@ const _buildMoviePanel = async (id, ctx) => {
       jellyfinItem,
       omdbRatings,
       _pickTrailerVideo(videos),
+      ctx,
     ),
   };
 };
@@ -1369,6 +1489,7 @@ const _buildTvPanel = async (id, ctx) => {
       images,
       jellyfinItem,
       omdbRatings,
+      ctx,
     ),
   };
 };
@@ -1382,7 +1503,7 @@ const _buildPersonPanel = async (id, ctx) => {
   if (!details) return null;
   return {
     title: details.name || "Actor",
-    html: _renderPerson(details, images, credits),
+    html: _renderPerson(details, images, credits, ctx),
   };
 };
 
@@ -1394,7 +1515,7 @@ const _buildSeasonPanel = async (tvId, seasonNumber, ctx) => {
   const seasonFacts = _seasonFactsFromSeasonApi(data);
   return {
     title: data.name || `Season ${seasonNumber}`,
-    html: _renderEpisodes(data, tvId),
+    html: _renderEpisodes(data, tvId, ctx),
     seasonFacts,
   };
 };
@@ -1402,8 +1523,9 @@ const _buildSeasonPanel = async (tvId, seasonNumber, ctx) => {
 // ── Plugin Routes ─────────────────────────────────────────────────────────────
 // Client-side navigation (cast card → person, etc.) fetches these routes to
 // swap the slot contents without a full page reload. See script.js.
-const _entityHandler = (builder) => async (request) => {
+const _entityHandler = (builder) => async (request, routeCtx) => {
   try {
+    const ctx = _ctx(routeCtx);
     const url = new URL(request.url);
     const idRaw = url.searchParams.get("id") || "";
     const id = parseInt(idRaw, 10);
@@ -1413,7 +1535,7 @@ const _entityHandler = (builder) => async (request) => {
     if (!tmdbApiKey) {
       return _jsonResponse({ error: "TMDB API key not configured" }, 503);
     }
-    const panel = await builder(id, undefined);
+    const panel = await builder(id, ctx);
     if (!panel) {
       return _jsonResponse({ error: "Not found" }, 404);
     }
@@ -1438,8 +1560,9 @@ function _jsonResponse(body, status = 200) {
 
 // Dedicated handler for the season route — it takes two query params (tv, season)
 // rather than a single id, so it doesn't fit the generic _entityHandler shape.
-const _seasonHandler = async (request) => {
+const _seasonHandler = async (request, routeCtx) => {
   try {
+    const ctx = _ctx(routeCtx);
     const url = new URL(request.url);
     const tvRaw = url.searchParams.get("tv") || "";
     const seasonRaw = url.searchParams.get("season") || "";
@@ -1451,7 +1574,7 @@ const _seasonHandler = async (request) => {
     if (!tmdbApiKey) {
       return _jsonResponse({ error: "TMDB API key not configured" }, 503);
     }
-    const panel = await _buildSeasonPanel(tvId, seasonNumber);
+    const panel = await _buildSeasonPanel(tvId, seasonNumber, ctx);
     if (!panel) {
       return _jsonResponse({ error: "Not found" }, 404);
     }
@@ -1464,7 +1587,58 @@ const _seasonHandler = async (request) => {
   }
 };
 
+const _assetHandler = async (request, routeCtx) => {
+  try {
+    const ctx = _ctx(routeCtx);
+    const url = new URL(request.url);
+    const remoteUrl = _normalizeAssetUrl(
+      _decodeAssetUrl(url.searchParams.get("u")),
+    );
+    if (!remoteUrl) {
+      return new Response("Invalid asset", {
+        status: 400,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+
+    const fetchFn = _fetchFor(ctx);
+    const res = await fetchFn(remoteUrl);
+    if (!res.ok) {
+      return new Response("Asset fetch failed", {
+        status: res.status,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().startsWith("image/")) {
+      return new Response("Unsupported asset type", {
+        status: 415,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+
+    return new Response(res.body, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=86400",
+      },
+    });
+  } catch {
+    return new Response("Asset proxy error", {
+      status: 502,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+};
+
 export const routes = [
+  {
+    path: "asset",
+    method: "get",
+    handler: _assetHandler,
+  },
   {
     path: "movie",
     method: "get",
@@ -1493,7 +1667,7 @@ export const slot = {
   name: "TMDB",
   description:
     "Shows rich info panels for movies, TV shows, and actors. Activates on natural-language queries (e.g. titles or actor names) and when film-site or database URLs appear in search results.",
-  isClientExposed: true,
+  isClientExposed: false,
   position: "above-results",
   // Needed so ctx.results is populated for URL-based detection (TMDB/IMDB/Allocine
   // links in the organic search results). Natural-language activation still works
@@ -1543,6 +1717,8 @@ export const slot = {
   ],
 
   async init(ctx) {
+    pluginRuntimeContext = ctx || null;
+    _setPluginRouteBase(ctx);
     // Support both ctx.template (set by host) and manual readFile
     template = ctx.template || "";
     if (!template && ctx.readFile) {

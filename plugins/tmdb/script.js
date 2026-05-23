@@ -1,6 +1,6 @@
 // ── TMDB slot: client-side in-slot navigation + image modal ─────────────────
 // Clicking a cast card with data-tmdb-nav="person" swaps the slot contents
-// for a person panel fetched from /api/plugin/tmdb/person?id=...
+// for a person panel fetched from this plugin's local route.
 // A back button is injected at the top to return to the previous panel.
 // History is stored per-.tmdb-result instance on the element itself.
 //
@@ -12,6 +12,19 @@
 
   const STACK_PROP = "__tmdbNavStack";
   const LOADING_CLASS = "tmdb-loading";
+  const PLUGIN_API_BASE = `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
+
+  function pluginApiUrl(path, params) {
+    const search = new URLSearchParams();
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) search.set(key, String(value));
+    });
+    const query = search.toString();
+    return (
+      `${PLUGIN_API_BASE}/${encodeURIComponent(path)}` +
+      (query ? `?${query}` : "")
+    );
+  }
 
   // ── Image Modal ───────────────────────────────────────────────────────────────
   let modalOverlay = null;
@@ -53,15 +66,7 @@
     if (!src) return;
     createModal();
 
-    // Use original/higher res version if available
-    // The src might already be "original" or we can try to upgrade it
-    let highResSrc = src;
-    // If it's a TMDB image URL with a size like /w342/ or /w185/, upgrade to /original/
-    if (src.includes("image.tmdb.org")) {
-      highResSrc = src.replace(/\/w\d+\//, "/original/");
-    }
-
-    modalImg.src = highResSrc;
+    modalImg.src = src;
     modalOverlay.classList.add("tmdb-modal--visible");
     document.body.style.overflow = "hidden";
 
@@ -156,9 +161,7 @@
     root.setAttribute("aria-busy", "true");
 
     try {
-      const url =
-        `/api/plugin/tmdb/${encodeURIComponent(type)}` +
-        `?id=${encodeURIComponent(id)}`;
+      const url = pluginApiUrl(type, { id });
       const res = await fetch(url, {
         headers: { Accept: "application/json" },
         credentials: "same-origin",
@@ -479,10 +482,10 @@
       '<div class="tmdb-episodes-loading">Loading episodes\u2026</div>';
 
     try {
-      const url =
-        `/api/plugin/tmdb/season` +
-        `?tv=${encodeURIComponent(tvId)}` +
-        `&season=${encodeURIComponent(seasonNumber)}`;
+      const url = pluginApiUrl("season", {
+        tv: tvId,
+        season: seasonNumber,
+      });
       const res = await fetch(url, {
         headers: { Accept: "application/json" },
         credentials: "same-origin",
