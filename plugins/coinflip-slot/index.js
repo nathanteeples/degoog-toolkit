@@ -10,7 +10,6 @@ const FALLBACK_TEMPLATE = `
 <div class="coinflip-slot" data-coinflip-slot data-result="{{result}}" data-flips="{{flips}}">
   <div class="coinflip-slot__panel">
     <div class="coinflip-slot__copy">
-      <div class="coinflip-slot__eyebrow">Coin flip</div>
       <div class="coinflip-slot__result" data-coinflip-result aria-live="polite">{{result_label}}</div>
       <button class="coinflip-slot__button" type="button" data-coinflip-reroll>Flip again</button>
     </div>
@@ -73,7 +72,7 @@ export const slot = {
       .split("{{flips}}")
       .join(String(flips));
 
-    return { title: "Coin flip", html };
+    return { html };
   },
 };
 

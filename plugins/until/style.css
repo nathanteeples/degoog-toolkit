@@ -8,15 +8,7 @@
     grid-template-columns: minmax(0, 1.1fr) minmax(220px, 0.9fr);
     gap: 18px;
     align-items: stretch;
-    padding: 18px;
-    border: 1px solid var(--border-light, var(--border, color-mix(in srgb, currentColor 18%, transparent)));
-    border-left: 4px solid var(--primary, #4285f4);
-    border-radius: 8px;
-    background: var(--bg-light, var(--bg, Canvas));
-}
-
-.until-card--past .until-card__panel {
-    border-left-color: var(--warning, #fbbc04);
+    min-width: 0;
 }
 
 .until-card__main {
@@ -112,7 +104,6 @@
 @container (max-width: 560px) {
     .until-card__panel {
         grid-template-columns: 1fr;
-        padding: 15px;
     }
 
     .until-card__details {

@@ -149,7 +149,7 @@ const command = {
 
   async execute(args) {
     const parsed = parseUntilQuery(args, { allowTargetOnly: true });
-    if (!parsed) return { title: "Until", html: USAGE_HTML };
+    if (!parsed) return { html: USAGE_HTML };
     return renderUntil(parsed, new Date());
   },
 };
@@ -658,7 +658,7 @@ function renderUntil(parsed, now) {
     .split("{{details_html}}")
     .join(renderDetails(absMs));
 
-  return { title: future ? "Time until" : "Time since", html };
+  return { html };
 }
 
 function formatPrimary(absMs, requestedUnit) {
