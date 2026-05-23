@@ -1,0 +1,131 @@
+.until-card {
+    container-type: inline-size;
+    color: var(--text-primary, CanvasText);
+}
+
+.until-card__panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(220px, 0.9fr);
+    gap: 18px;
+    align-items: stretch;
+    padding: 18px;
+    border: 1px solid var(--border-light, var(--border, color-mix(in srgb, currentColor 18%, transparent)));
+    border-left: 4px solid var(--primary, #4285f4);
+    border-radius: 8px;
+    background: var(--bg-light, var(--bg, Canvas));
+}
+
+.until-card--past .until-card__panel {
+    border-left-color: var(--warning, #fbbc04);
+}
+
+.until-card__main {
+    display: grid;
+    align-content: center;
+    gap: 9px;
+    min-width: 0;
+}
+
+.until-card__eyebrow {
+    color: var(--text-secondary, color-mix(in srgb, currentColor 62%, transparent));
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.3;
+    text-transform: uppercase;
+}
+
+.until-card__answer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    color: var(--text-primary, inherit);
+    line-height: 1;
+}
+
+.until-card__answer--small {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 760;
+    line-height: 1.15;
+}
+
+.until-card__value {
+    max-width: 100%;
+    font-size: clamp(1.9rem, 2.6rem, 2.6rem);
+    font-weight: 780;
+    overflow-wrap: anywhere;
+}
+
+.until-card__unit {
+    color: var(--text-secondary, color-mix(in srgb, currentColor 64%, transparent));
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.until-card__caption {
+    color: var(--text-secondary, color-mix(in srgb, currentColor 64%, transparent));
+    font-size: 0.92rem;
+    line-height: 1.35;
+}
+
+.until-card__details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+}
+
+.until-card__detail {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--border-light, var(--border, color-mix(in srgb, currentColor 16%, transparent)));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg, Canvas) 82%, var(--primary, #4285f4) 6%);
+}
+
+.until-card__detail dt {
+    margin: 0;
+    color: var(--text-secondary, color-mix(in srgb, currentColor 62%, transparent));
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.until-card__detail dd {
+    margin: 0;
+    color: var(--text-primary, inherit);
+    font-size: 1rem;
+    font-weight: 760;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+@container (max-width: 560px) {
+    .until-card__panel {
+        grid-template-columns: 1fr;
+        padding: 15px;
+    }
+
+    .until-card__details {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .until-card__value {
+        font-size: 2rem;
+    }
+}
+
+@container (max-width: 340px) {
+    .until-card__details {
+        grid-template-columns: 1fr;
+    }
+}

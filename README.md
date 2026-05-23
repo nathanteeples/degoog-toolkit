@@ -32,6 +32,7 @@ All engines connect to your SearXNG instance via the JSON API.
 - **Weather** — current weather with interactive tabbed charts (temperature, precipitation, wind, humidity), a 7-day forecast, rich current conditions (pressure, UV, visibility, dew point, cloud cover, wind gusts), a sunrise/sunset arc, and configurable units for temperature, wind speed, pressure and precipitation
 - **Speedtest** — minimal internet speed test with selectable servers, latency, download-first flow, a circular gauge, and the `!speedtest` bang command
 - **Coinflip** — realistic grey CSS coin flip for quick heads-or-tails decisions
+- **Until** — Chrono-powered countdown answers for searches like `years until 2040`, `weeks until July 6th, 2033`, `hours until next Friday`, and `!until 5pm`
 
 **Speedtest** exposes:
 
