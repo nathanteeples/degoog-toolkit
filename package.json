@@ -55,8 +55,8 @@
     {
       "path": "plugins/unit-slot",
       "name": "Unit Converter",
-      "description": "Unit converter for length, mass, volume, temperature, area, and speed. Supports natural queries like '12 ft to in' or '!unit 100c f'.",
-      "version": "1.2.10",
+      "description": "Unit converter for length, mass, volume, temperature, area, and speed. Supports fuzzy natural queries like '25.4oz toml' or '!unit 100c f'.",
+      "version": "1.2.11",
       "type": "slot"
     },
     {

@@ -59,10 +59,10 @@ for (const measure of SUPPORTED_MEASURES) {
     ALIASES[abbr.toLowerCase()] = abbr;
     const sing = desc.singular.toLowerCase();
     const plur = desc.plural.toLowerCase();
-    ALIASES[sing] = abbr;
-    ALIASES[plur] = abbr;
-    if (sing.includes("-")) ALIASES[sing.replace(/-/g, " ")] = abbr;
-    if (plur.includes("-")) ALIASES[plur.replace(/-/g, " ")] = abbr;
+    addAlias(sing, abbr);
+    addAlias(plur, abbr);
+    addNameVariants(sing, abbr);
+    addNameVariants(plur, abbr);
   }
 }
 
@@ -74,6 +74,15 @@ const UNIT_REGEX = new RegExp(
 );
 
 const COMMAND_PREFIX_RE = /^!(unit|convert|conv)\b/i;
+const GLUED_CONNECTORS = ["into", "to", "in"];
+
+const COMPACT_ALIASES = new Map();
+for (const [alias, abbr] of Object.entries(ALIASES)) {
+  const compact = compactUnit(alias);
+  if (compact && !COMPACT_ALIASES.has(compact)) {
+    COMPACT_ALIASES.set(compact, abbr);
+  }
+}
 
 // ── Query parser ──────────────────────────────────────────────
 function parseQuery(query) {
@@ -93,32 +102,258 @@ function parseQuery(query) {
     ? parseFloat(amountMatch[1].replace(/[\s,]/g, "").replace(/'/g, ""))
     : 1;
 
-  const matches = [...clean.matchAll(UNIT_REGEX)].map((m) =>
-    m[0].toLowerCase(),
+  const matches = findUnitMatches(clean);
+  if (matches.length < 2) return null;
+
+  const afterAmount = amountMatch
+    ? matches.filter(
+        (match) => match.index >= amountMatch.index + amountMatch[0].length,
+      )
+    : matches;
+  const beforeAmount = amountMatch
+    ? matches.filter((match) => match.end <= amountMatch.index)
+    : [];
+
+  return (
+    chooseUnitPair(amount, afterAmount) ||
+    chooseTargetBeforeAmount(amount, beforeAmount, afterAmount) ||
+    chooseUnitPair(amount, matches)
   );
+}
 
-  if (matches.length >= 2) {
-    let from = ALIASES[matches[0]];
-    let to = ALIASES[matches[1]];
+function addAlias(alias, abbr) {
+  const normalized = String(alias).trim().toLowerCase().replace(/\s+/g, " ");
+  if (normalized) ALIASES[normalized] = abbr;
+}
 
-    // Heuristic: If "oz" is used with a volume unit, assume they meant "fl-oz"
-    try {
-      const fromIsVol = convert().describe(from).measure === "volume";
-      const toIsVol = convert().describe(to).measure === "volume";
-      if (from === "oz" && toIsVol) from = "fl-oz";
-      if (to === "oz" && fromIsVol) to = "fl-oz";
-    } catch {}
+function addNameVariants(name, abbr) {
+  const variants = new Set([name]);
+  variants.add(name.replace(/-/g, " "));
+  variants.add(name.replace(/litres\b/g, "liters"));
+  variants.add(name.replace(/litre\b/g, "liter"));
+  variants.add(name.replace(/metres\b/g, "meters"));
+  variants.add(name.replace(/metre\b/g, "meter"));
+  variants.add(name.replace(/amperes\b/g, "amps"));
+  variants.add(name.replace(/ampere\b/g, "amp"));
 
-    // Ensure they are in the same category
-    try {
-      const fromMeasure = convert().describe(from).measure;
-      const toMeasure = convert().describe(to).measure;
-      if (fromMeasure === toMeasure) {
-        return { amount, from, to, measure: fromMeasure };
-      }
-    } catch {}
+  for (const variant of variants) {
+    addAlias(variant, abbr);
+    if (variant.includes("-")) addAlias(variant.replace(/-/g, " "), abbr);
   }
+}
+
+function findUnitMatches(query) {
+  const matches = [];
+
+  for (const match of query.matchAll(UNIT_REGEX)) {
+    addUnitMatch(matches, {
+      text: match[0],
+      abbr: ALIASES[match[0].toLowerCase()],
+      index: match.index,
+      end: match.index + match[0].length,
+      score: 0,
+    });
+  }
+
+  for (const match of query.matchAll(/[a-z][a-z0-9./-]*/gi)) {
+    for (const part of splitCompactUnitToken(match[0])) {
+      addUnitMatch(matches, {
+        text: part.text,
+        abbr: part.abbr,
+        index: match.index + part.start,
+        end: match.index + part.end,
+        score: part.score,
+      });
+    }
+  }
+
+  const deduped = [];
+  const seen = new Set();
+  for (const match of matches) {
+    const key = `${match.index}:${match.end}:${match.abbr}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(match);
+  }
+
+  return filterConnectorUnits(
+    deduped.sort((a, b) => {
+      if (a.index !== b.index) return a.index - b.index;
+      if (a.score !== b.score) return a.score - b.score;
+      return b.text.length - a.text.length;
+    }),
+  );
+}
+
+function addUnitMatch(matches, match) {
+  if (!match.abbr) return;
+  matches.push(match);
+}
+
+function splitCompactUnitToken(token) {
+  const compact = compactUnit(token);
+  if (!compact) return [];
+
+  const parts = [];
+  const whole = COMPACT_ALIASES.get(compact);
+  if (whole) {
+    parts.push({
+      text: token,
+      abbr: whole,
+      start: 0,
+      end: token.length,
+      score: 1,
+    });
+  }
+
+  for (const connector of GLUED_CONNECTORS) {
+    if (compact.startsWith(connector) && compact.length > connector.length) {
+      const abbr = COMPACT_ALIASES.get(compact.slice(connector.length));
+      if (abbr) {
+        parts.push({
+          text: compact.slice(connector.length),
+          abbr,
+          start: connector.length,
+          end: token.length,
+          score: 2,
+        });
+      }
+    }
+
+    if (compact.endsWith(connector) && compact.length > connector.length) {
+      const abbr = COMPACT_ALIASES.get(compact.slice(0, -connector.length));
+      if (abbr) {
+        parts.push({
+          text: compact.slice(0, -connector.length),
+          abbr,
+          start: 0,
+          end: token.length - connector.length,
+          score: 2,
+        });
+      }
+    }
+
+    for (let i = 1; i < compact.length - connector.length; i += 1) {
+      if (compact.slice(i, i + connector.length) !== connector) continue;
+      const left = COMPACT_ALIASES.get(compact.slice(0, i));
+      const right = COMPACT_ALIASES.get(compact.slice(i + connector.length));
+      if (left && right) {
+        parts.push({
+          text: compact.slice(0, i),
+          abbr: left,
+          start: 0,
+          end: i,
+          score: 2,
+        });
+        parts.push({
+          text: compact.slice(i + connector.length),
+          abbr: right,
+          start: i + connector.length,
+          end: token.length,
+          score: 2,
+        });
+      }
+    }
+  }
+
+  if (!whole && compact.length <= 12) {
+    for (let i = 1; i < compact.length; i += 1) {
+      const left = COMPACT_ALIASES.get(compact.slice(0, i));
+      const right = COMPACT_ALIASES.get(compact.slice(i));
+      if (left && right) {
+        parts.push({
+          text: compact.slice(0, i),
+          abbr: left,
+          start: 0,
+          end: i,
+          score: 3,
+        });
+        parts.push({
+          text: compact.slice(i),
+          abbr: right,
+          start: i,
+          end: token.length,
+          score: 3,
+        });
+        break;
+      }
+    }
+  }
+
+  return parts;
+}
+
+function filterConnectorUnits(matches) {
+  return matches.filter((match) => {
+    if (match.abbr !== "in" || compactUnit(match.text) !== "in") return true;
+
+    const hasUnitBefore = matches.some(
+      (other) => other !== match && other.end <= match.index,
+    );
+    const hasUnitAfter = matches.some(
+      (other) => other !== match && other.index >= match.end,
+    );
+
+    return !(hasUnitBefore && hasUnitAfter);
+  });
+}
+
+function chooseTargetBeforeAmount(amount, beforeAmount, afterAmount) {
+  if (beforeAmount.length === 0 || afterAmount.length === 0) return null;
+
+  const source = afterAmount[0];
+  for (let i = beforeAmount.length - 1; i >= 0; i -= 1) {
+    const parsed = normalizeUnitPair(source.abbr, beforeAmount[i].abbr);
+    if (parsed) return { amount, ...parsed };
+  }
+
   return null;
+}
+
+function chooseUnitPair(amount, matches) {
+  if (matches.length < 2) return null;
+
+  for (let i = 0; i < matches.length - 1; i += 1) {
+    for (let j = i + 1; j < matches.length; j += 1) {
+      const parsed = normalizeUnitPair(matches[i].abbr, matches[j].abbr);
+      if (parsed) return { amount, ...parsed };
+    }
+  }
+
+  return null;
+}
+
+function normalizeUnitPair(from, to) {
+  try {
+    let fromDesc = convert().describe(from);
+    let toDesc = convert().describe(to);
+
+    // Heuristic: If "oz" is used with a volume unit, assume they meant "fl-oz".
+    if (from === "oz" && toDesc.measure === "volume") {
+      from = "fl-oz";
+      fromDesc = convert().describe(from);
+    }
+    if (to === "oz" && fromDesc.measure === "volume") {
+      to = "fl-oz";
+      toDesc = convert().describe(to);
+    }
+
+    if (fromDesc.measure === toDesc.measure) {
+      return { from, to, measure: fromDesc.measure };
+    }
+  } catch {}
+
+  return null;
+}
+
+function compactUnit(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/\u00b5/g, "u")
+    .replace(/\u03bc/g, "u")
+    .replace(/\u00b2/g, "2")
+    .replace(/\u00b3/g, "3")
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 // ── Slot export ───────────────────────────────────────────────
@@ -126,7 +361,7 @@ export const slot = {
   id: "unit-slot",
   name: "Unit Converter",
   description:
-    "Unit converter for length, mass, volume, temperature, and more. Supports natural queries like '12 ft to in' or '!unit 100c f'.",
+    "Unit converter for length, mass, volume, temperature, and more. Supports fuzzy natural queries like '25.4oz toml' or '!unit 100c f'.",
   position: "above-results",
 
   init(ctx) {
