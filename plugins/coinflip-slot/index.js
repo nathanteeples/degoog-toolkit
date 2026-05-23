@@ -45,6 +45,7 @@ export const slot = {
   name: "Coinflip",
   description:
     "Flips a realistic animated CSS coin for quick heads-or-tails decisions.",
+  isClientExposed: false,
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
 

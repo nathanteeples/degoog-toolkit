@@ -139,6 +139,7 @@ const slotDef = {
   name: "Weather",
   description:
     "Shows current weather, interactive charts, and a 7-day forecast with animated icons. Usage: !weather <city>, or natural queries like 'weather in rome' and 'rome weather'.",
+  isClientExposed: false,
   position: "above-results",
 
   settingsSchema: [

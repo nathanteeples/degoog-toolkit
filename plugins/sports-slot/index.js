@@ -3095,6 +3095,7 @@ export const slot = {
   id: "sports-results",
   name: PLUGIN_NAME,
   description: PLUGIN_DESCRIPTION,
+  isClientExposed: true,
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
   settingsSchema: sharedSettingsSchema,

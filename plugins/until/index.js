@@ -156,6 +156,7 @@ export const slot = {
   name: "Until",
   description:
     "Shows countdown answers for natural queries like years until 3000, days since Christmas, !until 5pm, or weeks until July 6th, 2033.",
+  isClientExposed: false,
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
   settingsSchema: [TOP_UNITS_SETTING],

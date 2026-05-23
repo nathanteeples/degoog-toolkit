@@ -57,6 +57,7 @@ export default {
   name: "Search history",
   description:
     "Stores search history in data/history.json with timestamps; !history shows a paginated, deletable list.",
+  isClientExposed: false,
   trigger: "history",
   aliases: [],
   naturalLanguagePhrases: ["search history", "history"],

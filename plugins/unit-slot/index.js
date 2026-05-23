@@ -379,6 +379,7 @@ export const slot = {
   name: "Unit Converter",
   description:
     "Unit converter for length, mass, volume, temperature, and more. Supports fuzzy natural queries like '25.4oz toml' or '!unit 100c f'.",
+  isClientExposed: false,
   position: "above-results",
 
   init(ctx) {

@@ -6,6 +6,7 @@ export const slot = {
   id: "osm-slot",
   name: "OpenStreetMap",
   description: "Shows an interactive map for location-related queries",
+  isClientExposed: true,
   position: "above-results",
 
   settingsSchema: [

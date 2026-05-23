@@ -100,6 +100,7 @@ function renderCardHtml() {
 export const command = {
   name: PLUGIN_NAME,
   description: PLUGIN_DESCRIPTION,
+  isClientExposed: true,
   trigger: "speed",
   aliases: ["speedtest", "speed-test", "networkspeed", "internetspeed"],
   // NOTE on trigger: deliberately NOT "speedtest" as the PRIMARY trigger

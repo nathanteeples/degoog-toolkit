@@ -414,6 +414,7 @@ export const slot = {
   name: "Currency",
   description:
     "Currency converter with live rates. Supports !currency, or natural queries like '100 usd to eur'.",
+  isClientExposed: true,
   position: "above-results",
 
   settingsSchema: [
