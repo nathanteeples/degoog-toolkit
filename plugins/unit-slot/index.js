@@ -95,6 +95,7 @@ function parseQuery(query) {
   const clean = q
     .replace(/^!(unit|convert|conv)\s*/i, "")
     .replace(/\b(to|into|=)\b/g, " TO ")
+    .replace(/\bin\b/g, replaceInConnector)
     .trim();
 
   const amountMatch = clean.match(/(-?\d[\d\s,']*(?:\.\d+)?)/);
@@ -140,6 +141,22 @@ function addNameVariants(name, abbr) {
     addAlias(variant, abbr);
     if (variant.includes("-")) addAlias(variant.replace(/-/g, " "), abbr);
   }
+}
+
+function replaceInConnector(match, index, query) {
+  const before = query.slice(0, index).trimEnd().match(/([a-z0-9./-]+)$/i)?.[1];
+  const after = query.slice(index + match.length).trimStart().match(/^([a-z0-9./-]+)/i)?.[1];
+
+  if (isCompactUnitToken(before) && isCompactUnitToken(after)) {
+    return " TO ";
+  }
+
+  return match;
+}
+
+function isCompactUnitToken(token) {
+  if (!token) return false;
+  return COMPACT_ALIASES.has(compactUnit(token));
 }
 
 function findUnitMatches(query) {
