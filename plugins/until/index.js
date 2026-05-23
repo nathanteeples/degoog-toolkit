@@ -14,6 +14,7 @@ const TOP_UNITS_SETTING = {
   label: "Main answer units",
   type: "select",
   options: ["1", "2", "3", "4"],
+  default: String(DEFAULT_TOP_UNITS),
   description: "How many decomposed units to show in the main answer. Default: 2.",
 };
 
