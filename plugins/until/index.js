@@ -36,7 +36,7 @@ const USAGE_HTML = `
     <div class="until-card__main">
       <div class="until-card__eyebrow">Until</div>
       <div class="until-card__answer until-card__answer--small">Try a countdown query</div>
-      <div class="until-card__caption">Examples: years until 2040, weeks until July 6th, 2033, !until hours 5pm</div>
+      <div class="until-card__caption">Examples: years until 3000, days since Christmas, weeks until July 6th, 2033, !until hours 5pm</div>
     </div>
   </div>
 </div>`;
@@ -139,11 +139,13 @@ const MONTHS = new Map([
 const MONTH_PATTERN = Array.from(MONTHS.keys())
   .sort((a, b) => b.length - a.length)
   .join("|");
+const YEAR_PATTERN = "[1-9]\\d{2,3}";
+const RELATION_PATTERN = "until|till|til|to|since";
 
 export const command = {
   name: "Until",
   description:
-    "Shows countdown answers for queries like !until days 2040 or !until weeks July 6th, 2033.",
+    "Shows countdown answers for queries like !until days 3000, !until days since Christmas, or !until weeks July 6th, 2033.",
   trigger: "until",
   aliases: ["countdown", "timeuntil"],
   settingsSchema: [
@@ -174,7 +176,7 @@ export const slot = {
   id: "until",
   name: "Until",
   description:
-    "Shows countdown answers for natural queries like years until 2040, days until 2040, or weeks until July 6th, 2033.",
+    "Shows countdown answers for natural queries like years until 3000, days since Christmas, or weeks until July 6th, 2033.",
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
 
@@ -208,28 +210,38 @@ function parseUntilQuery(input, options = {}) {
 
   const patterns = [
     new RegExp(
-      `^(?:please\\s+)?(?:how\\s+many\\s+)?(?<unit>${UNIT_PATTERN})\\s+(?:are\\s+there\\s+)?(?:until|till|til|to)\\s+(?<target>.+)$`,
+      `^(?:please\\s+)?(?:how\\s+many\\s+)?(?<unit>${UNIT_PATTERN})\\s+(?:are\\s+there\\s+)?(?:has\\s+it\\s+been\\s+)?(?<relation>${RELATION_PATTERN})\\s+(?<target>.+)$`,
       "i",
     ),
-    /^(?:please\s+)?(?:how\s+long|time|countdown)\s+(?:until|till|til|to)\s+(?<target>.+)$/i,
-    /^(?:please\s+)?(?:until|till|til)\s+(?<target>.+)$/i,
+    new RegExp(
+      `^(?:please\\s+)?(?:how\\s+long(?:\\s+has\\s+it\\s+been)?|time|countdown)\\s+(?<relation>${RELATION_PATTERN})\\s+(?<target>.+)$`,
+      "i",
+    ),
+    new RegExp(
+      `^(?:please\\s+)?(?<relation>${RELATION_PATTERN})\\s+(?<target>.+)$`,
+      "i",
+    ),
     /^(?:please\s+)?(?<target>.+?)\s+countdown$/i,
   ];
 
   for (const pattern of patterns) {
     const match = q.match(pattern);
     if (!match?.groups?.target) continue;
-    return parseMatch(match.groups.target, match.groups.unit || "auto");
+    return parseMatch(
+      match.groups.target,
+      match.groups.unit || "auto",
+      directionForRelation(match.groups.relation),
+    );
   }
 
   const unitFirst = q.match(
     new RegExp(`^(?<unit>${UNIT_PATTERN})\\s+(?<target>.+)$`, "i"),
   );
   if (unitFirst?.groups?.target) {
-    return parseMatch(unitFirst.groups.target, unitFirst.groups.unit);
+    return parseMatch(unitFirst.groups.target, unitFirst.groups.unit, "future");
   }
 
-  if (options.allowTargetOnly) return parseMatch(q, "auto");
+  if (options.allowTargetOnly) return parseMatch(q, "auto", "future");
   return null;
 }
 
@@ -246,9 +258,9 @@ function configureSettings(saved = {}) {
   }
 }
 
-function parseMatch(targetText, unitText) {
+function parseMatch(targetText, unitText, direction = "future") {
   const now = new Date();
-  const target = parseTargetDate(targetText, now);
+  const target = parseTargetDate(targetText, now, direction);
   if (!target) return null;
 
   return {
@@ -274,18 +286,22 @@ function normalizeUnit(unit) {
   return UNIT_ALIASES.get(String(unit).toLowerCase()) || "auto";
 }
 
-function parseTargetDate(input, now) {
+function directionForRelation(relation) {
+  return String(relation || "").toLowerCase() === "since" ? "past" : "future";
+}
+
+function parseTargetDate(input, now, direction = "future") {
   const raw = cleanTarget(input);
   if (!raw) return null;
 
   return (
-    parseChronoTarget(raw, now) ||
+    parseChronoTarget(raw, now, direction) ||
     parseYearTarget(raw) ||
-    parseNamedTarget(raw, now) ||
+    parseNamedTarget(raw, now, direction) ||
     parsePeriodBoundaryTarget(raw, now) ||
     parseIsoTarget(raw) ||
-    parseMonthNameTarget(raw, now) ||
-    parseNumericTarget(raw, now) ||
+    parseMonthNameTarget(raw, now, direction) ||
+    parseNumericTarget(raw, now, direction) ||
     parseExplicitDate(raw)
   );
 }
@@ -370,24 +386,27 @@ function parsePeriodBoundaryTarget(raw, now) {
   };
 }
 
-function parseNamedTarget(raw, now) {
+function parseNamedTarget(raw, now, direction) {
   const lower = raw.toLowerCase();
   const namedDates = [
-    [/^christmas(?:\s+(?<year>\d{4}))?$/, 11, 25],
-    [/^christmas day(?:\s+(?<year>\d{4}))?$/, 11, 25],
-    [/^halloween(?:\s+(?<year>\d{4}))?$/, 9, 31],
-    [/^new year'?s?(?: day)?(?:\s+(?<year>\d{4}))?$/, 0, 1],
-    [/^valentine'?s?(?: day)?(?:\s+(?<year>\d{4}))?$/, 1, 14],
-    [/^independence day(?:\s+(?<year>\d{4}))?$/, 6, 4],
+    [new RegExp(`^christmas(?:\\s+(?<year>${YEAR_PATTERN}))?$`), 11, 25],
+    [new RegExp(`^christmas day(?:\\s+(?<year>${YEAR_PATTERN}))?$`), 11, 25],
+    [new RegExp(`^halloween(?:\\s+(?<year>${YEAR_PATTERN}))?$`), 9, 31],
+    [new RegExp(`^new year'?s?(?: day)?(?:\\s+(?<year>${YEAR_PATTERN}))?$`), 0, 1],
+    [new RegExp(`^valentine'?s?(?: day)?(?:\\s+(?<year>${YEAR_PATTERN}))?$`), 1, 14],
+    [new RegExp(`^independence day(?:\\s+(?<year>${YEAR_PATTERN}))?$`), 6, 4],
   ];
 
   for (const [pattern, month, day] of namedDates) {
     const match = lower.match(pattern);
     if (!match) continue;
-    const year = match.groups?.year
+    const hasExplicitYear = Boolean(match.groups?.year);
+    const year = hasExplicitYear
       ? Number(match.groups.year)
-      : nextOccurrenceYear(now, month, day);
-    return makeDate(year, month, day, 0, 0, 0, "day");
+      : occurrenceYear(now, month, day, 0, 0, direction);
+    return makeDate(year, month, day, 0, 0, 0, "day", {
+      explicitYear: hasExplicitYear,
+    });
   }
 
   return null;
@@ -412,10 +431,11 @@ function parseIsoTarget(raw) {
     time.minute,
     time.second || 0,
     match.groups.time ? "minute" : "day",
+    { explicitYear: true },
   );
 }
 
-function parseMonthNameTarget(raw, now) {
+function parseMonthNameTarget(raw, now, direction) {
   const monthFirst = raw.match(
     new RegExp(
       `^(?<month>${MONTH_PATTERN})\\s+(?<day>\\d{1,2})(?:,?\\s+(?<year>\\d{4}))?(?:\\s+(?:at\\s+)?(?<time>.+))?$`,
@@ -423,7 +443,7 @@ function parseMonthNameTarget(raw, now) {
     ),
   );
   if (monthFirst?.groups) {
-    return makeMonthNameDate(monthFirst.groups, now);
+    return makeMonthNameDate(monthFirst.groups, now, direction);
   }
 
   const dayFirst = raw.match(
@@ -433,7 +453,7 @@ function parseMonthNameTarget(raw, now) {
     ),
   );
   if (dayFirst?.groups) {
-    return makeMonthNameDate(dayFirst.groups, now);
+    return makeMonthNameDate(dayFirst.groups, now, direction);
   }
 
   const monthYear = raw.match(
@@ -441,13 +461,15 @@ function parseMonthNameTarget(raw, now) {
   );
   if (monthYear?.groups) {
     const month = MONTHS.get(monthYear.groups.month.toLowerCase());
-    return makeDate(Number(monthYear.groups.year), month, 1, 0, 0, 0, "month");
+    return makeDate(Number(monthYear.groups.year), month, 1, 0, 0, 0, "month", {
+      explicitYear: true,
+    });
   }
 
   return null;
 }
 
-function makeMonthNameDate(groups, now) {
+function makeMonthNameDate(groups, now, direction) {
   const month = MONTHS.get(groups.month.toLowerCase());
   const day = Number(groups.day);
   const time = parseTime(groups.time || "") || {
@@ -455,9 +477,10 @@ function makeMonthNameDate(groups, now) {
     minute: 0,
     second: 0,
   };
-  const year = groups.year
+  const hasExplicitYear = Boolean(groups.year);
+  const year = hasExplicitYear
     ? Number(groups.year)
-    : nextOccurrenceYear(now, month, day, time.hour, time.minute);
+    : occurrenceYear(now, month, day, time.hour, time.minute, direction);
 
   return makeDate(
     year,
@@ -467,10 +490,11 @@ function makeMonthNameDate(groups, now) {
     time.minute,
     time.second || 0,
     groups.time ? "minute" : "day",
+    { explicitYear: hasExplicitYear },
   );
 }
 
-function parseNumericTarget(raw, now) {
+function parseNumericTarget(raw, now, direction) {
   const match = raw.match(
     /^(?<month>\d{1,2})\/(?<day>\d{1,2})(?:\/(?<year>\d{2,4}))?(?:\s+(?:at\s+)?(?<time>.+))?$/i,
   );
@@ -483,9 +507,10 @@ function parseNumericTarget(raw, now) {
     minute: 0,
     second: 0,
   };
-  const year = match.groups.year
+  const hasExplicitYear = Boolean(match.groups.year);
+  const year = hasExplicitYear
     ? normalizeYear(Number(match.groups.year))
-    : nextOccurrenceYear(now, month, day, time.hour, time.minute);
+    : occurrenceYear(now, month, day, time.hour, time.minute, direction);
 
   return makeDate(
     year,
@@ -495,17 +520,20 @@ function parseNumericTarget(raw, now) {
     time.minute,
     time.second || 0,
     match.groups.time ? "minute" : "day",
+    { explicitYear: hasExplicitYear },
   );
 }
 
 function parseYearTarget(raw) {
-  const match = raw.match(/^(?<year>[12]\d{3}|2[0-9]{3})$/);
+  const match = raw.match(new RegExp(`^(?<year>${YEAR_PATTERN})$`));
   if (!match?.groups) return null;
-  return makeDate(Number(match.groups.year), 0, 1, 0, 0, 0, "year");
+  return makeDate(Number(match.groups.year), 0, 1, 0, 0, 0, "year", {
+    explicitYear: true,
+  });
 }
 
 function parseExplicitDate(raw) {
-  if (!/\b(?:19|20|21|22|23|24|25|26|27|28|29)\d{2}\b/.test(raw)) {
+  if (!new RegExp(`\\b${YEAR_PATTERN}\\b`).test(raw)) {
     return null;
   }
 
@@ -517,13 +545,14 @@ function parseExplicitDate(raw) {
     precision: /\d{1,2}:\d{2}|\b(?:am|pm)\b/i.test(raw)
       ? "minute"
       : "day",
+    explicitYear: true,
   };
 }
 
-function parseChronoTarget(raw, now) {
+function parseChronoTarget(raw, now, direction) {
   if (!untilChrono?.parse) return null;
 
-  const results = untilChrono.parse(raw, now, { forwardDate: true });
+  const results = untilChrono.parse(raw, now, { forwardDate: direction !== "past" });
   if (!Array.isArray(results) || !results.length) return null;
 
   const result =
@@ -540,10 +569,12 @@ function parseChronoTarget(raw, now) {
 
   if (!hasTime) date.setHours(0, 0, 0, 0);
 
-  return {
+  const target = {
     date,
     precision: hasTime ? "minute" : "day",
+    explicitYear: Boolean(result.start.isCertain?.("year")),
   };
+  return adjustAnnualChronoTarget(target, raw, now, direction);
 }
 
 function isCompleteChronoMatch(result, raw) {
@@ -551,6 +582,70 @@ function isCompleteChronoMatch(result, raw) {
   const target = String(raw || "").trim().toLowerCase();
   if (!text || !target) return false;
   return text === target || text.length / target.length >= 0.75;
+}
+
+function adjustAnnualChronoTarget(target, raw, now, direction) {
+  if (
+    !target ||
+    target.explicitYear ||
+    !isAnnualDateLike(raw) ||
+    (direction !== "past" && direction !== "future")
+  ) {
+    return target;
+  }
+
+  if (direction === "past" && target.date > now) {
+    return { ...target, date: findAnnualDate(target.date, now, -1) };
+  }
+  if (direction === "future" && target.date < now) {
+    return { ...target, date: findAnnualDate(target.date, now, 1) };
+  }
+
+  return target;
+}
+
+function isAnnualDateLike(raw) {
+  const lower = String(raw || "").toLowerCase();
+  return (
+    /\b(?:christmas|halloween|new year'?s?|valentine'?s?|independence day)\b/.test(
+      lower,
+    ) ||
+    new RegExp(`\\b(?:${MONTH_PATTERN})\\b`, "i").test(raw) ||
+    /^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?(?:\s|$)/.test(lower)
+  );
+}
+
+function findAnnualDate(date, now, step) {
+  const wantsPast = step < 0;
+  let year = date.getFullYear();
+
+  for (let attempts = 0; attempts < 12; attempts += 1) {
+    year += step;
+    const candidate = cloneDateWithYear(date, year);
+    if (!candidate) continue;
+    if (wantsPast ? candidate <= now : candidate >= now) {
+      return candidate;
+    }
+  }
+
+  return date;
+}
+
+function cloneDateWithYear(date, year) {
+  const month = date.getMonth();
+  const day = date.getDate();
+  const clone = new Date(date.getTime());
+  clone.setFullYear(year, month, day);
+
+  if (
+    clone.getFullYear() !== year ||
+    clone.getMonth() !== month ||
+    clone.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return clone;
 }
 
 function createFixedHolidayParser() {
@@ -571,7 +666,10 @@ function createFixedHolidayParser() {
 
   return {
     pattern: () =>
-      /^(christmas(?: day)?|halloween|new year'?s?(?: day)?|valentine'?s?(?: day)?|independence day)(?:\s+(\d{4}))?$/i,
+      new RegExp(
+        `^(christmas(?: day)?|halloween|new year'?s?(?: day)?|valentine'?s?(?: day)?|independence day)(?:\\s+(${YEAR_PATTERN}))?$`,
+        "i",
+      ),
     extract: (_context, match) => {
       const key = match[1].toLowerCase();
       const holiday = holidays[key];
@@ -631,12 +729,24 @@ function nextOccurrenceYear(now, month, day, hour = 0, minute = 0) {
   return candidate > now ? now.getFullYear() : now.getFullYear() + 1;
 }
 
+function previousOccurrenceYear(now, month, day, hour = 0, minute = 0) {
+  const candidate = new Date(now.getFullYear(), month, day, hour, minute);
+  return candidate <= now ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+function occurrenceYear(now, month, day, hour = 0, minute = 0, direction) {
+  if (direction === "past") {
+    return previousOccurrenceYear(now, month, day, hour, minute);
+  }
+  return nextOccurrenceYear(now, month, day, hour, minute);
+}
+
 function normalizeYear(year) {
   if (year >= 100) return year;
   return year >= 70 ? 1900 + year : 2000 + year;
 }
 
-function makeDate(year, month, day, hour, minute, second, precision) {
+function makeDate(year, month, day, hour, minute, second, precision, meta = {}) {
   if (
     !Number.isInteger(year) ||
     !Number.isInteger(month) ||
@@ -660,7 +770,7 @@ function makeDate(year, month, day, hour, minute, second, precision) {
     return null;
   }
 
-  return { date, precision };
+  return { date, precision, ...meta };
 }
 
 function renderUntil(parsed, now) {
