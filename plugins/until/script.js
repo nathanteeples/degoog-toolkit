@@ -18,6 +18,7 @@
     "minutes",
     "seconds",
   ];
+  const DEFAULT_TOP_UNITS = 2;
 
   function init() {
     document.querySelectorAll("[data-until-card]").forEach(startCard);
@@ -39,7 +40,8 @@
     const absMs = Math.abs(diffMs);
     const future = diffMs >= 0;
     const unit = card.dataset.untilUnit || "auto";
-    const primary = formatPrimary(absMs, unit);
+    const topUnits = normalizeTopUnits(card.dataset.untilTopUnits);
+    const primary = formatPrimary(absMs, unit, topUnits);
 
     card.classList.toggle("until-card--future", future);
     card.classList.toggle("until-card--past", !future);
@@ -62,47 +64,87 @@
     }
   }
 
-  function formatPrimary(absMs, unit) {
-    if (!unit || unit === "auto") {
-      return { value: formatDuration(absMs), unit: "" };
+  function formatPrimary(absMs, unit, topUnits) {
+    const parts = decomposeDuration(absMs, unit, topUnits);
+    if (!parts.length) return { value: "right now", unit: "" };
+
+    const [first, ...rest] = parts;
+    const unitText = [
+      plural(first.unit.slice(0, -1), first.value),
+      ...rest.map((part) => formatDurationPart(part)),
+    ].join(" ");
+
+    return { value: formatWhole(first.value), unit: unitText };
+  }
+
+  function decomposeDuration(absMs, requestedUnit, count) {
+    if (absMs < 1000) return [];
+
+    const startIndex =
+      requestedUnit && requestedUnit !== "auto"
+        ? DETAIL_UNITS.indexOf(requestedUnit)
+        : findAutoStartIndex(absMs);
+    if (startIndex < 0) return [];
+
+    const unitCount = Math.max(
+      1,
+      Math.min(count || DEFAULT_TOP_UNITS, DETAIL_UNITS.length - startIndex),
+    );
+    const units = DETAIL_UNITS.slice(startIndex, startIndex + unitCount);
+    let remaining = absMs;
+    const parts = [];
+
+    for (const [index, durationUnit] of units.entries()) {
+      const isLast = index === units.length - 1;
+      const value =
+        isLast && units.length > 1
+          ? Math.ceil(remaining / UNIT_MS[durationUnit])
+          : Math.floor(remaining / UNIT_MS[durationUnit]);
+      parts.push({ unit: durationUnit, value });
+      remaining -=
+        Math.min(value, Math.floor(remaining / UNIT_MS[durationUnit])) *
+        UNIT_MS[durationUnit];
     }
 
-    const raw = absMs / UNIT_MS[unit];
-    return {
-      value: formatUnitNumber(raw, unit),
-      unit: plural(unit.slice(0, -1), raw),
-    };
+    normalizeDurationCarry(parts);
+
+    const visible = parts.filter((part) => part.value > 0);
+    return visible.length ? visible : parts.slice(0, 1);
   }
 
-  function formatDuration(absMs) {
-    if (absMs < 1000) return "right now";
-
-    let remaining = Math.floor(absMs / 1000);
-    const days = Math.floor(remaining / 86400);
-    remaining -= days * 86400;
-    const hours = Math.floor(remaining / 3600);
-    remaining -= hours * 3600;
-    const minutes = Math.floor(remaining / 60);
-    const seconds = remaining - minutes * 60;
-
-    const parts = [];
-    if (days) parts.push([days, "day"]);
-    if (hours) parts.push([hours, "hour"]);
-    if (minutes && parts.length < 2) parts.push([minutes, "minute"]);
-    if (!parts.length || parts.length < 2) parts.push([seconds, "second"]);
-
-    return parts
-      .slice(0, 2)
-      .map(([value, label]) => `${formatWhole(value)} ${plural(label, value)}`)
-      .join(", ");
+  function findAutoStartIndex(absMs) {
+    const index = DETAIL_UNITS.findIndex((unit) => absMs >= UNIT_MS[unit]);
+    return index === -1 ? DETAIL_UNITS.length - 1 : index;
   }
 
-  function formatUnitNumber(value, unit) {
-    if (unit === "seconds") return formatWhole(Math.round(value));
-    if (value >= 1000) return formatWhole(Math.round(value));
-    if (value >= 100) return formatWhole(value);
-    if (value >= 10) return formatDecimal(value, 1);
-    return formatDecimal(value, 2);
+  function normalizeDurationCarry(parts) {
+    for (let index = parts.length - 1; index > 0; index -= 1) {
+      const current = parts[index];
+      const previous = parts[index - 1];
+      const ratio = Math.round(UNIT_MS[previous.unit] / UNIT_MS[current.unit]);
+      if (!Number.isFinite(ratio) || ratio <= 1 || current.value < ratio) {
+        continue;
+      }
+
+      previous.value += Math.floor(current.value / ratio);
+      current.value %= ratio;
+    }
+  }
+
+  function formatDurationPart(part) {
+    return `${formatWhole(part.value)} ${plural(part.unit.slice(0, -1), part.value)}`;
+  }
+
+  function normalizeTopUnits(value) {
+    const parsed = Number(value);
+    if (
+      Number.isInteger(parsed) &&
+      parsed >= 1 &&
+      parsed <= DETAIL_UNITS.length
+    ) {
+      return parsed;
+    }
+    return DEFAULT_TOP_UNITS;
   }
 
   function formatDetailNumber(value, unit) {

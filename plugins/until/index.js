@@ -4,13 +4,18 @@ let template = "";
 
 const chrono = chronoEn?.casual ? chronoEn : chronoEn.default || chronoEn;
 const untilChrono = chrono.casual?.clone ? chrono.casual.clone() : chrono.casual;
+const DEFAULT_TOP_UNITS = 2;
+const MAX_TOP_UNITS = 7;
+const settings = {
+  topUnits: DEFAULT_TOP_UNITS,
+};
 
 if (untilChrono?.parsers) {
   untilChrono.parsers.push(createFixedHolidayParser());
 }
 
 const FALLBACK_TEMPLATE = `
-<div class="until-card {{state_class}}" data-until-card data-until-target="{{target_iso}}" data-until-unit="{{requested_unit}}">
+<div class="until-card {{state_class}}" data-until-card data-until-target="{{target_iso}}" data-until-unit="{{requested_unit}}" data-until-top-units="{{top_units}}">
   <div class="until-card__panel">
     <div class="until-card__main">
       <div class="until-card__eyebrow">{{eyebrow}}</div>
@@ -136,16 +141,28 @@ const MONTH_PATTERN = Array.from(MONTHS.keys())
   .sort((a, b) => b.length - a.length)
   .join("|");
 
-const command = {
+export const command = {
   name: "Until",
   description:
     "Shows countdown answers for queries like !until days 2040 or !until weeks July 6th, 2033.",
   trigger: "until",
   aliases: ["countdown", "timeuntil"],
+  settingsSchema: [
+    {
+      key: "topUnits",
+      label: "Top display units",
+      type: "select",
+      options: ["1", "2", "3", "4", "5", "6", "7"],
+      description:
+        "How many duration units to show in the main answer. Default: 2.",
+    },
+  ],
 
   init(ctx) {
     template = ctx.template || FALLBACK_TEMPLATE;
   },
+
+  configure: configureSettings,
 
   async execute(args) {
     const parsed = parseUntilQuery(args, { allowTargetOnly: true });
@@ -166,6 +183,8 @@ export const slot = {
     template = ctx.template || FALLBACK_TEMPLATE;
   },
 
+  configure: configureSettings,
+
   trigger(query) {
     return Boolean(parseUntilQuery(query, { allowTargetOnly: false }));
   },
@@ -179,7 +198,6 @@ export const slot = {
 };
 
 export const slotPlugin = slot;
-export { command };
 export default command;
 
 function parseUntilQuery(input, options = {}) {
@@ -214,6 +232,19 @@ function parseUntilQuery(input, options = {}) {
 
   if (options.allowTargetOnly) return parseMatch(q, "auto");
   return null;
+}
+
+function configureSettings(saved = {}) {
+  if (!Object.prototype.hasOwnProperty.call(saved, "topUnits")) return;
+
+  const topUnits = Number(saved.topUnits);
+  if (
+    Number.isInteger(topUnits) &&
+    topUnits >= 1 &&
+    topUnits <= MAX_TOP_UNITS
+  ) {
+    settings.topUnits = topUnits;
+  }
 }
 
 function parseMatch(targetText, unitText) {
@@ -647,6 +678,8 @@ function renderUntil(parsed, now) {
     .join(_esc(targetDate.toISOString()))
     .split("{{requested_unit}}")
     .join(_esc(parsed.requestedUnit))
+    .split("{{top_units}}")
+    .join(String(settings.topUnits))
     .split("{{eyebrow}}")
     .join(_esc(future ? `Until ${targetLabel}` : `Since ${targetLabel}`))
     .split("{{primary_value}}")
@@ -662,38 +695,76 @@ function renderUntil(parsed, now) {
 }
 
 function formatPrimary(absMs, requestedUnit) {
-  if (!requestedUnit || requestedUnit === "auto") {
-    return { value: formatDuration(absMs), unit: "" };
-  }
+  const parts = decomposeDuration(absMs, requestedUnit, settings.topUnits);
+  if (!parts.length) return { value: "right now", unit: "" };
 
-  const raw = absMs / UNIT_MS[requestedUnit];
-  return {
-    value: formatUnitNumber(raw, requestedUnit),
-    unit: formatUnitLabel(requestedUnit, raw),
-  };
+  const [first, ...rest] = parts;
+  const unitText = [
+    plural(first.unit.slice(0, -1), first.value),
+    ...rest.map((part) => formatDurationPart(part)),
+  ].join(" ");
+
+  return { value: formatWhole(first.value), unit: unitText };
 }
 
-function formatDuration(absMs) {
-  if (absMs < 1000) return "right now";
+function decomposeDuration(absMs, requestedUnit, count) {
+  if (absMs < 1000) return [];
 
-  let remaining = Math.floor(absMs / 1000);
-  const days = Math.floor(remaining / 86400);
-  remaining -= days * 86400;
-  const hours = Math.floor(remaining / 3600);
-  remaining -= hours * 3600;
-  const minutes = Math.floor(remaining / 60);
-  const seconds = remaining - minutes * 60;
+  const startIndex =
+    requestedUnit && requestedUnit !== "auto"
+      ? DETAIL_UNITS.indexOf(requestedUnit)
+      : findAutoStartIndex(absMs);
+  if (startIndex < 0) return [];
 
+  const unitCount = Math.max(
+    1,
+    Math.min(
+      Number(count) || DEFAULT_TOP_UNITS,
+      DETAIL_UNITS.length - startIndex,
+    ),
+  );
+  const units = DETAIL_UNITS.slice(startIndex, startIndex + unitCount);
+  let remaining = absMs;
   const parts = [];
-  if (days) parts.push([days, "day"]);
-  if (hours) parts.push([hours, "hour"]);
-  if (minutes && parts.length < 2) parts.push([minutes, "minute"]);
-  if (!parts.length || parts.length < 2) parts.push([seconds, "second"]);
 
-  return parts
-    .slice(0, 2)
-    .map(([value, label]) => `${formatWhole(value)} ${plural(label, value)}`)
-    .join(", ");
+  for (const [index, unit] of units.entries()) {
+    const isLast = index === units.length - 1;
+    const value =
+      isLast && units.length > 1
+        ? Math.ceil(remaining / UNIT_MS[unit])
+        : Math.floor(remaining / UNIT_MS[unit]);
+    parts.push({ unit, value });
+    remaining -=
+      Math.min(value, Math.floor(remaining / UNIT_MS[unit])) * UNIT_MS[unit];
+  }
+
+  normalizeDurationCarry(parts);
+
+  const visible = parts.filter((part) => part.value > 0);
+  return visible.length ? visible : parts.slice(0, 1);
+}
+
+function findAutoStartIndex(absMs) {
+  const index = DETAIL_UNITS.findIndex((unit) => absMs >= UNIT_MS[unit]);
+  return index === -1 ? DETAIL_UNITS.length - 1 : index;
+}
+
+function normalizeDurationCarry(parts) {
+  for (let index = parts.length - 1; index > 0; index -= 1) {
+    const current = parts[index];
+    const previous = parts[index - 1];
+    const ratio = Math.round(UNIT_MS[previous.unit] / UNIT_MS[current.unit]);
+    if (!Number.isFinite(ratio) || ratio <= 1 || current.value < ratio) {
+      continue;
+    }
+
+    previous.value += Math.floor(current.value / ratio);
+    current.value %= ratio;
+  }
+}
+
+function formatDurationPart(part) {
+  return `${formatWhole(part.value)} ${plural(part.unit.slice(0, -1), part.value)}`;
 }
 
 function renderDetails(absMs) {
@@ -728,14 +799,6 @@ function formatTargetLabel(date, precision) {
   return date.toLocaleString("en-US", options);
 }
 
-function formatUnitNumber(value, unit) {
-  if (unit === "seconds") return formatWhole(Math.round(value));
-  if (value >= 1000) return formatWhole(Math.round(value));
-  if (value >= 100) return formatWhole(value);
-  if (value >= 10) return formatDecimal(value, 1);
-  return formatDecimal(value, 2);
-}
-
 function formatDetailNumber(value, unit) {
   if (unit === "years" || unit === "months" || unit === "weeks") {
     return formatDecimal(value, value >= 10 ? 1 : 2);
@@ -754,11 +817,6 @@ function formatDecimal(value, digits) {
     maximumFractionDigits: digits,
     minimumFractionDigits: value < 10 ? Math.min(1, digits) : 0,
   }).format(value);
-}
-
-function formatUnitLabel(unit, rawValue) {
-  const base = unit.slice(0, -1);
-  return plural(base, rawValue);
 }
 
 function plural(label, value) {
