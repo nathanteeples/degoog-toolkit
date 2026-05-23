@@ -166,7 +166,7 @@ export const command = {
 
   async execute(args) {
     const parsed = parseUntilQuery(args, { allowTargetOnly: true });
-    if (!parsed) return { html: USAGE_HTML };
+    if (!parsed) return { title: "", html: USAGE_HTML };
     return renderUntil(parsed, new Date());
   },
 };
@@ -190,9 +190,9 @@ export const slot = {
   },
 
   async execute(query, context) {
-    if (context?.tab && context.tab !== "all") return { html: "" };
+    if (context?.tab && context.tab !== "all") return { title: "", html: "" };
     const parsed = parseUntilQuery(query, { allowTargetOnly: false });
-    if (!parsed) return { html: "" };
+    if (!parsed) return { title: "", html: "" };
     return renderUntil(parsed, new Date());
   },
 };
@@ -691,7 +691,7 @@ function renderUntil(parsed, now) {
     .split("{{details_html}}")
     .join(renderDetails(absMs));
 
-  return { html };
+  return { title: "", html };
 }
 
 function formatPrimary(absMs, requestedUnit) {
