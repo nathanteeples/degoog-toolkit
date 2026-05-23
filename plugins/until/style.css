@@ -31,7 +31,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 8px;
+    column-gap: 13px;
+    row-gap: 6px;
     min-width: 0;
     color: var(--text-primary, inherit);
     line-height: 1;
@@ -44,18 +45,71 @@
     line-height: 1.15;
 }
 
-.until-card__value {
-    max-width: 100%;
-    font-size: clamp(1.9rem, 2.6rem, 2.6rem);
-    font-weight: 780;
-    overflow-wrap: anywhere;
+.until-card__part {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
 }
 
-.until-card__unit {
+.until-card__part-value {
+    color: #fff;
+    font-size: var(--until-part-value-size, 1rem);
+    font-weight: var(--until-part-value-weight, 760);
+    line-height: 1;
+    overflow-wrap: anywhere;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
+}
+
+.until-card__part-unit {
     color: var(--text-secondary, color-mix(in srgb, currentColor 64%, transparent));
-    font-size: 1.05rem;
+    font-size: var(--until-part-unit-size, 0.82rem);
     font-weight: 700;
     line-height: 1.2;
+}
+
+.until-card__part--0 {
+    --until-part-value-size: 2.6rem;
+    --until-part-value-weight: 780;
+    --until-part-unit-size: 1.05rem;
+}
+
+.until-card__part--1 {
+    --until-part-value-size: 1.78rem;
+    --until-part-unit-size: 0.98rem;
+}
+
+.until-card__part--2 {
+    --until-part-value-size: 1.46rem;
+    --until-part-unit-size: 0.92rem;
+}
+
+.until-card__part--3 {
+    --until-part-value-size: 1.24rem;
+    --until-part-unit-size: 0.88rem;
+}
+
+.until-card__part--4 {
+    --until-part-value-size: 1.08rem;
+    --until-part-unit-size: 0.84rem;
+}
+
+.until-card__part--5 {
+    --until-part-value-size: 0.96rem;
+    --until-part-unit-size: 0.82rem;
+}
+
+.until-card__part--6 {
+    --until-part-value-size: 0.82rem;
+    --until-part-unit-size: 0.82rem;
+}
+
+.until-card__now {
+    color: #fff;
+    font-size: 2.6rem;
+    font-weight: 780;
+    line-height: 1;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
 }
 
 .until-card__caption {
@@ -110,7 +164,15 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .until-card__value {
+    .until-card__part--0 {
+        --until-part-value-size: 2rem;
+    }
+
+    .until-card__part--1 {
+        --until-part-value-size: 1.48rem;
+    }
+
+    .until-card__now {
         font-size: 2rem;
     }
 }

@@ -46,12 +46,10 @@
     card.classList.toggle("until-card--future", future);
     card.classList.toggle("until-card--past", !future);
 
-    const valueEl = card.querySelector("[data-until-primary-value]");
-    const unitEl = card.querySelector("[data-until-primary-unit]");
+    const answerEl = card.querySelector("[data-until-answer]");
     const captionEl = card.querySelector("[data-until-caption]");
 
-    if (valueEl) valueEl.textContent = primary.value;
-    if (unitEl) unitEl.textContent = primary.unit;
+    if (answerEl) answerEl.innerHTML = primary.html;
     if (captionEl) captionEl.textContent = future ? "from now" : "ago";
 
     for (const detailUnit of DETAIL_UNITS) {
@@ -66,15 +64,23 @@
 
   function formatPrimary(absMs, unit, topUnits) {
     const parts = decomposeDuration(absMs, unit, topUnits);
-    if (!parts.length) return { value: "right now", unit: "" };
+    return { html: renderPrimaryHtml(parts) };
+  }
 
-    const [first, ...rest] = parts;
-    const unitText = [
-      plural(first.unit.slice(0, -1), first.value),
-      ...rest.map((part) => formatDurationPart(part)),
-    ].join(" ");
+  function renderPrimaryHtml(parts) {
+    if (!parts.length) {
+      return '<span class="until-card__now">right now</span>';
+    }
 
-    return { value: formatWhole(first.value), unit: unitText };
+    return parts
+      .map((part, index) => {
+        const level = Math.min(index, DETAIL_UNITS.length - 1);
+        return `<span class="until-card__part until-card__part--${level}">
+          <span class="until-card__part-value">${escapeHtml(formatWhole(part.value))}</span>
+          <span class="until-card__part-unit">${escapeHtml(plural(part.unit.slice(0, -1), part.value))}</span>
+        </span>`;
+      })
+      .join("");
   }
 
   function decomposeDuration(absMs, requestedUnit, count) {
@@ -131,10 +137,6 @@
     }
   }
 
-  function formatDurationPart(part) {
-    return `${formatWhole(part.value)} ${plural(part.unit.slice(0, -1), part.value)}`;
-  }
-
   function normalizeTopUnits(value) {
     const parsed = Number(value);
     if (
@@ -169,6 +171,14 @@
 
   function plural(label, value) {
     return Math.abs(value) === 1 ? label : `${label}s`;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
   if (document.readyState === "loading") {

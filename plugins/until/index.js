@@ -19,9 +19,8 @@ const FALLBACK_TEMPLATE = `
   <div class="until-card__panel">
     <div class="until-card__main">
       <div class="until-card__eyebrow">{{eyebrow}}</div>
-      <div class="until-card__answer" aria-live="polite">
-        <span class="until-card__value" data-until-primary-value>{{primary_value}}</span>
-        <span class="until-card__unit" data-until-primary-unit>{{primary_unit}}</span>
+      <div class="until-card__answer" data-until-answer aria-live="polite">
+        {{primary_html}}
       </div>
       <div class="until-card__caption" data-until-caption>{{primary_caption}}</div>
     </div>
@@ -682,10 +681,8 @@ function renderUntil(parsed, now) {
     .join(String(settings.topUnits))
     .split("{{eyebrow}}")
     .join(_esc(future ? `Until ${targetLabel}` : `Since ${targetLabel}`))
-    .split("{{primary_value}}")
-    .join(_esc(primary.value))
-    .split("{{primary_unit}}")
-    .join(_esc(primary.unit))
+    .split("{{primary_html}}")
+    .join(primary.html)
     .split("{{primary_caption}}")
     .join(_esc(future ? "from now" : "ago"))
     .split("{{details_html}}")
@@ -696,15 +693,23 @@ function renderUntil(parsed, now) {
 
 function formatPrimary(absMs, requestedUnit) {
   const parts = decomposeDuration(absMs, requestedUnit, settings.topUnits);
-  if (!parts.length) return { value: "right now", unit: "" };
+  return { html: renderPrimaryHtml(parts) };
+}
 
-  const [first, ...rest] = parts;
-  const unitText = [
-    plural(first.unit.slice(0, -1), first.value),
-    ...rest.map((part) => formatDurationPart(part)),
-  ].join(" ");
+function renderPrimaryHtml(parts) {
+  if (!parts.length) {
+    return '<span class="until-card__now">right now</span>';
+  }
 
-  return { value: formatWhole(first.value), unit: unitText };
+  return parts
+    .map((part, index) => {
+      const level = Math.min(index, MAX_TOP_UNITS - 1);
+      return `<span class="until-card__part until-card__part--${level}">
+        <span class="until-card__part-value">${_esc(formatWhole(part.value))}</span>
+        <span class="until-card__part-unit">${_esc(plural(part.unit.slice(0, -1), part.value))}</span>
+      </span>`;
+    })
+    .join("");
 }
 
 function decomposeDuration(absMs, requestedUnit, count) {
@@ -761,10 +766,6 @@ function normalizeDurationCarry(parts) {
     previous.value += Math.floor(current.value / ratio);
     current.value %= ratio;
   }
-}
-
-function formatDurationPart(part) {
-  return `${formatWhole(part.value)} ${plural(part.unit.slice(0, -1), part.value)}`;
 }
 
 function renderDetails(absMs) {
