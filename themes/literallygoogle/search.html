@@ -41,18 +41,38 @@
 ></div>
 <script>
     (function () {
+        function wrapResultsStats(meta) {
+            if (!meta || meta.querySelector(".results-meta-stats")) return;
+
+            for (var i = 0; i < meta.childNodes.length; i++) {
+                var node = meta.childNodes[i];
+                if (node.nodeType !== Node.TEXT_NODE) continue;
+
+                var text = node.textContent.trim();
+                if (!text) continue;
+
+                var stats = document.createElement("span");
+                stats.className = "results-meta-stats";
+                stats.textContent = text;
+                meta.replaceChild(stats, node);
+                return;
+            }
+        }
+
         function moveSpellCheck() {
             var notices = document.querySelectorAll(".spell-check-notice");
+            var meta = document.getElementById("results-meta");
+            wrapResultsStats(meta);
+
             for (var i = 0; i < notices.length; i++) {
                 var notice = notices[i];
                 var panel = notice.closest(".results-slot-panel");
-                var meta = document.getElementById("results-meta");
-                
+
                 // If it's not already in results-meta
                 if (meta && notice.parentNode !== meta) {
                     // move the raw notice to results-meta
                     meta.appendChild(notice);
-                    
+
                     // remove the empty panel
                     if (panel) {
                         panel.remove();
