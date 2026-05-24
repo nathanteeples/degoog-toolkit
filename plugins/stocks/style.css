@@ -211,6 +211,7 @@
     min-height: 212px;
     min-width: 0;
     position: relative;
+    margin-bottom: 12px;
 }
 
 .stocks-chart-loading {
@@ -227,7 +228,7 @@
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 0.45rem 0.7rem;
-    margin-top: 12px;
+    margin-top: auto;
     padding-top: 12px;
     border-top: 1px solid var(--border-light);
 }
@@ -424,7 +425,9 @@
     }
 
     .stocks-chart-body {
+        height: 132px;
         min-height: 132px;
+        flex: none;
     }
 
     .stocks-sparkline-empty,
