@@ -13,9 +13,10 @@ const DEFAULT_ANGLE_MODE = "rad";
 const MAX_QUERY_LENGTH = 220;
 const MATH_FUNCTIONS =
   "sin|cos|tan|asin|acos|atan|sqrt|log|ln|abs|factorial";
+const MATH_FUNCTION_SET = new Set(MATH_FUNCTIONS.split("|"));
 const FUNCTION_CALL_RE = new RegExp(`\\b(?:${MATH_FUNCTIONS})\\s*\\(`, "i");
 const EXPLICIT_CALC_RE =
-  /^(?:calc|calculator|calculate|compute)\b\s*(?::|=)?\s*(.+)$/i;
+  /^(?:calc|calculator|calculate|compute)\b\s*(?::|=)?\s*(.*)$/i;
 const EXPLICIT_GRAPH_RE = /^(?:graph|plot)\b\s*(?::|=)?\s*(.+)$/i;
 const DATE_LIKE_RE = /^\d{1,4}\s*[-/]\s*\d{1,2}\s*[-/]\s*\d{1,4}$/;
 const SAFE_CHARS_RE = /^[0-9a-zA-Z_\s+\-*/^().!%]+$/;
@@ -180,6 +181,98 @@ function analyzeExpression(input, angleMode = DEFAULT_ANGLE_MODE) {
   };
 }
 
+function getUnknownIdentifiers(normalized) {
+  const withoutNumbers = normalized.replace(
+    /\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/gi,
+    " ",
+  );
+  const identifiers = withoutNumbers.match(/[a-zA-Z_]+/g) || [];
+  return identifiers
+    .map((identifier) => identifier.toLowerCase())
+    .filter(
+      (identifier) =>
+        !ALLOWED_SYMBOLS.has(identifier) && !MATH_FUNCTION_SET.has(identifier),
+    );
+}
+
+function getParenState(expr) {
+  const stack = [];
+  for (let index = 0; index < expr.length; index += 1) {
+    const char = expr[index];
+    if (char === "(") stack.push(index);
+    if (char === ")") {
+      if (!stack.length) return { invalidClose: true, openIndexes: [] };
+      stack.pop();
+    }
+  }
+
+  return { invalidClose: false, openIndexes: stack };
+}
+
+function isIncompleteExpression(input) {
+  const normalized = normalizeExpression(input);
+  if (!normalized || !SAFE_CHARS_RE.test(normalized)) return false;
+  if (getUnknownIdentifiers(normalized).length) return false;
+
+  const compact = normalized.replace(/\s+/g, "");
+  const parens = getParenState(compact);
+  if (parens.invalidClose) return false;
+
+  if (/[+\-*/^.]$/.test(compact)) return true;
+  if (/\($/.test(compact)) return true;
+  if (parens.openIndexes.length > 0) return true;
+  if (new RegExp(`(?:^|[^a-zA-Z_])(?:${MATH_FUNCTIONS})$`, "i").test(compact)) {
+    return true;
+  }
+
+  return false;
+}
+
+function trimIncompleteSuffix(expr) {
+  let candidate = normalizeExpression(expr);
+
+  for (let guard = 0; guard < 20 && candidate; guard += 1) {
+    const before = candidate;
+    candidate = candidate.trim();
+    candidate = candidate.replace(/[+\-*/^.(]+$/g, "").trim();
+    candidate = candidate
+      .replace(new RegExp(`(?:^|[+\\-*/^(])\\s*(?:${MATH_FUNCTIONS})$`, "i"), "")
+      .trim();
+
+    const parens = getParenState(candidate);
+    if (parens.invalidClose) return "";
+    if (parens.openIndexes.length) {
+      candidate = candidate
+        .slice(0, parens.openIndexes[parens.openIndexes.length - 1])
+        .trim();
+      continue;
+    }
+
+    if (candidate === before) break;
+  }
+
+  return candidate;
+}
+
+function getIncompletePreview(input) {
+  const candidate = trimIncompleteSuffix(input);
+  if (!candidate) return null;
+
+  try {
+    const evaluated = evaluateExpression(candidate);
+    if (evaluated.hasX) {
+      return { result: "Graph", ans: 0 };
+    }
+
+    return {
+      result: formatResult(evaluated.value),
+      ans: Number.isFinite(evaluated.value) ? evaluated.value : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function evaluateExpression(input, options = {}) {
   const analysis = analyzeExpression(input, options.angleMode);
   if (analysis.hasX && typeof options.x !== "number") {
@@ -219,14 +312,14 @@ function shouldTrigger(query) {
   if (!q || q.length > MAX_QUERY_LENGTH) return false;
 
   const intent = getIntent(q);
-  if (!intent.expression.trim()) return false;
+  if (!intent.expression.trim()) return intent.explicit && /^(?:calc|calculator)$/i.test(q);
 
   try {
     const analysis = analyzeExpression(intent.expression);
     if (intent.explicit || intent.graph) return true;
     return isObviousExpression(intent.expression, analysis);
   } catch {
-    return false;
+    return intent.explicit && isIncompleteExpression(intent.expression);
   }
 }
 
@@ -305,6 +398,20 @@ export const slot = {
 
   async execute(query) {
     const intent = getIntent(query);
+    const expression = stripEquationPrefix(intent.expression).trim();
+
+    if (!expression) {
+      const html = renderTemplate({
+        initial_expr: "",
+        display_expr: "",
+        initial_result: "0",
+        display_result: "0",
+        ans_value: "0",
+        angle_mode: DEFAULT_ANGLE_MODE,
+      });
+
+      return { title: "", html };
+    }
 
     try {
       const analysis = analyzeExpression(intent.expression);
@@ -318,7 +425,6 @@ export const slot = {
         ans = Number.isFinite(evaluated.value) ? evaluated.value : 0;
       }
 
-      const expression = stripEquationPrefix(intent.expression).trim();
       const html = renderTemplate({
         initial_expr: expression,
         display_expr: expression,
@@ -329,7 +435,21 @@ export const slot = {
       });
 
       return { title: "", html };
-    } catch {
+    } catch (error) {
+      if (isIncompleteExpression(intent.expression)) {
+        const preview = getIncompletePreview(intent.expression);
+        const html = renderTemplate({
+          initial_expr: expression,
+          display_expr: expression,
+          initial_result: preview?.result || "0",
+          display_result: preview?.result || "0",
+          ans_value: String(preview?.ans || 0),
+          angle_mode: DEFAULT_ANGLE_MODE,
+        });
+
+        return { title: "", html };
+      }
+
       return { html: "" };
     }
   },

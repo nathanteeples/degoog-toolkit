@@ -56,35 +56,35 @@
       "path": "plugins/reddit-slot",
       "name": "Reddit",
       "description": "Shows a relevant Reddit post and top comments for Reddit-focused searches, fetched server-side with conservative triggers.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "type": "slot"
     },
     {
       "path": "plugins/define-slot",
       "name": "Dictionary",
       "description": "Shows definitions, pronunciation, synonyms, antonyms, and origin for explicit dictionary queries.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "type": "slot"
     },
     {
       "path": "plugins/calculator",
       "name": "Calculator",
       "description": "Scientific calculator with safe expression parsing, interactive keypad, and local canvas graphing for x expressions.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "type": "slot"
     },
     {
       "path": "plugins/stocks",
       "name": "Stocks",
       "description": "No-key stock quotes for explicit ticker and company-share queries, fetched server-side with Yahoo Finance and Stooq fallback.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "type": "slot"
     },
     {
       "path": "plugins/translate-command",
       "name": "Translate",
       "description": "No-key server-side translation command with provider switching and natural language slot triggers.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "type": "command"
     },
     {
@@ -154,7 +154,7 @@
       "path": "themes/literallygoogle",
       "name": "LiterallyGoogle",
       "description": "A Google-like theme with a sticky header and full-width above-results plugin slots.",
-      "version": "2.1.44"
+      "version": "2.1.45"
     }
   ]
 }

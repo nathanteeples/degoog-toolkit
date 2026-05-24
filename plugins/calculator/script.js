@@ -3,6 +3,10 @@
 
   var ROOT_SELECTOR = "[data-calc-root]";
   var FUNCTION_NAMES = "sin|cos|tan|asin|acos|atan|sqrt|log|ln|abs|factorial";
+  var FUNCTION_SET = FUNCTION_NAMES.split("|").reduce(function (set, name) {
+    set[name] = true;
+    return set;
+  }, {});
   var SAFE_CHARS_RE = /^[0-9a-zA-Z_\s+\-*/^().!%]+$/;
   var ALLOWED_SYMBOLS = {
     x: true,
@@ -215,6 +219,55 @@
     };
   }
 
+  function getUnknownIdentifiers(normalized) {
+    var withoutNumbers = normalized.replace(
+      /\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/gi,
+      " ",
+    );
+    var identifiers = withoutNumbers.match(/[a-zA-Z_]+/g) || [];
+    var unknown = [];
+
+    identifiers.forEach(function (identifier) {
+      var lower = String(identifier).toLowerCase();
+      if (!ALLOWED_SYMBOLS[lower] && !FUNCTION_SET[lower]) unknown.push(lower);
+    });
+
+    return unknown;
+  }
+
+  function getParenState(expr) {
+    var stack = [];
+    for (var index = 0; index < expr.length; index += 1) {
+      var char = expr[index];
+      if (char === "(") stack.push(index);
+      if (char === ")") {
+        if (!stack.length) return { invalidClose: true, openIndexes: [] };
+        stack.pop();
+      }
+    }
+
+    return { invalidClose: false, openIndexes: stack };
+  }
+
+  function isIncompleteExpression(input) {
+    var normalized = normalizeExpression(input);
+    if (!normalized || !SAFE_CHARS_RE.test(normalized)) return false;
+    if (getUnknownIdentifiers(normalized).length) return false;
+
+    var compact = normalized.replace(/\s+/g, "");
+    var parens = getParenState(compact);
+    if (parens.invalidClose) return false;
+
+    if (/[+\-*/^.]$/.test(compact)) return true;
+    if (/\($/.test(compact)) return true;
+    if (parens.openIndexes.length > 0) return true;
+    if (new RegExp("(?:^|[^a-zA-Z_])(?:" + FUNCTION_NAMES + ")$", "i").test(compact)) {
+      return true;
+    }
+
+    return false;
+  }
+
   function evaluateParsed(analysis, state, xValue) {
     if (analysis.hasX && typeof xValue !== "number") {
       throw new Error("Expression requires x");
@@ -293,7 +346,13 @@
         }
       } catch (error) {
         state.lastAnalysis = null;
-        state.result = "Error";
+        if (isIncompleteExpression(state.expr)) {
+          if (!state.result || state.result === "Error" || state.result === "Not a number") {
+            state.result = "0";
+          }
+        } else {
+          state.result = "Error";
+        }
       }
     }
 
@@ -378,7 +437,11 @@
       state.expr = "";
       state.justEvaluated = true;
     } catch (error) {
-      state.result = "Error";
+      if (!isIncompleteExpression(state.expr)) {
+        state.result = "Error";
+      } else if (!state.result || state.result === "Error" || state.result === "Not a number") {
+        state.result = "0";
+      }
       state.justEvaluated = false;
     }
 

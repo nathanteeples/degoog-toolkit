@@ -5,11 +5,57 @@ let dictionaryCache = null;
 
 const DICTIONARY_API_BASE =
   "https://api.dictionaryapi.dev/api/v2/entries/en";
+const POWER_THESAURUS_API_URL = "https://api.powerthesaurus.org";
+const POWER_THESAURUS_WEB_URL = "https://www.powerthesaurus.org";
 const AUDIO_HOSTS = new Set([
   "api.dictionaryapi.dev",
   "ssl.gstatic.com",
   "www.gstatic.com",
 ]);
+
+const POWER_THESAURUS_SEARCH_QUERY = `query SEARCH_QUERY($query: String!) {
+  search(query: $query) {
+    terms {
+      id
+      name
+    }
+  }
+}`;
+
+const POWER_THESAURUS_THESAURUS_QUERY = `query THESAURUSES_QUERY($after: String, $first: Int, $before: String, $last: Int, $termID: ID!, $list: List!, $sort: ThesaurusSorting!, $tagID: Int, $posID: Int, $syllables: Int) {
+  thesauruses(termId: $termID, sort: $sort, list: $list, after: $after, first: $first, before: $before, last: $last, tagId: $tagID, partOfSpeechId: $posID, syllables: $syllables) {
+    edges {
+      node {
+        id
+        targetTerm {
+          id
+          name
+          slug
+          counters
+        }
+        relations
+        rating
+        votes
+      }
+    }
+  }
+}`;
+
+const POWER_PARTS_OF_SPEECH = new Map([
+  [1, "adj."],
+  [2, "n."],
+  [3, "pr."],
+  [4, "adv."],
+  [5, "idi."],
+  [6, "v."],
+  [7, "int."],
+  [8, "phr."],
+  [9, "conj."],
+  [10, "prep."],
+  [11, "phr. v."],
+]);
+
+const POWER_USER_AGENT = "Degoog-Define-Slot/1.0";
 
 const WORD_CAPTURE = "([A-Za-z](?:[A-Za-z'-]{0,46}[A-Za-z])?)";
 const LOOKUP_WORD_RE = /^[A-Za-z](?:[A-Za-z'-]{0,46}[A-Za-z])?$/;
@@ -127,7 +173,7 @@ const FALLBACK_TEMPLATE = `
   {{body_html}}
   {{related_html}}
   {{origin_html}}
-  <div class="dslot-source">Data: <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">dictionaryapi.dev</a></div>
+  <div class="dslot-source">Data: <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">dictionaryapi.dev</a> · Related: <a href="https://www.powerthesaurus.org/" target="_blank" rel="noopener">Power Thesaurus</a></div>
 </div>`;
 
 export const slot = {
@@ -205,12 +251,40 @@ export const slot = {
     const parsed = parseDictionaryQuery(query);
     if (!parsed) return { html: "" };
 
-    const result = await lookupDictionary(parsed.word, context);
+    const [result, relatedTerms] = await Promise.all([
+      lookupDictionary(parsed.word, context),
+      lookupPowerThesaurus(parsed.word, context),
+    ]);
+
     if (result.status === "ok") {
       const entry = normalizeDictionaryData(result.data, parsed.word);
-      if (entry.definitions.length) {
+      entry.synonyms = mergeRelatedTerms(
+        relatedTerms.synonyms,
+        entry.synonyms,
+        "synonym",
+      );
+      entry.antonyms = mergeRelatedTerms(
+        relatedTerms.antonyms,
+        entry.antonyms,
+        "antonym",
+      );
+
+      if (hasRenderableEntry(entry)) {
         return { html: renderEntry(entry, parsed.intent) };
       }
+    }
+
+    const relatedOnlyEntry = {
+      word: parsed.word,
+      phonetic: "",
+      audioUrl: "",
+      origin: "",
+      definitions: [],
+      synonyms: relatedTerms.synonyms,
+      antonyms: relatedTerms.antonyms,
+    };
+    if (hasRenderableEntry(relatedOnlyEntry)) {
+      return { html: renderEntry(relatedOnlyEntry, parsed.intent) };
     }
 
     if (parsed.explicit && result.status === "not-found") {
@@ -396,9 +470,430 @@ function normalizeDictionaryData(data, requestedWord) {
       firstString(entries.map((entry) => entry.origin)) ||
       firstString(entries.map((entry) => entry.etymology)),
     definitions,
-    synonyms: [...synonyms.values()],
-    antonyms: [...antonyms.values()],
+    synonyms: [...synonyms.values()].map((word) =>
+      makeSimpleRelatedTerm(word, "synonym"),
+    ),
+    antonyms: [...antonyms.values()].map((word) =>
+      makeSimpleRelatedTerm(word, "antonym"),
+    ),
   };
+}
+
+async function lookupPowerThesaurus(word, context) {
+  const cacheKey = `power:${word}`;
+  const cached = dictionaryCache?.get(cacheKey);
+  if (cached) return cached;
+
+  const fetcher =
+    typeof context?.fetch === "function" ? (...args) => context.fetch(...args) : pluginFetch;
+
+  const result = await lookupPowerThesaurusGraphql(word, fetcher).catch(() => ({
+    synonyms: [],
+    antonyms: [],
+  }));
+
+  if (!result.synonyms.length && !result.antonyms.length) {
+    const fallback = await lookupPowerThesaurusWeb(word, fetcher).catch(() => ({
+      synonyms: [],
+      antonyms: [],
+    }));
+    result.synonyms = fallback.synonyms;
+    result.antonyms = fallback.antonyms;
+  }
+
+  const ttl = result.synonyms.length || result.antonyms.length
+    ? 12 * 60 * 60 * 1000
+    : 15 * 60 * 1000;
+  dictionaryCache?.set(cacheKey, result, ttl);
+  return result;
+}
+
+async function lookupPowerThesaurusGraphql(word, fetcher) {
+  const term = await searchPowerThesaurusTerm(word, fetcher);
+  if (!term?.id) return { synonyms: [], antonyms: [] };
+
+  const [synonyms, antonyms] = await Promise.all([
+    fetchPowerThesaurusList(term.id, "synonym", fetcher),
+    fetchPowerThesaurusList(term.id, "antonym", fetcher),
+  ]);
+
+  return { synonyms, antonyms };
+}
+
+async function searchPowerThesaurusTerm(word, fetcher) {
+  const json = await postPowerThesaurus(fetcher, {
+    operationName: "SEARCH_QUERY",
+    variables: { query: word },
+    query: POWER_THESAURUS_SEARCH_QUERY,
+  });
+
+  const terms = Array.isArray(json?.data?.search?.terms)
+    ? json.data.search.terms
+    : [];
+  const normalizedWord = normalizeTermKey(word);
+  return (
+    terms.find((term) => normalizeTermKey(term?.name) === normalizedWord) ||
+    null
+  );
+}
+
+async function fetchPowerThesaurusList(termId, kind, fetcher) {
+  const json = await postPowerThesaurus(fetcher, {
+    operationName: "THESAURUSES_QUERY",
+    variables: {
+      list: kind.toUpperCase(),
+      termID: termId,
+      sort: { field: "RATING", direction: "DESC" },
+      limit: 50,
+      syllables: null,
+      query: null,
+      posID: null,
+      first: 50,
+      after: "",
+    },
+    query: POWER_THESAURUS_THESAURUS_QUERY,
+  });
+
+  const edges = Array.isArray(json?.data?.thesauruses?.edges)
+    ? json.data.thesauruses.edges
+    : [];
+  return dedupePowerTerms(
+    edges
+      .map((edge) => normalizePowerTerm(edge?.node, kind))
+      .filter(Boolean),
+  );
+}
+
+async function postPowerThesaurus(fetcher, payload) {
+  const response = await fetcher(POWER_THESAURUS_API_URL, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "User-Agent": POWER_USER_AGENT,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Power Thesaurus returned ${response.status}`);
+  }
+
+  const json = await response.json();
+  if (Array.isArray(json?.errors) && json.errors.length) {
+    throw new Error("Power Thesaurus returned GraphQL errors");
+  }
+  return json;
+}
+
+async function lookupPowerThesaurusWeb(word, fetcher) {
+  const [synonyms, antonyms] = await Promise.all([
+    fetchPowerThesaurusWebList(word, "synonym", fetcher),
+    fetchPowerThesaurusWebList(word, "antonym", fetcher),
+  ]);
+  return { synonyms, antonyms };
+}
+
+async function fetchPowerThesaurusWebList(word, kind, fetcher) {
+  const url = buildPowerTermUrl(word, kind);
+  const response = await fetcher(url, {
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+      "User-Agent": POWER_USER_AGENT,
+    },
+  });
+  if (!response.ok) return [];
+
+  const html = await response.text();
+  if (isCloudflareChallenge(html)) return [];
+
+  const terms = [
+    ...extractPowerTermsFromJson(html, kind),
+    ...extractPowerTermsFromHtml(html, kind),
+  ];
+  return dedupePowerTerms(terms);
+}
+
+function extractPowerTermsFromJson(html, kind) {
+  const jsonText = extractNextDataJson(html);
+  if (!jsonText) return [];
+
+  try {
+    const data = JSON.parse(decodeHtmlEntities(jsonText));
+    const terms = [];
+    walkPowerJson(data, kind, terms);
+    return terms;
+  } catch {
+    return [];
+  }
+}
+
+function walkPowerJson(value, kind, terms) {
+  if (!value || terms.length >= 80) return;
+
+  if (Array.isArray(value)) {
+    for (const item of value) walkPowerJson(item, kind, terms);
+    return;
+  }
+
+  if (typeof value !== "object") return;
+
+  const term = normalizePowerTerm(value, kind);
+  if (term) terms.push(term);
+
+  for (const next of Object.values(value)) {
+    walkPowerJson(next, kind, terms);
+  }
+}
+
+function extractPowerTermsFromHtml(html, kind) {
+  const terms = [];
+  const itemPattern =
+    /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+
+  while ((match = itemPattern.exec(html)) && terms.length < 80) {
+    const href = decodeHtmlEntities(match[1]);
+    const text = cleanHtmlText(match[2]);
+    if (!text || text.length > 64) continue;
+    if (!isLikelyPowerTermUrl(href, kind, text)) continue;
+
+    terms.push(
+      normalizePowerTerm(
+        {
+          word: text,
+          url: href.startsWith("http")
+            ? href
+            : `${POWER_THESAURUS_WEB_URL}${href.startsWith("/") ? "" : "/"}${href}`,
+        },
+        kind,
+      ),
+    );
+  }
+
+  return terms;
+}
+
+function normalizePowerTerm(value, kind) {
+  if (!value) return null;
+
+  const targetTerm = value.targetTerm || value.term || value.target || {};
+  const word = cleanRelatedWord(
+    targetTerm.name || value.word || value.name || value.title,
+  );
+  if (!word) return null;
+
+  const relations = value.relations || {};
+  const slug = targetTerm.slug || value.slug || slugifyPowerTerm(word);
+  const rating = finiteNumber(value.rating ?? value.votes ?? value.score);
+  const partsOfSpeech = normalizePowerParts(
+    relations.parts_of_speech ||
+      relations.partsOfSpeech ||
+      value.parts_of_speech ||
+      value.partsOfSpeech ||
+      value.parts,
+  );
+  const tags = normalizeStringList(
+    relations.tags || value.tags || value.topics || value.subjects,
+  );
+
+  return {
+    word,
+    rating,
+    partsOfSpeech,
+    tags,
+    url: sanitizePowerUrl(value.url) || buildPowerTermUrl(slug, kind),
+  };
+}
+
+function makeSimpleRelatedTerm(word, kind) {
+  return {
+    word,
+    rating: null,
+    partsOfSpeech: [],
+    tags: [],
+    url: buildPowerTermUrl(word, kind),
+  };
+}
+
+function mergeRelatedTerms(primaryTerms, fallbackTerms, kind) {
+  const primary = Array.isArray(primaryTerms) ? primaryTerms : [];
+  const fallback = Array.isArray(fallbackTerms) ? fallbackTerms : [];
+  return dedupePowerTerms([
+    ...primary,
+    ...fallback.map((term) =>
+      typeof term === "string" ? makeSimpleRelatedTerm(term, kind) : term,
+    ),
+  ]);
+}
+
+function dedupePowerTerms(terms) {
+  const seen = new Set();
+  const deduped = [];
+
+  for (const term of terms) {
+    const normalized = normalizePowerTerm(term, "synonym");
+    if (!normalized) continue;
+    const key = normalizeTermKey(normalized.word);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(normalized);
+  }
+
+  return deduped.sort(comparePowerTerms);
+}
+
+function comparePowerTerms(a, b) {
+  const aRating = Number.isFinite(a.rating) ? a.rating : -Infinity;
+  const bRating = Number.isFinite(b.rating) ? b.rating : -Infinity;
+  if (bRating !== aRating) return bRating - aRating;
+  return a.word.localeCompare(b.word);
+}
+
+function normalizePowerParts(value) {
+  return normalizeStringList(value)
+    .map((part) => {
+      const numeric = Number.parseInt(part, 10);
+      if (POWER_PARTS_OF_SPEECH.has(numeric)) {
+        return POWER_PARTS_OF_SPEECH.get(numeric);
+      }
+      return part;
+    })
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function normalizeStringList(value) {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set();
+  const list = [];
+  for (const item of value) {
+    const text = cleanRelatedMeta(
+      typeof item === "object"
+        ? item?.name || item?.title || item?.slug || item?.label
+        : item,
+    );
+    if (!text) continue;
+    const key = text.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    list.push(text);
+  }
+  return list;
+}
+
+function cleanRelatedWord(value) {
+  const word = String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .slice(0, 80);
+  return /[A-Za-z]/.test(word) ? word : "";
+}
+
+function cleanRelatedMeta(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/^#+/, "")
+    .slice(0, 36);
+}
+
+function normalizeTermKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function finiteNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function buildPowerTermUrl(slugOrWord, kind) {
+  const list = kind === "antonym" ? "antonyms" : "synonyms";
+  const slug = slugifyPowerTerm(slugOrWord);
+  return `${POWER_THESAURUS_WEB_URL}/${encodeURIComponent(slug)}/${list}`;
+}
+
+function slugifyPowerTerm(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function sanitizePowerUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  try {
+    const url = new URL(raw, POWER_THESAURUS_WEB_URL);
+    if (url.protocol !== "https:") return "";
+    if (url.hostname !== "www.powerthesaurus.org") return "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function extractNextDataJson(html) {
+  const match = String(html || "").match(
+    /<script\b[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i,
+  );
+  return match?.[1] || "";
+}
+
+function isCloudflareChallenge(html) {
+  const text = String(html || "").toLowerCase();
+  return text.includes("cf_chl") || text.includes("just a moment...");
+}
+
+function isLikelyPowerTermUrl(href, kind, text) {
+  const normalizedHref = String(href || "").toLowerCase();
+  if (!normalizedHref.includes(kind === "antonym" ? "antonym" : "synonym")) {
+    return false;
+  }
+  const slug = slugifyPowerTerm(text);
+  return slug && normalizedHref.includes(slug);
+}
+
+function cleanHtmlText(html) {
+  return decodeHtmlEntities(
+    String(html || "")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function decodeHtmlEntities(value) {
+  return String(value || "")
+    .replace(/&quot;/g, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&#x22;/gi, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function hasRenderableEntry(entry) {
+  return Boolean(
+    entry.definitions.length ||
+      entry.synonyms.length ||
+      entry.antonyms.length ||
+      entry.origin ||
+      entry.phonetic,
+  );
 }
 
 function asArray(value) {
@@ -547,7 +1042,7 @@ function renderRelatedGroup(label, terms, kind) {
   const remaining = Math.max(0, terms.length - visibleTerms.length);
   const tags = visibleTerms.map((term) => renderTerm(term, kind)).join("");
   const more = remaining
-    ? `<span class="dslot-more">+${remaining} more</span>`
+    ? `<span class="dslot-more">+${remaining} more from Power Thesaurus</span>`
     : "";
 
   return `<div class="dslot-related-group">
@@ -557,12 +1052,36 @@ function renderRelatedGroup(label, terms, kind) {
 }
 
 function renderTerm(term, kind) {
-  const lookupWord = cleanLookupWord(term);
-  if (!lookupWord) {
-    return `<span class="dslot-tag">${esc(term)}</span>`;
-  }
+  const item =
+    typeof term === "string" ? makeSimpleRelatedTerm(term, kind) : term;
+  const word = cleanRelatedWord(item?.word);
+  if (!word) return "";
 
-  return `<button class="dslot-tag dslot-tag-button" type="button" data-dslot-lookup="${escAttr(lookupWord)}" aria-label="Look up ${escAttr(kind)} ${escAttr(term)}">${esc(term)}</button>`;
+  const lookupWord = cleanLookupWord(word);
+  const rating =
+    Number.isFinite(item.rating) && item.rating !== 0
+      ? `<span class="dslot-rating" title="Power Thesaurus rating">${esc(item.rating)}</span>`
+      : "";
+  const parts = item.partsOfSpeech?.length
+    ? `<span class="dslot-term-meta">${esc(item.partsOfSpeech.join(", "))}</span>`
+    : "";
+  const tags = item.tags?.length
+    ? `<span class="dslot-term-tags">${item.tags
+        .slice(0, 3)
+        .map((tag) => `<span>#${esc(tag)}</span>`)
+        .join("")}</span>`
+    : "";
+  const powerLink = item.url
+    ? `<a class="dslot-term-link" href="${escAttr(item.url)}" target="_blank" rel="noopener" aria-label="Open ${escAttr(word)} on Power Thesaurus">PT</a>`
+    : "";
+  const wordControl = lookupWord
+    ? `<button class="dslot-term-word dslot-tag-button" type="button" data-dslot-lookup="${escAttr(lookupWord)}" aria-label="Look up ${escAttr(kind)} ${escAttr(word)}">${esc(word)}</button>`
+    : `<span class="dslot-term-word">${esc(word)}</span>`;
+
+  return `<span class="dslot-term">
+    <span class="dslot-term-main">${wordControl}${rating}${powerLink}</span>
+    ${parts || tags ? `<span class="dslot-term-detail">${parts}${tags}</span>` : ""}
+  </span>`;
 }
 
 function renderOrigin(origin) {

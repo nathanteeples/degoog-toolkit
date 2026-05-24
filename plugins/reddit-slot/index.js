@@ -143,52 +143,73 @@ export const slot = {
   },
 
   async execute(query, context) {
-    if (context?.tab && context.tab !== "all") return { html: "" };
+    return executeReddit(query, context, false);
+  },
+};
 
-    const rawQuery = normalizeSpace(query);
-    if (!rawQuery) return { html: "" };
+export const command = {
+  name: PLUGIN_NAME,
+  description: PLUGIN_DESCRIPTION,
+  trigger: "reddit",
+  isClientExposed: false,
 
-    try {
-      const queryHasIntent =
-        COMMAND_PREFIX_RX.test(rawQuery) || hasRedditIntent(rawQuery);
-      const resultHints = getRedditResultHints(context?.results);
-      if (!shouldExecuteForMode(queryHasIntent, resultHints)) {
-        return { html: "" };
-      }
+  init(ctx) {
+    slot.init(ctx);
+  },
 
-      const parsed = parseQuery(rawQuery, resultHints, queryHasIntent);
-      const directPost = parsed.postHint
-        ? await fetchPostFromHint(parsed.postHint, context)
-        : null;
-
-      let post = directPost?.post || null;
-      let comments = directPost?.comments || [];
-
-      if (!post && parsed.searchQuery) {
-        const posts = await searchRedditPosts(
-          parsed.searchQuery,
-          parsed.subreddit,
-          context,
-        );
-        post = pickBestPost(posts, parsed.searchQuery, resultHints);
-      }
-
-      if (!post || !isAllowedPost(post)) return { html: "" };
-
-      if (settingsState.maxComments > 0 && comments.length === 0) {
-        comments = await fetchTopComments(post, context);
-      }
-
-      const html = renderRedditCard(post, comments);
-      return html ? { title: "", html } : { html: "" };
-    } catch {
-      return { html: "" };
-    }
+  async execute(args, context) {
+    return executeReddit(args, context, true);
   },
 };
 
 export const slotPlugin = slot;
 export default slot;
+
+async function executeReddit(query, context, forceIntent) {
+  if (context?.tab && context.tab !== "all") return { html: "" };
+
+  const rawQuery = normalizeSpace(query);
+  if (!rawQuery) return { html: "" };
+
+  try {
+    const queryHasIntent =
+      Boolean(forceIntent) ||
+      COMMAND_PREFIX_RX.test(rawQuery) ||
+      hasRedditIntent(rawQuery);
+    const resultHints = getRedditResultHints(context?.results);
+    if (!shouldExecuteForMode(queryHasIntent, resultHints)) {
+      return { html: "" };
+    }
+
+    const parsed = parseQuery(rawQuery, resultHints, queryHasIntent);
+    const directPost = parsed.postHint
+      ? await fetchPostFromHint(parsed.postHint, context)
+      : null;
+
+    let post = directPost?.post || null;
+    let comments = directPost?.comments || [];
+
+    if (!post && parsed.searchQuery) {
+      const posts = await searchRedditPosts(
+        parsed.searchQuery,
+        parsed.subreddit,
+        context,
+      );
+      post = pickBestPost(posts, parsed.searchQuery, resultHints);
+    }
+
+    if (!post || !isAllowedPost(post)) return { html: "" };
+
+    if (settingsState.maxComments > 0 && comments.length === 0) {
+      comments = await fetchTopComments(post, context);
+    }
+
+    const html = renderRedditCard(post, comments);
+    return html ? { title: "", html } : { html: "" };
+  } catch {
+    return { html: "" };
+  }
+}
 
 function configureSettings(settings) {
   const requestedMode = String(settings?.showMode || "").trim();

@@ -5,6 +5,7 @@ let quoteCache = null;
 const PLUGIN_NAME = "Stocks";
 const CACHE_TTL_MS = 60 * 1000;
 const YAHOO_SEARCH_URL = "https://query1.finance.yahoo.com/v1/finance/search";
+const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart";
 const STOOQ_QUOTE_URL = "https://stooq.com/q/l/";
 
@@ -175,8 +176,9 @@ export const slot = {
   description:
     "Shows no-key stock quotes for explicit ticker and company-share queries using server-side Yahoo Finance data with Stooq fallback.",
   isClientExposed: false,
-  position: "at-a-glance",
-  slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  position: "above-results",
+  slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],
+  waitForResults: true,
 
   async init(ctx) {
     templateHtml = ctx?.template || "";
@@ -192,13 +194,14 @@ export const slot = {
   },
 
   trigger(query) {
-    return parseStockQuery(query) !== null;
+    return parseStockQuery(query) !== null || shouldConsiderResultHints(query);
   },
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
 
-    const request = parseStockQuery(query);
+    const request =
+      parseStockQuery(query) || parseYahooResultRequest(context?.results);
     if (!request) return { html: "" };
 
     const doFetch =
@@ -305,6 +308,53 @@ function parseStockQuery(value) {
   return { kind: "company", target, explicit: false };
 }
 
+function shouldConsiderResultHints(value) {
+  const raw = String(value || "").trim();
+  if (raw.length < 2 || raw.length > 160) return false;
+  if (/^https?:\/\//i.test(raw) || MARKET_SHARE_RX.test(raw)) return false;
+  const normalized = normalizeWords(cleanupTarget(raw) || raw);
+  if (!normalized || isRejectedCompanyTarget(normalized)) return false;
+  return true;
+}
+
+function parseYahooResultRequest(results) {
+  if (!Array.isArray(results)) return null;
+
+  for (const result of results.slice(0, 10)) {
+    const symbol = extractYahooFinanceSymbol(result?.url);
+    if (symbol) {
+      return { kind: "symbol", symbol, explicit: false, source: "result" };
+    }
+  }
+
+  return null;
+}
+
+function extractYahooFinanceSymbol(url) {
+  try {
+    const parsed = new URL(String(url || ""));
+    const hostname = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (hostname !== "finance.yahoo.com") return "";
+
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const quoteIndex = parts.findIndex((part) => part.toLowerCase() === "quote");
+    if (quoteIndex === -1 || !parts[quoteIndex + 1]) return "";
+
+    const decoded = decodeURIComponent(parts[quoteIndex + 1]);
+    if (
+      decoded.startsWith("^") ||
+      decoded.includes("=") ||
+      /-(USD|USDT|EUR|GBP|JPY|BTC|ETH)$/i.test(decoded)
+    ) {
+      return "";
+    }
+
+    return normalizeSymbol(decoded, { allowAmbiguous: true });
+  } catch {
+    return "";
+  }
+}
+
 function extractExplicitSymbol(raw, allowPriceOnly) {
   const prefixPattern = allowPriceOnly
     ? /\b(?:stock|stocks|quote|ticker|share|shares|price|prices)\b\s+(?:for\s+)?([A-Z][A-Z0-9.-]{0,11})\b/
@@ -408,6 +458,24 @@ async function findYahooQuote(target, doFetch) {
   return candidates[0]?.quote || null;
 }
 
+async function fetchYahooQuoteSnapshot(symbol, doFetch) {
+  try {
+    const params = new URLSearchParams({
+      symbols: symbol,
+      formatted: "false",
+    });
+    const response = await doFetch(`${YAHOO_QUOTE_URL}?${params}`, {
+      headers: REQUEST_HEADERS,
+    });
+    if (!response?.ok) return null;
+    const data = await response.json();
+    const quote = data?.quoteResponse?.result?.[0];
+    return quote && isAcceptedYahooQuote(quote) ? quote : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchYahooSearch(query, doFetch) {
   try {
     const params = new URLSearchParams({
@@ -460,6 +528,7 @@ function scoreYahooQuote(quote, normalizedTarget) {
 
 async function fetchYahooChart(symbol, searchQuote, doFetch) {
   try {
+    const snapshot = await fetchYahooQuoteSnapshot(symbol, doFetch);
     const params = new URLSearchParams({
       interval: "5m",
       range: "1d",
@@ -473,9 +542,12 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
     const data = await response.json();
     const result = data?.chart?.result?.[0];
     const meta = result?.meta || {};
-    if (!result || !isAcceptedYahooInstrument(meta, searchQuote)) return null;
+    if (!result || !isAcceptedYahooInstrument(meta, searchQuote, snapshot)) {
+      return null;
+    }
 
     const price = firstFinite(
+      snapshot?.regularMarketPrice,
       meta.regularMarketPrice,
       meta.previousClose,
       lastFinite(result.indicators?.quote?.[0]?.close),
@@ -483,6 +555,7 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
     if (!Number.isFinite(price)) return null;
 
     const previousClose = firstFinite(
+      snapshot?.regularMarketPreviousClose,
       meta.chartPreviousClose,
       meta.previousClose,
       searchQuote?.regularMarketPreviousClose,
@@ -500,28 +573,77 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
       meta.exchangeName ||
       searchQuote?.exchange ||
       "";
+    const annualDividendRate = firstFinite(
+      snapshot?.dividendRate,
+      snapshot?.trailingAnnualDividendRate,
+    );
 
     return {
-      symbol: String(meta.symbol || searchQuote?.symbol || symbol).toUpperCase(),
+      symbol: String(
+        snapshot?.symbol || meta.symbol || searchQuote?.symbol || symbol,
+      ).toUpperCase(),
       name:
+        snapshot?.longName ||
+        snapshot?.shortName ||
         searchQuote?.longname ||
         searchQuote?.shortname ||
         meta.longName ||
         meta.shortName ||
         symbol,
       price,
-      priceHint: Number.isFinite(meta.priceHint) ? meta.priceHint : null,
-      currency: meta.currency || searchQuote?.currency || "",
+      priceHint: firstFinite(snapshot?.priceHint, meta.priceHint),
+      currency: snapshot?.currency || meta.currency || searchQuote?.currency || "",
       change,
       changePercent,
       previousClose,
-      open: firstFinite(meta.regularMarketOpen),
-      high: firstFinite(meta.regularMarketDayHigh),
-      low: firstFinite(meta.regularMarketDayLow),
-      volume: firstFinite(meta.regularMarketVolume),
-      exchange,
-      marketState: formatMarketState(searchQuote?.marketState),
-      asOf: formatYahooTime(meta.regularMarketTime),
+      open: firstFinite(snapshot?.regularMarketOpen, meta.regularMarketOpen),
+      high: firstFinite(
+        snapshot?.regularMarketDayHigh,
+        meta.regularMarketDayHigh,
+      ),
+      low: firstFinite(snapshot?.regularMarketDayLow, meta.regularMarketDayLow),
+      volume: firstFinite(
+        snapshot?.regularMarketVolume,
+        meta.regularMarketVolume,
+      ),
+      averageVolume: firstFinite(
+        snapshot?.averageDailyVolume3Month,
+        snapshot?.averageVolume,
+      ),
+      averageVolume10Day: firstFinite(snapshot?.averageDailyVolume10Day),
+      marketCap: firstFinite(snapshot?.marketCap),
+      peRatio: firstFinite(snapshot?.trailingPE, snapshot?.forwardPE),
+      fiftyTwoWeekHigh: firstFinite(snapshot?.fiftyTwoWeekHigh),
+      fiftyTwoWeekLow: firstFinite(snapshot?.fiftyTwoWeekLow),
+      dividendYield: normalizeDividendYield(
+        snapshot?.dividendYield,
+        snapshot?.trailingAnnualDividendYield,
+      ),
+      annualDividendRate,
+      quarterlyDividendAmount: Number.isFinite(annualDividendRate)
+        ? annualDividendRate / 4
+        : null,
+      bid: firstFinite(snapshot?.bid),
+      ask: firstFinite(snapshot?.ask),
+      epsTrailingTwelveMonths: firstFinite(snapshot?.epsTrailingTwelveMonths),
+      beta: firstFinite(snapshot?.beta),
+      sharesOutstanding: firstFinite(snapshot?.sharesOutstanding),
+      fiftyDayAverage: firstFinite(snapshot?.fiftyDayAverage),
+      twoHundredDayAverage: firstFinite(snapshot?.twoHundredDayAverage),
+      exDividendDate: formatYahooTime(snapshot?.exDividendDate, {
+        dateOnly: true,
+      }),
+      exchange:
+        snapshot?.fullExchangeName ||
+        snapshot?.exchange ||
+        snapshot?.exchangeName ||
+        exchange,
+      marketState: formatMarketState(
+        snapshot?.marketState || searchQuote?.marketState || meta.marketState,
+      ),
+      asOf: formatYahooTime(
+        firstFinite(snapshot?.regularMarketTime, meta.regularMarketTime),
+      ),
       sourceLabel: "Yahoo Finance",
       sourceUrl: `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}`,
       chartPoints,
@@ -532,13 +654,19 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
   }
 }
 
-function isAcceptedYahooInstrument(meta, searchQuote) {
+function isAcceptedYahooInstrument(meta, searchQuote, snapshot) {
   const metaType = String(meta?.instrumentType || "").toUpperCase();
   const quoteType = String(searchQuote?.quoteType || "").toUpperCase();
-  if (REJECTED_QUOTE_TYPES.has(metaType) || REJECTED_QUOTE_TYPES.has(quoteType)) {
+  const snapshotType = String(snapshot?.quoteType || "").toUpperCase();
+  if (
+    REJECTED_QUOTE_TYPES.has(metaType) ||
+    REJECTED_QUOTE_TYPES.has(quoteType) ||
+    REJECTED_QUOTE_TYPES.has(snapshotType)
+  ) {
     return false;
   }
   if (quoteType && !ACCEPTED_QUOTE_TYPES.has(quoteType)) return false;
+  if (snapshotType && !ACCEPTED_QUOTE_TYPES.has(snapshotType)) return false;
   return true;
 }
 
@@ -697,14 +825,10 @@ function renderQuote(quote) {
     currency: escapeHtml(quote.currency || "Quote"),
     change: escapeHtml(formatChange(quote.change, quote.changePercent)),
     exchange: escapeHtml(quote.exchange || "Exchange unavailable"),
-    market_state: escapeHtml(quote.marketState || "Market state unavailable"),
-    as_of: escapeHtml(quote.asOf || "Time unavailable"),
-    previous_close: escapeHtml(formatMaybePrice(quote.previousClose, quote.priceHint)),
-    day_range: escapeHtml(formatDayRange(quote.low, quote.high, quote.priceHint)),
-    volume: escapeHtml(formatVolume(quote.volume)),
     source_label: escapeHtml(quote.sourceLabel),
     source_url: escapeHtml(quote.sourceUrl),
     sparkline: renderSparkline(quote.chartPoints, trend, quote.chartLabel),
+    details: renderDetails(quote),
   };
 
   if (!templateHtml) {
@@ -716,6 +840,61 @@ function renderQuote(quote) {
     html = html.replaceAll(`{{${key}}}`, value);
   }
   return html;
+}
+
+function renderDetails(quote) {
+  const priceHint = quote.priceHint;
+  const rows = [
+    ["Open", formatMaybePrice(quote.open, priceHint)],
+    ["High", formatMaybePrice(quote.high, priceHint)],
+    ["Low", formatMaybePrice(quote.low, priceHint)],
+    ["Prev close", formatMaybePrice(quote.previousClose, priceHint)],
+    ["Day range", formatDayRange(quote.low, quote.high, priceHint)],
+    ["52-wk high", formatMaybePrice(quote.fiftyTwoWeekHigh, priceHint)],
+    ["52-wk low", formatMaybePrice(quote.fiftyTwoWeekLow, priceHint)],
+    ["Mkt cap", formatLargeNumber(quote.marketCap)],
+    ["P/E ratio", formatRatio(quote.peRatio)],
+    ["Dividend", formatPercentValue(quote.dividendYield)],
+    ["Qtrly Div Amt", formatMaybePrice(quote.quarterlyDividendAmount, priceHint)],
+    ["Annual Div Rate", formatMaybePrice(quote.annualDividendRate, priceHint)],
+    ["Volume", formatVolume(quote.volume)],
+    ["Avg volume", formatVolume(quote.averageVolume)],
+    ["10-day avg vol", formatVolume(quote.averageVolume10Day)],
+    ["Bid", formatMaybePrice(quote.bid, priceHint)],
+    ["Ask", formatMaybePrice(quote.ask, priceHint)],
+    ["EPS (TTM)", formatRatio(quote.epsTrailingTwelveMonths)],
+    ["Beta", formatRatio(quote.beta)],
+    ["Shares out", formatLargeNumber(quote.sharesOutstanding)],
+    ["50-day avg", formatMaybePrice(quote.fiftyDayAverage, priceHint)],
+    ["200-day avg", formatMaybePrice(quote.twoHundredDayAverage, priceHint)],
+    ["Ex-div date", quote.exDividendDate || "N/A"],
+    ["Exchange", quote.exchange || "N/A"],
+    ["Market state", quote.marketState || "N/A"],
+    ["As of", quote.asOf || "N/A"],
+  ];
+
+  const detailHtml = rows
+    .map(([label, value]) => renderDetail(label, value))
+    .join("");
+  const sourceHref = escapeHtml(quote.sourceUrl);
+  const sourceLabel = escapeHtml(quote.sourceLabel || "Source");
+  const sourceHtml = renderDetail(
+    "Source",
+    `<a class="stocks-detail-link" href="${sourceHref}" target="_blank" rel="noopener">${sourceLabel}</a>`,
+    { rawValue: true },
+  );
+
+  return detailHtml + sourceHtml;
+}
+
+function renderDetail(label, value, options = {}) {
+  const safeValue = options.rawValue ? value : escapeHtml(value || "N/A");
+  return `
+    <div class="stocks-detail">
+      <span class="stocks-detail-label">${escapeHtml(label)}</span>
+      <span class="stocks-detail-value">${safeValue}</span>
+    </div>
+  `;
 }
 
 function renderSparkline(points, trend, label) {
@@ -798,6 +977,47 @@ function formatVolume(value) {
   );
 }
 
+function formatLargeNumber(value) {
+  if (!Number.isFinite(value)) return "N/A";
+  const abs = Math.abs(value);
+  const units = [
+    ["T", 1_000_000_000_000],
+    ["B", 1_000_000_000],
+    ["M", 1_000_000],
+    ["K", 1_000],
+  ];
+  const unit = units.find(([, threshold]) => abs >= threshold);
+  if (!unit) return formatVolume(value);
+
+  const [suffix, divisor] = unit;
+  const scaled = value / divisor;
+  const decimals = Math.abs(scaled) >= 100 ? 0 : Math.abs(scaled) >= 10 ? 1 : 2;
+  return `${scaled.toFixed(decimals)}${suffix}`;
+}
+
+function formatPercentValue(value) {
+  if (!Number.isFinite(value)) return "N/A";
+  const decimals = Math.abs(value) >= 10 ? 1 : 2;
+  return `${value.toFixed(decimals)}%`;
+}
+
+function formatRatio(value) {
+  if (!Number.isFinite(value)) return "N/A";
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function normalizeDividendYield(displayYield, trailingYield) {
+  const display = toNumber(displayYield);
+  if (Number.isFinite(display)) return display;
+
+  const trailing = toNumber(trailingYield);
+  if (Number.isFinite(trailing)) return trailing * 100;
+
+  return null;
+}
+
 function formatMarketState(value) {
   const state = String(value || "").toUpperCase();
   if (state === "REGULAR") return "Market open";
@@ -811,16 +1031,25 @@ function formatMarketState(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function formatYahooTime(seconds) {
+function formatYahooTime(seconds, options = {}) {
   const value = Number(seconds);
   if (!Number.isFinite(value) || value <= 0) return "";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(new Date(value * 1000));
+  const formatOptions = options.dateOnly
+    ? {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }
+    : {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      };
+  return new Intl.DateTimeFormat("en-US", formatOptions).format(
+    new Date(value * 1000),
+  );
 }
 
 function formatStooqTime(date, time) {

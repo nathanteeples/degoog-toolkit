@@ -249,12 +249,6 @@
   opacity: 0.68;
 }
 
-.trc-translate-button {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--bg);
-}
-
 .trc-copy-button[data-copied="1"] {
   border-color: var(--success);
   color: var(--success);

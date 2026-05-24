@@ -9,24 +9,25 @@ const PLUGIN_SETTINGS_ID = "plugin-translate-command";
 const MAX_TEXT_LENGTH = 5000;
 const FETCH_TIMEOUT_MS = 9000;
 const DEFAULT_LIBRETRANSLATE_URL = "https://libretranslate.de";
+const DEFAULT_PROVIDER = "google-unofficial";
 
 const settings = {
   defaultTarget: "en",
-  preferredProvider: "mymemory",
+  preferredProvider: DEFAULT_PROVIDER,
   libreTranslateUrl: DEFAULT_LIBRETRANSLATE_URL,
 };
 
-const PROVIDER_IDS = ["mymemory", "google-unofficial", "libretranslate"];
+const PROVIDER_IDS = ["google-unofficial", "mymemory", "libretranslate"];
 const PROVIDERS = {
-  mymemory: {
-    id: "mymemory",
-    name: "MyMemory",
-    description: "No-key public translation memory API",
-  },
   "google-unofficial": {
     id: "google-unofficial",
     name: "Google Translate (unofficial no-key)",
     description: "Unofficial no-key Google Translate endpoint, fetched server-side",
+  },
+  mymemory: {
+    id: "mymemory",
+    name: "MyMemory",
+    description: "No-key public translation memory API",
   },
   libretranslate: {
     id: "libretranslate",
@@ -110,7 +111,7 @@ const SETTINGS_SCHEMA = [
     label: "Preferred provider",
     type: "select",
     options: PROVIDER_IDS,
-    default: "mymemory",
+    default: DEFAULT_PROVIDER,
     description:
       "Initial provider to try. Failed initial requests fall back to the other no-key providers.",
   },
@@ -185,7 +186,7 @@ function configurePlugin(saved) {
   settings.defaultTarget =
     normaliseLanguageCode(saved?.defaultTarget, { allowAuto: false }) || "en";
   settings.preferredProvider =
-    normaliseProviderId(saved?.preferredProvider) || "mymemory";
+    normaliseProviderId(saved?.preferredProvider) || DEFAULT_PROVIDER;
   settings.libreTranslateUrl = normaliseLibreUrl(
     saved?.libreTranslateUrl ?? DEFAULT_LIBRETRANSLATE_URL,
   );
@@ -849,7 +850,7 @@ function providerOrder(preferred) {
 }
 
 function providerMeta(providerId) {
-  return PROVIDERS[providerId] || PROVIDERS.mymemory;
+  return PROVIDERS[providerId] || PROVIDERS[DEFAULT_PROVIDER];
 }
 
 function providerAvailability(providerId) {
@@ -968,7 +969,7 @@ function fallbackTemplate() {
       <label class="trc-pane"><span class="trc-label">Source</span><textarea class="trc-source-input">{{source_text}}</textarea></label>
       <label class="trc-pane"><span class="trc-label">Translation</span><textarea class="trc-output" readonly>{{translated_text}}</textarea></label>
     </div>
-    <div class="trc-actions"><button class="trc-button trc-translate-button" type="button">Translate</button><button class="trc-button trc-copy-button" type="button">Copy</button></div>
+    <div class="trc-actions"><button class="trc-button trc-copy-button" type="button">Copy</button></div>
   </div>`;
 }
 

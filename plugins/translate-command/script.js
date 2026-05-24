@@ -1,9 +1,20 @@
 (function () {
   const CARD_SELECTOR = ".trc-card[data-trc-card]";
   const PLUGIN_API_BASE = `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
+  const AUTO_TRANSLATE_DELAY_MS = 450;
+  const cardState = new WeakMap();
 
   function pluginApiUrl(path) {
     return `${PLUGIN_API_BASE}/${path}`;
+  }
+
+  function stateFor(card) {
+    let state = cardState.get(card);
+    if (!state) {
+      state = { timer: 0, requestId: 0, controller: null };
+      cardState.set(card, state);
+    }
+    return state;
   }
 
   function setStatus(card, status, message) {
@@ -16,7 +27,9 @@
   function setLoading(card, loading) {
     card.dataset.trcLoading = loading ? "1" : "0";
     card
-      .querySelectorAll(".trc-translate-button, .trc-provider-select, .trc-source-select, .trc-target-select")
+      .querySelectorAll(
+        ".trc-provider-select, .trc-source-select, .trc-target-select",
+      )
       .forEach((control) => {
         control.disabled = Boolean(loading);
       });
@@ -42,7 +55,18 @@
     }
   }
 
+  function scheduleTranslate(card, options) {
+    const state = stateFor(card);
+    const delay =
+      typeof options?.delay === "number" ? options.delay : AUTO_TRANSLATE_DELAY_MS;
+    clearTimeout(state.timer);
+    state.timer = setTimeout(() => {
+      translate(card, options?.providerOverride);
+    }, delay);
+  }
+
   async function translate(card, providerOverride) {
+    const state = stateFor(card);
     const sourceInput = card.querySelector(".trc-source-input");
     const output = card.querySelector(".trc-output");
     const sourceSelect = card.querySelector(".trc-source-select");
@@ -50,18 +74,26 @@
     const providerSelect = card.querySelector(".trc-provider-select");
     const text = sourceInput?.value?.trim() || "";
 
+    clearTimeout(state.timer);
+    state.controller?.abort();
+    state.controller = null;
+    state.requestId += 1;
+    const requestId = state.requestId;
+
     if (!text) {
       if (output) output.value = "";
       setStatus(card, "available", "");
       return;
     }
 
+    state.controller = new AbortController();
     setLoading(card, true);
     setStatus(card, "available", "Translating");
 
     try {
       const response = await fetch(pluginApiUrl("translate"), {
         method: "POST",
+        signal: state.controller.signal,
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
@@ -74,6 +106,7 @@
         }),
       });
       const data = await response.json();
+      if (state.requestId !== requestId) return;
       updateProviderOptions(card, data.providers, data.provider?.id);
 
       if (!response.ok || !data.ok) {
@@ -90,10 +123,14 @@
         data.provider?.name || "Translated",
       );
     } catch (error) {
+      if (state.requestId !== requestId || error?.name === "AbortError") return;
       if (output) output.value = "";
       setStatus(card, "failed", "Translation unavailable");
     } finally {
-      setLoading(card, false);
+      if (state.requestId === requestId) {
+        state.controller = null;
+        setLoading(card, false);
+      }
     }
   }
 
@@ -150,17 +187,23 @@
     const sourceSelect = card.querySelector(".trc-source-select");
     const targetSelect = card.querySelector(".trc-target-select");
     const providerSelect = card.querySelector(".trc-provider-select");
-    const translateButton = card.querySelector(".trc-translate-button");
     const copyButton = card.querySelector(".trc-copy-button");
     const swapButton = card.querySelector(".trc-swap-button");
 
-    translateButton?.addEventListener("click", () => translate(card));
-    providerSelect?.addEventListener("change", () => translate(card, providerSelect.value));
-    targetSelect?.addEventListener("change", () => translate(card));
+    providerSelect?.addEventListener("change", () =>
+      scheduleTranslate(card, {
+        delay: 0,
+        providerOverride: providerSelect.value,
+      }),
+    );
+    targetSelect?.addEventListener("change", () =>
+      scheduleTranslate(card, { delay: 0 }),
+    );
     sourceSelect?.addEventListener("change", () => {
       syncSwapState(card);
-      translate(card);
+      scheduleTranslate(card, { delay: 0 });
     });
+    sourceInput?.addEventListener("input", () => scheduleTranslate(card));
     sourceInput?.addEventListener("keydown", (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.preventDefault();
@@ -168,9 +211,17 @@
       }
     });
     copyButton?.addEventListener("click", () => copyOutput(card, copyButton));
-    swapButton?.addEventListener("click", () => swapLanguages(card));
+    swapButton?.addEventListener("click", () => {
+      swapLanguages(card);
+      scheduleTranslate(card, { delay: 0 });
+    });
 
     syncSwapState(card);
+    const hasSource = (sourceInput?.value || "").trim();
+    const hasOutput = (card.querySelector(".trc-output")?.value || "").trim();
+    if (hasSource && !hasOutput) {
+      scheduleTranslate(card, { delay: 0 });
+    }
   }
 
   function init() {

@@ -790,12 +790,12 @@ body {
         grid-row: 1;
     }
 
-    /* Full-width above-results plugin: only when it's the sole panel.
-       Prevent sibling panels (e.g. GitHub slot) from being stretched. */
+    /* Full-width above-results plugin: span the whole results grid whenever
+       any above-results panel opts in with `.slot-full-width`. Individual
+       panels remain in DOM order, so degoog's plugin ordering setting still
+       controls stacked full-width panels. */
     #results-layout:has(
-            #slot-above-results
-                > .results-slot-panel:only-child
-                .slot-full-width
+            #slot-above-results > .results-slot-panel .slot-full-width
         )
         #slot-above-results {
         grid-column: 1 / -1;
@@ -805,9 +805,7 @@ body {
     }
 
     #results-layout:has(
-            #slot-above-results
-                > .results-slot-panel:only-child
-                .slot-full-width
+            #slot-above-results > .results-slot-panel .slot-full-width
         )
         #results-main {
         grid-column: 1;
@@ -816,31 +814,37 @@ body {
     }
 
     #results-layout:has(
-            #slot-above-results
-                > .results-slot-panel:only-child
-                .slot-full-width
+            #slot-above-results > .results-slot-panel .slot-full-width
         )
         #sidebar-col {
         grid-column: 2;
         grid-row: 2;
     }
 
-    /* Panel shell fills the spanned column for any plugin whose root uses `.slot-full-width`. */
+    /* Only full-width panel shells fill the spanned column; sibling panels stay
+       visually aligned to the normal main-column width. */
     #results-layout:has(
-            #slot-above-results
-                > .results-slot-panel:only-child
-                .slot-full-width
+            #slot-above-results > .results-slot-panel .slot-full-width
         )
         #slot-above-results
-        > .results-slot-panel,
+        > .results-slot-panel:has(.slot-full-width),
     #results-layout:has(
-            #slot-above-results
-                > .results-slot-panel:only-child
-                .slot-full-width
+            #slot-above-results > .results-slot-panel .slot-full-width
         )
         #slot-above-results
-        .results-slot-panel-body {
+        > .results-slot-panel:has(.slot-full-width)
+        > .results-slot-panel-body {
         max-width: none;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    #results-layout:has(
+            #slot-above-results > .results-slot-panel .slot-full-width
+        )
+        #slot-above-results
+        > .results-slot-panel:not(:has(.slot-full-width)) {
+        max-width: var(--literallygoogle-results-main-col-max);
         width: 100%;
         box-sizing: border-box;
     }
@@ -1033,10 +1037,10 @@ body {
     margin-bottom: 1rem;
 }
 
-/* Flatten outer slot chrome only when the full-width panel is alone.
-   Keep normal panel framing when multiple above-results plugins are stacked. */
+/* Flatten outer slot chrome for each full-width panel, even when several
+   above-results plugins are stacked. DOM order remains untouched. */
 #slot-above-results
-    > .results-slot-panel:only-child:has(.slot-full-width):not(
+    > .results-slot-panel:has(.slot-full-width):not(
         :has(.uxs-wrap)
     ) {
     background: transparent;
@@ -1049,7 +1053,7 @@ body {
 }
 
 #slot-above-results
-    > .results-slot-panel:only-child:has(.slot-full-width):not(:has(.uxs-wrap))
+    > .results-slot-panel:has(.slot-full-width):not(:has(.uxs-wrap))
     .results-slot-panel-body {
     padding: 0;
 }
