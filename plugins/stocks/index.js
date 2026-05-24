@@ -546,6 +546,7 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
       return null;
     }
 
+    const intraday = extractYahooIntradayStats(result);
     const price = firstFinite(
       snapshot?.regularMarketPrice,
       meta.regularMarketPrice,
@@ -596,15 +597,25 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
       change,
       changePercent,
       previousClose,
-      open: firstFinite(snapshot?.regularMarketOpen, meta.regularMarketOpen),
+      open: firstFinite(
+        snapshot?.regularMarketOpen,
+        meta.regularMarketOpen,
+        intraday.open,
+      ),
       high: firstFinite(
         snapshot?.regularMarketDayHigh,
         meta.regularMarketDayHigh,
+        intraday.high,
       ),
-      low: firstFinite(snapshot?.regularMarketDayLow, meta.regularMarketDayLow),
+      low: firstFinite(
+        snapshot?.regularMarketDayLow,
+        meta.regularMarketDayLow,
+        intraday.low,
+      ),
       volume: firstFinite(
         snapshot?.regularMarketVolume,
         meta.regularMarketVolume,
+        intraday.volume,
       ),
       averageVolume: firstFinite(
         snapshot?.averageDailyVolume3Month,
@@ -633,6 +644,15 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
       exDividendDate: formatYahooTime(snapshot?.exDividendDate, {
         dateOnly: true,
       }),
+      sector: snapshot?.sector || searchQuote?.sector || "",
+      industry: snapshot?.industry || searchQuote?.industry || "",
+      quoteType: formatQuoteType(
+        snapshot?.typeDisp ||
+          searchQuote?.typeDisp ||
+          snapshot?.quoteType ||
+          searchQuote?.quoteType ||
+          meta.instrumentType,
+      ),
       exchange:
         snapshot?.fullExchangeName ||
         snapshot?.exchange ||
@@ -681,6 +701,16 @@ function extractYahooChartPoints(result) {
       time: Number(timestamps[index] || 0),
     }))
     .filter((point) => Number.isFinite(point.price));
+}
+
+function extractYahooIntradayStats(result) {
+  const quote = result?.indicators?.quote?.[0] || {};
+  return {
+    open: firstFiniteFromArray(quote.open),
+    high: maxFinite(quote.high),
+    low: minFinite(quote.low),
+    volume: sumFinite(quote.volume),
+  };
 }
 
 async function fetchStooqQuote(symbol, searchQuote, doFetch) {
@@ -868,12 +898,16 @@ function renderDetails(quote) {
     ["50-day avg", formatMaybePrice(quote.fiftyDayAverage, priceHint)],
     ["200-day avg", formatMaybePrice(quote.twoHundredDayAverage, priceHint)],
     ["Ex-div date", quote.exDividendDate || "N/A"],
+    ["Sector", quote.sector || "N/A"],
+    ["Industry", quote.industry || "N/A"],
+    ["Type", quote.quoteType || "N/A"],
     ["Exchange", quote.exchange || "N/A"],
     ["Market state", quote.marketState || "N/A"],
     ["As of", quote.asOf || "N/A"],
   ];
 
   const detailHtml = rows
+    .filter(([, value]) => hasDisplayValue(value))
     .map(([label, value]) => renderDetail(label, value))
     .join("");
   const sourceHref = escapeHtml(quote.sourceUrl);
@@ -888,13 +922,18 @@ function renderDetails(quote) {
 }
 
 function renderDetail(label, value, options = {}) {
-  const safeValue = options.rawValue ? value : escapeHtml(value || "N/A");
+  const safeValue = options.rawValue ? value : escapeHtml(value);
   return `
     <div class="stocks-detail">
       <span class="stocks-detail-label">${escapeHtml(label)}</span>
       <span class="stocks-detail-value">${safeValue}</span>
     </div>
   `;
+}
+
+function hasDisplayValue(value) {
+  const text = String(value ?? "").trim();
+  return text !== "" && text.toUpperCase() !== "N/A";
 }
 
 function renderSparkline(points, trend, label) {
@@ -957,7 +996,7 @@ function formatMaybePrice(value, priceHint) {
 }
 
 function formatChange(change, percent) {
-  if (!Number.isFinite(change)) return "N/A";
+  if (!Number.isFinite(change)) return "";
   const sign = change > 0 ? "+" : "";
   const percentPart = Number.isFinite(percent)
     ? ` (${sign}${percent.toFixed(2)}%)`
@@ -1028,6 +1067,14 @@ function formatMarketState(value) {
   return state
     .toLowerCase()
     .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatQuoteType(value) {
+  return String(value || "")
+    .trim()
+    .replace(/_/g, " ")
+    .toLowerCase()
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
@@ -1118,6 +1165,15 @@ function firstFinite(...values) {
   return null;
 }
 
+function firstFiniteFromArray(values) {
+  if (!Array.isArray(values)) return null;
+  for (const value of values) {
+    const number = toNumber(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return null;
+}
+
 function lastFinite(values) {
   if (!Array.isArray(values)) return null;
   for (let i = values.length - 1; i >= 0; i--) {
@@ -1125,6 +1181,32 @@ function lastFinite(values) {
     if (Number.isFinite(number)) return number;
   }
   return null;
+}
+
+function maxFinite(values) {
+  if (!Array.isArray(values)) return null;
+  const numbers = values.map(toNumber).filter(Number.isFinite);
+  return numbers.length ? Math.max(...numbers) : null;
+}
+
+function minFinite(values) {
+  if (!Array.isArray(values)) return null;
+  const numbers = values.map(toNumber).filter(Number.isFinite);
+  return numbers.length ? Math.min(...numbers) : null;
+}
+
+function sumFinite(values) {
+  if (!Array.isArray(values)) return null;
+  let total = 0;
+  let found = false;
+  for (const value of values) {
+    const number = toNumber(value);
+    if (Number.isFinite(number)) {
+      total += number;
+      found = true;
+    }
+  }
+  return found ? total : null;
 }
 
 function round(value) {

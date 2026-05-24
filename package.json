@@ -77,7 +77,7 @@
       "path": "plugins/stocks",
       "name": "Stocks",
       "description": "No-key stock quotes for explicit ticker and company-share queries, fetched server-side with Yahoo Finance and Stooq fallback.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "type": "slot"
     },
     {
