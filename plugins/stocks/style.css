@@ -135,11 +135,29 @@
 }
 
 .stocks-change {
-    color: var(--stocks-line);
-    font-size: 0.94rem;
+    font-size: 0.82rem;
     font-variant-numeric: tabular-nums;
-    font-weight: 650;
+    font-weight: 700;
     white-space: nowrap;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-top: 4px;
+}
+
+.stocks-card-up .stocks-change {
+    background-color: var(--stocks-up);
+    color: #ffffff;
+}
+
+.stocks-card-down .stocks-change {
+    background-color: var(--stocks-down);
+    color: #ffffff;
+}
+
+.stocks-card-flat .stocks-change {
+    background-color: var(--stocks-flat);
+    color: #ffffff;
 }
 
 .stocks-chart {
@@ -431,6 +449,15 @@
 
     .stocks-chart {
         min-height: auto;
+    }
+
+    .stocks-chart-body {
+        min-height: 85px;
+        height: 85px;
+    }
+
+    .stocks-chart-stats {
+        margin-top: auto;
     }
 
     .stocks-details {
