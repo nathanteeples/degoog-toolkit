@@ -1098,9 +1098,6 @@ function renderSparkline(points, trend, label) {
     .join(" ");
   const area = `${path} L ${coords[coords.length - 1][0]} ${padT + chartH} L ${coords[0][0]} ${padT + chartH} Z`;
   const last = coords[coords.length - 1];
-  const labelHtml = label
-    ? `<text class="stocks-sparkline-label" x="${width - padR}" y="13" text-anchor="end">${escapeHtml(label)}</text>`
-    : "";
 
   return `
     <svg class="stocks-sparkline stocks-sparkline-${trend}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Price sparkline">
@@ -1113,7 +1110,6 @@ function renderSparkline(points, trend, label) {
       <path class="stocks-sparkline-area" d="${area}" fill="url(#stocks-grad)"></path>
       <path class="stocks-sparkline-line" d="${path}"></path>
       <circle class="stocks-sparkline-dot" cx="${last[0]}" cy="${last[1]}" r="3"></circle>
-      ${labelHtml}
     </svg>
   `;
 }

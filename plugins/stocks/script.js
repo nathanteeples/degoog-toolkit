@@ -205,13 +205,7 @@
     dotEl.setAttribute("class", "stocks-sparkline-dot");
     svg.appendChild(dotEl);
 
-    const textEl = document.createElementNS(svgNS, "text");
-    textEl.setAttribute("x", W - padR);
-    textEl.setAttribute("y", "13");
-    textEl.setAttribute("text-anchor", "end");
-    textEl.setAttribute("class", "stocks-sparkline-label");
-    textEl.textContent = label;
-    svg.appendChild(textEl);
+
 
     const hlGroup = document.createElementNS(svgNS, "g");
     hlGroup.setAttribute("class", "stocks-chart-hl");
@@ -297,24 +291,24 @@
       const sign = change >= 0 ? "+" : "";
       const trendClass =
         change >= 0 ? "stocks-chart-stat-value--up" : "stocks-chart-stat-value--down";
-      stats.innerHTML = \`
+      stats.innerHTML = `
         <div class="stocks-chart-stat">
           <span class="stocks-chart-stat-label">Low</span>
-          <span class="stocks-chart-stat-value">\${escapeHtml(formatPrice(low, priceHint))}</span>
+          <span class="stocks-chart-stat-value">${escapeHtml(formatPrice(low, priceHint))}</span>
         </div>
         <div class="stocks-chart-stat">
           <span class="stocks-chart-stat-label">High</span>
-          <span class="stocks-chart-stat-value">\${escapeHtml(formatPrice(high, priceHint))}</span>
+          <span class="stocks-chart-stat-value">${escapeHtml(formatPrice(high, priceHint))}</span>
         </div>
         <div class="stocks-chart-stat">
           <span class="stocks-chart-stat-label">Last</span>
-          <span class="stocks-chart-stat-value">\${escapeHtml(formatPrice(last, priceHint))}</span>
+          <span class="stocks-chart-stat-value">${escapeHtml(formatPrice(last, priceHint))}</span>
         </div>
         <div class="stocks-chart-stat">
           <span class="stocks-chart-stat-label">Change</span>
-          <span class="stocks-chart-stat-value \${trendClass}">\${sign}\${changePercent.toFixed(2)}%</span>
+          <span class="stocks-chart-stat-value ${trendClass}">${sign}${changePercent.toFixed(2)}%</span>
         </div>
-      \`;
+      `;
     }
   }
 

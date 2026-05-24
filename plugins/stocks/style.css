@@ -330,6 +330,8 @@
 }
 .stocks-chart-hit {
     fill: transparent;
+    pointer-events: all;
+    cursor: crosshair;
 }
 .stocks-chart-tooltip {
     position: absolute;
