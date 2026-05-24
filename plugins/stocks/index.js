@@ -1115,7 +1115,7 @@ function renderSparkline(points, trend, label) {
   }
 
   const width = 320;
-  const height = 85;
+  const height = 110;
   const padL = 52, padR = 10, padT = 15, padB = 20;
   const chartH = height - padT - padB;
   const min = Math.min(...prices);

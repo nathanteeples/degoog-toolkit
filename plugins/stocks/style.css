@@ -103,6 +103,7 @@
     align-items: flex-start;
     gap: 16px;
     flex-wrap: wrap;
+    margin-bottom: 12px;
 }
 
 .stocks-price-block {
@@ -452,12 +453,9 @@
     }
 
     .stocks-chart-body {
-        min-height: 85px;
-        height: 85px;
-    }
-
-    .stocks-chart-stats {
-        margin-top: auto;
+        min-height: 110px;
+        height: 110px;
+        flex: none;
     }
 
     .stocks-details {
