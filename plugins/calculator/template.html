@@ -16,7 +16,14 @@
       <span class="calc-graph-title">Graph</span>
       <span class="calc-graph-expression">y = <span data-calc-graph-label></span></span>
     </div>
-    <canvas class="calc-graph-canvas" data-calc-canvas></canvas>
+    <div class="calc-graph-area">
+      <canvas class="calc-graph-canvas" data-calc-canvas></canvas>
+      <div class="calc-graph-zoom-controls">
+        <button class="calc-graph-zoom-btn" data-calc-zoom="in" title="Zoom In">+</button>
+        <button class="calc-graph-zoom-btn" data-calc-zoom="out" title="Zoom Out">−</button>
+        <button class="calc-graph-zoom-btn" data-calc-zoom="reset" title="Reset Zoom">⟲</button>
+      </div>
+    </div>
   </div>
 
   <div class="calc-keypad" aria-label="Calculator keypad">

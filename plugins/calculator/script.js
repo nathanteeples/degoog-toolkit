@@ -318,6 +318,10 @@
       justEvaluated: false,
       lastAnalysis: null,
       lastGraphAnalysis: null,
+      xMin: -10,
+      xMax: 10,
+      hoverX: null,
+      lastGraphExpr: null,
     };
     states.set(root, state);
     return state;
@@ -341,6 +345,12 @@
         if (analysis.hasX) {
           state.result = "Graph";
           state.lastGraphAnalysis = analysis;
+          if (state.lastGraphExpr !== state.expr) {
+            state.xMin = -10;
+            state.xMax = 10;
+            state.hoverX = null;
+            state.lastGraphExpr = state.expr;
+          }
         } else {
           state.result = formatNumber(evaluateParsed(analysis, state));
         }
@@ -583,8 +593,8 @@
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, width, height);
 
-    var xMin = -10;
-    var xMax = 10;
+    var xMin = state.xMin !== undefined ? state.xMin : -10;
+    var xMax = state.xMax !== undefined ? state.xMax : 10;
     var samples = Math.max(width, 320);
     var points = [];
     var finiteY = [];
@@ -635,6 +645,7 @@
 
     drawGrid(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, gridColor);
     drawAxes(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, axisColor);
+    drawLabels(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, textColor, axisColor);
 
     ctx.beginPath();
     ctx.strokeStyle = lineColor;
@@ -662,6 +673,72 @@
     });
 
     ctx.stroke();
+
+    if (state.hoverX !== null && state.hoverX >= xMin && state.hoverX <= xMax) {
+      var hoverY = NaN;
+      try {
+        hoverY = evaluateParsed(analysis, state, state.hoverX);
+      } catch (e) {
+        hoverY = NaN;
+      }
+
+      if (Number.isFinite(hoverY) && hoverY >= yMin && hoverY <= yMax) {
+        var hpx = sx(state.hoverX);
+        var hpy = sy(hoverY);
+
+        ctx.beginPath();
+        ctx.strokeStyle = axisColor;
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+
+        ctx.moveTo(0, hpy);
+        ctx.lineTo(width, hpy);
+
+        ctx.moveTo(hpx, 0);
+        ctx.lineTo(hpx, height);
+
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1.0;
+
+        ctx.beginPath();
+        ctx.arc(hpx, hpy, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+        ctx.fill();
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(hpx, hpy, 3, 0, 2 * Math.PI);
+        ctx.fillStyle = lineColor;
+        ctx.fill();
+
+        var tooltipText = "(" + formatLabel(state.hoverX) + ", " + formatLabel(hoverY) + ")";
+        ctx.font = "10px system-ui, -apple-system, sans-serif";
+        var textWidth = ctx.measureText(tooltipText).width;
+        var padX = 6;
+        var bw = textWidth + padX * 2;
+        var bh = 18;
+
+        var tx = hpx - bw / 2;
+        var ty = hpy - 12 - bh;
+
+        if (ty < 5) ty = hpy + 12;
+        if (tx < 5) tx = 5;
+        if (tx + bw > width - 5) tx = width - bw - 5;
+
+        ctx.fillStyle = "rgba(60, 64, 67, 0.9)";
+        drawRoundedRect(ctx, tx, ty, bw, bh, 4);
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(tooltipText, tx + padX, ty + bh / 2);
+      }
+    }
   }
 
   function drawGrid(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, color) {
@@ -704,6 +781,84 @@
     ctx.stroke();
   }
 
+  function formatLabel(value) {
+    if (Math.abs(value) < 1e-10) return "0";
+    var abs = Math.abs(value);
+    if (abs >= 1e4 || abs < 1e-2) {
+      return value.toExponential(2).replace(/\.?0+e/, "e");
+    }
+    return parseFloat(value.toFixed(4)).toString();
+  }
+
+  function drawLabels(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, textColor, axisColor) {
+    ctx.fillStyle = textColor;
+    ctx.font = "10px system-ui, -apple-system, sans-serif";
+    ctx.textBaseline = "middle";
+
+    var yZeroPx = sy(0);
+    var xLabelY = yZeroPx + 3;
+    if (xLabelY < 12) {
+      xLabelY = 12;
+    } else if (xLabelY > height - 15) {
+      xLabelY = height - 15;
+    }
+
+    for (var i = 0; i <= 4; i += 1) {
+      var xVal = xMin + ((xMax - xMin) / 4) * i;
+      var px = sx(xVal);
+      var labelText = formatLabel(xVal);
+
+      if (i === 0) {
+        ctx.textAlign = "left";
+        px += 3;
+      } else if (i === 4) {
+        ctx.textAlign = "right";
+        px -= 3;
+      } else {
+        ctx.textAlign = "center";
+      }
+      ctx.fillText(labelText, px, xLabelY);
+    }
+
+    var xZeroPx = sx(0);
+    var yLabelX = xZeroPx + 5;
+    if (yLabelX < 5) {
+      yLabelX = 5;
+    } else if (yLabelX > width - 45) {
+      yLabelX = width - 45;
+    }
+
+    for (var j = 0; j <= 4; j += 1) {
+      var yVal = yMin + ((yMax - yMin) / 4) * j;
+      var py = sy(yVal);
+
+      if (py < 10) py = 10;
+      if (py > height - 10) py = height - 10;
+
+      if (Math.abs(yVal) < 1e-10 && Math.abs(xZeroPx - yLabelX) < 10) {
+        continue;
+      }
+
+      var labelText = formatLabel(yVal);
+      ctx.textAlign = "left";
+      ctx.fillText(labelText, yLabelX, py);
+    }
+  }
+
+  function drawRoundedRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
   function drawCenteredText(ctx, width, height, text, color) {
     ctx.fillStyle = color;
     ctx.font = "13px system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
@@ -718,7 +873,31 @@
 
   function initRoot(root) {
     if (!root || states.has(root)) return;
-    getState(root);
+    var state = getState(root);
+
+    var canvas = root.querySelector("[data-calc-canvas]");
+    if (canvas) {
+      canvas.addEventListener("mousemove", function (event) {
+        if (!state.lastGraphAnalysis) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = event.clientX - rect.left;
+        var width = canvas.clientWidth || rect.width;
+        if (width <= 0) return;
+        var xMin = state.xMin !== undefined ? state.xMin : -10;
+        var xMax = state.xMax !== undefined ? state.xMax : 10;
+        state.hoverX = xMin + (mx / width) * (xMax - xMin);
+        drawGraph(root, state, state.lastGraphAnalysis);
+      });
+      canvas.addEventListener("mouseleave", function () {
+        if (state.hoverX !== null) {
+          state.hoverX = null;
+          if (state.lastGraphAnalysis) {
+            drawGraph(root, state, state.lastGraphAnalysis);
+          }
+        }
+      });
+    }
+
     updateRoot(root);
   }
 
@@ -738,7 +917,38 @@
       });
   }
 
+  function handleZoom(root, action) {
+    var state = getState(root);
+    if (!state.lastGraphAnalysis) return;
+    var xMin = state.xMin !== undefined ? state.xMin : -10;
+    var xMax = state.xMax !== undefined ? state.xMax : 10;
+    var center = (xMax + xMin) / 2;
+    var halfRange = (xMax - xMin) / 2;
+
+    if (action === "in") {
+      state.xMin = center - halfRange * 0.5;
+      state.xMax = center + halfRange * 0.5;
+    } else if (action === "out") {
+      state.xMin = center - halfRange * 2.0;
+      state.xMax = center + halfRange * 2.0;
+    } else if (action === "reset") {
+      state.xMin = -10;
+      state.xMax = 10;
+    }
+    drawGraph(root, state, state.lastGraphAnalysis);
+  }
+
   document.addEventListener("click", function (event) {
+    var zoomBtn = event.target.closest(ROOT_SELECTOR + " [data-calc-zoom]");
+    if (zoomBtn) {
+      event.preventDefault();
+      var root = zoomBtn.closest(ROOT_SELECTOR);
+      initRoot(root);
+      var action = zoomBtn.getAttribute("data-calc-zoom");
+      handleZoom(root, action);
+      return;
+    }
+
     var button = event.target.closest(ROOT_SELECTOR + " [data-calc-action]");
     if (!button) return;
     event.preventDefault();

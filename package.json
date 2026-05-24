@@ -70,7 +70,7 @@
       "path": "plugins/calculator",
       "name": "Calculator",
       "description": "Scientific calculator with safe expression parsing, interactive keypad, and local canvas graphing for x expressions.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "type": "slot"
     },
     {

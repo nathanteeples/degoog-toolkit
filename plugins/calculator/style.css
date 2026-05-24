@@ -93,12 +93,54 @@
   text-align: right;
 }
 
+.calc-graph-area {
+  position: relative;
+  width: 100%;
+  height: 220px;
+}
+
 .calc-graph-canvas {
   display: block;
   width: 100%;
-  height: 220px;
+  height: 100%;
   border-radius: 6px;
   background: var(--bg-light, #f8fafd);
+}
+
+.calc-graph-zoom-controls {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 5;
+}
+
+.calc-graph-zoom-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border-light, #dadce0);
+  background: var(--bg, #ffffff);
+  color: var(--text-primary, #202124);
+  font-size: 1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  outline: none;
+  transition: background 150ms, color 150ms;
+}
+
+.calc-graph-zoom-btn:hover {
+  background: var(--bg-hover, #f1f3f4);
+}
+
+.calc-graph-zoom-btn:active {
+  background: var(--bg-active, #e8eaed);
 }
 
 .calc-keypad {
@@ -137,7 +179,7 @@
 
 .calc-btn {
   width: 100%;
-  height: 38px;
+  height: 42px;
   min-width: 0;
   border: 0;
   border-radius: 6px;
