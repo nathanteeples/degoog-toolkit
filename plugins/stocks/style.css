@@ -453,9 +453,13 @@
     }
 
     .stocks-chart-body {
-        min-height: 110px;
-        height: 110px;
+        min-height: 140px;
+        height: 140px;
         flex: none;
+    }
+
+    .stocks-chart-stats {
+        margin-top: auto;
     }
 
     .stocks-details {
