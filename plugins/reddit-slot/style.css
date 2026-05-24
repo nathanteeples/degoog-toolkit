@@ -1,0 +1,215 @@
+.rslot-wrap {
+  container-type: inline-size;
+  --rslot-accent: #ff4500;
+  --rslot-accent-soft: color-mix(in srgb, var(--rslot-accent) 12%, transparent);
+  color: var(--text-primary);
+  font-family: var(--font-sans, sans-serif);
+  width: 100%;
+}
+
+.rslot-card {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 12px 14px;
+  box-shadow: none;
+}
+
+.rslot-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rslot-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 69, 0, 0.12);
+  background: var(--rslot-accent-soft);
+  color: var(--rslot-accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.rslot-source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: baseline;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.rslot-kicker {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.rslot-sub {
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rslot-age {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.rslot-post {
+  color: inherit;
+  display: grid;
+  gap: 5px;
+  text-decoration: none;
+}
+
+.rslot-post:hover .rslot-title {
+  color: var(--text-link, var(--primary));
+  text-decoration: underline;
+}
+
+.rslot-title {
+  color: var(--text-primary);
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.rslot-snippet {
+  color: var(--text-secondary);
+  display: -webkit-box;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.rslot-snippet:empty {
+  display: none;
+}
+
+.rslot-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-top: 8px;
+}
+
+.rslot-comments {
+  border-top: 1px solid var(--border-light);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.rslot-comments-title {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin-bottom: 7px;
+  text-transform: uppercase;
+}
+
+.rslot-comment-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.rslot-comment {
+  background: var(--bg-light, transparent);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  color: inherit;
+  display: grid;
+  gap: 5px;
+  padding: 9px 10px;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.rslot-comment:hover {
+  border-color: var(--border);
+}
+
+.rslot-comment-meta {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.rslot-comment-author {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rslot-comment-score {
+  color: var(--text-secondary);
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+}
+
+.rslot-comment-body {
+  color: var(--text-secondary);
+  display: -webkit-box;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+@container (max-width: 520px) {
+  .rslot-card {
+    padding: 11px 12px;
+  }
+
+  .rslot-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .rslot-age {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: -5px;
+  }
+
+  .rslot-comment-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+#at-a-glance .results-slot-panel:has(.rslot-wrap),
+.results-slot-panel:has(.rslot-wrap) {
+  overflow: hidden;
+}
+
+#at-a-glance .results-slot-panel:has(.rslot-wrap) .results-slot-panel-body,
+.results-slot-panel:has(.rslot-wrap) .results-slot-panel-body {
+  padding: 0;
+}
+
+.results-slot-panel:has(.rslot-wrap) .results-slot-panel-title {
+  display: none;
+}

@@ -1,0 +1,24 @@
+<div class="rslot-wrap">
+  <article class="rslot-card">
+    <div class="rslot-head">
+      <span class="rslot-mark" aria-hidden="true">r/</span>
+      <div class="rslot-source">
+        <span class="rslot-kicker">Reddit</span>
+        <span class="rslot-sub">{{post_subreddit}}</span>
+      </div>
+      <span class="rslot-age">{{post_age}}</span>
+    </div>
+
+    <a class="rslot-post" href="{{post_url}}" target="_blank" rel="noopener noreferrer">
+      <span class="rslot-title">{{post_title}}</span>
+      <span class="rslot-snippet">{{post_snippet}}</span>
+    </a>
+
+    <div class="rslot-stats" aria-label="Reddit post stats">
+      <span>{{post_score}} points</span>
+      <span>{{post_comments}} comments</span>
+    </div>
+
+    {{comments_section}}
+  </article>
+</div>
