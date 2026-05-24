@@ -97,18 +97,26 @@
     overflow-wrap: anywhere;
 }
 
+.stocks-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
 .stocks-price-block {
     display: grid;
     gap: 2px;
-    justify-items: start;
-    text-align: left;
+    justify-items: end;
+    text-align: right;
 }
 
 .stocks-price {
     align-items: baseline;
     display: flex;
     gap: 6px;
-    justify-content: flex-start;
+    justify-content: flex-end;
     white-space: nowrap;
 }
 
@@ -449,6 +457,15 @@
     }
 
     .stocks-chart-periods {
+        justify-content: flex-start;
+    }
+
+    .stocks-price-block {
+        justify-items: start;
+        text-align: left;
+    }
+
+    .stocks-price {
         justify-content: flex-start;
     }
 }

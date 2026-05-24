@@ -1,26 +1,28 @@
 <div class="stocks-card stocks-card-{{trend}} slot-full-width" data-symbol="{{symbol_attr}}">
     <div class="stocks-summary">
         <div class="stocks-main">
-            <div class="stocks-identity">
-                <div class="stocks-eyebrow">Stock quote</div>
-                <div class="stocks-symbol-row">
-                    <a
-                        class="stocks-symbol"
-                        href="{{source_url}}"
-                        target="_blank"
-                        rel="noopener"
-                        >{{symbol}}</a>
-                    <span class="stocks-exchange">{{exchange}}</span>
+            <div class="stocks-header-row">
+                <div class="stocks-identity">
+                    <div class="stocks-eyebrow">Stock quote</div>
+                    <div class="stocks-symbol-row">
+                        <a
+                            class="stocks-symbol"
+                            href="{{source_url}}"
+                            target="_blank"
+                            rel="noopener"
+                            >{{symbol}}</a>
+                        <span class="stocks-exchange">{{exchange}}</span>
+                    </div>
+                    <div class="stocks-company">{{company}}</div>
                 </div>
-                <div class="stocks-company">{{company}}</div>
-            </div>
 
-            <div class="stocks-price-block">
-                <div class="stocks-price">
-                    <span class="stocks-price-value">{{price}}</span>
-                    <span class="stocks-currency">{{currency}}</span>
+                <div class="stocks-price-block">
+                    <div class="stocks-price">
+                        <span class="stocks-price-value">{{price}}</span>
+                        <span class="stocks-currency">{{currency}}</span>
+                    </div>
+                    <div class="stocks-change">{{change}}</div>
                 </div>
-                <div class="stocks-change">{{change}}</div>
             </div>
 
             <div class="stocks-details">{{details}}</div>
