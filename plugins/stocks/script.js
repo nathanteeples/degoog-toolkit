@@ -128,7 +128,7 @@
 
     const W = body.clientWidth || 320;
     const H = 212;
-    const padL = 8, padR = 8, padT = 10, padB = 20;
+    const padL = 8, padR = 8, padT = 10, padB = 4;
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
     const span = high - low || Math.max(Math.abs(high), 1) * 0.01;
@@ -339,6 +339,16 @@
         renderChart(card, body, stats, payload);
       });
     });
+
+    // Silently fetch and render the active period on load to enable hover
+    (async () => {
+      const activeBtn = chart.querySelector(".stocks-period--active");
+      const period = activeBtn ? activeBtn.dataset.period : "1d";
+      const payload = await fetchChart(symbol, period);
+      if (payload) {
+        renderChart(card, body, stats, payload);
+      }
+    })();
   }
 
   function scan() {

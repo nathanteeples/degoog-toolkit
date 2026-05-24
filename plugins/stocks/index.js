@@ -994,6 +994,7 @@ function renderQuote(quote) {
     source_label: escapeHtml(quote.sourceLabel),
     source_url: escapeHtml(quote.sourceUrl),
     sparkline: renderSparkline(quote.chartPoints, trend, quote.chartLabel),
+    stats: renderStats(quote, trend),
     details: renderDetails(quote),
   };
 
@@ -1006,6 +1007,39 @@ function renderQuote(quote) {
     html = html.replaceAll(`{{${key}}}`, value);
   }
   return html;
+}
+
+function renderStats(quote, trend) {
+  if (!quote.price || !quote.chartPoints || quote.chartPoints.length < 2) return "";
+  const priceHint = quote.priceHint;
+  const change = quote.change;
+  const changePercent = quote.changePercent;
+  const sign = change >= 0 ? "+" : "";
+  const trendClass = change >= 0 ? "stocks-chart-stat-value--up" : "stocks-chart-stat-value--down";
+  
+  const prices = quote.chartPoints.map((p) => Number(p.price)).filter(Number.isFinite);
+  const low = Math.min(...prices);
+  const high = Math.max(...prices);
+  const last = prices[prices.length - 1];
+
+  return `
+    <div class="stocks-chart-stat">
+      <span class="stocks-chart-stat-label">Low</span>
+      <span class="stocks-chart-stat-value">${escapeHtml(formatPrice(low, priceHint))}</span>
+    </div>
+    <div class="stocks-chart-stat">
+      <span class="stocks-chart-stat-label">High</span>
+      <span class="stocks-chart-stat-value">${escapeHtml(formatPrice(high, priceHint))}</span>
+    </div>
+    <div class="stocks-chart-stat">
+      <span class="stocks-chart-stat-label">Last</span>
+      <span class="stocks-chart-stat-value">${escapeHtml(formatPrice(last, priceHint))}</span>
+    </div>
+    <div class="stocks-chart-stat">
+      <span class="stocks-chart-stat-label">Change</span>
+      <span class="stocks-chart-stat-value ${trendClass}">${sign}${changePercent.toFixed(2)}%</span>
+    </div>
+  `;
 }
 
 function renderDetails(quote) {
@@ -1082,7 +1116,7 @@ function renderSparkline(points, trend, label) {
 
   const width = 320;
   const height = 212;
-  const padL = 8, padR = 8, padT = 10, padB = 20;
+  const padL = 8, padR = 8, padT = 10, padB = 4;
   const chartH = height - padT - padB;
   const min = Math.min(...prices);
   const max = Math.max(...prices);
@@ -1099,6 +1133,12 @@ function renderSparkline(points, trend, label) {
   const area = `${path} L ${coords[coords.length - 1][0]} ${padT + chartH} L ${coords[0][0]} ${padT + chartH} Z`;
   const last = coords[coords.length - 1];
 
+  const gridLinesHtml = [0, 1, 2, 3].map((gi) => {
+    const frac = gi / 3;
+    const yPx = padT + chartH - frac * chartH;
+    return `<line x1="${padL}" y1="${yPx.toFixed(2)}" x2="${width - padR}" y2="${yPx.toFixed(2)}" class="stocks-chart-grid-line"></line>`;
+  }).join("");
+
   return `
     <svg class="stocks-sparkline stocks-sparkline-${trend}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Price sparkline">
       <defs>
@@ -1107,6 +1147,7 @@ function renderSparkline(points, trend, label) {
           <stop offset="100%" stop-color="var(--stocks-line)" stop-opacity="0"></stop>
         </linearGradient>
       </defs>
+      ${gridLinesHtml}
       <path class="stocks-sparkline-area" d="${area}" fill="url(#stocks-grad)"></path>
       <path class="stocks-sparkline-line" d="${path}"></path>
       <circle class="stocks-sparkline-dot" cx="${last[0]}" cy="${last[1]}" r="3"></circle>
