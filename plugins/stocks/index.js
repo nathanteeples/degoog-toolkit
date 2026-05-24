@@ -832,7 +832,7 @@ function extractYahooChartPoints(result) {
       price: Number(price),
       time: Number(timestamps[index] || 0),
     }))
-    .filter((point) => Number.isFinite(point.price));
+    .filter((point) => Number.isFinite(point.price) && point.price > 0);
 }
 
 function extractYahooIntradayStats(result) {

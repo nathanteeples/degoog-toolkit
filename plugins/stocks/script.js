@@ -110,7 +110,7 @@
         price: Number(point.price),
         time: Number(point.time || 0),
       }))
-      .filter((point) => Number.isFinite(point.price));
+      .filter((point) => Number.isFinite(point.price) && point.price > 0);
 
     if (!body || points.length < 2) {
       setEmpty(body, stats);
