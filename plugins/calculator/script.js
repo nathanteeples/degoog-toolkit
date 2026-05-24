@@ -655,7 +655,7 @@
     var breakDelta = (yMax - yMin) * 0.7;
 
     points.forEach(function (point) {
-      if (!point.finite || point.y < yMin || point.y > yMax) {
+      if (!point.finite) {
         drawing = false;
         previousY = null;
         return;
