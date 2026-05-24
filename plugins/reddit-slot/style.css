@@ -1,215 +1,176 @@
-.rslot-wrap {
-  container-type: inline-size;
-  --rslot-accent: #ff4500;
-  --rslot-accent-soft: color-mix(in srgb, var(--rslot-accent) 12%, transparent);
+/* ── Reddit Slot Panel ─────────────────────────────────────── */
+
+.rslot-panel {
+  padding: 4px 0 12px;
+  margin-bottom: 4px;
+  max-width: 680px;
+}
+
+.rslot-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.rslot-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.rslot-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: var(--text-primary);
-  font-family: var(--font-sans, sans-serif);
-  width: 100%;
 }
 
-.rslot-card {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 12px 14px;
-  box-shadow: none;
+/* Post card */
+.rslot-post {
+  display: block;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 14px 16px;
+  text-decoration: none;
+  margin-bottom: 12px;
+  transition: border-color 0.15s, background 0.15s;
 }
 
-.rslot-head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 9px;
+.rslot-post:hover {
+  border-color: var(--primary);
+  background: var(--bg-hover);
+}
+
+.rslot-post-meta {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.rslot-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: inline-flex;
+.rslot-post-sub {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.rslot-post-stats {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(255, 69, 0, 0.12);
-  background: var(--rslot-accent-soft);
-  color: var(--rslot-accent);
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1;
+  gap: 10px;
 }
 
-.rslot-source {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  align-items: baseline;
-  min-width: 0;
-  line-height: 1.25;
-}
-
-.rslot-kicker {
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.rslot-sub {
+.rslot-post-title {
+  font-size: 16px;
+  font-weight: 500;
   color: var(--text-primary);
-  font-size: 0.88rem;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rslot-age {
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  white-space: nowrap;
-}
-
-.rslot-post {
-  color: inherit;
-  display: grid;
-  gap: 5px;
-  text-decoration: none;
-}
-
-.rslot-post:hover .rslot-title {
-  color: var(--text-link, var(--primary));
-  text-decoration: underline;
-}
-
-.rslot-title {
-  color: var(--text-primary);
-  font-size: 1.02rem;
-  font-weight: 600;
-  line-height: 1.35;
-}
-
-.rslot-snippet {
-  color: var(--text-secondary);
-  display: -webkit-box;
-  font-size: 0.9rem;
+  margin: 0;
   line-height: 1.45;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
-.rslot-snippet:empty {
-  display: none;
-}
-
-.rslot-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  margin-top: 8px;
-}
-
-.rslot-comments {
-  border-top: 1px solid var(--border-light);
-  margin-top: 10px;
-  padding-top: 10px;
-}
-
-.rslot-comments-title {
-  color: var(--text-secondary);
-  font-size: 0.72rem;
+/* Comments label */
+.rslot-comments-label {
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0;
-  margin-bottom: 7px;
+  letter-spacing: 0.07em;
+  color: var(--text-secondary);
   text-transform: uppercase;
+  margin-bottom: 8px;
 }
 
-.rslot-comment-list {
+/* Comments grid — scrollable on mobile */
+.rslot-comments-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .rslot-comments-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 8px;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .rslot-comments-row::-webkit-scrollbar {
+    display: none;
+  }
+  .rslot-comment {
+    flex: 0 0 85%;
+    scroll-snap-align: start;
+    min-width: 0;
+  }
 }
 
 .rslot-comment {
-  background: var(--bg-light, transparent);
+  display: block;
+  background: var(--bg);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
-  color: inherit;
-  display: grid;
-  gap: 5px;
-  padding: 9px 10px;
+  border-radius: 10px;
+  padding: 13px 15px;
   text-decoration: none;
-  min-width: 0;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .rslot-comment:hover {
-  border-color: var(--border);
+  border-color: var(--primary);
+  background: var(--bg-hover);
 }
 
-.rslot-comment-meta {
+.rslot-comment--empty {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: default;
+}
+
+.rslot-comment-header {
+  display: flex;
   justify-content: space-between;
-  min-width: 0;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
 .rslot-comment-author {
-  color: var(--text-primary);
-  font-size: 0.78rem;
+  font-size: 12px;
   font-weight: 600;
+  color: var(--primary);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 70%;
 }
 
 .rslot-comment-score {
+  font-size: 12px;
   color: var(--text-secondary);
-  flex: 0 0 auto;
-  font-size: 0.75rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .rslot-comment-body {
-  color: var(--text-secondary);
-  display: -webkit-box;
-  font-size: 0.84rem;
-  line-height: 1.45;
+  font-size: 14px;
+  color: var(--text-primary);
   margin: 0;
-  overflow: hidden;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-}
-
-@container (max-width: 520px) {
-  .rslot-card {
-    padding: 11px 12px;
-  }
-
-  .rslot-head {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .rslot-age {
-    grid-column: 2;
-    justify-self: start;
-    margin-top: -5px;
-  }
-
-  .rslot-comment-list {
-    grid-template-columns: 1fr;
-  }
-}
-
-#at-a-glance .results-slot-panel:has(.rslot-wrap),
-.results-slot-panel:has(.rslot-wrap) {
   overflow: hidden;
 }
 
-#at-a-glance .results-slot-panel:has(.rslot-wrap) .results-slot-panel-body,
-.results-slot-panel:has(.rslot-wrap) .results-slot-panel-body {
-  padding: 0;
-}
-
-.results-slot-panel:has(.rslot-wrap) .results-slot-panel-title {
-  display: none;
+@media (max-width: 480px) {
+  .rslot-comments-row { grid-template-columns: 1fr; }
 }

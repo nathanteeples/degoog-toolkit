@@ -55,8 +55,8 @@
     {
       "path": "plugins/reddit-slot",
       "name": "Reddit",
-      "description": "Shows a relevant Reddit post and top comments for searches, fetched server-side with example-compatible triggers.",
-      "version": "1.0.2",
+      "description": "Shows the top Reddit post and top comments above search results.",
+      "version": "1.0.3",
       "type": "slot"
     },
     {
