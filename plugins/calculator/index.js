@@ -1,0 +1,347 @@
+import exprEvalModule from "./vendor/expr-eval.min.js";
+
+const exprEval = exprEvalModule?.Parser
+  ? exprEvalModule
+  : exprEvalModule?.default || {};
+const Parser = exprEval.Parser;
+
+let calcEnabled = true;
+let templateHtml = "";
+let parserBundle = "";
+
+const DEFAULT_ANGLE_MODE = "rad";
+const MAX_QUERY_LENGTH = 220;
+const MATH_FUNCTIONS =
+  "sin|cos|tan|asin|acos|atan|sqrt|log|ln|abs|factorial";
+const FUNCTION_CALL_RE = new RegExp(`\\b(?:${MATH_FUNCTIONS})\\s*\\(`, "i");
+const EXPLICIT_CALC_RE =
+  /^(?:calc|calculator|calculate|compute)\b\s*(?::|=)?\s*(.+)$/i;
+const EXPLICIT_GRAPH_RE = /^(?:graph|plot)\b\s*(?::|=)?\s*(.+)$/i;
+const DATE_LIKE_RE = /^\d{1,4}\s*[-/]\s*\d{1,2}\s*[-/]\s*\d{1,4}$/;
+const SAFE_CHARS_RE = /^[0-9a-zA-Z_\s+\-*/^().!%]+$/;
+const ALLOWED_SYMBOLS = new Set(["x", "pi", "e", "ans", "factorial"]);
+
+const PARSER_OPTIONS = {
+  operators: {
+    add: true,
+    subtract: true,
+    multiply: true,
+    divide: true,
+    power: true,
+    factorial: true,
+    remainder: false,
+    concatenate: false,
+    conditional: false,
+    logical: false,
+    comparison: false,
+    in: false,
+    assignment: false,
+  },
+};
+
+const FALLBACK_TEMPLATE = `
+<div class="calc-card" data-calc-root data-initial="{{initial_expr}}" data-result="{{initial_result}}" data-ans="{{ans_value}}" data-angle-mode="${DEFAULT_ANGLE_MODE}">
+  <div class="calc-display">
+    <div class="calc-expression" data-calc-expression>{{display_expr}}</div>
+    <div class="calc-result" data-calc-result>{{display_result}}</div>
+  </div>
+</div>`;
+
+function factorial(value) {
+  if (!Number.isFinite(value) || value < 0 || Math.floor(value) !== value) {
+    return NaN;
+  }
+  if (value > 170) return Infinity;
+  let result = 1;
+  for (let i = 2; i <= value; i += 1) result *= i;
+  return result;
+}
+
+function createParser(angleMode = DEFAULT_ANGLE_MODE) {
+  if (!Parser) throw new Error("Calculator parser is unavailable");
+
+  const parser = new Parser(PARSER_OPTIONS);
+  const toInputAngle =
+    angleMode === "deg" ? (value) => (value * Math.PI) / 180 : (value) => value;
+  const fromOutputAngle =
+    angleMode === "deg" ? (value) => (value * 180) / Math.PI : (value) => value;
+
+  parser.unaryOps.sin = (value) => Math.sin(toInputAngle(value));
+  parser.unaryOps.cos = (value) => Math.cos(toInputAngle(value));
+  parser.unaryOps.tan = (value) => Math.tan(toInputAngle(value));
+  parser.unaryOps.asin = (value) => fromOutputAngle(Math.asin(value));
+  parser.unaryOps.acos = (value) => fromOutputAngle(Math.acos(value));
+  parser.unaryOps.atan = (value) => fromOutputAngle(Math.atan(value));
+  parser.unaryOps.sqrt = Math.sqrt;
+  parser.unaryOps.log = Math.log10;
+  parser.unaryOps.ln = Math.log;
+  parser.unaryOps.abs = Math.abs;
+  parser.functions.factorial = factorial;
+
+  return parser;
+}
+
+function normalizeExpression(input) {
+  let expr = String(input || "").trim();
+
+  expr = stripEquationPrefix(expr);
+  expr = expr
+    .replace(/\u00d7/g, "*")
+    .replace(/\u00f7/g, "/")
+    .replace(/[\u2212\u2013\u2014]/g, "-")
+    .replace(/\u03c0/gi, "pi")
+    .replace(/\bans\b/gi, "ans")
+    .replace(/\bpi\b/gi, "pi")
+    .replace(/\bE\b/g, "e");
+
+  while (/(\d),(\d{3}\b)/.test(expr)) {
+    expr = expr.replace(/(\d),(\d{3}\b)/g, "$1$2");
+  }
+
+  expr = expr.replace(/\u221a\s*\(/g, "sqrt(");
+  expr = expr.replace(
+    /\u221a\s*(\d+(?:\.\d+)?|\b(?:x|pi|e|ans)\b)/gi,
+    "sqrt($1)",
+  );
+  expr = expr.replace(
+    new RegExp(`\\b(?:${MATH_FUNCTIONS})\\b`, "gi"),
+    (match) => match.toLowerCase(),
+  );
+  expr = expr.replace(
+    /(\d+(?:\.\d+)?(?:e[+-]?\d+)?|\b(?:x|pi|e|ans)\b|\))\s*%/gi,
+    "$1/100",
+  );
+
+  expr = expr.replace(
+    new RegExp(
+      `(\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)(?=(?:x|pi|ans|e(?![0-9])|${MATH_FUNCTIONS}\\s*\\())`,
+      "gi",
+    ),
+    "$1*",
+  );
+  const leftToken =
+    "((?:\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)|\\)|!|\\b(?:x|pi|e|ans)\\b)";
+  const rightToken = `(?=(?:\\b(?:x|pi|e|ans)\\b|\\b(?:${MATH_FUNCTIONS})\\s*\\(|\\())`;
+  expr = expr.replace(new RegExp(`${leftToken}\\s*${rightToken}`, "gi"), "$1*");
+
+  return expr.replace(/\s+/g, " ").trim();
+}
+
+function stripEquationPrefix(expr) {
+  return String(expr || "")
+    .trim()
+    .replace(/^y\s*=\s*/i, "")
+    .replace(/^f\s*\(\s*x\s*\)\s*=\s*/i, "");
+}
+
+function getIntent(query) {
+  const q = String(query || "").trim();
+  const calcMatch = q.match(EXPLICIT_CALC_RE);
+  if (calcMatch) {
+    return { expression: calcMatch[1], explicit: true, graph: false };
+  }
+
+  const graphMatch = q.match(EXPLICIT_GRAPH_RE);
+  if (graphMatch) {
+    return { expression: graphMatch[1], explicit: true, graph: true };
+  }
+
+  if (/^(?:y|f\s*\(\s*x\s*\))\s*=/i.test(q)) {
+    return { expression: q, explicit: false, graph: true };
+  }
+
+  return { expression: q, explicit: false, graph: false };
+}
+
+function analyzeExpression(input, angleMode = DEFAULT_ANGLE_MODE) {
+  const normalized = normalizeExpression(input);
+  if (!normalized || !SAFE_CHARS_RE.test(normalized)) {
+    throw new Error("Expression contains unsupported characters");
+  }
+
+  const parser = createParser(angleMode);
+  const parsed = parser.parse(normalized);
+  const symbols =
+    typeof parsed.symbols === "function" ? parsed.symbols() : parsed.variables();
+  const normalizedSymbols = symbols.map((symbol) => String(symbol).toLowerCase());
+  const unknown = normalizedSymbols.filter(
+    (symbol) => !ALLOWED_SYMBOLS.has(symbol),
+  );
+
+  if (unknown.length) {
+    throw new Error(`Unsupported symbol: ${unknown[0]}`);
+  }
+
+  return {
+    normalized,
+    parsed,
+    symbols: normalizedSymbols,
+    hasX: normalizedSymbols.includes("x"),
+  };
+}
+
+function evaluateExpression(input, options = {}) {
+  const analysis = analyzeExpression(input, options.angleMode);
+  if (analysis.hasX && typeof options.x !== "number") {
+    throw new Error("Expression requires x");
+  }
+
+  const variables = {
+    pi: Math.PI,
+    e: Math.E,
+    ans: Number.isFinite(options.ans) ? options.ans : 0,
+  };
+
+  if (typeof options.x === "number") variables.x = options.x;
+
+  const value = analysis.parsed.evaluate(variables);
+  return { ...analysis, value };
+}
+
+function isObviousExpression(rawExpression, analysis) {
+  const original = String(rawExpression || "").trim();
+  const normalized = analysis.normalized;
+
+  if (DATE_LIKE_RE.test(original)) return false;
+  if (FUNCTION_CALL_RE.test(original)) return true;
+  if (analysis.hasX) {
+    return /(?:^|[^a-z])x(?:[^a-z]|$)/i.test(original) &&
+      /[+\-*/^()]|\d\s*x|x\s*\^/i.test(normalized);
+  }
+
+  return /(?:\d|\bpi\b|\be\b|\bans\b|\)|!)\s*(?:[+\-*/^]|\!)|(?:[+\-*/^])\s*(?:\d|\(|\bpi\b|\be\b|\bans\b)/i.test(
+    normalized,
+  );
+}
+
+function shouldTrigger(query) {
+  const q = String(query || "").trim();
+  if (!q || q.length > MAX_QUERY_LENGTH) return false;
+
+  const intent = getIntent(q);
+  if (!intent.expression.trim()) return false;
+
+  try {
+    const analysis = analyzeExpression(intent.expression);
+    if (intent.explicit || intent.graph) return true;
+    return isObviousExpression(intent.expression, analysis);
+  } catch {
+    return false;
+  }
+}
+
+function formatResult(value) {
+  if (typeof value !== "number") return String(value);
+  if (Number.isNaN(value)) return "Not a number";
+  if (!Number.isFinite(value)) return value > 0 ? "Infinity" : "-Infinity";
+
+  const cleaned = Object.is(value, -0) || Math.abs(value) < 1e-14 ? 0 : value;
+  const abs = Math.abs(cleaned);
+
+  if (abs !== 0 && (abs >= 1e12 || abs < 1e-8)) {
+    return cleaned.toExponential(8).replace(/\.?0+e/, "e");
+  }
+
+  return Number(cleaned.toPrecision(12)).toLocaleString("en-US", {
+    maximumFractionDigits: 10,
+  });
+}
+
+function renderTemplate(values) {
+  let html = templateHtml || FALLBACK_TEMPLATE;
+  Object.entries(values).forEach(([key, value]) => {
+    html = html.split(`{{${key}}}`).join(_escAttr(value));
+  });
+  return html;
+}
+
+export const routes = [
+  {
+    path: "parser",
+    method: "get",
+    handler: async () =>
+      new Response(parserBundle, {
+        headers: {
+          "Content-Type": "application/javascript; charset=utf-8",
+          "Cache-Control": "public, max-age=604800",
+        },
+      }),
+  },
+];
+
+export const slot = {
+  id: "calculator",
+  name: "Calculator",
+  description:
+    "Scientific calculator with safe expression parsing and graphing for x expressions.",
+  isClientExposed: false,
+  position: "above-results",
+  slotPositions: ["above-results", "at-a-glance"],
+  settingsSchema: [
+    {
+      key: "enabled",
+      label: "Enabled",
+      type: "toggle",
+      default: "true",
+    },
+  ],
+
+  async init(ctx) {
+    if (ctx?.readFile) {
+      templateHtml = await ctx.readFile("template.html");
+      parserBundle = await ctx.readFile("vendor/expr-eval.min.js");
+    } else {
+      templateHtml = ctx?.template || templateHtml;
+    }
+  },
+
+  configure(settings) {
+    calcEnabled = settings?.enabled !== false && settings?.enabled !== "false";
+  },
+
+  trigger(query) {
+    return calcEnabled && shouldTrigger(query);
+  },
+
+  async execute(query) {
+    const intent = getIntent(query);
+
+    try {
+      const analysis = analyzeExpression(intent.expression);
+      const graphMode = intent.graph || analysis.hasX;
+      let result = "Graph";
+      let ans = 0;
+
+      if (!graphMode) {
+        const evaluated = evaluateExpression(intent.expression);
+        result = formatResult(evaluated.value);
+        ans = Number.isFinite(evaluated.value) ? evaluated.value : 0;
+      }
+
+      const expression = stripEquationPrefix(intent.expression).trim();
+      const html = renderTemplate({
+        initial_expr: expression,
+        display_expr: expression,
+        initial_result: result,
+        display_result: result,
+        ans_value: String(ans),
+        angle_mode: DEFAULT_ANGLE_MODE,
+      });
+
+      return { title: "", html };
+    } catch {
+      return { html: "" };
+    }
+  },
+};
+
+export const slotPlugin = slot;
+export default slot;
+
+function _escAttr(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

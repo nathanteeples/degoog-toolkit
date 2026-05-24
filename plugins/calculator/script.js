@@ -1,0 +1,764 @@
+(function () {
+  "use strict";
+
+  var ROOT_SELECTOR = "[data-calc-root]";
+  var FUNCTION_NAMES = "sin|cos|tan|asin|acos|atan|sqrt|log|ln|abs|factorial";
+  var SAFE_CHARS_RE = /^[0-9a-zA-Z_\s+\-*/^().!%]+$/;
+  var ALLOWED_SYMBOLS = {
+    x: true,
+    pi: true,
+    e: true,
+    ans: true,
+    factorial: true,
+  };
+  var PARSER_OPTIONS = {
+    operators: {
+      add: true,
+      subtract: true,
+      multiply: true,
+      divide: true,
+      power: true,
+      factorial: true,
+      remainder: false,
+      concatenate: false,
+      conditional: false,
+      logical: false,
+      comparison: false,
+      in: false,
+      assignment: false,
+    },
+  };
+
+  var states = new WeakMap();
+  var parserLoad = null;
+  var redrawTimer = 0;
+
+  function ensureParser() {
+    if (window.exprEval && window.exprEval.Parser) {
+      return Promise.resolve(window.exprEval);
+    }
+
+    if (parserLoad) return parserLoad;
+
+    parserLoad = new Promise(function (resolve, reject) {
+      if (typeof __PLUGIN_ID__ === "undefined") {
+        reject(new Error("Missing plugin id"));
+        return;
+      }
+
+      var existing = document.querySelector("script[data-calc-parser]");
+      if (existing) {
+        existing.addEventListener("load", function () {
+          if (window.exprEval && window.exprEval.Parser) resolve(window.exprEval);
+          else reject(new Error("Parser failed to load"));
+        });
+        existing.addEventListener("error", reject);
+        return;
+      }
+
+      var script = document.createElement("script");
+      script.async = true;
+      script.dataset.calcParser = "1";
+      script.src =
+        "/api/plugin/" + encodeURIComponent(__PLUGIN_ID__) + "/parser";
+      script.onload = function () {
+        if (window.exprEval && window.exprEval.Parser) resolve(window.exprEval);
+        else reject(new Error("Parser failed to load"));
+      };
+      script.onerror = reject;
+      (document.head || document.documentElement).appendChild(script);
+    });
+
+    return parserLoad;
+  }
+
+  function factorial(value) {
+    if (!Number.isFinite(value) || value < 0 || Math.floor(value) !== value) {
+      return NaN;
+    }
+    if (value > 170) return Infinity;
+    var result = 1;
+    for (var i = 2; i <= value; i += 1) result *= i;
+    return result;
+  }
+
+  function createParser(angleMode) {
+    var parser = new window.exprEval.Parser(PARSER_OPTIONS);
+    var toInputAngle =
+      angleMode === "deg"
+        ? function (value) {
+            return (value * Math.PI) / 180;
+          }
+        : function (value) {
+            return value;
+          };
+    var fromOutputAngle =
+      angleMode === "deg"
+        ? function (value) {
+            return (value * 180) / Math.PI;
+          }
+        : function (value) {
+            return value;
+          };
+
+    parser.unaryOps.sin = function (value) {
+      return Math.sin(toInputAngle(value));
+    };
+    parser.unaryOps.cos = function (value) {
+      return Math.cos(toInputAngle(value));
+    };
+    parser.unaryOps.tan = function (value) {
+      return Math.tan(toInputAngle(value));
+    };
+    parser.unaryOps.asin = function (value) {
+      return fromOutputAngle(Math.asin(value));
+    };
+    parser.unaryOps.acos = function (value) {
+      return fromOutputAngle(Math.acos(value));
+    };
+    parser.unaryOps.atan = function (value) {
+      return fromOutputAngle(Math.atan(value));
+    };
+    parser.unaryOps.sqrt = Math.sqrt;
+    parser.unaryOps.log = Math.log10;
+    parser.unaryOps.ln = Math.log;
+    parser.unaryOps.abs = Math.abs;
+    parser.functions.factorial = factorial;
+
+    return parser;
+  }
+
+  function stripEquationPrefix(expr) {
+    return String(expr || "")
+      .trim()
+      .replace(/^y\s*=\s*/i, "")
+      .replace(/^f\s*\(\s*x\s*\)\s*=\s*/i, "");
+  }
+
+  function normalizeExpression(input) {
+    var expr = stripEquationPrefix(input);
+
+    expr = expr
+      .replace(/\u00d7/g, "*")
+      .replace(/\u00f7/g, "/")
+      .replace(/[\u2212\u2013\u2014]/g, "-")
+      .replace(/\u03c0/gi, "pi")
+      .replace(/\bans\b/gi, "ans")
+      .replace(/\bpi\b/gi, "pi")
+      .replace(/\bE\b/g, "e");
+
+    while (/(\d),(\d{3}\b)/.test(expr)) {
+      expr = expr.replace(/(\d),(\d{3}\b)/g, "$1$2");
+    }
+
+    expr = expr.replace(/\u221a\s*\(/g, "sqrt(");
+    expr = expr.replace(
+      /\u221a\s*(\d+(?:\.\d+)?|\b(?:x|pi|e|ans)\b)/gi,
+      "sqrt($1)",
+    );
+    expr = expr.replace(
+      new RegExp("\\b(?:" + FUNCTION_NAMES + ")\\b", "gi"),
+      function (match) {
+        return match.toLowerCase();
+      },
+    );
+    expr = expr.replace(
+      /(\d+(?:\.\d+)?(?:e[+-]?\d+)?|\b(?:x|pi|e|ans)\b|\))\s*%/gi,
+      "$1/100",
+    );
+
+    expr = expr.replace(
+      new RegExp(
+        "(\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)(?=(?:x|pi|ans|e(?![0-9])|" +
+          FUNCTION_NAMES +
+          "\\s*\\())",
+        "gi",
+      ),
+      "$1*",
+    );
+    var leftToken =
+      "((?:\\d+(?:\\.\\d+)?(?:e[+-]?\\d+)?)|\\)|!|\\b(?:x|pi|e|ans)\\b)";
+    var rightToken =
+      "(?=(?:\\b(?:x|pi|e|ans)\\b|\\b(?:" +
+      FUNCTION_NAMES +
+      ")\\s*\\(|\\())";
+    expr = expr.replace(new RegExp(leftToken + "\\s*" + rightToken, "gi"), "$1*");
+
+    return expr.replace(/\s+/g, " ").trim();
+  }
+
+  function parseExpression(input, angleMode) {
+    var normalized = normalizeExpression(input);
+    if (!normalized || !SAFE_CHARS_RE.test(normalized)) {
+      throw new Error("Unsupported expression");
+    }
+
+    var parser = createParser(angleMode);
+    var parsed = parser.parse(normalized);
+    var symbols =
+      typeof parsed.symbols === "function" ? parsed.symbols() : parsed.variables();
+    var lowerSymbols = symbols.map(function (symbol) {
+      return String(symbol).toLowerCase();
+    });
+
+    for (var i = 0; i < lowerSymbols.length; i += 1) {
+      if (!ALLOWED_SYMBOLS[lowerSymbols[i]]) {
+        throw new Error("Unsupported symbol");
+      }
+    }
+
+    return {
+      normalized: normalized,
+      parsed: parsed,
+      symbols: lowerSymbols,
+      hasX: lowerSymbols.indexOf("x") !== -1,
+    };
+  }
+
+  function evaluateParsed(analysis, state, xValue) {
+    if (analysis.hasX && typeof xValue !== "number") {
+      throw new Error("Expression requires x");
+    }
+
+    var variables = {
+      pi: Math.PI,
+      e: Math.E,
+      ans: Number.isFinite(state.ans) ? state.ans : 0,
+    };
+
+    if (typeof xValue === "number") variables.x = xValue;
+    return analysis.parsed.evaluate(variables);
+  }
+
+  function formatNumber(value) {
+    if (typeof value !== "number") return String(value);
+    if (Number.isNaN(value)) return "Not a number";
+    if (!Number.isFinite(value)) return value > 0 ? "Infinity" : "-Infinity";
+
+    var cleaned = Object.is(value, -0) || Math.abs(value) < 1e-14 ? 0 : value;
+    var abs = Math.abs(cleaned);
+
+    if (abs !== 0 && (abs >= 1e12 || abs < 1e-8)) {
+      return cleaned.toExponential(8).replace(/\.?0+e/, "e");
+    }
+
+    return Number(cleaned.toPrecision(12)).toLocaleString("en-US", {
+      maximumFractionDigits: 10,
+    });
+  }
+
+  function formatPlain(value) {
+    if (!Number.isFinite(value)) return "0";
+    return String(Number(value.toPrecision(12)));
+  }
+
+  function getState(root) {
+    var state = states.get(root);
+    if (state) return state;
+
+    state = {
+      expr: root.getAttribute("data-initial") || "",
+      result: root.getAttribute("data-result") || "0",
+      ans: parseFloat(root.getAttribute("data-ans")) || 0,
+      angleMode: root.getAttribute("data-angle-mode") === "deg" ? "deg" : "rad",
+      inverse: false,
+      justEvaluated: false,
+      lastAnalysis: null,
+      lastGraphAnalysis: null,
+    };
+    states.set(root, state);
+    return state;
+  }
+
+  function updateRoot(root) {
+    var state = getState(root);
+    var expressionEl = root.querySelector("[data-calc-expression]");
+    var resultEl = root.querySelector("[data-calc-result]");
+    var graph = root.querySelector("[data-calc-graph]");
+
+    state.lastGraphAnalysis = null;
+
+    if (!state.expr) {
+      state.result = state.justEvaluated ? state.result : "0";
+    } else {
+      try {
+        var analysis = parseExpression(state.expr, state.angleMode);
+        state.lastAnalysis = analysis;
+
+        if (analysis.hasX) {
+          state.result = "Graph";
+          state.lastGraphAnalysis = analysis;
+        } else {
+          state.result = formatNumber(evaluateParsed(analysis, state));
+        }
+      } catch (error) {
+        state.lastAnalysis = null;
+        state.result = "Error";
+      }
+    }
+
+    if (expressionEl) expressionEl.textContent = state.expr;
+    if (resultEl) {
+      resultEl.textContent = state.result;
+      resultEl.classList.toggle("calc-result--compact", state.result.length > 16);
+      resultEl.classList.toggle(
+        "calc-result--error",
+        state.result === "Error" || state.result === "Not a number",
+      );
+    }
+
+    syncButtons(root, state);
+
+    if (state.lastGraphAnalysis) {
+      drawGraph(root, state, state.lastGraphAnalysis);
+    } else if (graph) {
+      graph.hidden = true;
+    }
+  }
+
+  function syncButtons(root, state) {
+    toggleActive(root.querySelector("[data-calc-rad]"), state.angleMode === "rad");
+    toggleActive(root.querySelector("[data-calc-deg]"), state.angleMode === "deg");
+    toggleActive(root.querySelector("[data-calc-inverse]"), state.inverse);
+
+    setText(root.querySelector("[data-calc-sin]"), state.inverse ? "asin" : "sin");
+    setText(root.querySelector("[data-calc-cos]"), state.inverse ? "acos" : "cos");
+    setText(root.querySelector("[data-calc-tan]"), state.inverse ? "atan" : "tan");
+    setText(root.querySelector("[data-calc-ln]"), state.inverse ? "e^x" : "ln");
+    setText(root.querySelector("[data-calc-log]"), state.inverse ? "10^x" : "log");
+    setText(root.querySelector("[data-calc-sqrt]"), state.inverse ? "x^2" : "sqrt");
+  }
+
+  function toggleActive(element, active) {
+    if (element) element.classList.toggle("calc-btn--active", active);
+  }
+
+  function setText(element, text) {
+    if (element) element.textContent = text;
+  }
+
+  function appendToken(root, token) {
+    var state = getState(root);
+    if (state.justEvaluated) {
+      if (/^[+\-*/^%!]/.test(token)) {
+        state.expr = formatPlain(state.ans);
+      } else {
+        state.expr = "";
+      }
+      state.justEvaluated = false;
+    }
+
+    if (token === ".") {
+      var parts = state.expr.split(/[+\-*/^()]/);
+      var tail = parts[parts.length - 1] || "";
+      if (tail.indexOf(".") !== -1) return;
+    }
+
+    state.expr += token;
+    updateRoot(root);
+  }
+
+  function commitEquals(root) {
+    var state = getState(root);
+    if (!state.expr) return;
+
+    try {
+      var analysis = parseExpression(state.expr, state.angleMode);
+      if (analysis.hasX) {
+        state.lastGraphAnalysis = analysis;
+        state.result = "Graph";
+        state.justEvaluated = false;
+        updateRoot(root);
+        return;
+      }
+
+      var value = evaluateParsed(analysis, state);
+      state.ans = Number.isFinite(value) ? value : state.ans;
+      state.result = formatNumber(value);
+      state.expr = "";
+      state.justEvaluated = true;
+    } catch (error) {
+      state.result = "Error";
+      state.justEvaluated = false;
+    }
+
+    updateRoot(root);
+  }
+
+  function handleAction(root, action) {
+    var state = getState(root);
+
+    if (/^digit-\d$/.test(action)) {
+      appendToken(root, action.slice(-1));
+      return;
+    }
+
+    switch (action) {
+      case "dot":
+        appendToken(root, ".");
+        break;
+      case "add":
+        appendToken(root, "+");
+        break;
+      case "subtract":
+        appendToken(root, "-");
+        break;
+      case "multiply":
+        appendToken(root, "*");
+        break;
+      case "divide":
+        appendToken(root, "/");
+        break;
+      case "power":
+        appendToken(root, "^");
+        break;
+      case "percent":
+        appendToken(root, "%");
+        break;
+      case "open-paren":
+        appendToken(root, "(");
+        break;
+      case "close-paren":
+        appendToken(root, ")");
+        break;
+      case "sin":
+        appendToken(root, state.inverse ? "asin(" : "sin(");
+        break;
+      case "cos":
+        appendToken(root, state.inverse ? "acos(" : "cos(");
+        break;
+      case "tan":
+        appendToken(root, state.inverse ? "atan(" : "tan(");
+        break;
+      case "ln":
+        appendToken(root, state.inverse ? "e^(" : "ln(");
+        break;
+      case "log":
+        appendToken(root, state.inverse ? "10^(" : "log(");
+        break;
+      case "sqrt":
+        appendToken(root, state.inverse ? "^2" : "sqrt(");
+        break;
+      case "factorial":
+        appendToken(root, "!");
+        break;
+      case "pi":
+        appendToken(root, "pi");
+        break;
+      case "e":
+        appendToken(root, "e");
+        break;
+      case "ans":
+        appendToken(root, "Ans");
+        break;
+      case "x":
+        appendToken(root, "x");
+        break;
+      case "equals":
+        commitEquals(root);
+        break;
+      case "clear":
+        state.expr = "";
+        state.result = "0";
+        state.justEvaluated = false;
+        updateRoot(root);
+        break;
+      case "backspace":
+        if (state.justEvaluated) {
+          state.expr = "";
+          state.result = "0";
+          state.justEvaluated = false;
+        } else {
+          state.expr = state.expr.slice(0, -1);
+        }
+        updateRoot(root);
+        break;
+      case "rad":
+        state.angleMode = "rad";
+        updateRoot(root);
+        break;
+      case "deg":
+        state.angleMode = "deg";
+        updateRoot(root);
+        break;
+      case "inverse":
+        state.inverse = !state.inverse;
+        syncButtons(root, state);
+        break;
+      default:
+        break;
+    }
+  }
+
+  function drawGraph(root, state, analysis) {
+    var graph = root.querySelector("[data-calc-graph]");
+    var label = root.querySelector("[data-calc-graph-label]");
+    var canvas = root.querySelector("[data-calc-canvas]");
+    if (!graph || !canvas) return;
+
+    graph.hidden = false;
+    if (label) label.textContent = stripEquationPrefix(state.expr);
+
+    var width = Math.max(280, Math.floor(canvas.clientWidth || 640));
+    var height = Math.max(160, Math.floor(canvas.clientHeight || 220));
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    var style = getComputedStyle(root);
+    var gridColor = cssVar(style, "--border-light", "rgba(60,64,67,0.18)");
+    var axisColor = cssVar(style, "--text-secondary", "#5f6368");
+    var lineColor = cssVar(style, "--text-link", "#1a73e8");
+    var textColor = cssVar(style, "--text-secondary", "#5f6368");
+    var bgColor = cssVar(style, "--bg-light", "#f8fafd");
+
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    var xMin = -10;
+    var xMax = 10;
+    var samples = Math.max(width, 320);
+    var points = [];
+    var finiteY = [];
+
+    for (var i = 0; i < samples; i += 1) {
+      var x = xMin + (i / (samples - 1)) * (xMax - xMin);
+      var y = NaN;
+      try {
+        y = evaluateParsed(analysis, state, x);
+      } catch (error) {
+        y = NaN;
+      }
+      var finite = Number.isFinite(y) && Math.abs(y) < 1e6;
+      points.push({ x: x, y: y, finite: finite });
+      if (finite) finiteY.push(y);
+    }
+
+    if (finiteY.length < 2) {
+      drawCenteredText(ctx, width, height, "No finite values", textColor);
+      return;
+    }
+
+    finiteY.sort(function (a, b) {
+      return a - b;
+    });
+    var yMin = finiteY[Math.floor(finiteY.length * 0.05)];
+    var yMax = finiteY[Math.floor(finiteY.length * 0.95)];
+
+    if (yMin === yMax) {
+      yMin -= 1;
+      yMax += 1;
+    }
+
+    yMin = Math.min(yMin, 0);
+    yMax = Math.max(yMax, 0);
+
+    var yPad = (yMax - yMin) * 0.12 || 1;
+    yMin -= yPad;
+    yMax += yPad;
+
+    function sx(x) {
+      return ((x - xMin) / (xMax - xMin)) * width;
+    }
+
+    function sy(y) {
+      return height - ((y - yMin) / (yMax - yMin)) * height;
+    }
+
+    drawGrid(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, gridColor);
+    drawAxes(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, axisColor);
+
+    ctx.beginPath();
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2;
+    var drawing = false;
+    var previousY = null;
+    var breakDelta = (yMax - yMin) * 0.7;
+
+    points.forEach(function (point) {
+      if (!point.finite || point.y < yMin || point.y > yMax) {
+        drawing = false;
+        previousY = null;
+        return;
+      }
+
+      var px = sx(point.x);
+      var py = sy(point.y);
+      if (!drawing || (previousY !== null && Math.abs(point.y - previousY) > breakDelta)) {
+        ctx.moveTo(px, py);
+        drawing = true;
+      } else {
+        ctx.lineTo(px, py);
+      }
+      previousY = point.y;
+    });
+
+    ctx.stroke();
+  }
+
+  function drawGrid(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, color) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+
+    for (var i = 0; i <= 4; i += 1) {
+      var x = xMin + ((xMax - xMin) / 4) * i;
+      var px = sx(x);
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, height);
+
+      var y = yMin + ((yMax - yMin) / 4) * i;
+      var py = sy(y);
+      ctx.moveTo(0, py);
+      ctx.lineTo(width, py);
+    }
+
+    ctx.stroke();
+  }
+
+  function drawAxes(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, color) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.25;
+
+    if (xMin < 0 && xMax > 0) {
+      var x0 = sx(0);
+      ctx.moveTo(x0, 0);
+      ctx.lineTo(x0, height);
+    }
+
+    if (yMin < 0 && yMax > 0) {
+      var y0 = sy(0);
+      ctx.moveTo(0, y0);
+      ctx.lineTo(width, y0);
+    }
+
+    ctx.stroke();
+  }
+
+  function drawCenteredText(ctx, width, height, text, color) {
+    ctx.fillStyle = color;
+    ctx.font = "13px system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, width / 2, height / 2);
+  }
+
+  function cssVar(style, name, fallback) {
+    return style.getPropertyValue(name).trim() || fallback;
+  }
+
+  function initRoot(root) {
+    if (!root || states.has(root)) return;
+    getState(root);
+    updateRoot(root);
+  }
+
+  function initAll() {
+    ensureParser()
+      .then(function () {
+        document.querySelectorAll(ROOT_SELECTOR).forEach(initRoot);
+      })
+      .catch(function () {
+        document.querySelectorAll(ROOT_SELECTOR).forEach(function (root) {
+          var resultEl = root.querySelector("[data-calc-result]");
+          if (resultEl) {
+            resultEl.textContent = "Parser unavailable";
+            resultEl.classList.add("calc-result--error");
+          }
+        });
+      });
+  }
+
+  document.addEventListener("click", function (event) {
+    var button = event.target.closest(ROOT_SELECTOR + " [data-calc-action]");
+    if (!button) return;
+    event.preventDefault();
+
+    ensureParser().then(function () {
+      var root = button.closest(ROOT_SELECTOR);
+      initRoot(root);
+      handleAction(root, button.getAttribute("data-calc-action"));
+    });
+  });
+
+  document.addEventListener("keydown", function (event) {
+    var root = document.querySelector(ROOT_SELECTOR);
+    if (!root) return;
+    var target = event.target;
+    if (
+      target &&
+      (target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable)
+    ) {
+      return;
+    }
+
+    var keyMap = {
+      "0": "digit-0",
+      "1": "digit-1",
+      "2": "digit-2",
+      "3": "digit-3",
+      "4": "digit-4",
+      "5": "digit-5",
+      "6": "digit-6",
+      "7": "digit-7",
+      "8": "digit-8",
+      "9": "digit-9",
+      ".": "dot",
+      "+": "add",
+      "-": "subtract",
+      "*": "multiply",
+      "/": "divide",
+      "%": "percent",
+      "^": "power",
+      "(": "open-paren",
+      ")": "close-paren",
+      x: "x",
+      X: "x",
+      Enter: "equals",
+      "=": "equals",
+      Escape: "clear",
+      Delete: "clear",
+      Backspace: "backspace",
+    };
+
+    var action = keyMap[event.key];
+    if (!action) return;
+    event.preventDefault();
+    ensureParser().then(function () {
+      initRoot(root);
+      handleAction(root, action);
+    });
+  });
+
+  window.addEventListener("resize", function () {
+    if (redrawTimer) window.cancelAnimationFrame(redrawTimer);
+    redrawTimer = window.requestAnimationFrame(function () {
+      redrawTimer = 0;
+      document.querySelectorAll(ROOT_SELECTOR).forEach(function (root) {
+        var state = states.get(root);
+        if (state && state.lastGraphAnalysis) {
+          drawGraph(root, state, state.lastGraphAnalysis);
+        }
+      });
+    });
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAll);
+  } else {
+    initAll();
+  }
+
+  if (window.MutationObserver) {
+    var observer = new MutationObserver(initAll);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+})();

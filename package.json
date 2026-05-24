@@ -67,6 +67,13 @@
       "type": "slot"
     },
     {
+      "path": "plugins/calculator",
+      "name": "Calculator",
+      "description": "Scientific calculator with safe expression parsing, interactive keypad, and local canvas graphing for x expressions.",
+      "version": "1.0.0",
+      "type": "slot"
+    },
+    {
       "path": "plugins/search-history",
       "name": "Search History",
       "description": "Stores your past searches with timestamps and surfaces them as a dropdown on the search bar. Use !history (or natural phrases like 'search history') to view a paginated, deletable list. Entries are kept locally in data/history.json and the maximum count is configurable.",
