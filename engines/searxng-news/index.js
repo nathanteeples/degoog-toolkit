@@ -10,6 +10,7 @@ const TIME_RANGE_MAP = {
 };
 
 const DEFAULT_CATEGORIES = "news";
+const REQUEST_TIMEOUT_MS = 10000;
 
 export const type = "news";
 export const outgoingHosts = ["*"];
@@ -24,6 +25,7 @@ class SearXNGNewsEngine {
       key: "baseUrl",
       label: "SearXNG URL",
       type: "text",
+      default: "http://127.0.0.1:8888",
       description:
         "Base URL of your SearXNG instance (default: http://127.0.0.1:8888)",
     },
@@ -47,6 +49,7 @@ class SearXNGNewsEngine {
       label: "Safe Search",
       type: "select",
       options: ["0", "1", "2"],
+      default: "0",
       description: "Safe search level: 0=off, 1=moderate, 2=strict",
     },
   ];
@@ -55,9 +58,16 @@ class SearXNGNewsEngine {
   #engines = "";
   #safesearch = "0";
 
-  configure(settings) {
+  configure(settings = {}) {
     if (typeof settings.baseUrl === "string" && settings.baseUrl.trim()) {
-      this.baseUrl = settings.baseUrl.trim().replace(/\/+$/, "");
+      try {
+        const url = new URL(settings.baseUrl.trim());
+        if (url.protocol === "http:" || url.protocol === "https:") {
+          this.baseUrl = url.toString().replace(/\/+$/, "");
+        }
+      } catch {
+        // Keep the previous/default base URL when settings contain invalid input.
+      }
     }
     if (typeof settings.categories === "string") {
       this.#categories = settings.categories.trim() || DEFAULT_CATEGORIES;
@@ -93,10 +103,17 @@ class SearXNGNewsEngine {
 
     const url = `${this.baseUrl}/search?${params}`;
     const doFetch = context?.fetch ?? fetch;
+    const controller =
+      typeof AbortController === "function" ? new AbortController() : null;
+    let timeoutId = null;
 
     try {
+      if (controller) {
+        timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      }
       const response = await doFetch(url, {
         headers: { Accept: "application/json" },
+        ...(controller ? { signal: controller.signal } : {}),
       });
 
       if (!response.ok) return [];
@@ -121,6 +138,8 @@ class SearXNGNewsEngine {
         }));
     } catch {
       return [];
+    } finally {
+      if (timeoutId !== null) clearTimeout(timeoutId);
     }
   }
 }
