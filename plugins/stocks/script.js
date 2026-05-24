@@ -49,6 +49,37 @@
       .replace(/'/g, "&#039;");
   }
 
+  function formatTimeLabel(timestamp, period) {
+    if (!timestamp) return "";
+    const date = new Date(timestamp * 1000);
+    if (period === "1d") {
+      return date.toLocaleString("en-US", { hour: "numeric", minute: "2-digit" });
+    } else if (period === "5d" || period === "1mo" || period === "6mo") {
+      return date.toLocaleString("en-US", { month: "short", day: "numeric" });
+    } else if (period === "ytd" || period === "max") {
+      return date.toLocaleString("en-US", { month: "short", year: "2-digit" });
+    }
+    return date.toLocaleString("en-US", { month: "short", day: "numeric" });
+  }
+
+  function formatTooltipTime(timestamp, period) {
+    if (!timestamp) return "";
+    const date = new Date(timestamp * 1000);
+    if (period === "1d") {
+      return date.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
   async function fetchChart(symbol, period) {
     const key = chartKey(symbol, period);
     if (chartCache.has(key)) return chartCache.get(key);
@@ -122,8 +153,12 @@
     const last = prices[prices.length - 1];
     const low = Math.min(...prices);
     const high = Math.max(...prices);
-    const change = last - first;
-    const changePercent = first ? (change / first) * 100 : 0;
+    
+    const referencePrice = (payload.period === "1d" && Number.isFinite(payload.previousClose))
+      ? payload.previousClose
+      : first;
+    const change = last - referencePrice;
+    const changePercent = referencePrice ? (change / referencePrice) * 100 : 0;
     updateTrendClass(chart, change);
 
     const W = body.clientWidth || 320;
@@ -209,9 +244,7 @@
       xLabel.setAttribute("y", (H - 4).toFixed(2));
       xLabel.setAttribute("class", "stocks-chart-x-label");
       xLabel.setAttribute("text-anchor", "middle");
-      xLabel.textContent = points[xi].time
-        ? new Date(points[xi].time * 1000).toLocaleString("en-US", { hour: "numeric", minute: "2-digit" })
-        : "";
+      xLabel.textContent = formatTimeLabel(points[xi].time, payload.period);
       svg.appendChild(xLabel);
     }
     /* Show last label only if it won't overlap the previous one */
@@ -224,9 +257,7 @@
       lastXLabel.setAttribute("y", (H - 4).toFixed(2));
       lastXLabel.setAttribute("class", "stocks-chart-x-label");
       lastXLabel.setAttribute("text-anchor", "middle");
-      lastXLabel.textContent = points[lastIdx].time
-        ? new Date(points[lastIdx].time * 1000).toLocaleString("en-US", { hour: "numeric", minute: "2-digit" })
-        : "";
+      lastXLabel.textContent = formatTimeLabel(points[lastIdx].time, payload.period);
       svg.appendChild(lastXLabel);
     }
 
@@ -299,7 +330,7 @@
       hlDot.setAttribute("cy", coords[i][1].toFixed(2));
 
       const priceHint = payload.priceHint;
-      const dateStr = new Date(points[i].time * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      const dateStr = formatTooltipTime(points[i].time, payload.period);
       tooltip.innerHTML = '<div class="stocks-tt-date">' + dateStr + '</div>' +
                           '<div class="stocks-tt-price">' + escapeHtml(formatPrice(points[i].price, priceHint)) + '</div>';
       
@@ -380,6 +411,7 @@
           setEmpty(body, stats);
           return;
         }
+        card._lastPayload = payload;
         renderChart(chart, body, stats, payload);
       });
     });
@@ -390,6 +422,7 @@
       const period = activeBtn ? activeBtn.dataset.period : "1d";
       const payload = await fetchChart(symbol, period);
       if (payload) {
+        card._lastPayload = payload;
         renderChart(chart, body, stats, payload);
       }
     })();
@@ -408,6 +441,24 @@
       subtree: true,
     });
   }
+
+  let resizeTimer = 0;
+  window.addEventListener("resize", function () {
+    if (resizeTimer) window.cancelAnimationFrame(resizeTimer);
+    resizeTimer = window.requestAnimationFrame(function () {
+      resizeTimer = 0;
+      document.querySelectorAll(".stocks-card").forEach((card) => {
+        if (card._lastPayload) {
+          const chart = card.querySelector(".stocks-chart");
+          const body = card.querySelector(".stocks-chart-body");
+          const stats = card.querySelector(".stocks-chart-stats");
+          if (chart && body) {
+            renderChart(chart, body, stats, card._lastPayload);
+          }
+        }
+      });
+    });
+  });
 
   if (document.body) start();
   else document.addEventListener("DOMContentLoaded", start, { once: true });

@@ -221,7 +221,7 @@ export const slot = {
   },
 };
 
-export default { slot };
+export default slot;
 
 function escapeHtml(str) {
   if (typeof str !== "string") return "";
