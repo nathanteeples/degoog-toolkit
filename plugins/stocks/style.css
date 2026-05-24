@@ -25,13 +25,7 @@
     min-width: 0;
 }
 
-.stocks-card-up {
-    --stocks-line: var(--stocks-up);
-}
 
-.stocks-card-down {
-    --stocks-line: var(--stocks-down);
-}
 
 .stocks-main {
     display: flex;
@@ -169,6 +163,19 @@
     border: 1px solid var(--border-light);
     border-radius: 12px;
     padding: 16px;
+    --stocks-line: var(--stocks-flat);
+}
+
+.stocks-chart-up {
+    --stocks-line: var(--stocks-up);
+}
+
+.stocks-chart-down {
+    --stocks-line: var(--stocks-down);
+}
+
+.stocks-chart-flat {
+    --stocks-line: var(--stocks-flat);
 }
 
 .stocks-chart-header {

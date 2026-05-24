@@ -97,14 +97,14 @@
     if (stats) stats.textContent = "";
   }
 
-  function updateTrendClass(card, change) {
-    card.classList.remove("stocks-card-up", "stocks-card-down", "stocks-card-flat");
-    if (change > 0) card.classList.add("stocks-card-up");
-    else if (change < 0) card.classList.add("stocks-card-down");
-    else card.classList.add("stocks-card-flat");
+  function updateTrendClass(chart, change) {
+    chart.classList.remove("stocks-chart-up", "stocks-chart-down", "stocks-chart-flat");
+    if (change > 0) chart.classList.add("stocks-chart-up");
+    else if (change < 0) chart.classList.add("stocks-chart-down");
+    else chart.classList.add("stocks-chart-flat");
   }
 
-  function renderChart(card, body, stats, payload) {
+  function renderChart(chart, body, stats, payload) {
     const points = payload.points
       .map((point) => ({
         price: Number(point.price),
@@ -124,7 +124,7 @@
     const high = Math.max(...prices);
     const change = last - first;
     const changePercent = first ? (change / first) * 100 : 0;
-    updateTrendClass(card, change);
+    updateTrendClass(chart, change);
 
     const W = body.clientWidth || 320;
     const H = body.clientHeight || 190;
@@ -380,7 +380,7 @@
           setEmpty(body, stats);
           return;
         }
-        renderChart(card, body, stats, payload);
+        renderChart(chart, body, stats, payload);
       });
     });
 
@@ -390,7 +390,7 @@
       const period = activeBtn ? activeBtn.dataset.period : "1d";
       const payload = await fetchChart(symbol, period);
       if (payload) {
-        renderChart(card, body, stats, payload);
+        renderChart(chart, body, stats, payload);
       }
     })();
   }
