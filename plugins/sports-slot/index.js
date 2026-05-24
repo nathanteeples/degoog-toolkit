@@ -5,7 +5,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.1.7";
+const PLUGIN_VERSION = "0.2.6";
 const PLUGIN_DESCRIPTION =
   "Shows live sports scores, schedules, and standings for soccer, NFL, NBA, and MLB above search results.";
 const BALLDONTLIE_FREE_REFRESH_MS = 12_000;
@@ -815,6 +815,8 @@ let balldontlieApiKey = "";
 let preferredSoccerCompetitions = [...DEFAULT_SOCCER_COMPETITIONS];
 let debugMode = false;
 let selectedSlotPosition = "at-a-glance";
+let pluginRouteBase = "/api/plugin/sports-slot";
+let pluginFetch = (...args) => fetch(...args);
 
 const cache = {
   nbaTeams: null,
@@ -824,6 +826,15 @@ const cache = {
 };
 const refreshCache = new Map();
 const logoCache = new Map();
+
+function initRuntime(ctx) {
+  const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
+  const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
+  if (folder) pluginRouteBase = `/api/plugin/${encodeURIComponent(folder)}`;
+  if (typeof ctx?.fetch === "function") {
+    pluginFetch = (...args) => ctx.fetch(...args);
+  }
+}
 
 const TEAM_PRIMARY_COLORS = {
   nba: {
@@ -1006,7 +1017,7 @@ function getLogoUrlForTeam(sport, abbreviation, crestUrl = "") {
       String(abbreviation ?? "").toUpperCase(),
     );
     if (!safeAbbr) return "";
-    return `/api/plugin/sports-slot/logo?sport=${safeSport}&abbr=${safeAbbr}`;
+    return `${pluginRouteBase}/logo?sport=${safeSport}&abbr=${safeAbbr}`;
   }
 
   return getRemoteLogoUrlForTeam(sport, abbreviation, crestUrl);
@@ -1778,7 +1789,7 @@ function _balldontlieHeaders() {
 }
 
 async function fetchJson(url, options = {}) {
-  const response = await fetch(url, options);
+  const response = await pluginFetch(url, options);
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText}`);
   }
@@ -2915,7 +2926,7 @@ const sharedSettingsSchema = [
   },
 ];
 
-function configureSharedSettings(settings) {
+function configureSharedSettings(settings = {}) {
   footballDataApiKey = String(settings.footballDataApiKey ?? "").trim();
   balldontlieApiKey = String(settings.balldontlieApiKey ?? "").trim();
   preferredSoccerCompetitions = parseConfiguredCompetitions(
@@ -3047,7 +3058,7 @@ async function handleLogoRoute(request) {
   }
 
   try {
-    const response = await fetch(remoteUrl, {
+    const response = await pluginFetch(remoteUrl, {
       headers: {
         Accept:
           "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
@@ -3099,6 +3110,7 @@ export const slot = {
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
   settingsSchema: sharedSettingsSchema,
+  init: initRuntime,
   configure: configureSharedSettings,
   trigger(query) {
     // Slot-only plugin: natural-language triggering IS the plugin

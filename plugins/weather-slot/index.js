@@ -1,4 +1,5 @@
 let template = "";
+let externalFetch = (...args) => fetch(...args);
 
 const settings = {
   // Default to imperial units for brand-new installs. Existing saved
@@ -133,6 +134,20 @@ const WEATHER_KEYWORD_RX =
 
 const LOCATION_STRIP_RX =
   /\b(weather|forecast|temperature|today|tomorrow|in|for|at|the|погода|прогноз|метео|в|у|для)\b/gi;
+const NON_LOCATION_WEATHER_TARGET_RX =
+  /^(celsius|fahrenheit|kelvin|centigrade|metric|imperial|degrees?|deg|f|c|k|today|tomorrow|now|current)$/i;
+
+function hasLikelyLocationToken(value) {
+  const remainder = String(value || "")
+    .replace(LOCATION_STRIP_RX, " ")
+    .replace(/[?!.,;:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return (
+    remainder.length >= 2 &&
+    !NON_LOCATION_WEATHER_TARGET_RX.test(remainder.toLowerCase())
+  );
+}
 
 const slotDef = {
   id: "weather",
@@ -189,6 +204,9 @@ const slotDef = {
 
   init(ctx) {
     template = ctx.template;
+    if (typeof ctx?.fetch === "function") {
+      externalFetch = (...args) => ctx.fetch(...args);
+    }
   },
 
   trigger(query) {
@@ -212,7 +230,10 @@ const slotDef = {
     // Leading phrase match ("weather in rome", "forecast for paris", etc.)
     for (const phrase of NATURAL_LANGUAGE_PHRASES) {
       const p = phrase.toLowerCase();
-      if (lower === p || lower.startsWith(p + " ")) return true;
+      if (lower === p) return false;
+      if (lower.startsWith(p + " ")) {
+        return hasLikelyLocationToken(q.slice(phrase.length));
+      }
     }
 
     // First-word trigger/alias fallback ("weather rome", "forecast paris",
@@ -225,7 +246,7 @@ const slotDef = {
       firstWord === "метео"
     ) {
       // Require at least one more word so bare "weather" doesn't trigger.
-      if (lower.includes(" ")) return true;
+      if (lower.includes(" ")) return hasLikelyLocationToken(q);
     }
 
     // Trailing-keyword / anywhere-in-query match ("rome weather",
@@ -233,12 +254,7 @@ const slotDef = {
     // least one non-keyword token left after stripping the weather words
     // and fillers, so "weather today" alone doesn't trigger.
     if (WEATHER_KEYWORD_RX.test(q)) {
-      const remainder = q
-        .replace(LOCATION_STRIP_RX, " ")
-        .replace(/[?!.,;:]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      if (remainder.length >= 2) return true;
+      if (hasLikelyLocationToken(q)) return true;
     }
 
     return false;
@@ -247,7 +263,11 @@ const slotDef = {
   configure(s) {
     settings.units = _pick(s?.units, ["celsius", "fahrenheit"], "fahrenheit");
     settings.windUnit = _pick(s?.windUnit, ["kmh", "mph", "ms", "kn"], "mph");
-    settings.pressureUnit = _pick(s?.pressureUnit, ["hPa", "kPa", "mmHg", "inHg"], "mmHg");
+    settings.pressureUnit = _pick(
+      s?.pressureUnit,
+      ["hPa", "kPa", "mmHg", "inHg"],
+      "mmHg",
+    );
     settings.precipUnit = _pick(s?.precipUnit, ["mm", "inch"], "inch");
     settings.timeFormat = _pick(s?.timeFormat, ["auto", "24h", "12h"], "auto");
   },
@@ -291,7 +311,11 @@ const slotDef = {
     }
 
     try {
-      const geoRes = await fetch(
+      const doFetch =
+        typeof context?.fetch === "function"
+          ? (...args) => context.fetch(...args)
+          : externalFetch;
+      const geoRes = await doFetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=5&addressdetails=1`,
         {
           headers: {
@@ -314,6 +338,7 @@ const slotDef = {
 
       const lat = parseFloat(loc.lat);
       const lon = parseFloat(loc.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { html: "" };
       const addr = loc.address || {};
       const cityName =
         addr.city ||
@@ -400,7 +425,7 @@ const slotDef = {
         `&precipitation_unit=${settings.precipUnit}` +
         `&timezone=auto&forecast_days=7`;
 
-      const wxRes = await fetch(url);
+      const wxRes = await doFetch(url);
       if (!wxRes.ok) return { html: "" };
       const wx = await wxRes.json();
 

@@ -10,6 +10,14 @@ const DATA_DIR = join(process.cwd(), "data");
 const HISTORY_PATH = join(DATA_DIR, "history.json");
 const PER_PAGE = 20;
 let maxEntries = 1000;
+let pluginRouteBase = "/api/plugin/search-history";
+let writeQueue = Promise.resolve();
+
+function setPluginRouteBase(ctx) {
+  const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
+  const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
+  if (folder) pluginRouteBase = `/api/plugin/${encodeURIComponent(folder)}`;
+}
 
 const _loadHistory = async () => {
   try {
@@ -25,6 +33,17 @@ const _loadHistory = async () => {
 const _saveHistory = async (entries) => {
   await mkdir(DATA_DIR, { recursive: true });
   await writeFile(HISTORY_PATH, JSON.stringify(entries, null, 2), "utf-8");
+};
+
+const _withHistoryWrite = async (mutate) => {
+  const run = writeQueue.then(async () => {
+    const history = await _loadHistory();
+    const result = await mutate(history);
+    await _saveHistory(history);
+    return result;
+  });
+  writeQueue = run.catch(() => {});
+  return run;
 };
 
 const _esc = (s) => {
@@ -49,18 +68,25 @@ const _formatTimestamp = (ts) => {
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
   });
 }
 
-export default {
+const command = {
   name: "Search history",
   description:
     "Stores search history in data/history.json with timestamps; !history shows a paginated, deletable list.",
   isClientExposed: false,
   trigger: "history",
   aliases: [],
-  naturalLanguagePhrases: ["search history", "history"],
+  naturalLanguagePhrases: ["search history"],
+
+  init(ctx) {
+    setPluginRouteBase(ctx);
+  },
 
   settingsSchema: [
     {
@@ -73,7 +99,7 @@ export default {
     },
   ],
 
-  configure(settings) {
+  configure(settings = {}) {
     const n = parseInt(settings.maxEntries, 10);
     maxEntries = Number.isFinite(n) && n > 0 ? Math.min(100000, n) : 1000;
   },
@@ -97,7 +123,7 @@ export default {
         const ts = _formatTimestamp(item.timestamp);
         const timeStr = _esc(ts);
         const searchUrl = `/search?q=${encodeURIComponent(item.entry ?? "")}`;
-        const deleteUrl = `/api/plugin/search-history/delete?id=${encodeURIComponent(item.id)}&return=bang`;
+        const deleteUrl = `${pluginRouteBase}/delete?id=${encodeURIComponent(item.id)}&return=bang`;
         return `<div class="result-item"><div class="result-body"><div class="result-url-row"><span class="result-favicon result-favicon--clock">${CLOCK_ICON}</span><cite class="result-cite">${timeStr}</cite><a href="${_esc(deleteUrl)}" class="history-delete-btn" aria-label="Delete">${TRASH_ICON}</a></div><a class="result-title" href="${_esc(searchUrl)}">${entry}</a></div></div>`;
       })
       .join("");
@@ -107,93 +133,92 @@ export default {
     const html = `<div class="search-history-result">${items || noResults}</div>`;
     return { title: "Search history", html, totalPages };
   },
+};
 
-  routes: [
-    {
-      method: "get",
-      path: "list",
-      handler: async (req) => {
-        const url = new URL(req.url);
-        const limitParam = url.searchParams.get("limit");
-        const limit = limitParam
-          ? Math.min(100, Math.max(1, parseInt(limitParam, 10) || 10))
-          : null;
-        const entries = await _loadHistory();
-        const newestFirst = [...entries].reverse();
-        const out = limit ? newestFirst.slice(0, limit) : newestFirst;
-        return jsonResponse(out);
-      },
+export default command;
+
+export const routes = [
+  {
+    method: "get",
+    path: "list",
+    handler: async (req) => {
+      const url = new URL(req.url);
+      const limitParam = url.searchParams.get("limit");
+      const limit = limitParam
+        ? Math.min(100, Math.max(1, parseInt(limitParam, 10) || 10))
+        : null;
+      const entries = await _loadHistory();
+      const newestFirst = [...entries].reverse();
+      const out = limit ? newestFirst.slice(0, limit) : newestFirst;
+      return jsonResponse(out);
     },
-    {
-      method: "post",
-      path: "append",
-      handler: async (req) => {
-        let body;
-        try {
-          const text = await req.text();
-          body = text ? JSON.parse(text) : {};
-        } catch {
-          return jsonResponse({ error: "Invalid JSON" }, 400);
-        }
-        const entry = typeof body.entry === "string" ? body.entry.trim() : "";
-        if (!entry) {
-          return jsonResponse({ error: "Missing or empty entry" }, 400);
-        }
-        if (entry === "!history" || entry.startsWith("!history ")) {
-          return jsonResponse({ error: "Cannot store bang command" }, 400);
-        }
-        const history = await _loadHistory();
-        const entryLower = entry.toLowerCase();
-        const existingIdx = history.findIndex(
-          (e) => String(e.entry || "").toLowerCase() === entryLower,
-        );
-        const timestamp = new Date().toISOString();
-        let id;
-        let storedEntry = entry;
-        if (existingIdx >= 0) {
-          const existing = history[existingIdx];
-          id = existing.id;
-          storedEntry = existing.entry;
-          history.splice(existingIdx, 1);
-          history.push({ id, entry: storedEntry, timestamp });
-        } else {
-          id =
-            typeof crypto !== "undefined" && crypto.randomUUID
-              ? crypto.randomUUID()
-              : `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-          history.push({ id, entry, timestamp });
-          while (history.length > maxEntries) {
-            history.shift();
+  },
+  {
+    method: "post",
+    path: "append",
+    handler: async (req) => {
+      let body;
+      try {
+        const text = await req.text();
+        body = text ? JSON.parse(text) : {};
+      } catch {
+        return jsonResponse({ error: "Invalid JSON" }, 400);
+      }
+      const entry = typeof body.entry === "string" ? body.entry.trim() : "";
+      if (!entry) {
+        return jsonResponse({ error: "Missing or empty entry" }, 400);
+      }
+      if (entry === "!history" || entry.startsWith("!history ")) {
+        return jsonResponse({ error: "Cannot store bang command" }, 400);
+      }
+      const { id, storedEntry, timestamp } = await _withHistoryWrite(
+        async (history) => {
+          const entryLower = entry.toLowerCase();
+          const existingIdx = history.findIndex(
+            (e) => String(e.entry || "").toLowerCase() === entryLower,
+          );
+          const timestamp = new Date().toISOString();
+          let id;
+          let storedEntry = entry;
+          if (existingIdx >= 0) {
+            const existing = history[existingIdx];
+            id = existing.id;
+            storedEntry = existing.entry;
+            history.splice(existingIdx, 1);
+            history.push({ id, entry: storedEntry, timestamp });
+          } else {
+            id =
+              typeof crypto !== "undefined" && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            history.push({ id, entry, timestamp });
+            while (history.length > maxEntries) {
+              history.shift();
+            }
           }
-        }
-        await _saveHistory(history);
-        return jsonResponse({ id, entry: storedEntry, timestamp });
-      },
+          return { id, storedEntry, timestamp };
+        },
+      );
+      return jsonResponse({ id, entry: storedEntry, timestamp });
     },
-    {
-      method: "get",
-      path: "delete",
-      handler: async (req) => {
-        const url = new URL(req.url);
-        const id = url.searchParams.get("id");
-        const returnBang = url.searchParams.get("return") === "bang";
-        if (!id) {
-          return jsonResponse({ error: "Missing id" }, 400);
-        }
-        const history = await _loadHistory();
+  },
+  {
+    method: "get",
+    path: "delete",
+    handler: async (req) => {
+      const url = new URL(req.url);
+      const id = url.searchParams.get("id");
+      const returnBang = url.searchParams.get("return") === "bang";
+      if (!id) {
+        return jsonResponse({ error: "Missing id" }, 400);
+      }
+      const deleted = await _withHistoryWrite(async (history) => {
         const idx = history.findIndex((e) => String(e.id) === String(id));
-        if (idx === -1) {
-          if (returnBang) {
-            const base = new URL(req.url);
-            return Response.redirect(
-              `${base.origin}/search?q=${encodeURIComponent("!history")}`,
-              302,
-            );
-          }
-          return jsonResponse({ error: "Not found" }, 404);
-        }
+        if (idx === -1) return false;
         history.splice(idx, 1);
-        await _saveHistory(history);
+        return true;
+      });
+      if (!deleted) {
         if (returnBang) {
           const base = new URL(req.url);
           return Response.redirect(
@@ -201,8 +226,16 @@ export default {
             302,
           );
         }
-        return jsonResponse({ ok: true });
-      },
+        return jsonResponse({ error: "Not found" }, 404);
+      }
+      if (returnBang) {
+        const base = new URL(req.url);
+        return Response.redirect(
+          `${base.origin}/search?q=${encodeURIComponent("!history")}`,
+          302,
+        );
+      }
+      return jsonResponse({ ok: true });
     },
-  ],
-};
+  },
+];

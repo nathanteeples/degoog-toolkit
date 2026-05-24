@@ -184,10 +184,10 @@
 }
 
 .speedtest-card__value {
-    font-size: clamp(2.7rem, 7vw, 3.9rem);
+    font-size: 3.2rem;
     font-weight: 400;
     line-height: 1;
-    letter-spacing: -0.05em;
+    letter-spacing: 0;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
@@ -227,10 +227,10 @@
 }
 
 .speedtest-card__stat-value {
-    font-size: clamp(2.2rem, 6vw, 3rem);
+    font-size: 2.45rem;
     font-weight: 400;
     line-height: 0.96;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
     font-variant-numeric: tabular-nums;
 }
 
@@ -347,7 +347,7 @@
     }
 
     .speedtest-card__value {
-        font-size: clamp(2.4rem, 12vw, 3.4rem);
+        font-size: 2.75rem;
     }
 
     .speedtest-card__ticks text {

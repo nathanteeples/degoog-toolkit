@@ -1,6 +1,7 @@
 let showMode = "keyword";
 let defaultZoom = 13;
 let tileUrlTemplate = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+let externalFetch = (...args) => fetch(...args);
 
 export const slot = {
   id: "osm-slot",
@@ -15,6 +16,7 @@ export const slot = {
       label: "When to show",
       type: "select",
       options: ["always", "keyword"],
+      default: "keyword",
       description:
         "Always: every search. Keyword: map / where is / street-style queries (e.g. Rd, Ln) and similar.",
     },
@@ -23,6 +25,7 @@ export const slot = {
       label: "Default zoom level",
       type: "select",
       options: ["5", "8", "11", "13", "15"],
+      default: "13",
       description: "Higher = more zoomed in. 13 is a good default for cities.",
     },
     {
@@ -31,10 +34,17 @@ export const slot = {
       type: "text",
       placeholder:
         "https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=YOUR_KEY",
+      default: "",
       description:
         "Optional custom tiles URL. Leave blank to use OpenStreetMap default.",
     },
   ],
+
+  init(ctx) {
+    if (typeof ctx?.fetch === "function") {
+      externalFetch = (...args) => ctx.fetch(...args);
+    }
+  },
 
   configure(settings) {
     showMode = settings?.showMode === "always" ? "always" : "keyword";
@@ -48,7 +58,7 @@ export const slot = {
     if (q.length < 3) return false;
     if (showMode === "always") return true;
     if (
-      /\b(map|maps|where is|where's|wheres|where\s+\d+|locate|location|city|address|addresses|street|streets|near|directions?|how far|capital of|coordinates?|postcode|zip code|zip)\b/i.test(
+      /\b(map|maps|where is|where's|wheres|where\s+\d+|locate|location|address|addresses|street|streets|directions?|how far|capital of|coordinates?|postcode|zip code|zip)\b/i.test(
         q,
       )
     ) {
@@ -74,16 +84,20 @@ export const slot = {
 
       // Reject queries with common non-place words
       if (
-        /\b(alternative|how|why|what|when|best|top|list|vs|versus|review|tutorial|guide|example|free|download|install|price|cost|buy|cheap)\b/i.test(
+        /\b(alternative|how|why|what|when|best|top|list|vs|versus|review|tutorial|guide|example|free|download|install|price|cost|buy|cheap|games?|experiences?)\b/i.test(
           searchQuery,
         )
       ) {
         return { html: "" };
       }
 
+      const doFetch =
+        typeof context?.fetch === "function"
+          ? (...args) => context.fetch(...args)
+          : externalFetch;
       let geoData = [];
       for (const tryQuery of _geocodeQueryVariants(searchQuery)) {
-        geoData = await _nominatimSearch(tryQuery);
+        geoData = await _nominatimSearch(tryQuery, doFetch);
         if (geoData.length > 0) break;
       }
       if (geoData.length === 0) return { html: "" };
@@ -98,18 +112,22 @@ export const slot = {
       const place = ranked[0];
       const lat = parseFloat(place.lat);
       const lon = parseFloat(place.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { html: "" };
       const displayName = place.display_name || searchQuery;
       const shortName = _osmShortLabel(place, searchQuery);
       const zoom = _zoomForOsmResult(place, defaultZoom, searchQuery);
 
       const mapId = `osm-map-${Date.now()}`;
-      const navCandidates = ranked.slice(0, 6).map((r) => ({
-        lat: parseFloat(r.lat),
-        lon: parseFloat(r.lon),
-        zoom: _zoomForOsmResult(r, defaultZoom, searchQuery),
-        shortName: _osmShortLabel(r, searchQuery),
-        displayName: r.display_name || searchQuery,
-      }));
+      const navCandidates = ranked
+        .slice(0, 6)
+        .map((r) => ({
+          lat: parseFloat(r.lat),
+          lon: parseFloat(r.lon),
+          zoom: _zoomForOsmResult(r, defaultZoom, searchQuery),
+          shortName: _osmShortLabel(r, searchQuery),
+          displayName: r.display_name || searchQuery,
+        }))
+        .filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lon));
       const candidatesAttr = encodeURIComponent(JSON.stringify(navCandidates));
 
       const navBlock = `<div class="osm-slot-match-nav is-visible" aria-label="Geocode matches">
@@ -137,11 +155,11 @@ export const slot = {
   },
 };
 
-export default { slot };
+export default slot;
 
-async function _nominatimSearch(queryText) {
+async function _nominatimSearch(queryText, doFetch = externalFetch) {
   const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(queryText)}&format=json&limit=10&addressdetails=1`;
-  const geoRes = await fetch(geoUrl, {
+  const geoRes = await doFetch(geoUrl, {
     headers: {
       "User-Agent": "degoog-osm-slot/1.0",
       "Accept-Language": "en",

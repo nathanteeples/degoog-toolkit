@@ -1,9 +1,10 @@
 (() => {
   const CARD_SELECTOR = ".speedtest-card[data-speedtest-card]";
-  const CLIENT_PLUGIN_VERSION = "1.0.3";
+  const CLIENT_PLUGIN_VERSION = "1.5.13";
   const AUTO_SERVER_ID = "auto";
 
   const SERVER_SELECTION_PINGS = 2;
+  const SERVER_SELECTION_CONCURRENCY = 6;
   const LATENCY_SAMPLE_COUNT = 5;
   const LATENCY_TIMEOUT_MS = 2500;
   const DOWNLOAD_STREAMS = 6;
@@ -1570,14 +1571,31 @@
     };
   }
 
+  async function mapWithConcurrency(items, limit, mapper) {
+    const results = new Array(items.length);
+    let nextIndex = 0;
+    const workerCount = Math.min(Math.max(1, limit), items.length);
+    const workers = Array.from({ length: workerCount }, async () => {
+      while (nextIndex < items.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        results[index] = await mapper(items[index], index);
+      }
+    });
+    await Promise.all(workers);
+    return results;
+  }
+
   async function selectBestServer(card, run, servers) {
     if (!servers.length) {
       throw new Error("No speed test servers are configured.");
     }
 
     let completed = 0;
-    const results = await Promise.all(
-      servers.map(async (server) => {
+    const results = await mapWithConcurrency(
+      servers,
+      SERVER_SELECTION_CONCURRENCY,
+      async (server) => {
         const probe = await probeServer(server, run);
         completed += 1;
         applyState(card, {
@@ -1606,7 +1624,7 @@
           server,
           latencyMs: probe.latencyMs,
         };
-      })
+      },
     );
 
     const reachable = results

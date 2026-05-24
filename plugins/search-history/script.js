@@ -1,4 +1,4 @@
-const HISTORY_API = "/api/plugin/search-history";
+const HISTORY_API = `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
 const HISTORY_LIST_URL = `${HISTORY_API}/list?limit=10`;
 
 /** Last list from `/list`; replayed synchronously when the bar goes empty to avoid an AC→history flash. */
@@ -17,15 +17,18 @@ const escapeHtml = (str) => {
   return div.innerHTML;
 };
 
+const escapeAttr = (str) =>
+  escapeHtml(str).replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+
 function renderHistoryDropdown(entries, input, dropdown) {
   if (!dropdown || !input) return;
   dropdown.innerHTML = entries
     .map(
       (item) =>
-        `<div class="ac-item ac-item--history" data-entry="${escapeHtml(item.entry)}" data-id="${escapeHtml(String(item.id))}" role="button" tabindex="0">
+        `<div class="ac-item ac-item--history" data-entry="${escapeAttr(item.entry)}" data-id="${escapeAttr(String(item.id))}" role="button" tabindex="0">
           <span class="ac-item-icon ac-item-icon--clock" aria-hidden="true">${CLOCK_ICON}</span>
           <span class="ac-item-text">${escapeHtml(item.entry)}</span>
-          <button type="button" class="ac-item-delete" data-id="${escapeHtml(String(item.id))}" aria-label="Delete">${TRASH_ICON}</button>
+          <button type="button" class="ac-item-delete" data-id="${escapeAttr(String(item.id))}" aria-label="Delete">${TRASH_ICON}</button>
         </div>`,
     )
     .join("");

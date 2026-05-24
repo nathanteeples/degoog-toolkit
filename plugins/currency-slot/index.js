@@ -5,6 +5,7 @@ const FRANKFURTER_BASE = "https://api.frankfurter.dev/v2";
 const COINGECKO_SIMPLE_PRICE =
   "https://api.coingecko.com/api/v3/simple/price";
 const CRYPTO_CODES = new Set(["BTC", "ETH"]);
+const AMBIGUOUS_WORD_CODES = new Set(["ALL", "TRY", "MAD", "TOP"]);
 const COIN_IDS = {
   BTC: "bitcoin",
   ETH: "ethereum",
@@ -419,6 +420,26 @@ function parseQuery(query) {
   };
 }
 
+function _hasCurrencyTriggerIntent(query, parsed) {
+  const q = String(query || "");
+  if (COMMAND_PREFIX_RE.test(q)) return true;
+  if (/\d/.test(q)) return true;
+  if (/\b(to|into|in|=)\b/i.test(q)) return true;
+  if (/\b(convert|currency|exchange|rate|rates|price)\b/i.test(q)) return true;
+  return _isBareCurrencyPair(q, parsed);
+}
+
+function _isBareCurrencyPair(query, parsed) {
+  if (!parsed?.from || !parsed?.to) return false;
+  const tokens = String(query || "").trim().split(/\s+/).filter(Boolean);
+  if (tokens.length !== 2) return false;
+  return [parsed.from, parsed.to].every((code, index) => {
+    const token = tokens[index] || "";
+    if (!new RegExp(`^${code}$`, "i").test(token)) return false;
+    return !AMBIGUOUS_WORD_CODES.has(code) || token === token.toUpperCase();
+  });
+}
+
 function _jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -796,6 +817,7 @@ export const slot = {
       label: "Default target currency",
       type: "select",
       options: CODES.filter((c) => c !== "BTC" && c !== "ETH"),
+      default: "USD",
       description: "Currency to convert to when not specified in the query.",
     },
   ],
@@ -815,9 +837,8 @@ export const slot = {
     const q = query.trim();
     if (q.length < 3) return false;
     if (COMMAND_PREFIX_RE.test(q)) return true;
-    const codes = q.toUpperCase().match(CODE_REGEX) || [];
-    if (codes.length >= 2) return true;
-    return false;
+    const parsed = parseQuery(q);
+    return Boolean(parsed?.from && parsed?.to && _hasCurrencyTriggerIntent(q, parsed));
   },
 
   async execute(query, context) {

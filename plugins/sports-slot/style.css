@@ -47,9 +47,9 @@
 
 .sports-slot__title {
     margin: 0;
-    font-size: clamp(1.65rem, 4vw, 3rem);
+    font-size: 2.25rem;
     line-height: 1.02;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
 }
 
 .sports-slot__subtitle {
@@ -283,7 +283,7 @@
 }
 
 .sports-slot__team-name {
-    font-size: clamp(1.1rem, 2.3vw, 1.45rem);
+    font-size: 1.25rem;
     font-weight: 800;
     line-height: 1.12;
 }
@@ -319,10 +319,10 @@
 }
 
 .sports-slot__team-score {
-    font-size: clamp(3rem, 10vw, 5rem);
+    font-size: 4rem;
     font-weight: 900;
     line-height: 0.92;
-    letter-spacing: -0.06em;
+    letter-spacing: 0;
 }
 
 .sports-slot__vs {
@@ -422,7 +422,7 @@
     margin: 0 0 0.95rem;
     font-size: 1.55rem;
     line-height: 1.08;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
 }
 
 .sports-slot__mini-games {

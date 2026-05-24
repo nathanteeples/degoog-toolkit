@@ -99,6 +99,18 @@ const _esc = (s) => {
 
 const _ctx = (ctx) => ctx || pluginRuntimeContext || null;
 
+const _normalizeBaseUrl = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+    return parsed.toString().replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+};
+
 const _fetchFor = (ctx) => {
   if (typeof ctx?.fetch === "function") {
     return (...args) => ctx.fetch(...args);
@@ -1542,7 +1554,7 @@ const _entityHandler = (builder) => async (request, routeCtx) => {
     return _jsonResponse(panel, 200);
   } catch (err) {
     return _jsonResponse(
-      { error: "Internal error", detail: String(err && err.message) },
+      { error: "Internal error" },
       500,
     );
   }
@@ -1581,7 +1593,7 @@ const _seasonHandler = async (request, routeCtx) => {
     return _jsonResponse(panel, 200);
   } catch (err) {
     return _jsonResponse(
-      { error: "Internal error", detail: String(err && err.message) },
+      { error: "Internal error" },
       500,
     );
   }
@@ -1729,7 +1741,7 @@ export const slot = {
   configure(settings) {
     tmdbApiKey = (settings?.apiKey || "").trim();
     omdbApiKey = (settings?.omdbApiKey || "").trim();
-    jellyfinUrl = (settings?.jellyfinUrl || "").replace(/\/+$/, "").trim();
+    jellyfinUrl = _normalizeBaseUrl(settings?.jellyfinUrl);
     jellyfinApiKey = (settings?.jellyfinApiKey || "").trim();
   },
 
@@ -1754,8 +1766,13 @@ export const slot = {
         entity = await _resolveEntity(detected, q, ctx);
       }
 
+      if (!entity && _hasMediaIntent(q)) {
+        entity = await _resolveFromQuery(q, ctx);
+      }
+
       // 2) Strict mode: only render when result URLs contain a supported
-      //    movie/TV/person source (TMDB/IMDb/Allocine). Do not query-match.
+      //    movie/TV/person source (TMDB/IMDb/Allocine), or when the query
+      //    carries explicit media intent and passes TMDB confidence checks.
       if (!entity) return { html: "" };
 
       const { type, id } = entity;
@@ -1776,4 +1793,4 @@ export const slot = {
   },
 };
 
-export default { slot };
+export default slot;

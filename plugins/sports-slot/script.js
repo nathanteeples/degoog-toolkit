@@ -1,6 +1,7 @@
 (() => {
   const PANEL_SELECTOR = ".sports-slot[data-sports-query]";
-  const REFRESH_ENDPOINT = "/api/plugin/sports-slot/refresh";
+  const PLUGIN_API_BASE = `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
+  const REFRESH_ENDPOINT = `${PLUGIN_API_BASE}/refresh`;
 
   function formatClock(seconds) {
     const safe = Math.max(0, Number(seconds) || 0);
