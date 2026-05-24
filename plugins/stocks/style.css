@@ -34,10 +34,10 @@
 }
 
 .stocks-main {
-    align-items: start;
-    display: grid;
-    gap: 18px;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
 }
 
 .stocks-identity {
@@ -100,15 +100,15 @@
 .stocks-price-block {
     display: grid;
     gap: 4px;
-    justify-items: end;
-    text-align: right;
+    justify-items: start;
+    text-align: left;
 }
 
 .stocks-price {
     align-items: baseline;
     display: flex;
     gap: 6px;
-    justify-content: flex-end;
+    justify-content: flex-start;
     white-space: nowrap;
 }
 
@@ -321,7 +321,7 @@
 .stocks-chart-x-label,
 .stocks-chart-y-label {
     fill: var(--text-secondary);
-    font-size: 0.68rem;
+    font-size: 10px;
     font-weight: 500;
 }
 .stocks-chart-hl-line {
@@ -369,7 +369,8 @@
 .stocks-details {
     display: grid;
     gap: 8px 14px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 4px;
 }
 
 .stocks-detail {
@@ -429,29 +430,11 @@
     }
 
     .stocks-details {
-        grid-template-columns: repeat(6, minmax(88px, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
 @container (max-width: 560px) {
-    .stocks-main {
-        gap: 10px;
-        grid-template-columns: 1fr;
-    }
-
-    .stocks-price-block {
-        justify-items: start;
-        text-align: left;
-    }
-
-    .stocks-price {
-        justify-content: flex-start;
-    }
-
-    .stocks-details {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .stocks-chart-header {
         align-items: flex-start;
         flex-direction: column;
@@ -459,10 +442,6 @@
 
     .stocks-chart-periods {
         justify-content: flex-start;
-    }
-
-    .stocks-chart-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 

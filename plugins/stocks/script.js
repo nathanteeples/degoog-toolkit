@@ -128,7 +128,7 @@
 
     const W = body.clientWidth || 320;
     const H = 212;
-    const padL = 8, padR = 8, padT = 10, padB = 4;
+    const padL = 52, padR = 10, padT = 15, padB = 32;
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
     const span = high - low || Math.max(Math.abs(high), 1) * 0.01;
@@ -149,10 +149,12 @@
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     svg.setAttribute("class", "stocks-sparkline");
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", `${label} price chart`);
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
 
     const defs = document.createElementNS(svgNS, "defs");
     const grad = document.createElementNS(svgNS, "linearGradient");
@@ -174,9 +176,13 @@
     defs.appendChild(grad);
     svg.appendChild(defs);
 
+    /* ── Grid lines + Y-axis price labels ── */
+    const priceHint = payload.priceHint;
     for (let gi = 0; gi < 4; gi++) {
       const frac = gi / 3;
+      const yVal = low + frac * span;
       const yPx = padT + chartH - frac * chartH;
+
       const gridLine = document.createElementNS(svgNS, "line");
       gridLine.setAttribute("x1", padL);
       gridLine.setAttribute("y1", yPx.toFixed(2));
@@ -184,6 +190,42 @@
       gridLine.setAttribute("y2", yPx.toFixed(2));
       gridLine.setAttribute("class", "stocks-chart-grid-line");
       svg.appendChild(gridLine);
+
+      const yLabel = document.createElementNS(svgNS, "text");
+      yLabel.setAttribute("x", (padL - 8).toFixed(2));
+      yLabel.setAttribute("y", (yPx + 4).toFixed(2));
+      yLabel.setAttribute("class", "stocks-chart-y-label");
+      yLabel.setAttribute("text-anchor", "end");
+      yLabel.textContent = formatPrice(yVal, priceHint);
+      svg.appendChild(yLabel);
+    }
+
+    /* ── X-axis time labels ── */
+    const xLabelCount = 5;
+    const xStep = Math.max(1, Math.floor(points.length / xLabelCount));
+    for (let xi = 0; xi < points.length; xi += xStep) {
+      const xLabel = document.createElementNS(svgNS, "text");
+      xLabel.setAttribute("x", coords[xi][0].toFixed(2));
+      xLabel.setAttribute("y", (H - 10).toFixed(2));
+      xLabel.setAttribute("class", "stocks-chart-x-label");
+      xLabel.setAttribute("text-anchor", "middle");
+      xLabel.textContent = points[xi].time
+        ? new Date(points[xi].time * 1000).toLocaleString("en-US", { hour: "numeric", minute: "2-digit" })
+        : "";
+      svg.appendChild(xLabel);
+    }
+    /* Always show last label */
+    const lastIdx = points.length - 1;
+    if (lastIdx % xStep !== 0) {
+      const lastXLabel = document.createElementNS(svgNS, "text");
+      lastXLabel.setAttribute("x", coords[lastIdx][0].toFixed(2));
+      lastXLabel.setAttribute("y", (H - 10).toFixed(2));
+      lastXLabel.setAttribute("class", "stocks-chart-x-label");
+      lastXLabel.setAttribute("text-anchor", "middle");
+      lastXLabel.textContent = points[lastIdx].time
+        ? new Date(points[lastIdx].time * 1000).toLocaleString("en-US", { hour: "numeric", minute: "2-digit" })
+        : "";
+      svg.appendChild(lastXLabel);
     }
 
     const areaEl = document.createElementNS(svgNS, "path");

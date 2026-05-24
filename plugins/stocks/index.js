@@ -1116,7 +1116,7 @@ function renderSparkline(points, trend, label) {
 
   const width = 320;
   const height = 212;
-  const padL = 8, padR = 8, padT = 10, padB = 4;
+  const padL = 52, padR = 10, padT = 15, padB = 32;
   const chartH = height - padT - padB;
   const min = Math.min(...prices);
   const max = Math.max(...prices);
@@ -1135,12 +1135,15 @@ function renderSparkline(points, trend, label) {
 
   const gridLinesHtml = [0, 1, 2, 3].map((gi) => {
     const frac = gi / 3;
+    const yVal = min + frac * span;
     const yPx = padT + chartH - frac * chartH;
-    return `<line x1="${padL}" y1="${yPx.toFixed(2)}" x2="${width - padR}" y2="${yPx.toFixed(2)}" class="stocks-chart-grid-line"></line>`;
+    const labelText = escapeHtml(formatPrice(yVal));
+    return `<line x1="${padL}" y1="${yPx.toFixed(2)}" x2="${width - padR}" y2="${yPx.toFixed(2)}" class="stocks-chart-grid-line"></line>` +
+           `<text x="${(padL - 8).toFixed(2)}" y="${(yPx + 4).toFixed(2)}" class="stocks-chart-y-label" text-anchor="end">${labelText}</text>`;
   }).join("");
 
   return `
-    <svg class="stocks-sparkline stocks-sparkline-${trend}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Price sparkline">
+    <svg class="stocks-sparkline stocks-sparkline-${trend}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" role="img" aria-label="Price sparkline">
       <defs>
         <linearGradient id="stocks-grad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="var(--stocks-line)" stop-opacity="0.3"></stop>
