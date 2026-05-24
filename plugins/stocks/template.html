@@ -1,0 +1,59 @@
+<div class="stocks-card stocks-card-{{trend}} slot-full-width">
+    <div class="stocks-main">
+        <div class="stocks-identity">
+            <div class="stocks-eyebrow">Stock quote</div>
+            <div class="stocks-symbol-row">
+                <a
+                    class="stocks-symbol"
+                    href="{{source_url}}"
+                    target="_blank"
+                    rel="noopener"
+                    >{{symbol}}</a>
+                <span class="stocks-exchange">{{exchange}}</span>
+            </div>
+            <div class="stocks-company">{{company}}</div>
+        </div>
+
+        <div class="stocks-price-block">
+            <div class="stocks-price">
+                <span class="stocks-price-value">{{price}}</span>
+                <span class="stocks-currency">{{currency}}</span>
+            </div>
+            <div class="stocks-change">{{change}}</div>
+        </div>
+    </div>
+
+    <div class="stocks-chart">{{sparkline}}</div>
+
+    <div class="stocks-details">
+        <div class="stocks-detail">
+            <span class="stocks-detail-label">State</span>
+            <span class="stocks-detail-value">{{market_state}}</span>
+        </div>
+        <div class="stocks-detail">
+            <span class="stocks-detail-label">As of</span>
+            <span class="stocks-detail-value">{{as_of}}</span>
+        </div>
+        <div class="stocks-detail">
+            <span class="stocks-detail-label">Prev close</span>
+            <span class="stocks-detail-value">{{previous_close}}</span>
+        </div>
+        <div class="stocks-detail">
+            <span class="stocks-detail-label">Day range</span>
+            <span class="stocks-detail-value">{{day_range}}</span>
+        </div>
+        <div class="stocks-detail">
+            <span class="stocks-detail-label">Volume</span>
+            <span class="stocks-detail-value">{{volume}}</span>
+        </div>
+        <div class="stocks-detail">
+            <span class="stocks-detail-label">Data</span>
+            <a
+                class="stocks-detail-value stocks-source"
+                href="{{source_url}}"
+                target="_blank"
+                rel="noopener"
+                >{{source_label}}</a>
+        </div>
+    </div>
+</div>

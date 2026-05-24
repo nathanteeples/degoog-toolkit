@@ -74,6 +74,13 @@
       "type": "slot"
     },
     {
+      "path": "plugins/stocks",
+      "name": "Stocks",
+      "description": "No-key stock quotes for explicit ticker and company-share queries, fetched server-side with Yahoo Finance and Stooq fallback.",
+      "version": "1.0.0",
+      "type": "slot"
+    },
+    {
       "path": "plugins/search-history",
       "name": "Search History",
       "description": "Stores your past searches with timestamps and surfaces them as a dropdown on the search bar. Use !history (or natural phrases like 'search history') to view a paginated, deletable list. Entries are kept locally in data/history.json and the maximum count is configurable.",

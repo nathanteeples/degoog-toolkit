@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="1200" height="720" fill="#f7f8fa"/>
+  <rect x="160" y="118" width="880" height="484" rx="18" fill="#ffffff" stroke="#dfe3ea"/>
+  <text x="208" y="184" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#5f6368" letter-spacing="2">STOCK QUOTE</text>
+  <text x="208" y="250" font-family="Arial, sans-serif" font-size="58" font-weight="700" fill="#202124">AAPL</text>
+  <rect x="378" y="209" width="116" height="40" rx="20" fill="#f1f3f4" stroke="#dfe3ea"/>
+  <text x="436" y="235" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" font-weight="700" fill="#5f6368">NasdaqGS</text>
+  <text x="208" y="296" font-family="Arial, sans-serif" font-size="26" fill="#5f6368">Apple Inc.</text>
+  <text x="842" y="236" text-anchor="end" font-family="Arial, sans-serif" font-size="58" font-weight="700" fill="#202124">308.82</text>
+  <text x="862" y="236" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#5f6368">USD</text>
+  <text x="992" y="284" text-anchor="end" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#188038">+3.83 (+1.26%)</text>
+  <rect x="208" y="344" width="784" height="130" rx="12" fill="#f9fbfb" stroke="#dfe3ea"/>
+  <path d="M232 438 L305 420 L378 428 L451 394 L524 404 L597 365 L670 374 L743 356 L816 342 L968 332 L968 454 L232 454 Z" fill="#188038" opacity="0.14"/>
+  <path d="M232 438 L305 420 L378 428 L451 394 L524 404 L597 365 L670 374 L743 356 L816 342 L968 332" fill="none" stroke="#188038" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="968" cy="332" r="8" fill="#188038"/>
+  <text x="968" y="370" text-anchor="end" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#5f6368">1D</text>
+  <g font-family="Arial, sans-serif" font-size="19">
+    <text x="208" y="526" fill="#5f6368" font-weight="700">STATE</text>
+    <text x="208" y="558" fill="#202124">Market closed</text>
+    <text x="424" y="526" fill="#5f6368" font-weight="700">PREV CLOSE</text>
+    <text x="424" y="558" fill="#202124">304.99</text>
+    <text x="640" y="526" fill="#5f6368" font-weight="700">DAY RANGE</text>
+    <text x="640" y="558" fill="#202124">305.84 - 311.40</text>
+  </g>
+</svg>
