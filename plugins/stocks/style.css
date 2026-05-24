@@ -38,9 +38,6 @@
     flex-direction: column;
     gap: 10px;
     min-width: 0;
-    border: 1px solid var(--border-light);
-    border-radius: 12px;
-    padding: 16px;
 }
 
 .stocks-identity {
@@ -231,7 +228,7 @@
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 0.45rem 0.7rem;
-    margin-top: 12px;
+    margin-top: auto;
     padding-top: 12px;
     border-top: 1px solid var(--border-light);
 }
@@ -426,6 +423,17 @@
 
     .stocks-chart {
         min-height: 214px;
+    }
+
+    .stocks-chart-body {
+        height: 110px;
+        min-height: 110px;
+        flex: none;
+    }
+
+    .stocks-sparkline-empty,
+    .stocks-chart-loading {
+        height: 110px;
     }
 
     .stocks-details {
