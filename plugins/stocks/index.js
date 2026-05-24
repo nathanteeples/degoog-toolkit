@@ -1080,31 +1080,37 @@ function renderSparkline(points, trend, label) {
     return '<div class="stocks-sparkline-empty">No chart data</div>';
   }
 
-  const width = 260;
-  const height = 74;
-  const padX = 8;
-  const padY = 10;
+  const width = 320;
+  const height = 212;
+  const padL = 8, padR = 8, padT = 10, padB = 20;
+  const chartH = height - padT - padB;
   const min = Math.min(...prices);
   const max = Math.max(...prices);
   const span = max - min || Math.max(Math.abs(max), 1) * 0.01;
-  const step = prices.length > 1 ? (width - padX * 2) / (prices.length - 1) : 0;
+  const step = prices.length > 1 ? (width - padL - padR) / (prices.length - 1) : 0;
   const coords = prices.map((price, index) => {
-    const x = padX + index * step;
-    const y = height - padY - ((price - min) / span) * (height - padY * 2);
+    const x = padL + index * step;
+    const y = padT + chartH - ((price - min) / span) * chartH;
     return [round(x), round(y)];
   });
   const path = coords
     .map(([x, y], index) => `${index === 0 ? "M" : "L"} ${x} ${y}`)
     .join(" ");
-  const area = `${path} L ${coords[coords.length - 1][0]} ${height - padY} L ${coords[0][0]} ${height - padY} Z`;
+  const area = `${path} L ${coords[coords.length - 1][0]} ${padT + chartH} L ${coords[0][0]} ${padT + chartH} Z`;
   const last = coords[coords.length - 1];
   const labelHtml = label
-    ? `<text class="stocks-sparkline-label" x="${width - padX}" y="13" text-anchor="end">${escapeHtml(label)}</text>`
+    ? `<text class="stocks-sparkline-label" x="${width - padR}" y="13" text-anchor="end">${escapeHtml(label)}</text>`
     : "";
 
   return `
-    <svg class="stocks-sparkline stocks-sparkline-${trend}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Price sparkline">
-      <path class="stocks-sparkline-area" d="${area}"></path>
+    <svg class="stocks-sparkline stocks-sparkline-${trend}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Price sparkline">
+      <defs>
+        <linearGradient id="stocks-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--stocks-line)" stop-opacity="0.3"></stop>
+          <stop offset="100%" stop-color="var(--stocks-line)" stop-opacity="0"></stop>
+        </linearGradient>
+      </defs>
+      <path class="stocks-sparkline-area" d="${area}" fill="url(#stocks-grad)"></path>
       <path class="stocks-sparkline-line" d="${path}"></path>
       <circle class="stocks-sparkline-dot" cx="${last[0]}" cy="${last[1]}" r="3"></circle>
       ${labelHtml}

@@ -334,3 +334,13 @@
     grid-template-columns: 1.1rem minmax(0, 1fr);
   }
 }
+
+/* literallygoogle theme support */
+#results-page.degoog-fullwidth-slot-shell .dslot-audio {
+    border-radius: 50%; /* Make audio button a circle */
+}
+#results-page.degoog-fullwidth-slot-shell .dslot-tag,
+#results-page.degoog-fullwidth-slot-shell .dslot-term,
+#results-page.degoog-fullwidth-slot-shell .dslot-more {
+    border-radius: 16px; /* Pill-shaped tags */
+}

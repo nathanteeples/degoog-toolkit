@@ -286,3 +286,13 @@
     flex: 1 1 0;
   }
 }
+
+/* literallygoogle theme support */
+#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.trc-card) .trc-card {
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+}
+#results-page.degoog-fullwidth-slot-shell .trc-source-input,
+#results-page.degoog-fullwidth-slot-shell .trc-output {
+    border-radius: 12px;
+}

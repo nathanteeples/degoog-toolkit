@@ -126,56 +126,195 @@
     const changePercent = first ? (change / first) * 100 : 0;
     updateTrendClass(card, change);
 
-    const width = 320;
-    const height = 96;
-    const padX = 8;
-    const padY = 10;
+    const W = body.clientWidth || 320;
+    const H = 212;
+    const padL = 8, padR = 8, padT = 10, padB = 20;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
     const span = high - low || Math.max(Math.abs(high), 1) * 0.01;
-    const step = (width - padX * 2) / (points.length - 1);
+
     const coords = points.map((point, index) => {
-      const x = padX + index * step;
-      const y = height - padY - ((point.price - low) / span) * (height - padY * 2);
-      return [Math.round(x * 100) / 100, Math.round(y * 100) / 100];
+      const x = padL + (index / (points.length - 1)) * chartW;
+      const y = padT + chartH - ((point.price - low) / span) * chartH;
+      return [x, y];
     });
-    const path = coords
-      .map(([x, y], index) => `${index === 0 ? "M" : "L"} ${x} ${y}`)
-      .join(" ");
-    const area = `${path} L ${coords[coords.length - 1][0]} ${height - padY} L ${coords[0][0]} ${height - padY} Z`;
-    const lastPoint = coords[coords.length - 1];
+
+    const path = coords.map(([x, y], index) => `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`).join(" ");
+    const area = `${path} L ${coords[coords.length - 1][0].toFixed(2)} ${(padT + chartH).toFixed(2)} L ${coords[0][0].toFixed(2)} ${(padT + chartH).toFixed(2)} Z`;
     const label = escapeHtml(payload.label || PERIOD_LABELS[payload.period] || "");
 
-    body.innerHTML = `
-      <svg class="stocks-sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${label} price chart">
-        <path class="stocks-sparkline-area" d="${area}"></path>
-        <path class="stocks-sparkline-line" d="${path}"></path>
-        <circle class="stocks-sparkline-dot" cx="${lastPoint[0]}" cy="${lastPoint[1]}" r="3"></circle>
-        <text class="stocks-sparkline-label" x="${width - padX}" y="13" text-anchor="end">${label}</text>
-      </svg>
-    `;
+    body.innerHTML = "";
+    body.style.position = "relative";
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("class", "stocks-sparkline");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", `${label} price chart`);
+
+    const defs = document.createElementNS(svgNS, "defs");
+    const grad = document.createElementNS(svgNS, "linearGradient");
+    grad.setAttribute("id", "stocks-grad");
+    grad.setAttribute("x1", "0");
+    grad.setAttribute("y1", "0");
+    grad.setAttribute("x2", "0");
+    grad.setAttribute("y2", "1");
+    const stop1 = document.createElementNS(svgNS, "stop");
+    stop1.setAttribute("offset", "0%");
+    stop1.setAttribute("stop-color", "var(--stocks-line)");
+    stop1.setAttribute("stop-opacity", "0.3");
+    const stop2 = document.createElementNS(svgNS, "stop");
+    stop2.setAttribute("offset", "100%");
+    stop2.setAttribute("stop-color", "var(--stocks-line)");
+    stop2.setAttribute("stop-opacity", "0");
+    grad.appendChild(stop1);
+    grad.appendChild(stop2);
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+
+    for (let gi = 0; gi < 4; gi++) {
+      const frac = gi / 3;
+      const yPx = padT + chartH - frac * chartH;
+      const gridLine = document.createElementNS(svgNS, "line");
+      gridLine.setAttribute("x1", padL);
+      gridLine.setAttribute("y1", yPx.toFixed(2));
+      gridLine.setAttribute("x2", W - padR);
+      gridLine.setAttribute("y2", yPx.toFixed(2));
+      gridLine.setAttribute("class", "stocks-chart-grid-line");
+      svg.appendChild(gridLine);
+    }
+
+    const areaEl = document.createElementNS(svgNS, "path");
+    areaEl.setAttribute("d", area);
+    areaEl.setAttribute("class", "stocks-sparkline-area");
+    areaEl.setAttribute("fill", "url(#stocks-grad)");
+    svg.appendChild(areaEl);
+
+    const lineEl = document.createElementNS(svgNS, "path");
+    lineEl.setAttribute("d", path);
+    lineEl.setAttribute("class", "stocks-sparkline-line");
+    svg.appendChild(lineEl);
+
+    const lastPoint = coords[coords.length - 1];
+    const dotEl = document.createElementNS(svgNS, "circle");
+    dotEl.setAttribute("cx", lastPoint[0].toFixed(2));
+    dotEl.setAttribute("cy", lastPoint[1].toFixed(2));
+    dotEl.setAttribute("r", "3");
+    dotEl.setAttribute("class", "stocks-sparkline-dot");
+    svg.appendChild(dotEl);
+
+    const textEl = document.createElementNS(svgNS, "text");
+    textEl.setAttribute("x", W - padR);
+    textEl.setAttribute("y", "13");
+    textEl.setAttribute("text-anchor", "end");
+    textEl.setAttribute("class", "stocks-sparkline-label");
+    textEl.textContent = label;
+    svg.appendChild(textEl);
+
+    const hlGroup = document.createElementNS(svgNS, "g");
+    hlGroup.setAttribute("class", "stocks-chart-hl");
+    hlGroup.style.display = "none";
+    const hlLine = document.createElementNS(svgNS, "line");
+    hlLine.setAttribute("x1", "0");
+    hlLine.setAttribute("y1", padT);
+    hlLine.setAttribute("x2", "0");
+    hlLine.setAttribute("y2", padT + chartH);
+    hlLine.setAttribute("class", "stocks-chart-hl-line");
+    const hlDot = document.createElementNS(svgNS, "circle");
+    hlDot.setAttribute("cx", "0");
+    hlDot.setAttribute("cy", "0");
+    hlDot.setAttribute("r", "4");
+    hlDot.setAttribute("class", "stocks-chart-hl-dot");
+    hlGroup.appendChild(hlLine);
+    hlGroup.appendChild(hlDot);
+    svg.appendChild(hlGroup);
+
+    const hitW = chartW / points.length;
+    for (let hi = 0; hi < points.length; hi++) {
+      const hitRect = document.createElementNS(svgNS, "rect");
+      hitRect.setAttribute("x", (coords[hi][0] - hitW / 2).toFixed(2));
+      hitRect.setAttribute("y", padT);
+      hitRect.setAttribute("width", hitW.toFixed(2));
+      hitRect.setAttribute("height", chartH);
+      hitRect.setAttribute("class", "stocks-chart-hit");
+      hitRect.setAttribute("data-i", hi);
+      svg.appendChild(hitRect);
+    }
+
+    body.appendChild(svg);
+
+    let tooltip = body.querySelector(".stocks-chart-tooltip");
+    if (!tooltip) {
+      tooltip = document.createElement("div");
+      tooltip.className = "stocks-chart-tooltip";
+      body.appendChild(tooltip);
+    }
+    tooltip.style.display = "none";
+
+    function showTooltip(i) {
+      hlGroup.style.display = "";
+      hlLine.setAttribute("x1", coords[i][0].toFixed(2));
+      hlLine.setAttribute("x2", coords[i][0].toFixed(2));
+      hlDot.setAttribute("cx", coords[i][0].toFixed(2));
+      hlDot.setAttribute("cy", coords[i][1].toFixed(2));
+
+      const priceHint = payload.priceHint;
+      const dateStr = new Date(points[i].time * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      tooltip.innerHTML = '<div class="stocks-tt-date">' + dateStr + '</div>' +
+                          '<div class="stocks-tt-price">' + escapeHtml(formatPrice(points[i].price, priceHint)) + '</div>';
+      
+      tooltip.style.display = "";
+      tooltip.classList.add("stocks-chart-tooltip--visible");
+
+      const bodyRect = body.getBoundingClientRect();
+      const svgRect = svg.getBoundingClientRect();
+      const scaleX = svgRect.width / W;
+      const pixelX = svgRect.left - bodyRect.left + coords[i][0] * scaleX;
+      const ttW = tooltip.offsetWidth || 100;
+      let left = pixelX - ttW / 2;
+      if (left < 0) left = 0;
+      if (left + ttW > bodyRect.width) left = bodyRect.width - ttW;
+      tooltip.style.left = left + "px";
+      tooltip.style.top = "0px";
+    }
+
+    function hideTooltip() {
+      hlGroup.style.display = "none";
+      tooltip.style.display = "none";
+      tooltip.classList.remove("stocks-chart-tooltip--visible");
+    }
+
+    svg.querySelectorAll(".stocks-chart-hit").forEach((rect) => {
+      rect.addEventListener("mouseenter", (e) => showTooltip(parseInt(rect.getAttribute("data-i"), 10)));
+      rect.addEventListener("mousemove", (e) => showTooltip(parseInt(rect.getAttribute("data-i"), 10)));
+    });
+    body.addEventListener("mouseleave", hideTooltip);
 
     if (stats) {
       const priceHint = payload.priceHint;
       const sign = change >= 0 ? "+" : "";
       const trendClass =
         change >= 0 ? "stocks-chart-stat-value--up" : "stocks-chart-stat-value--down";
-      stats.innerHTML = `
+      stats.innerHTML = \`
         <div class="stocks-chart-stat">
           <span class="stocks-chart-stat-label">Low</span>
-          <span class="stocks-chart-stat-value">${escapeHtml(formatPrice(low, priceHint))}</span>
+          <span class="stocks-chart-stat-value">\${escapeHtml(formatPrice(low, priceHint))}</span>
         </div>
         <div class="stocks-chart-stat">
           <span class="stocks-chart-stat-label">High</span>
-          <span class="stocks-chart-stat-value">${escapeHtml(formatPrice(high, priceHint))}</span>
+          <span class="stocks-chart-stat-value">\${escapeHtml(formatPrice(high, priceHint))}</span>
         </div>
         <div class="stocks-chart-stat">
           <span class="stocks-chart-stat-label">Last</span>
-          <span class="stocks-chart-stat-value">${escapeHtml(formatPrice(last, priceHint))}</span>
+          <span class="stocks-chart-stat-value">\${escapeHtml(formatPrice(last, priceHint))}</span>
         </div>
         <div class="stocks-chart-stat">
           <span class="stocks-chart-stat-label">Change</span>
-          <span class="stocks-chart-stat-value ${trendClass}">${sign}${changePercent.toFixed(2)}%</span>
+          <span class="stocks-chart-stat-value \${trendClass}">\${sign}\${changePercent.toFixed(2)}%</span>
         </div>
-      `;
+      \`;
     }
   }
 

@@ -246,3 +246,9 @@
     font-size: 0.78rem;
   }
 }
+
+/* literallygoogle theme support */
+#results-page.degoog-fullwidth-slot-shell .calc-card {
+    border: 1px solid var(--border-light, #dadce0);
+    border-radius: 16px;
+}

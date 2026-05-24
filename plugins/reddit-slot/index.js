@@ -11,14 +11,15 @@ export const slot = {
   description: "Shows the top Reddit post and top comments above search results",
   position: "above-results",
   isClientExposed: false,
+  waitForResults: true,
 
   settingsSchema: [
     {
       key: "showMode",
       label: "When to show",
       type: "select",
-      options: ["always", "keyword"],
-      description: "Always: shows for every search. Keyword: only when query contains 'reddit'.",
+      options: ["always", "keyword", "top10"],
+      description: "Always: shows for every search. Keyword: only when query contains 'reddit'. Top10: only when a Reddit link is in the top 10 search results.",
     },
     {
       key: "maxComments",
@@ -54,7 +55,7 @@ export const slot = {
   },
 
   configure(settings) {
-    showMode = settings?.showMode === "keyword" ? "keyword" : "always";
+    showMode = ["keyword", "top10"].includes(settings?.showMode) ? settings.showMode : "always";
 
     const n = parseInt(settings?.maxComments ?? "2", 10);
     maxComments = Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 2;
@@ -80,6 +81,17 @@ export const slot = {
 
   async execute(query, context) {
     try {
+      if (showMode === "top10") {
+        const results = context?.results;
+        if (!Array.isArray(results)) return { html: "" };
+        const topResults = results.slice(0, 10);
+        const hasReddit = topResults.some(r => {
+          const url = typeof r?.url === "string" ? r.url : "";
+          return url.includes("reddit.com");
+        });
+        if (!hasReddit) return { html: "" };
+      }
+
       // Strip "reddit" keyword from the actual search query
       const cleanQuery = query.replace(/\breddit\b/gi, "").trim();
       const searchQuery = cleanQuery.length > 1 ? cleanQuery : query.trim();

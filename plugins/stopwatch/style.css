@@ -229,3 +229,10 @@
     font-size: 1.78rem;
   }
 }
+
+/* literallygoogle theme support */
+#results-page.degoog-fullwidth-slot-shell .timer-widget {
+    border: 1px solid var(--border-light, var(--border));
+    border-radius: 16px;
+    margin: 0 auto;
+}

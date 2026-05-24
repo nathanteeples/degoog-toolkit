@@ -174,3 +174,9 @@
 @media (max-width: 480px) {
   .rslot-comments-row { grid-template-columns: 1fr; }
 }
+
+/* literallygoogle theme support */
+#results-page.degoog-fullwidth-slot-shell .rslot-post,
+#results-page.degoog-fullwidth-slot-shell .rslot-comment {
+    border-radius: 16px;
+}
