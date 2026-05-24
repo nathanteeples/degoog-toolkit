@@ -36,7 +36,7 @@
 .stocks-main {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
     min-width: 0;
 }
 
@@ -99,7 +99,7 @@
 
 .stocks-price-block {
     display: grid;
-    gap: 4px;
+    gap: 2px;
     justify-items: start;
     text-align: left;
 }
@@ -208,10 +208,9 @@
 
 .stocks-chart-body {
     flex: 1;
-    min-height: 212px;
+    min-height: 120px;
     min-width: 0;
     position: relative;
-    margin-bottom: 12px;
 }
 
 .stocks-chart-loading {
@@ -219,7 +218,8 @@
     color: var(--text-secondary);
     display: flex;
     font-size: 0.9rem;
-    height: 96px;
+    height: 100%;
+    min-height: 120px;
     justify-content: center;
 }
 
@@ -228,7 +228,7 @@
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 0.45rem 0.7rem;
-    margin-top: auto;
+    margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid var(--border-light);
 }
@@ -309,7 +309,8 @@
     color: var(--text-secondary);
     display: flex;
     font-size: 0.9rem;
-    height: 212px;
+    height: 100%;
+    min-height: 120px;
     justify-content: center;
 }
 
@@ -369,7 +370,7 @@
 
 .stocks-details {
     display: grid;
-    gap: 8px 14px;
+    gap: 6px 12px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-top: 4px;
 }
@@ -377,9 +378,9 @@
 .stocks-detail {
     border-top: 1px solid var(--border-light);
     display: grid;
-    gap: 2px;
+    gap: 1px;
     min-width: 0;
-    padding-top: 7px;
+    padding-top: 4px;
 }
 
 .stocks-detail-label {
@@ -424,19 +425,9 @@
         min-height: 214px;
     }
 
-    .stocks-chart-body {
-        height: 132px;
-        min-height: 132px;
-        flex: none;
-    }
-
-    .stocks-sparkline-empty,
-    .stocks-chart-loading {
-        height: 132px;
-    }
-
     .stocks-details {
         grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px 12px;
     }
 }
 
