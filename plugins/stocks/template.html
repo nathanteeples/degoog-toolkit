@@ -1,4 +1,4 @@
-<div class="stocks-card stocks-card-{{trend}} slot-full-width">
+<div class="stocks-card stocks-card-{{trend}} slot-full-width" data-symbol="{{symbol_attr}}">
     <div class="stocks-summary">
         <div class="stocks-main">
             <div class="stocks-identity">
@@ -24,7 +24,26 @@
             </div>
         </div>
 
-        <div class="stocks-chart">{{sparkline}}</div>
+        <div
+            class="stocks-chart"
+            data-symbol="{{symbol_attr}}"
+            data-currency="{{currency}}"
+            data-price-hint="{{price_hint}}"
+        >
+            <div class="stocks-chart-header">
+                <div class="stocks-chart-title">{{symbol}} price</div>
+                <div class="stocks-chart-periods" role="group" aria-label="Stock chart range">
+                    <button class="stocks-period stocks-period--active" type="button" data-period="1d">1D</button>
+                    <button class="stocks-period" type="button" data-period="5d">5D</button>
+                    <button class="stocks-period" type="button" data-period="1mo">1M</button>
+                    <button class="stocks-period" type="button" data-period="6mo">6M</button>
+                    <button class="stocks-period" type="button" data-period="ytd">YTD</button>
+                    <button class="stocks-period" type="button" data-period="max">Max</button>
+                </div>
+            </div>
+            <div class="stocks-chart-body">{{sparkline}}</div>
+            <div class="stocks-chart-stats" aria-live="polite"></div>
+        </div>
     </div>
 
     <div class="stocks-details">{{details}}</div>

@@ -1,5 +1,5 @@
 let templateHtml = "";
-let pluginFetch = null;
+let pluginFetch = (...args) => fetch(...args);
 let quoteCache = null;
 
 const PLUGIN_NAME = "Stocks";
@@ -8,6 +8,14 @@ const YAHOO_SEARCH_URL = "https://query1.finance.yahoo.com/v1/finance/search";
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart";
 const STOOQ_QUOTE_URL = "https://stooq.com/q/l/";
+const STOCK_CHART_PERIODS = {
+  "1d": { label: "1D", range: "1d", interval: "5m" },
+  "5d": { label: "5D", range: "5d", interval: "15m" },
+  "1mo": { label: "1M", range: "1mo", interval: "1d" },
+  "6mo": { label: "6M", range: "6mo", interval: "1d" },
+  ytd: { label: "YTD", range: "ytd", interval: "1d" },
+  max: { label: "Max", range: "max", interval: "1mo" },
+};
 
 const REQUEST_HEADERS = {
   Accept: "application/json,text/csv,text/plain;q=0.9,*/*;q=0.8",
@@ -226,6 +234,14 @@ export const slot = {
 
 export default slot;
 
+export const routes = [
+  {
+    path: "chart",
+    method: "get",
+    handler: handleChartRoute,
+  },
+];
+
 async function getCachedQuote(request, doFetch) {
   const key = `stocks:${request.kind}:${request.symbol || request.target}`;
   const cached = quoteCache?.get?.(key);
@@ -234,6 +250,16 @@ async function getCachedQuote(request, doFetch) {
   const quote = await resolveQuote(request, doFetch);
   if (quote) quoteCache?.set?.(key, quote, CACHE_TTL_MS);
   return quote;
+}
+
+async function getCachedChartSeries(symbol, period, doFetch) {
+  const key = `stocks:chart:${symbol}:${period}`;
+  const cached = quoteCache?.get?.(key);
+  if (cached) return cached;
+
+  const chart = await fetchYahooChartSeries(symbol, period, doFetch);
+  if (chart) quoteCache?.set?.(key, chart, CACHE_TTL_MS);
+  return chart;
 }
 
 async function resolveQuote(request, doFetch) {
@@ -330,6 +356,60 @@ function parseYahooResultRequest(results) {
   return null;
 }
 
+async function handleChartRoute(request) {
+  try {
+    const url = new URL(request.url);
+    const symbol = normalizeSymbol(url.searchParams.get("symbol"), {
+      allowAmbiguous: true,
+    });
+    const period = normalizeChartPeriod(url.searchParams.get("period"));
+
+    if (!symbol || !period) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Missing or unsupported chart parameters",
+        },
+        400,
+      );
+    }
+
+    const chart = await getCachedChartSeries(symbol, period, pluginFetch);
+    if (!chart) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Chart data unavailable",
+        },
+        502,
+      );
+    }
+
+    return jsonResponse({
+      ok: true,
+      ...chart,
+    });
+  } catch {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Internal error while fetching chart data",
+      },
+      500,
+    );
+  }
+}
+
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 function extractYahooFinanceSymbol(url) {
   try {
     const parsed = new URL(String(url || ""));
@@ -376,6 +456,15 @@ function extractExplicitSymbol(raw, allowPriceOnly) {
   }
 
   return "";
+}
+
+function normalizeChartPeriod(value) {
+  const period = String(value || "1d")
+    .trim()
+    .toLowerCase();
+  if (period === "1m") return "1mo";
+  if (period === "6m") return "6mo";
+  return STOCK_CHART_PERIODS[period] ? period : "";
 }
 
 function symbolFromSingleToken(value, options = {}) {
@@ -674,6 +763,49 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
   }
 }
 
+async function fetchYahooChartSeries(symbol, period, doFetch) {
+  const config = STOCK_CHART_PERIODS[period];
+  if (!config) return null;
+
+  try {
+    const params = new URLSearchParams({
+      interval: config.interval,
+      range: config.range,
+      includePrePost: "false",
+    });
+    const response = await doFetch(
+      `${YAHOO_CHART_URL}/${encodeURIComponent(symbol)}?${params}`,
+      { headers: REQUEST_HEADERS },
+    );
+    if (!response?.ok) return null;
+
+    const data = await response.json();
+    const result = data?.chart?.result?.[0];
+    const meta = result?.meta || {};
+    if (!result || !isAcceptedYahooInstrument(meta, null, null)) return null;
+
+    const points = extractYahooChartPoints(result);
+    if (points.length < 2) return null;
+
+    return {
+      symbol: String(meta.symbol || symbol).toUpperCase(),
+      period,
+      label: config.label,
+      currency: meta.currency || "",
+      priceHint: firstFinite(meta.priceHint),
+      previousClose: firstFinite(
+        meta.chartPreviousClose,
+        meta.previousClose,
+        meta.regularMarketPreviousClose,
+      ),
+      asOf: formatYahooTime(meta.regularMarketTime),
+      points,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function isAcceptedYahooInstrument(meta, searchQuote, snapshot) {
   const metaType = String(meta?.instrumentType || "").toUpperCase();
   const quoteType = String(searchQuote?.quoteType || "").toUpperCase();
@@ -850,9 +982,13 @@ function renderQuote(quote) {
   const replacements = {
     trend,
     symbol: escapeHtml(quote.symbol),
+    symbol_attr: escapeAttr(quote.symbol),
     company: escapeHtml(quote.name),
     price: escapeHtml(formatPrice(quote.price, quote.priceHint)),
     currency: escapeHtml(quote.currency || "Quote"),
+    price_hint: Number.isFinite(quote.priceHint)
+      ? escapeAttr(String(quote.priceHint))
+      : "",
     change: escapeHtml(formatChange(quote.change, quote.changePercent)),
     exchange: escapeHtml(quote.exchange || "Exchange unavailable"),
     source_label: escapeHtml(quote.sourceLabel),
@@ -1219,4 +1355,8 @@ function escapeHtml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/'/g, "&#039;").replace(/`/g, "&#096;");
 }
