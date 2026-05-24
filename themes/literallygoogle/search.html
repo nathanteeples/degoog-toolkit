@@ -137,13 +137,11 @@
             var favicon = panel.querySelector("#mp2-favicon");
             var host = panel.querySelector("#mp2-host");
             try {
-                var hostname = new URL(link.href).hostname;
+                var parsed = new URL(link.href);
+                var hostname = parsed.hostname;
                 if (host) host.textContent = hostname;
                 if (favicon) {
-                    favicon.src =
-                        "https://www.google.com/s2/favicons?domain=" +
-                        encodeURIComponent(hostname) +
-                        "&sz=32";
+                    favicon.src = parsed.origin + "/favicon.ico";
                     favicon.style.display = "block";
                     favicon.onerror = function () {
                         this.style.display = "none";
