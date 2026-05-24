@@ -214,9 +214,11 @@
         : "";
       svg.appendChild(xLabel);
     }
-    /* Always show last label */
+    /* Show last label only if it won't overlap the previous one */
     const lastIdx = points.length - 1;
-    if (lastIdx % xStep !== 0) {
+    const prevStepIdx = lastIdx - (lastIdx % xStep);
+    const minGap = 60;
+    if (lastIdx % xStep !== 0 && (coords[lastIdx][0] - coords[prevStepIdx][0]) >= minGap) {
       const lastXLabel = document.createElementNS(svgNS, "text");
       lastXLabel.setAttribute("x", coords[lastIdx][0].toFixed(2));
       lastXLabel.setAttribute("y", (H - 10).toFixed(2));
