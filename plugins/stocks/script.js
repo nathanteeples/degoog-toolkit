@@ -127,7 +127,7 @@
     updateTrendClass(card, change);
 
     const W = body.clientWidth || 320;
-    const H = body.clientHeight || 165;
+    const H = body.clientHeight || 190;
     const padL = 52, padR = 10, padT = 15, padB = 20;
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
