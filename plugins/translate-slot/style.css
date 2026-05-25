@@ -214,7 +214,7 @@
   padding: 13px 14px 10px;
   border: 1px solid var(--border-light);
   border-radius: 16px;
-  background: var(--bg);
+  background: var(--bg-light);
   transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
