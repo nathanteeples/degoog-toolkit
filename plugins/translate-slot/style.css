@@ -12,6 +12,17 @@
   font-family: var(--font-sans, system-ui, sans-serif);
 }
 
+#results-page.degoog-fullwidth-slot-shell .trc-card {
+  background: var(--bg);
+}
+
+#results-page.degoog-fullwidth-slot-shell .trc-pane,
+#results-page.degoog-fullwidth-slot-shell .trc-provider-select,
+#results-page.degoog-fullwidth-slot-shell .trc-source-select,
+#results-page.degoog-fullwidth-slot-shell .trc-target-select {
+  background: var(--bg-light);
+}
+
 .results-slot-panel:has(.trc-card) {
   overflow: hidden;
 }
