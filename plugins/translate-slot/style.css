@@ -333,10 +333,15 @@
   .trc-provider-field {
     min-width: 0;
   }
+}
 
-  .trc-language-row {
-    grid-template-columns: minmax(0, 1fr);
+/* Full-width layout when theme supports it */
+@container (min-width: 900px) {
+  #results-page.degoog-fullwidth-slot-shell .trc-card.slot-full-width .trc-text-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
   }
+}
 
   .trc-icon-button {
     justify-self: center;
