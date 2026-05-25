@@ -184,7 +184,7 @@
 
     const kind = button.dataset.dslotMoreKind || "synonym";
     const termsJson = button.dataset.dslotMoreTerms;
-    const card = closestElement(button, ".dslot-card");
+    const card = closestElement(button, "[data-dslot-word]");
     const word = card ? card.dataset.dslotWord : "";
 
     showMoreModal(kind, word, termsJson);

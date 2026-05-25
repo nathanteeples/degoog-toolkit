@@ -255,29 +255,6 @@ export const slot = {
 
 export const slotPlugin = slot;
 
-export const command = {
-  name: PLUGIN_NAME,
-  description: PLUGIN_DESCRIPTION,
-  isClientExposed: false,
-  trigger: "translate",
-  aliases: ["tr", "translation", "tl", "trans"],
-  naturalLanguagePhrases: NATURAL_LANGUAGE_PHRASES,
-
-  async init(ctx) {
-    await initPlugin(ctx);
-  },
-
-  configure(saved) {
-    configurePlugin(saved);
-  },
-
-  async execute(args, context) {
-    // Command execute does not render HTML directly to avoid double rendering with the slot capability.
-    // The slot handles the actual rendering of the card.
-    return { html: "" };
-  },
-};
-
 export default slot;
 
 export const routes = [
