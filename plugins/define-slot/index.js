@@ -63,7 +63,7 @@ const LOOKUP_WORD_RE = /^[A-Za-z](?:[A-Za-z'-]{0,46}[A-Za-z])?$/;
 const DEFAULT_SETTINGS = {
   triggerMode: "keyword",
   maxDefinitions: 3,
-  maxRelatedTerms: 12,
+  maxRelatedTerms: 4,
 };
 
 const settings = { ...DEFAULT_SETTINGS };
@@ -205,11 +205,11 @@ export const slot = {
     },
     {
       key: "maxRelatedTerms",
-      label: "Synonyms and antonyms",
-      type: "select",
-      options: ["6", "12", "20"],
-      default: "12",
-      description: "Maximum number of related terms to show in each group.",
+      label: "Synonyms/antonyms per group",
+      type: "number",
+      default: "4",
+      placeholder: "4",
+      description: "Maximum number of synonyms and antonyms to show in each group. Use 1-12.",
     },
   ],
 
@@ -237,7 +237,7 @@ export const slot = {
       nextSettings?.maxRelatedTerms,
       DEFAULT_SETTINGS.maxRelatedTerms,
       1,
-      24,
+      12,
     );
   },
 

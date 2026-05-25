@@ -6,9 +6,11 @@ const PLUGIN_NAME = "Translate";
 const PLUGIN_DESCRIPTION =
   "Translate text with no-key server-side providers and natural language query matching.";
 const MAX_TEXT_LENGTH = 5000;
+const MAX_TTS_TEXT_LENGTH = 300;
 const FETCH_TIMEOUT_MS = 9000;
 const DEFAULT_LIBRETRANSLATE_URL = "https://libretranslate.de";
 const DEFAULT_PROVIDER = "google-unofficial";
+const GOOGLE_TTS_URL = "https://translate.google.com/translate_tts";
 
 const settings = {
   defaultTarget: "en",
@@ -235,6 +237,11 @@ export const routes = [
     path: "translate",
     handler: handleTranslateRoute,
   },
+  {
+    method: "get",
+    path: "tts",
+    handler: handleTtsRoute,
+  },
 ];
 
 async function renderExecution(parsed, context, options = {}) {
@@ -258,6 +265,8 @@ async function renderExecution(parsed, context, options = {}) {
     source: base.source,
     target: base.target,
     translatedText: translation?.result?.translatedText || "",
+    sourceRomanization: translation?.result?.sourceRomanization || "",
+    targetRomanization: translation?.result?.targetRomanization || "",
     detectedSource: translation?.result?.detectedSource || "",
     activeProvider: translation?.result?.provider?.id || settings.preferredProvider,
     providerState:
@@ -325,6 +334,8 @@ async function handleTranslateRoute(request) {
       target,
       detectedSource: translation.result.detectedSource || "",
       translatedText: translation.result.translatedText,
+      sourceRomanization: translation.result.sourceRomanization || "",
+      targetRomanization: translation.result.targetRomanization || "",
       provider: translation.result.provider,
       providers: translation.providers,
     });
@@ -337,6 +348,55 @@ async function handleTranslateRoute(request) {
       },
       500,
     );
+  }
+}
+
+async function handleTtsRoute(request) {
+  try {
+    const url = new URL(request.url);
+    const text = String(url.searchParams.get("text") || "")
+      .trim()
+      .slice(0, MAX_TTS_TEXT_LENGTH);
+    const lang = normaliseLanguageCode(url.searchParams.get("lang"), {
+      allowAuto: false,
+    });
+
+    if (!text || !lang) {
+      return new Response("Missing text or language", {
+        status: 400,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+
+    const ttsUrl = new URL(GOOGLE_TTS_URL);
+    ttsUrl.searchParams.set("ie", "UTF-8");
+    ttsUrl.searchParams.set("client", "tw-ob");
+    ttsUrl.searchParams.set("tl", providerLanguage(lang, "google-unofficial"));
+    ttsUrl.searchParams.set("q", text);
+
+    const response = await externalFetch(ttsUrl.toString(), {
+      headers: { Accept: "audio/mpeg,audio/*;q=0.8,*/*;q=0.1" },
+    });
+
+    if (!response?.ok) {
+      return new Response("Speech unavailable", {
+        status: 502,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+
+    return new Response(response.body, {
+      status: 200,
+      headers: {
+        "Cache-Control": "public, max-age=86400",
+        "Content-Type": response.headers.get("content-type") || "audio/mpeg",
+      },
+    });
+  } catch {
+    return new Response("Speech unavailable", {
+      status: 502,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 }
 
@@ -466,6 +526,7 @@ async function translateGoogleUnofficial(input) {
   url.searchParams.set("sl", source);
   url.searchParams.set("tl", target);
   url.searchParams.set("dt", "t");
+  url.searchParams.append("dt", "rm");
   url.searchParams.set("q", input.text);
 
   const data = await fetchJson(url.toString(), {
@@ -479,6 +540,25 @@ async function translateGoogleUnofficial(input) {
   return {
     translatedText: translated,
     detectedSource: typeof data?.[2] === "string" ? data[2] : "",
+    ...extractGoogleRomanization(data),
+  };
+}
+
+function extractGoogleRomanization(data) {
+  const rows = Array.isArray(data?.[0]) ? data[0] : [];
+  const romanizationRow = rows.find(
+    (row) =>
+      Array.isArray(row) &&
+      typeof row[0] !== "string" &&
+      typeof row[1] !== "string" &&
+      (typeof row[2] === "string" || typeof row[3] === "string"),
+  );
+
+  return {
+    targetRomanization:
+      typeof romanizationRow?.[2] === "string" ? romanizationRow[2] : "",
+    sourceRomanization:
+      typeof romanizationRow?.[3] === "string" ? romanizationRow[3] : "",
   };
 }
 
@@ -884,6 +964,8 @@ function renderCard(view) {
   return fillTemplate(html, {
     source_text: esc(view.text || ""),
     translated_text: esc(view.translatedText || ""),
+    source_romanized: esc(view.sourceRomanization || ""),
+    target_romanized: esc(view.targetRomanization || ""),
     source_options: renderLanguageOptions(SOURCE_LANGUAGE_CODES, view.source || "auto"),
     target_options: renderLanguageOptions(
       TARGET_LANGUAGE_CODES,
@@ -941,10 +1023,9 @@ function fallbackTemplate() {
       <label class="trc-field"><span class="trc-label">To</span><select class="trc-target-select">{{target_options}}</select></label>
     </div>
     <div class="trc-text-grid">
-      <label class="trc-pane"><span class="trc-label">Source</span><textarea class="trc-source-input">{{source_text}}</textarea></label>
-      <label class="trc-pane"><span class="trc-label">Translation</span><textarea class="trc-output" readonly>{{translated_text}}</textarea></label>
+      <div class="trc-pane"><span class="trc-label">Source</span><textarea class="trc-source-input">{{source_text}}</textarea><span class="trc-romanization trc-source-romanization">{{source_romanized}}</span><span class="trc-pane-actions"><button class="trc-icon-button trc-audio-button" type="button" data-trc-speak="source" aria-label="Listen to source">Audio</button></span></div>
+      <div class="trc-pane"><span class="trc-label">Translation</span><textarea class="trc-output" readonly>{{translated_text}}</textarea><span class="trc-romanization trc-target-romanization">{{target_romanized}}</span><span class="trc-pane-actions"><button class="trc-icon-button trc-copy-button" type="button" aria-label="Copy translation">Copy</button><button class="trc-icon-button trc-audio-button" type="button" data-trc-speak="target" aria-label="Listen to translation">Audio</button></span></div>
     </div>
-    <div class="trc-actions"><button class="trc-button trc-copy-button" type="button">Copy</button></div>
   </div>`;
 }
 

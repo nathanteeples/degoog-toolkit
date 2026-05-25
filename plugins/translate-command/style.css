@@ -2,10 +2,10 @@
   box-sizing: border-box;
   width: min(100%, 760px);
   margin: 0 0 12px;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--bg-light);
+  border-radius: 18px;
+  background: var(--bg);
   color: var(--text-primary);
   font-family: var(--font-sans, system-ui, sans-serif);
 }
@@ -132,9 +132,9 @@
 .trc-target-select {
   width: 100%;
   min-width: 0;
-  height: 34px;
+  height: 40px;
   border: 1px solid var(--border-light);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--bg);
   color: var(--text-primary);
   font: inherit;
@@ -158,15 +158,19 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-light);
-  border-radius: 6px;
-  background: var(--bg);
+  border-radius: 999px;
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
 }
 
-.trc-icon-button:hover {
+.trc-icon-button:hover,
+.trc-icon-button:focus-visible,
+.trc-audio-button.trc-audio-playing {
   border-color: var(--border);
   color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-secondary) 10%, transparent);
+  outline: none;
 }
 
 .trc-icon-button:disabled {
@@ -190,27 +194,58 @@
 .trc-pane {
   display: grid;
   min-width: 0;
-  gap: 5px;
+  align-content: start;
+  gap: 8px;
+  min-height: 190px;
+  padding: 13px 14px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background: var(--bg-light);
 }
 
 .trc-source-input,
 .trc-output {
   width: 100%;
-  min-height: 86px;
+  min-height: 92px;
   max-height: 220px;
   resize: vertical;
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  background: var(--bg);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.92rem;
-  line-height: 1.5;
-  padding: 9px 10px;
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1.32;
+  padding: 0;
 }
 
 .trc-output {
   color: var(--text-primary);
+}
+
+.trc-source-input::placeholder,
+.trc-output::placeholder {
+  color: var(--text-secondary);
+}
+
+.trc-romanization {
+  min-height: 1.2em;
+  color: var(--text-secondary);
+  font-size: 0.96rem;
+  line-height: 1.35;
+}
+
+.trc-romanization:empty {
+  display: none;
+}
+
+.trc-pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  margin-top: auto;
 }
 
 .trc-actions {
@@ -289,10 +324,39 @@
 
 /* literallygoogle theme support */
 #results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.trc-card) .trc-card {
+    padding: 16px;
     border: 1px solid var(--border-light);
-    border-radius: 16px;
+    border-radius: 24px;
+    background: var(--bg);
+}
+#results-page.degoog-fullwidth-slot-shell .trc-toolbar {
+    margin-bottom: 12px;
+}
+#results-page.degoog-fullwidth-slot-shell .trc-provider-select,
+#results-page.degoog-fullwidth-slot-shell .trc-source-select,
+#results-page.degoog-fullwidth-slot-shell .trc-target-select {
+    min-height: 42px;
+    border-radius: 8px;
+    color: var(--text-link);
 }
 #results-page.degoog-fullwidth-slot-shell .trc-source-input,
 #results-page.degoog-fullwidth-slot-shell .trc-output {
-    border-radius: 12px;
+    min-height: 118px;
+    font-size: clamp(1.35rem, 2vw, 1.8rem);
+}
+#results-page.degoog-fullwidth-slot-shell .trc-pane {
+    min-height: 190px;
+    border-radius: 10px;
+    background: var(--bg-light);
+}
+#results-page.degoog-fullwidth-slot-shell .trc-icon-button {
+    border-color: transparent;
+}
+#results-page.degoog-fullwidth-slot-shell .trc-status {
+    margin-bottom: 12px;
+}
+#results-page.degoog-fullwidth-slot-shell .trc-copy-button[data-copied="1"]::after {
+    content: "Copied";
+    margin-left: 6px;
+    font-size: 0.78rem;
 }

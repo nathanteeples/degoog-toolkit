@@ -11,7 +11,7 @@
   function stateFor(card) {
     let state = cardState.get(card);
     if (!state) {
-      state = { timer: 0, requestId: 0, controller: null };
+      state = { timer: 0, requestId: 0, controller: null, audio: null };
       cardState.set(card, state);
     }
     return state;
@@ -33,6 +33,11 @@
       .forEach((control) => {
         control.disabled = Boolean(loading);
       });
+  }
+
+  function setRomanization(card, selector, value) {
+    const node = card.querySelector(selector);
+    if (node) node.textContent = value || "";
   }
 
   function selected(select) {
@@ -82,6 +87,8 @@
 
     if (!text) {
       if (output) output.value = "";
+      setRomanization(card, ".trc-source-romanization", "");
+      setRomanization(card, ".trc-target-romanization", "");
       setStatus(card, "available", "");
       return;
     }
@@ -111,12 +118,16 @@
 
       if (!response.ok || !data.ok) {
         if (output) output.value = "";
+        setRomanization(card, ".trc-source-romanization", "");
+        setRomanization(card, ".trc-target-romanization", "");
         setStatus(card, "failed", data.error || "Translation unavailable");
         return;
       }
 
       if (output) output.value = data.translatedText || "";
       card.dataset.detectedSource = data.detectedSource || "";
+      setRomanization(card, ".trc-source-romanization", data.sourceRomanization);
+      setRomanization(card, ".trc-target-romanization", data.targetRomanization);
       setStatus(
         card,
         data.provider?.status || "success",
@@ -148,6 +159,55 @@
         button.dataset.copied = "0";
         if (label) label.textContent = previous || "Copy";
       }, 1400);
+    });
+  }
+
+  function speak(card, kind, button) {
+    const state = stateFor(card);
+    const sourceInput = card.querySelector(".trc-source-input");
+    const output = card.querySelector(".trc-output");
+    const sourceSelect = card.querySelector(".trc-source-select");
+    const targetSelect = card.querySelector(".trc-target-select");
+    const isSource = kind === "source";
+    const text = (isSource ? sourceInput?.value : output?.value)?.trim() || "";
+    const selectedLanguage = isSource
+      ? selected(sourceSelect)
+      : selected(targetSelect);
+    const language =
+      selectedLanguage === "auto"
+        ? card.dataset.detectedSource || ""
+        : selectedLanguage;
+
+    if (!text || !language || language === "auto") return;
+
+    if (state.audio) {
+      state.audio.pause();
+      state.audio = null;
+    }
+
+    const url = new URL(pluginApiUrl("tts"), window.location.origin);
+    url.searchParams.set("lang", language);
+    url.searchParams.set("text", text.slice(0, 300));
+
+    const audio = new Audio(url.toString());
+    state.audio = audio;
+    button?.setAttribute("aria-pressed", "true");
+    button?.classList.add("trc-audio-playing");
+    audio.addEventListener("ended", () => {
+      if (state.audio === audio) state.audio = null;
+      button?.setAttribute("aria-pressed", "false");
+      button?.classList.remove("trc-audio-playing");
+    });
+    audio.addEventListener("error", () => {
+      if (state.audio === audio) state.audio = null;
+      button?.setAttribute("aria-pressed", "false");
+      button?.classList.remove("trc-audio-playing");
+      setStatus(card, "failed", "Speech unavailable");
+    });
+    audio.play().catch(() => {
+      if (state.audio === audio) state.audio = null;
+      button?.setAttribute("aria-pressed", "false");
+      button?.classList.remove("trc-audio-playing");
     });
   }
 
@@ -189,6 +249,7 @@
     const providerSelect = card.querySelector(".trc-provider-select");
     const copyButton = card.querySelector(".trc-copy-button");
     const swapButton = card.querySelector(".trc-swap-button");
+    const audioButtons = card.querySelectorAll(".trc-audio-button");
 
     providerSelect?.addEventListener("change", () =>
       scheduleTranslate(card, {
@@ -211,6 +272,11 @@
       }
     });
     copyButton?.addEventListener("click", () => copyOutput(card, copyButton));
+    audioButtons.forEach((button) => {
+      button.addEventListener("click", () =>
+        speak(card, button.dataset.trcSpeak, button),
+      );
+    });
     swapButton?.addEventListener("click", () => {
       swapLanguages(card);
       scheduleTranslate(card, { delay: 0 });

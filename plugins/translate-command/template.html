@@ -40,23 +40,37 @@
   </div>
 
   <div class="trc-text-grid">
-    <label class="trc-pane">
+    <div class="trc-pane">
       <span class="trc-label">Source</span>
       <textarea class="trc-source-input" spellcheck="true">{{source_text}}</textarea>
-    </label>
+      <span class="trc-romanization trc-source-romanization">{{source_romanized}}</span>
+      <span class="trc-pane-actions">
+        <button class="trc-icon-button trc-audio-button" type="button" data-trc-speak="source" title="Listen to source" aria-label="Listen to source">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M3 8v4h3l4 3V5L6 8H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M13 7.2a4 4 0 0 1 0 5.6M15.2 5a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </span>
+    </div>
 
-    <label class="trc-pane">
+    <div class="trc-pane">
       <span class="trc-label">Translation</span>
       <textarea class="trc-output" readonly>{{translated_text}}</textarea>
-    </label>
-  </div>
-
-  <div class="trc-actions">
-    <button class="trc-button trc-copy-button" type="button">
-      <svg viewBox="0 0 20 20" aria-hidden="true">
-        <path d="M7 7V5.5A1.5 1.5 0 0 1 8.5 4h6A1.5 1.5 0 0 1 16 5.5v6A1.5 1.5 0 0 1 14.5 13H13M5.5 7h6A1.5 1.5 0 0 1 13 8.5v6a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 4 14.5v-6A1.5 1.5 0 0 1 5.5 7Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-      </svg>
-      <span>Copy</span>
-    </button>
+      <span class="trc-romanization trc-target-romanization">{{target_romanized}}</span>
+      <span class="trc-pane-actions">
+        <button class="trc-icon-button trc-copy-button" type="button" title="Copy translation" aria-label="Copy translation">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M7 7V5.5A1.5 1.5 0 0 1 8.5 4h6A1.5 1.5 0 0 1 16 5.5v6A1.5 1.5 0 0 1 14.5 13H13M5.5 7h6A1.5 1.5 0 0 1 13 8.5v6a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 4 14.5v-6A1.5 1.5 0 0 1 5.5 7Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="trc-icon-button trc-audio-button" type="button" data-trc-speak="target" title="Listen to translation" aria-label="Listen to translation">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M3 8v4h3l4 3V5L6 8H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M13 7.2a4 4 0 0 1 0 5.6M15.2 5a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </span>
+    </div>
   </div>
 </div>
