@@ -1,4 +1,5 @@
 .trc-card {
+  --trc-accent: var(--primary);
   box-sizing: border-box;
   width: min(100%, 760px);
   margin: 0 0 12px;
@@ -61,7 +62,7 @@
   justify-content: center;
   border: 1px solid var(--border-light);
   border-radius: 6px;
-  color: var(--primary);
+  color: var(--trc-accent);
   font-size: 0.78rem;
   font-weight: 700;
   line-height: 1;
@@ -147,7 +148,7 @@
 .trc-target-select:focus,
 .trc-source-input:focus,
 .trc-output:focus {
-  border-color: var(--primary);
+  border-color: var(--trc-accent);
   outline: none;
 }
 
@@ -322,41 +323,3 @@
   }
 }
 
-/* literallygoogle theme support */
-#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.trc-card) .trc-card {
-    padding: 16px;
-    border: 1px solid var(--border-light);
-    border-radius: 24px;
-    background: var(--bg);
-}
-#results-page.degoog-fullwidth-slot-shell .trc-toolbar {
-    margin-bottom: 12px;
-}
-#results-page.degoog-fullwidth-slot-shell .trc-provider-select,
-#results-page.degoog-fullwidth-slot-shell .trc-source-select,
-#results-page.degoog-fullwidth-slot-shell .trc-target-select {
-    min-height: 42px;
-    border-radius: 8px;
-    color: var(--text-link);
-}
-#results-page.degoog-fullwidth-slot-shell .trc-source-input,
-#results-page.degoog-fullwidth-slot-shell .trc-output {
-    min-height: 118px;
-    font-size: clamp(1.35rem, 2vw, 1.8rem);
-}
-#results-page.degoog-fullwidth-slot-shell .trc-pane {
-    min-height: 190px;
-    border-radius: 10px;
-    background: var(--bg-light);
-}
-#results-page.degoog-fullwidth-slot-shell .trc-icon-button {
-    border-color: transparent;
-}
-#results-page.degoog-fullwidth-slot-shell .trc-status {
-    margin-bottom: 12px;
-}
-#results-page.degoog-fullwidth-slot-shell .trc-copy-button[data-copied="1"]::after {
-    content: "Copied";
-    margin-left: 6px;
-    font-size: 0.78rem;
-}

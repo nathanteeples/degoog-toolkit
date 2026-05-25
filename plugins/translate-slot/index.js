@@ -127,13 +127,6 @@ const SETTINGS_SCHEMA = [
   },
 ];
 
-const NATURAL_LANGUAGE_SETTING = {
-  key: "naturalLanguage",
-  label: "Natural language",
-  type: "toggle",
-  default: true,
-  description: "Allow this command to run when your query matches one of its phrases.",
-};
 
 const NATURAL_LANGUAGE_PHRASES = [
   "translate",
@@ -201,6 +194,64 @@ function configurePlugin(saved) {
   );
 }
 
+const BANG_PREFIX_RE_SLOT = /^!(translate|tr|translation|tl|trans)\b\s*/i;
+
+const SLOT_TRIGGER_PHRASES = [
+  "translate",
+  "translate to",
+  "translation of",
+  "how do you say",
+  "how would you say",
+  "how can you say",
+];
+
+export const slot = {
+  id: "translate",
+  name: PLUGIN_NAME,
+  description: PLUGIN_DESCRIPTION,
+  isClientExposed: false,
+  position: "above-results",
+  slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  settingsSchema: SETTINGS_SCHEMA,
+
+  async init(ctx) {
+    await initPlugin(ctx);
+  },
+
+  configure(saved) {
+    configurePlugin(saved);
+  },
+
+  trigger(query) {
+    const q = String(query || "").trim();
+    if (q.length < 2 || q.length > 500) return false;
+
+    // Always accept bang prefixes
+    if (BANG_PREFIX_RE_SLOT.test(q)) return true;
+
+    // Leading phrase match
+    const lower = q.toLowerCase();
+    for (const phrase of SLOT_TRIGGER_PHRASES) {
+      if (lower === phrase || lower.startsWith(phrase + " ")) return true;
+    }
+
+    // Check if query looks like a translation intent via the full parser
+    const parsed = parseTranslationQuery(q, { forceIntent: false });
+    return parsed.hasIntent && Boolean(parsed.text);
+  },
+
+  async execute(query, context) {
+    if (context?.tab && context.tab !== "all") return { html: "" };
+
+    // Strip bang prefix if present
+    const cleaned = String(query || "").replace(BANG_PREFIX_RE_SLOT, "").trim();
+    const parsed = parseTranslationQuery(cleaned, { forceIntent: true });
+    return renderExecution(parsed, context, { allowEmpty: true });
+  },
+};
+
+export const slotPlugin = slot;
+
 export const command = {
   name: PLUGIN_NAME,
   description: PLUGIN_DESCRIPTION,
@@ -208,7 +259,6 @@ export const command = {
   trigger: "translate",
   aliases: ["tr", "translation", "tl", "trans"],
   naturalLanguagePhrases: NATURAL_LANGUAGE_PHRASES,
-  settingsSchema: [...SETTINGS_SCHEMA, NATURAL_LANGUAGE_SETTING],
 
   async init(ctx) {
     await initPlugin(ctx);
@@ -224,7 +274,7 @@ export const command = {
   },
 };
 
-export default command;
+export default slot;
 
 export const routes = [
   {

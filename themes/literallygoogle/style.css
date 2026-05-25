@@ -1821,3 +1821,12 @@ button.mp2-item[hidden] {
 .footer-sep {
     color: var(--text-secondary);
 }
+
+/* ── Plugin accent overrides ─────────────────────────────────────────── */
+.dslot-card {
+  --dslot-accent: #4285f4; /* Google blue for dictionary */
+}
+.trc-card {
+  --trc-accent: #34a853; /* Google green for translate */
+}
+

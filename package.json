@@ -63,7 +63,7 @@
       "path": "plugins/define-slot",
       "name": "Dictionary",
       "description": "Shows definitions, pronunciation, synonyms, antonyms, and origin for explicit dictionary queries.",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "type": "slot"
     },
     {
@@ -81,11 +81,11 @@
       "type": "slot"
     },
     {
-      "path": "plugins/translate-command",
+      "path": "plugins/translate-slot",
       "name": "Translate",
       "description": "No-key server-side translation command with provider switching, romanization, speech, and leading natural-language triggers.",
-      "version": "1.0.4",
-      "type": "command"
+      "version": "1.1.0",
+      "type": "slot"
     },
     {
       "path": "plugins/search-history",
@@ -154,7 +154,7 @@
       "path": "themes/literallygoogle",
       "name": "LiterallyGoogle",
       "description": "A Google-like theme with a sticky header and full-width above-results plugin slots.",
-      "version": "2.1.45"
+      "version": "2.1.46"
     }
   ]
 }
