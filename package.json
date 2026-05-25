@@ -83,8 +83,8 @@
     {
       "path": "plugins/translate-command",
       "name": "Translate",
-      "description": "No-key server-side translation command with provider switching and natural language slot triggers.",
-      "version": "1.0.2",
+      "description": "No-key server-side translation command with provider switching and leading natural-language triggers.",
+      "version": "1.0.3",
       "type": "command"
     },
     {

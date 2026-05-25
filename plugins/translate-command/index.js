@@ -5,7 +5,6 @@ let cache = null;
 const PLUGIN_NAME = "Translate";
 const PLUGIN_DESCRIPTION =
   "Translate text with no-key server-side providers and natural language query matching.";
-const PLUGIN_SETTINGS_ID = "plugin-translate-command";
 const MAX_TEXT_LENGTH = 5000;
 const FETCH_TIMEOUT_MS = 9000;
 const DEFAULT_LIBRETRANSLATE_URL = "https://libretranslate.de";
@@ -126,6 +125,14 @@ const SETTINGS_SCHEMA = [
   },
 ];
 
+const NATURAL_LANGUAGE_SETTING = {
+  key: "naturalLanguage",
+  label: "Natural language",
+  type: "toggle",
+  default: true,
+  description: "Allow this command to run when your query matches one of its phrases.",
+};
+
 const NATURAL_LANGUAGE_PHRASES = [
   "translate",
   "translate to",
@@ -199,7 +206,7 @@ export const command = {
   trigger: "translate",
   aliases: ["tr", "translation", "tl", "trans"],
   naturalLanguagePhrases: NATURAL_LANGUAGE_PHRASES,
-  settingsSchema: SETTINGS_SCHEMA,
+  settingsSchema: [...SETTINGS_SCHEMA, NATURAL_LANGUAGE_SETTING],
 
   async init(ctx) {
     await initPlugin(ctx);
@@ -215,38 +222,6 @@ export const command = {
   },
 };
 
-export const slot = {
-  id: "translate-command",
-  name: PLUGIN_NAME,
-  description:
-    "Shows translations for natural queries like 'hello to spanish' or 'daughter in bengali'.",
-  isClientExposed: false,
-  position: "at-a-glance",
-  slotPositions: ["at-a-glance", "above-results"],
-  settingsId: PLUGIN_SETTINGS_ID,
-
-  async init(ctx) {
-    await initPlugin(ctx);
-  },
-
-  configure(saved) {
-    configurePlugin(saved);
-  },
-
-  trigger(query) {
-    const parsed = parseTranslationQuery(query);
-    return Boolean(parsed.hasIntent && parsed.text && parsed.target);
-  },
-
-  async execute(query, context) {
-    if (context?.tab && context.tab !== "all") return { html: "" };
-    const parsed = parseTranslationQuery(query);
-    if (!parsed.hasIntent || !parsed.text || !parsed.target) return { html: "" };
-    return renderExecution(parsed, context);
-  },
-};
-
-export const slotPlugin = slot;
 export default command;
 
 export const routes = [
