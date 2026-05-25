@@ -12,17 +12,6 @@
   font-family: var(--font-sans, system-ui, sans-serif);
 }
 
-#results-page.degoog-fullwidth-slot-shell .trc-card {
-  background: var(--bg);
-}
-
-#results-page.degoog-fullwidth-slot-shell .trc-pane,
-#results-page.degoog-fullwidth-slot-shell .trc-provider-select,
-#results-page.degoog-fullwidth-slot-shell .trc-source-select,
-#results-page.degoog-fullwidth-slot-shell .trc-target-select {
-  background: var(--bg-light);
-}
-
 .results-slot-panel:has(.trc-card) {
   overflow: hidden;
 }
@@ -107,11 +96,7 @@
 }
 
 .trc-status {
-  min-height: 18px;
-  margin-bottom: 10px;
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  line-height: 1.35;
+  display: none;
 }
 
 .trc-status[data-status="success"] {
@@ -332,14 +317,6 @@
 
   .trc-provider-field {
     min-width: 0;
-  }
-}
-
-/* Full-width layout when theme supports it */
-@container (min-width: 900px) {
-  #results-page.degoog-fullwidth-slot-shell .trc-card.slot-full-width .trc-text-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
   }
 }
 
