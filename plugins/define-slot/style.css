@@ -225,7 +225,7 @@
 
 .dslot-term-word {
   min-width: 0;
-  padding: 0;
+  padding: 0 0 0 4px;
   border: 0;
   background: transparent;
   color: var(--text-primary, inherit);
@@ -433,7 +433,7 @@
   max-height: 80vh;
   border: 1px solid var(--border-light, #444746);
   border-radius: 20px;
-  background: var(--bg, Canvas);
+  background: var(--bg-light, Canvas);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
   animation: dslot-scale-in 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   color: var(--text-primary);

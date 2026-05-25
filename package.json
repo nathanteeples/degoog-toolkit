@@ -63,7 +63,7 @@
       "path": "plugins/define-slot",
       "name": "Dictionary",
       "description": "Shows definitions, pronunciation, synonyms, antonyms, and origin for explicit dictionary queries.",
-      "version": "1.0.8",
+      "version": "1.0.9",
       "type": "slot"
     },
     {
