@@ -3,7 +3,8 @@ let maxComments = 2;
 let filterNsfw = true;
 let minScore = 1;
 let restrictSubreddit = "";
-let showMode = "always"; // "always" | "keyword"
+let showMode = "keyword"; // "always" | "keyword" | "top10"
+let pluginFetch = (...args) => fetch(...args);
 
 export const slot = {
   id: "reddit-slot",
@@ -19,6 +20,7 @@ export const slot = {
       label: "When to show",
       type: "select",
       options: ["always", "keyword", "top10"],
+      default: "keyword",
       description: "Always: shows for every search. Keyword: only when query contains 'reddit'. Top10: only when a Reddit link is in the top 10 search results.",
     },
     {
@@ -52,10 +54,15 @@ export const slot = {
 
   init(ctx) {
     template = ctx.template;
+    if (typeof ctx?.fetch === "function") {
+      pluginFetch = (...args) => ctx.fetch(...args);
+    }
   },
 
   configure(settings) {
-    showMode = ["keyword", "top10"].includes(settings?.showMode) ? settings.showMode : "always";
+    showMode = ["always", "keyword", "top10"].includes(settings?.showMode)
+      ? settings.showMode
+      : "keyword";
 
     const n = parseInt(settings?.maxComments ?? "2", 10);
     maxComments = Number.isFinite(n) ? Math.max(1, Math.min(4, n)) : 2;
@@ -104,7 +111,12 @@ export const slot = {
         searchUrl = `https://www.reddit.com/search.json?q=${encoded}&sort=relevance&limit=10&type=link`;
       }
 
-      const searchRes = await fetch(searchUrl, {
+      const doFetch =
+        typeof context?.fetch === "function"
+          ? (...args) => context.fetch(...args)
+          : pluginFetch;
+
+      const searchRes = await doFetch(searchUrl, {
         headers: { "User-Agent": "degoog-reddit-slot/1.0" },
       });
 
@@ -155,7 +167,7 @@ export const slot = {
       const post = scored[0].data;
 
       const commentsUrl = `https://www.reddit.com/r/${post.subreddit}/comments/${post.id}.json?limit=15&depth=1&sort=top`;
-      const commentsRes = await fetch(commentsUrl, {
+      const commentsRes = await doFetch(commentsUrl, {
         headers: { "User-Agent": "degoog-reddit-slot/1.0" },
       });
 

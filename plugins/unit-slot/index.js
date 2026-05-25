@@ -92,6 +92,9 @@ function parseQuery(query) {
     .toLowerCase()
     .replace(/(\d)([a-z]+)/gi, "$1 $2");
 
+  const explicitCommand = COMMAND_PREFIX_RE.test(q);
+  const hasConversionIntent = explicitCommand || hasNaturalConversionIntent(q);
+
   const clean = q
     .replace(/^!(unit|convert|conv)\s*/i, "")
     .replace(/\b(to|into|=)\b/g, " TO ")
@@ -102,6 +105,8 @@ function parseQuery(query) {
   const amount = amountMatch
     ? parseFloat(amountMatch[1].replace(/[\s,]/g, "").replace(/'/g, ""))
     : 1;
+
+  if (!amountMatch && !hasConversionIntent) return null;
 
   const matches = findUnitMatches(clean);
   if (matches.length < 2) return null;
@@ -120,6 +125,14 @@ function parseQuery(query) {
     chooseTargetBeforeAmount(amount, beforeAmount, afterAmount) ||
     chooseUnitPair(amount, matches)
   );
+}
+
+function hasNaturalConversionIntent(query) {
+  if (/\b(?:to|into|in)\b|=/.test(query)) return true;
+
+  return query
+    .split(/\s+/)
+    .some((token) => splitCompactUnitToken(token).some((part) => part.score === 2));
 }
 
 function addAlias(alias, abbr) {

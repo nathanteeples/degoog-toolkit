@@ -30,7 +30,7 @@ All engines connect to your SearXNG instance via the JSON API.
 - **Currency** — live currency conversion with fiat and crypto support
 - **TMDB** — rich movie, TV, and actor panels when film database or film-site links appear in results
 - **Weather** — current weather with interactive tabbed charts (temperature, precipitation, wind, humidity), a 7-day forecast, rich current conditions (pressure, UV, visibility, dew point, cloud cover, wind gusts), a sunrise/sunset arc, and configurable units for temperature, wind speed, pressure and precipitation
-- **Speedtest** — minimal internet speed test with selectable servers, latency, download-first flow, a circular gauge, and the `!speedtest` bang command
+- **Speedtest** — minimal internet speed test with selectable servers, latency, download-first flow, a circular gauge, and the `!speed` bang command
 - **Coinflip** — realistic grey CSS coin flip for quick heads-or-tails decisions
 - **Search History** — local search history dropdown and `!history` results view
 - **Unit Converter** — fuzzy natural unit conversion for length, mass, volume, temperature, area, and speed
@@ -43,12 +43,12 @@ All engines connect to your SearXNG instance via the JSON API.
 
 **Speedtest** exposes:
 
-- `!speedtest` (primary trigger)
-- `!speed` alias (kept for muscle memory; also a guaranteed-working fallback if the core built-in is ever re-enabled)
+- `!speed` (primary trigger, chosen to avoid degoog core's built-in `!speedtest` conflict)
+- `!speedtest` alias (works when the core built-in is disabled or the deployment allows the alias to coexist)
 - Natural-language phrases like `speed test`, `speedtest`, `internet speed`, `wifi speed`, `check my speed`, `test my internet`, `how fast is my internet` — these only activate when degoog's global **Natural language** toggle is on in Settings. Trailing-keyword phrases like `"my internet speed test"` do **not** trigger because degoog's natural-language matcher is prefix-anchored; front-load the keyword.
 
 > **Heads up — conflict with degoog's built-in `!speedtest`:**
-> degoog core ships its own `!speedtest` command. The command loader silently keeps the first registration and drops duplicates, so this plugin's `!speedtest` trigger only works if the built-in is disabled.
+> degoog core ships its own `!speedtest` command. The command loader silently keeps the first registration and drops duplicate primary triggers, so this plugin uses `!speed` as its primary command.
 >
 > To use this plugin's Speedtest as `!speedtest`:
 >
@@ -56,7 +56,7 @@ All engines connect to your SearXNG instance via the JSON API.
 > 2. Find the **built-in** `Speed Test` entry (from degoog core, not this plugin)
 > 3. Toggle it **off**
 >
-> If you prefer to keep the built-in, you can still invoke this plugin via the `!speed` alias or any of the natural-language phrases above.
+> If you prefer to keep the built-in, invoke this plugin via `!speed`, `!speed-test`, `!networkspeed`, `!internetspeed`, or any of the natural-language phrases above.
 
 **Sports Results** ships as a slot plugin that appears directly in search results.
 

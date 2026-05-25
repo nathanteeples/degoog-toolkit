@@ -49,9 +49,12 @@ function renderCardHtml() {
 // keeps Settings to one row.
 //
 // Trigger choice:
-// This Store item owns the primary `speedtest` trigger. Operators who
-// install it should disable degoog's core built-in Speed Test command
-// when necessary; `!speed` remains the guaranteed fallback alias.
+// degoog core owns the built-in `speedtest` trigger. If this Store item
+// also uses `speedtest` as its primary trigger, the command loader drops
+// the whole plugin as a duplicate before it can appear in Settings. Use
+// `speed` as the collision-free primary trigger and keep `speedtest` as an
+// alias for deployments where the core built-in is disabled or aliases can
+// coexist with the built-in trigger.
 //
 // Natural language:
 //   • `naturalLanguagePhrases` below drives CLIENT-SIDE prefix matching
@@ -76,8 +79,8 @@ export const command = {
   name: PLUGIN_NAME,
   description: PLUGIN_DESCRIPTION,
   isClientExposed: true,
-  trigger: "speedtest",
-  aliases: ["speed", "speed-test", "networkspeed", "internetspeed"],
+  trigger: "speed",
+  aliases: ["speedtest", "speed-test", "networkspeed", "internetspeed"],
   naturalLanguagePhrases: [
     "speedtest",
     "speed test",
