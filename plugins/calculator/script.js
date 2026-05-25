@@ -896,6 +896,25 @@
           }
         }
       });
+      canvas.addEventListener("wheel", function (event) {
+        if (!state.lastGraphAnalysis) return;
+        event.preventDefault();
+        var xMin = state.xMin !== undefined ? state.xMin : -10;
+        var xMax = state.xMax !== undefined ? state.xMax : 10;
+        var center = (xMax + xMin) / 2;
+        var halfRange = (xMax - xMin) / 2;
+        var factor = event.deltaY < 0 ? 0.85 : 1.15;
+        state.xMin = center - halfRange * factor;
+        state.xMax = center + halfRange * factor;
+
+        var rect = canvas.getBoundingClientRect();
+        var mx = event.clientX - rect.left;
+        var width = canvas.clientWidth || rect.width;
+        if (width > 0) {
+          state.hoverX = state.xMin + (mx / width) * (state.xMax - state.xMin);
+        }
+        drawGraph(root, state, state.lastGraphAnalysis);
+      }, { passive: false });
     }
 
     updateRoot(root);
