@@ -323,8 +323,7 @@
     min-width: 0;
   }
 
-  .trc-language-row,
-  .trc-text-grid {
+  .trc-language-row {
     grid-template-columns: minmax(0, 1fr);
   }
 
