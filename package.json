@@ -63,7 +63,7 @@
       "path": "plugins/define-slot",
       "name": "Dictionary",
       "description": "Shows definitions, pronunciation, synonyms, antonyms, and origin for explicit dictionary queries.",
-      "version": "1.0.9",
+      "version": "1.0.10",
       "type": "slot"
     },
     {
@@ -84,7 +84,7 @@
       "path": "plugins/translate-slot",
       "name": "Translate",
       "description": "No-key server-side translation command with provider switching, romanization, speech, and leading natural-language triggers.",
-      "version": "1.1.4",
+      "version": "1.1.5",
       "type": "slot"
     },
     {

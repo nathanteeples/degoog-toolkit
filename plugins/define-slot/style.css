@@ -225,7 +225,7 @@
 
 .dslot-term-word {
   min-width: 0;
-  padding: 0 0 0 4px;
+  padding: 0 0 0 6px;
   border: 0;
   background: transparent;
   color: var(--text-primary, inherit);
