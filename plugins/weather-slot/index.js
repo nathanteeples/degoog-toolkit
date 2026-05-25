@@ -10,6 +10,7 @@ const settings = {
   pressureUnit: "mmHg",
   precipUnit: "inch",
   timeFormat: "auto",
+  defaultCity: "",
 };
 
 const WMO_DESC = {
@@ -200,6 +201,13 @@ const slotDef = {
       options: ["auto", "24h", "12h"],
       description: "How to display times. 'auto' follows the browser locale.",
     },
+    {
+      key: "defaultCity",
+      label: "Default city",
+      type: "text",
+      default: "",
+      description: "Fallback city to display when you search for weather with no location specified.",
+    },
   ],
 
   init(ctx) {
@@ -213,6 +221,23 @@ const slotDef = {
     const q = String(query || "").trim();
     if (q.length < 2 || q.length > 200) return false;
 
+    const lower = q.toLowerCase();
+    const isBareTrigger =
+      lower === "weather" ||
+      lower === "forecast" ||
+      lower === "погода" ||
+      lower === "метео" ||
+      lower === "прогноз" ||
+      lower === "!weather" ||
+      lower === "!forecast" ||
+      lower === "!погода" ||
+      lower === "!метео" ||
+      lower === "!прогноз";
+
+    if (isBareTrigger) {
+      return Boolean(settings.defaultCity);
+    }
+
     // Always accept our bang prefixes — this is the "bang is an addition
     // to the slot" behavior the user wants. Works even if degoog's core
     // has no matching command registered for these triggers.
@@ -224,8 +249,6 @@ const slotDef = {
     // entirely", which duplicates degoog's own plugin-enable toggle —
     // so no gating is applied here. Bangs are handled above; the rest
     // of this function is unconditional NL matching.
-
-    const lower = q.toLowerCase();
 
     // Leading phrase match ("weather in rome", "forecast for paris", etc.)
     for (const phrase of NATURAL_LANGUAGE_PHRASES) {
@@ -270,6 +293,7 @@ const slotDef = {
     );
     settings.precipUnit = _pick(s?.precipUnit, ["mm", "inch"], "inch");
     settings.timeFormat = _pick(s?.timeFormat, ["auto", "24h", "12h"], "auto");
+    settings.defaultCity = String(s?.defaultCity || "").trim();
   },
 
   async execute(args, context) {
@@ -303,7 +327,9 @@ const slotDef = {
       .replace(/\s+(today|tomorrow)\s*$/i, "")
       .trim();
 
-    if (!city) {
+    const targetCity = city || settings.defaultCity;
+
+    if (!targetCity) {
       return {
         title: "Weather",
         html: "<p>Usage: <code>!weather &lt;city&gt;</code></p>",
@@ -316,7 +342,7 @@ const slotDef = {
           ? (...args) => context.fetch(...args)
           : externalFetch;
       const geoRes = await doFetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=5&addressdetails=1`,
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(targetCity)}&format=json&limit=5&addressdetails=1`,
         {
           headers: {
             "User-Agent": "degoog-weather-slot/1.1",
@@ -347,7 +373,7 @@ const slotDef = {
         addr.municipality ||
         addr.county ||
         loc.name ||
-        city;
+        targetCity;
       const regionName = addr.state || addr.region || "";
       const countryName = addr.country || "";
       // Case-insensitive dedupe so we don't render "kerala, Kerala, India"
