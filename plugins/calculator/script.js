@@ -1022,7 +1022,17 @@
     };
 
     var action = keyMap[event.key];
-    if (!action) return;
+    if (!action) {
+      // Allow typing function names (letters a-z except those already mapped)
+      if (/^[a-zA-Z]$/.test(event.key)) {
+        event.preventDefault();
+        ensureParser().then(function () {
+          initRoot(root);
+          appendToken(root, event.key.toLowerCase());
+        });
+      }
+      return;
+    }
     event.preventDefault();
     ensureParser().then(function () {
       initRoot(root);
