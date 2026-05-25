@@ -1041,8 +1041,9 @@ function renderRelatedGroup(label, terms, kind) {
 
   const remaining = Math.max(0, terms.length - visibleTerms.length);
   const tags = visibleTerms.map((term) => renderTerm(term, kind)).join("");
+  const serializedTerms = escAttr(JSON.stringify(terms));
   const more = remaining
-    ? `<span class="dslot-more">+${remaining} more from Power Thesaurus</span>`
+    ? `<button class="dslot-more" type="button" data-dslot-more-kind="${escAttr(kind)}" data-dslot-more-terms="${serializedTerms}">+${remaining} more from Power Thesaurus</button>`
     : "";
 
   return `<div class="dslot-related-group">
@@ -1071,15 +1072,12 @@ function renderTerm(term, kind) {
         .map((tag) => `<span>#${esc(tag)}</span>`)
         .join("")}</span>`
     : "";
-  const powerLink = item.url
-    ? `<a class="dslot-term-link" href="${escAttr(item.url)}" target="_blank" rel="noopener" aria-label="Open ${escAttr(word)} on Power Thesaurus">PT</a>`
-    : "";
   const wordControl = lookupWord
     ? `<button class="dslot-term-word dslot-tag-button" type="button" data-dslot-lookup="${escAttr(lookupWord)}" aria-label="Look up ${escAttr(kind)} ${escAttr(word)}">${esc(word)}</button>`
     : `<span class="dslot-term-word">${esc(word)}</span>`;
 
   return `<span class="dslot-term">
-    <span class="dslot-term-main">${wordControl}${rating}${powerLink}</span>
+    <span class="dslot-term-main">${wordControl}${rating}</span>
     ${parts || tags ? `<span class="dslot-term-detail">${parts}${tags}</span>` : ""}
   </span>`;
 }

@@ -310,7 +310,7 @@ const slotDef = {
         "",
       )
       .replace(
-        /^(weather|forecast|temperature|прогноз\s+погоди|яка\s+погода|погода)\s+(in|for|at|в|у|для)?\s*/i,
+        /^(weather|forecast|temperature|прогноз\s+погоди|яка\s+погода|погода)\s*(in|for|at|в|у|для)?\s*/i,
         "",
       )
       .replace(/^(in|for|at|в|у|для)\s+/i, "")

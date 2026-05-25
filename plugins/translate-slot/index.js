@@ -272,8 +272,9 @@ export const command = {
   },
 
   async execute(args, context) {
-    const parsed = parseTranslationQuery(args, { forceIntent: true });
-    return renderExecution(parsed, context, { allowEmpty: true });
+    // Command execute does not render HTML directly to avoid double rendering with the slot capability.
+    // The slot handles the actual rendering of the card.
+    return { html: "" };
   },
 };
 
