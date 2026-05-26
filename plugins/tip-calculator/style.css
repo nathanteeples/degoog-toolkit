@@ -189,6 +189,7 @@
     appearance: none;
     width: 16px;
     height: 16px;
+    margin-top: -4px;
     border-radius: 50%;
     background: var(--primary, var(--text-link, #1a73e8));
     border: 2px solid var(--tipcalc-field-bg);
