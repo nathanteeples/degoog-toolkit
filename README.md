@@ -6,7 +6,7 @@ This repository is forked from and based on the work by [SiaoZeng](https://githu
 
 We are incredibly grateful to the original authors and contributors in the `degoog` community whose tools, plugins, themes, and examples laid the foundation for this repository, including:
 
-- **[arky](https://github.com/arky)** (creator of the Trankil plugin suite, including `calculator`, `stopwatch`, `tmdb`, etc.)
+- **[Arkmind](https://github.com/Arkmind)** (creator of the Trankil plugin suite under the author name *arky*, including `calculator`, `stopwatch`, `tmdb`, etc.)
 - **[Georgvwt](https://github.com/Georgvwt)** (creator of various slots and plugins like `reddit-slot`, `osm-slot`, `define-slot`, etc.)
 - **[TheAnnoying](https://github.com/TheAnnoying)** (creator of the original `LiterallyGoogle` theme)
 - **[Federico Dossena](https://github.com/adolfintel)** (creator of the underlying Speedtest)
