@@ -279,13 +279,20 @@ function _isClearlyNonMapQuery(qRaw) {
   if (!q) return false;
 
   const hasUtilityLanguage =
-    /\b(tips?|tipcalc|gratuity|bill|split|splitting|per person|each|calculator|calculate|percent|percentage|discount|tax|subtotal|total|convert|conversion|currency|exchange rate)\b/i.test(
+    /\b(tips?|tipcalc|gratuity|bill|split|splitting|per person|each|calculator|calculate|percent|percentage|discount|tax|subtotal|total|convert|conversion|currency|exchange rate|random|choose|generator)\b/i.test(
+      q,
+    );
+  const hasRandomNumberIntent =
+    /\b(?:pick|choose|random|generate)\s+(?:a\s+)?number\b/i.test(q) ||
+    /\bnumber\s+(?:between|generator|picker)\b/i.test(q) ||
+    /(?:^|\s)-?\d+\s*(?:-|to|and)\s*-?\d+\s+(?:pick|choose|random|generate)\s+(?:a\s+)?number\b/i.test(
       q,
     );
   const hasMathOrMoney = /[%$€£¥]|\b\d+(?:\.\d+)?\s*(?:percent|percentage|usd|eur|gbp|cad|aud|dollars?|cents?)\b/i.test(
     q,
   );
 
+  if (hasRandomNumberIntent) return true;
   if (hasUtilityLanguage && hasMathOrMoney) return true;
   if (/\b\d+\s*%\b/.test(q) || /\b\d+(?:\.\d+)?\s*[$€£¥]\b/.test(q)) {
     return true;

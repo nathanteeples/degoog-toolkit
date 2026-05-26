@@ -113,7 +113,7 @@
       "path": "plugins/osm-slot",
       "name": "OpenStreetMap",
       "description": "Interactive OpenStreetMap card for map and location queries.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.2.7",
+      "version": "1.2.8",
       "type": "slot"
     },
     {
