@@ -1,7 +1,7 @@
 /* Token stack copied from examples/theannoying-degoog-extensions/themes/LiterallyGoogle/style.css */
 @font-face {
     font-family: "Google Sans";
-    src: url("/themes/literallygoogle/fonts/google-sans/static/GoogleSans-Regular.ttf")
+    src: url("fonts/google-sans/static/GoogleSans-Regular.ttf")
         format("truetype");
     font-weight: 400;
     font-style: normal;
@@ -10,7 +10,7 @@
 
 @font-face {
     font-family: "Google Sans";
-    src: url("/themes/literallygoogle/fonts/google-sans/static/GoogleSans-Medium.ttf")
+    src: url("fonts/google-sans/static/GoogleSans-Medium.ttf")
         format("truetype");
     font-weight: 500 700;
     font-style: normal;
