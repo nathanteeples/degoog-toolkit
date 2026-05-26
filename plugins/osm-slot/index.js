@@ -57,6 +57,7 @@ export const slot = {
     const q = query.trim().toLowerCase();
     if (q.length < 3) return false;
     if (showMode === "always") return true;
+    if (_isClearlyNonMapQuery(q)) return false;
     if (
       /\b(map|maps|where is|where's|wheres|where\s+\d+|locate|location|address|addresses|street|streets|directions?|how far|capital of|coordinates?|postcode|zip code|zip)\b/i.test(
         q,
@@ -81,10 +82,13 @@ export const slot = {
       const wordCount = searchQuery.trim().split(/\s+/).filter(Boolean).length;
       const maxWords = _maxWordsForGeocodeQuery(searchQuery);
       if (wordCount > maxWords) return { html: "" };
+      if (showMode !== "always" && _isClearlyNonMapQuery(searchQuery)) {
+        return { html: "" };
+      }
 
       // Reject queries with common non-place words
       if (
-        /\b(alternative|how|why|what|when|best|top|list|vs|versus|review|tutorial|guide|example|free|download|install|price|cost|buy|cheap|games?|experiences?)\b/i.test(
+        /\b(alternative|how|why|what|when|best|top|list|vs|versus|review|tutorial|guide|example|free|download|install|price|cost|buy|cheap|games?|experiences?|tips?|split|calculator|calculate|percent|percentage|bill)\b/i.test(
           searchQuery,
         )
       ) {
@@ -264,13 +268,34 @@ function _normalizeTileUrl(value) {
 
 /** Street / road tokens so the slot can fire without "map" or "where is". */
 const _STREET_SUFFIX_RE =
-  /\b(?:st\.?|streets?|rd\.?|roads?|ave\.?|avenues?|ln\.?|lanes?|dr\.?|drives?|ct\.?|courts?|cir\.?|circles?|blvd\.?|boulevards?|pl\.?|places?|ways?|pkwy\.?|parkways?|hwy|highways?|trl\.?|trails?|ter\.?|terraces?|sq\.?|squares?|routes?|rte\.?|crt|mews|crescents?)\b/i;
+  /\b(?:st\.?|streets?|rd\.?|roads?|ave\.?|avenues?|ln\.?|lanes?|dr\.?|drives?|ct\.?|courts?|cir\.?|circles?|blvd\.?|boulevards?|pl\.?|places?|way|pkwy\.?|parkways?|hwy|highways?|trl\.?|trails?|ter\.?|terraces?|sq\.?|squares?|route|rte\.?|crt|mews|crescents?)\b/i;
 
 function _hasStreetSuffixToken(q) {
   return _STREET_SUFFIX_RE.test(q);
 }
 
+function _isClearlyNonMapQuery(qRaw) {
+  const q = (qRaw || "").trim().toLowerCase();
+  if (!q) return false;
+
+  const hasUtilityLanguage =
+    /\b(tips?|tipcalc|gratuity|bill|split|splitting|per person|each|calculator|calculate|percent|percentage|discount|tax|subtotal|total|convert|conversion|currency|exchange rate)\b/i.test(
+      q,
+    );
+  const hasMathOrMoney = /[%$€£¥]|\b\d+(?:\.\d+)?\s*(?:percent|percentage|usd|eur|gbp|cad|aud|dollars?|cents?)\b/i.test(
+    q,
+  );
+
+  if (hasUtilityLanguage && hasMathOrMoney) return true;
+  if (/\b\d+\s*%\b/.test(q) || /\b\d+(?:\.\d+)?\s*[$€£¥]\b/.test(q)) {
+    return true;
+  }
+
+  return false;
+}
+
 function _looksLikeStreetOrAddressQuery(q) {
+  if (_isClearlyNonMapQuery(q)) return false;
   if (_hasStreetSuffixToken(q)) return true;
   if (/\b\d{5}(-\d{4})?\b/.test(q)) return true;
   return false;

@@ -13,6 +13,8 @@
     --tipcalc-field-bg: var(--bg, Canvas);
     --tipcalc-border: var(--border-light, var(--border, rgba(128, 128, 128, 0.28)));
     --tipcalc-muted: var(--text-secondary, color-mix(in srgb, var(--text-primary, CanvasText) 70%, transparent));
+    --tipcalc-slider-track: color-mix(in srgb, var(--text-primary, CanvasText) 24%, var(--tipcalc-field-bg) 76%);
+    --tipcalc-slider-fill: var(--primary, var(--text-link, #1a73e8));
 }
 
 .tipcalc-header {
@@ -159,16 +161,29 @@
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--tipcalc-border);
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(
+        to right,
+        var(--tipcalc-slider-fill) 0%,
+        var(--tipcalc-slider-fill) var(--tipcalc-progress, 0%),
+        var(--tipcalc-slider-track) var(--tipcalc-progress, 0%),
+        var(--tipcalc-slider-track) 100%
+    );
     outline: none;
     margin: 0;
     transition: background 150ms ease;
     cursor: pointer;
+    accent-color: var(--tipcalc-slider-fill);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tipcalc-slider-track) 80%, transparent);
 }
 
 /* Custom Range Slider Thumb & Track */
+.tipcalc-range-slider::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 999px;
+}
+
 .tipcalc-range-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
@@ -184,6 +199,18 @@
 
 .tipcalc-range-slider::-webkit-slider-thumb:hover {
     transform: scale(1.15);
+}
+
+.tipcalc-range-slider::-moz-range-track {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--tipcalc-slider-track);
+}
+
+.tipcalc-range-slider::-moz-range-progress {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--tipcalc-slider-fill);
 }
 
 .tipcalc-range-slider::-moz-range-thumb {
@@ -282,11 +309,17 @@
 #results-page.degoog-fullwidth-slot-shell .tipcalc-card {
     border: 1px solid var(--tipcalc-border);
     background: var(--bg-secondary, var(--tipcalc-surface));
-    border-radius: 16px;
+    border-radius: 24px;
     padding: 16px 20px;
     margin: 0 auto;
 }
 
 #results-page.degoog-fullwidth-slot-shell .tipcalc-card .tipcalc-header {
     border-bottom-color: var(--tipcalc-border);
+}
+
+#results-page.degoog-fullwidth-slot-shell .tipcalc-input-prefix-container,
+#results-page.degoog-fullwidth-slot-shell .tipcalc-input-suffix-container {
+    border-radius: 999px;
+    padding-inline: 14px;
 }

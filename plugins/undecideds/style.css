@@ -28,15 +28,75 @@
 }
 
 /* Tabs Bar */
-.undecideds-slot__tabs {
-  display: flex;
+.undecideds-slot__tabs-carousel {
+  position: relative;
   border-bottom: 1px solid var(--undecideds-border);
   background: color-mix(in srgb, var(--undecideds-card-bg) 94%, currentColor 6%);
+}
+
+.undecideds-slot__tabs {
+  display: flex;
   overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scroll-padding-inline: 36px;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 .undecideds-slot__tabs::-webkit-scrollbar {
   display: none;
+}
+
+.undecideds-slot__tab-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--undecideds-border);
+  border-radius: 999px;
+  background: var(--undecideds-card-bg);
+  color: var(--text-primary);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.undecideds-slot__tab-nav span {
+  font-size: 1.45rem;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.undecideds-slot__tab-nav--prev {
+  left: 6px;
+}
+
+.undecideds-slot__tab-nav--next {
+  right: 6px;
+}
+
+.undecideds-slot__tabs-carousel:hover .undecideds-slot__tab-nav:not(:disabled),
+.undecideds-slot__tabs-carousel:focus-within .undecideds-slot__tab-nav:not(:disabled) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.undecideds-slot__tab-nav:hover {
+  background: var(--undecideds-primary);
+  color: #fff;
+}
+
+.undecideds-slot__tab-nav:disabled {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .undecideds-slot__tab-btn {
@@ -605,6 +665,10 @@
 
 /* RESPONSIVE DESIGN (Container Query) */
 @container (max-width: 450px) {
+  .undecideds-slot__tab-nav:not(:disabled) {
+    opacity: 1;
+    pointer-events: auto;
+  }
   .undecideds-slot__panel-layout {
     grid-template-columns: 1fr;
     gap: 18px;
@@ -621,6 +685,47 @@
     font-size: 1.6rem;
     min-height: auto;
   }
+}
+
+@media (hover: none) {
+  .undecideds-slot__tab-nav:not(:disabled) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* LiterallyGoogle uses pill-shaped controls; match that shell without changing default. */
+#results-page.degoog-fullwidth-slot-shell .undecideds-slot__tabs-carousel {
+  border-bottom: none;
+  background: transparent;
+}
+
+#results-page.degoog-fullwidth-slot-shell .undecideds-slot__tabs {
+  gap: 6px;
+  padding: 6px;
+  scroll-padding-inline: 40px;
+}
+
+#results-page.degoog-fullwidth-slot-shell .undecideds-slot__tab-btn {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding-block: 10px;
+}
+
+#results-page.degoog-fullwidth-slot-shell .undecideds-slot__tab-btn.is-active {
+  border-color: color-mix(in srgb, var(--undecideds-primary) 34%, transparent);
+  background: color-mix(in srgb, var(--undecideds-primary) 14%, transparent);
+}
+
+#results-page.degoog-fullwidth-slot-shell .undecideds-slot__tab-btn.is-active::after {
+  display: none;
+}
+
+#results-page.degoog-fullwidth-slot-shell .undecideds-slot__btn,
+#results-page.degoog-fullwidth-slot-shell .undecideds-slot__toggle-btn,
+#results-page.degoog-fullwidth-slot-shell .undecideds-slot__input-field input,
+#results-page.degoog-fullwidth-slot-shell .undecideds-slot__number-roller {
+  border-radius: 999px;
 }
 
 /* REDUCED MOTION PREFERENCE */

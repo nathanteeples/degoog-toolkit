@@ -38,6 +38,7 @@
     // 1. Tab switching setup
     const tabs = Array.from(slot.querySelectorAll(".undecideds-slot__tab-btn"));
     const panels = Array.from(slot.querySelectorAll(".undecideds-slot__panel"));
+    initTabScroller(slot);
     
     function switchTab(targetTab) {
       slot.dataset.activeTab = targetTab;
@@ -58,6 +59,8 @@
           panel.setAttribute("hidden", "");
         }
       });
+      scrollActiveTabIntoView(slot);
+      updateTabScrollNav(slot);
     }
 
     tabs.forEach(btn => {
@@ -558,6 +561,64 @@
   }
 
   // --- HELPERS ---
+  function initTabScroller(slot) {
+    const scrollEl = slot.querySelector("[data-undecideds-tabs]");
+    const prevBtn = slot.querySelector('[data-undecideds-tab-scroll="left"]');
+    const nextBtn = slot.querySelector('[data-undecideds-tab-scroll="right"]');
+    if (!scrollEl || !prevBtn || !nextBtn) return;
+
+    const scrollByStep = direction => {
+      const distance = tabScrollStep(scrollEl) * (direction === "left" ? -1 : 1);
+      scrollEl.scrollBy({
+        left: distance,
+        behavior: prefersReducedMotion() ? "auto" : "smooth"
+      });
+      window.setTimeout(() => updateTabScrollNav(slot), 180);
+    };
+
+    prevBtn.addEventListener("click", () => scrollByStep("left"));
+    nextBtn.addEventListener("click", () => scrollByStep("right"));
+    scrollEl.addEventListener("scroll", () => updateTabScrollNav(slot), { passive: true });
+
+    if (window.ResizeObserver) {
+      const observer = new ResizeObserver(() => updateTabScrollNav(slot));
+      observer.observe(scrollEl);
+    } else {
+      window.addEventListener("resize", () => updateTabScrollNav(slot), { passive: true });
+    }
+
+    updateTabScrollNav(slot);
+  }
+
+  function tabScrollStep(scrollEl) {
+    const item = scrollEl.querySelector(".undecideds-slot__tab-btn");
+    if (!item) return Math.max(1, Math.floor(scrollEl.clientWidth * 0.8));
+    const rect = item.getBoundingClientRect();
+    return Math.max(1, Math.ceil(rect.width * 1.25));
+  }
+
+  function updateTabScrollNav(slot) {
+    const scrollEl = slot.querySelector("[data-undecideds-tabs]");
+    const prevBtn = slot.querySelector('[data-undecideds-tab-scroll="left"]');
+    const nextBtn = slot.querySelector('[data-undecideds-tab-scroll="right"]');
+    if (!scrollEl || !prevBtn || !nextBtn) return;
+
+    const maxScroll = scrollEl.scrollWidth - scrollEl.clientWidth;
+    const hasOverflow = maxScroll > 2;
+    prevBtn.disabled = !hasOverflow || scrollEl.scrollLeft <= 2;
+    nextBtn.disabled = !hasOverflow || scrollEl.scrollLeft >= maxScroll - 2;
+  }
+
+  function scrollActiveTabIntoView(slot) {
+    const activeTab = slot.querySelector(".undecideds-slot__tab-btn.is-active");
+    if (!activeTab) return;
+    activeTab.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: prefersReducedMotion() ? "auto" : "smooth"
+    });
+  }
+
   function finishAngle(start, target, rotations) {
     let angle = rotations * 360 + target;
     while (angle <= start + 360) angle += 360;

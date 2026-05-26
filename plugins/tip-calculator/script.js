@@ -152,6 +152,24 @@
     } else if (sourceId === "tipcalc-split-slider") {
       splitInput.value = splitSlider.value;
     }
+
+    updateSliderProgress(tipSlider);
+    updateSliderProgress(splitSlider);
+  }
+
+  function updateSliderProgress(slider) {
+    if (!slider) return;
+    var min = parseFloat(slider.min);
+    var max = parseFloat(slider.max);
+    var value = parseFloat(slider.value);
+
+    if (isNaN(min)) min = 0;
+    if (isNaN(max) || max <= min) max = min + 1;
+    if (isNaN(value)) value = min;
+
+    var percent = ((value - min) / (max - min)) * 100;
+    percent = Math.min(100, Math.max(0, percent));
+    slider.style.setProperty("--tipcalc-progress", percent.toFixed(2) + "%");
   }
 
   function handleInput(event) {
@@ -195,6 +213,8 @@
       }
     }
 
+    updateSliderProgress(tipSlider);
+    updateSliderProgress(splitSlider);
     calculateResults(false);
   }
 
