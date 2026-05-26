@@ -246,6 +246,10 @@
   }
 
   function setD6Pose(die, face) {
+    die.style.transform = d6PoseTransform(face, 0);
+  }
+
+  function d6PoseTransform(face, rotations) {
     const faceAngles = {
       1: { x: 0, y: 0 },
       2: { x: 0, y: -90 },
@@ -256,7 +260,8 @@
     };
     const angle = faceAngles[face] || { x: 0, y: 0 };
     const tilt = idleD6Tilt(face);
-    die.style.transform = `rotateX(${angle.x + tilt.x}deg) rotateY(${angle.y + tilt.y}deg) rotateZ(${tilt.z}deg)`;
+    const spin = Math.max(0, rotations || 0) * 360;
+    return `rotateX(${spin + angle.x + tilt.x}deg) rotateY(${spin + angle.y + tilt.y}deg) rotateZ(${tilt.z}deg)`;
   }
 
   function idleD6Tilt(face) {
@@ -266,15 +271,6 @@
       y: oddTilt * -14,
       z: oddTilt * 3
     };
-  }
-
-  function settleD6Pose(die, face) {
-    die.style.transition = "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)";
-    die.getBoundingClientRect();
-    setD6Pose(die, face);
-    window.setTimeout(() => {
-      die.style.transition = "";
-    }, 240);
   }
 
   function rollD6(slot, result) {
@@ -298,28 +294,15 @@
       return;
     }
 
-    const faceAngles = {
-      1: { x: 0, y: 0 },
-      2: { x: 0, y: -90 },
-      3: { x: -90, y: 0 },
-      4: { x: 90, y: 0 },
-      5: { x: 0, y: 90 },
-      6: { x: 180, y: 0 }
-    };
-
-    const targetAngle = faceAngles[result];
     const extraRotations = 3 + randomInt(3);
-    const targetX = extraRotations * 360 + targetAngle.x;
-    const targetY = extraRotations * 360 + targetAngle.y;
-    // Add random Z tilt for extra realism
-    const targetZ = randomInt(45) - 22;
 
     die.style.transition = "transform 1.2s cubic-bezier(0.2, 0.8, 0.2, 1.05)";
-    die.style.transform = `rotateX(${targetX}deg) rotateY(${targetY}deg) rotateZ(${targetZ}deg)`;
+    die.style.transform = d6PoseTransform(result, extraRotations);
 
     setTimeout(() => {
+      die.style.transition = "";
       die.dataset.face = String(result);
-      settleD6Pose(die, result);
+      setD6Pose(die, result);
       title.textContent = `Rolled ${result}`;
       ticker.textContent = `landed ${result}`;
       btn.disabled = false;
