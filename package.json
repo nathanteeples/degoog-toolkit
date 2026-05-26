@@ -120,7 +120,7 @@
       "path": "plugins/barrel-roll",
       "name": "Barrel Roll",
       "description": "Do a barrel roll or tilt the page on matching queries.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "type": "slot"
     },
     {

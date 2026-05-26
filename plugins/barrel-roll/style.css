@@ -8,11 +8,14 @@
 }
 
 /* transform-origin is NOT set here — script.js sets it dynamically to
-   the viewport center (relative to body's bounding rect) before each roll,
-   so the visible page rotates around its center rather than the document top. */
+   the viewport center before each roll. */
 body.barrel-roll-active {
-  animation: barrel-roll 2s cubic-bezier(0.4, 0, 0.2, 1) both;
-  /* Prevent horizontal scrollbar from flashing during rotation */
+  animation: barrel-roll 1s linear both;
+}
+
+/* Clip overflow at the html level so corners don't cause scrollbars
+   or blank areas. The script also sets overflow:hidden on html directly. */
+html.barrel-roll-clipping {
   overflow: hidden !important;
 }
 

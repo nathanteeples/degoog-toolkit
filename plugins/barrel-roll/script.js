@@ -1,28 +1,24 @@
 (function () {
   "use strict";
 
-  var activeClass = "barrel-roll-active";
-  var tiltedClass = "barrel-roll-tilted";
+  var DURATION = 1000; // ms — matches the CSS animation duration
 
   function processMarkers() {
     var markers = document.querySelectorAll(".barrel-roll-marker");
 
-    // Clean up classes if no markers are present in the DOM (e.g. navigated away)
     if (markers.length === 0) {
-      document.body.classList.remove(activeClass);
-      document.body.classList.remove(tiltedClass);
+      document.body.classList.remove("barrel-roll-active");
+      document.body.classList.remove("barrel-roll-tilted");
+      document.documentElement.classList.remove("barrel-roll-clipping");
       return;
     }
 
     for (var i = 0; i < markers.length; i++) {
       var marker = markers[i];
-      if (marker.getAttribute("data-processed") === "true") {
-        continue;
-      }
+      if (marker.getAttribute("data-processed") === "true") continue;
       marker.setAttribute("data-processed", "true");
 
       var action = marker.getAttribute("data-action");
-
       if (action === "roll") {
         doBarrelRoll();
       } else if (action === "tilt" || action === "askew") {
@@ -33,43 +29,43 @@
 
   function doBarrelRoll() {
     var target = document.body;
+    var html = document.documentElement;
 
-    // Lock scrolling so no scrollbars flash during rotation
-    var origOverflow = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = "hidden";
-
-    // Pivot around the current viewport center relative to body
-    // (body.getBoundingClientRect().top accounts for any scroll position)
-    var bodyRect = target.getBoundingClientRect();
-    var pivotX = (window.innerWidth  / 2) - bodyRect.left;
-    var pivotY = (window.innerHeight / 2) - bodyRect.top;
+    // Pivot around the VISIBLE viewport center, not the document center.
+    // body.getBoundingClientRect().top is negative when scrolled down, which
+    // means pivotY > innerHeight/2 — correctly compensating for scroll offset.
+    var rect = target.getBoundingClientRect();
+    var pivotX = (window.innerWidth  / 2) - rect.left;
+    var pivotY = (window.innerHeight / 2) - rect.top;
     target.style.transformOrigin = pivotX + "px " + pivotY + "px";
 
-    // Remove class first to restart animation if already active
-    target.classList.remove(activeClass);
-    // Force reflow so removing and re-adding the class restarts the animation
-    void target.offsetWidth;
-    target.classList.add(activeClass);
+    // Clip at the <html> level so rotating corners don't trigger scrollbars
+    html.classList.add("barrel-roll-clipping");
+
+    // Restart animation cleanly
+    target.classList.remove("barrel-roll-active");
+    void target.offsetWidth; // force reflow
+    target.classList.add("barrel-roll-active");
 
     function cleanup() {
-      target.classList.remove(activeClass);
+      target.classList.remove("barrel-roll-active");
       target.style.transformOrigin = "";
-      document.documentElement.style.overflow = origOverflow;
+      html.classList.remove("barrel-roll-clipping");
       target.removeEventListener("animationend", cleanup);
     }
 
-    target.addEventListener("animationend", cleanup);
-    // Fallback in case animationend doesn't fire
-    setTimeout(cleanup, 2200);
+    target.addEventListener("animationend", cleanup, { once: true });
+    // Fallback cleanup slightly after CSS duration
+    setTimeout(cleanup, DURATION + 100);
   }
 
   function doTilt() {
     var target = document.body;
-    var bodyRect = target.getBoundingClientRect();
-    var pivotX = (window.innerWidth  / 2) - bodyRect.left;
-    var pivotY = (window.innerHeight / 2) - bodyRect.top;
+    var rect = target.getBoundingClientRect();
+    var pivotX = (window.innerWidth  / 2) - rect.left;
+    var pivotY = (window.innerHeight / 2) - rect.top;
     target.style.transformOrigin = pivotX + "px " + pivotY + "px";
-    target.classList.add(tiltedClass);
+    target.classList.add("barrel-roll-tilted");
   }
 
   if (document.readyState === "loading") {
