@@ -268,6 +268,15 @@
     };
   }
 
+  function settleD6Pose(die, face) {
+    die.style.transition = "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+    die.getBoundingClientRect();
+    setD6Pose(die, face);
+    window.setTimeout(() => {
+      die.style.transition = "";
+    }, 240);
+  }
+
   function rollD6(slot, result) {
     const die = slot.querySelector("[data-die-d6-element]");
     const title = slot.querySelector("[data-dice-result-text]");
@@ -309,9 +318,8 @@
     die.style.transform = `rotateX(${targetX}deg) rotateY(${targetY}deg) rotateZ(${targetZ}deg)`;
 
     setTimeout(() => {
-      die.style.transition = "";
       die.dataset.face = String(result);
-      setD6Pose(die, result);
+      settleD6Pose(die, result);
       title.textContent = `Rolled ${result}`;
       ticker.textContent = `landed ${result}`;
       btn.disabled = false;
