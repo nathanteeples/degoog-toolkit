@@ -7,20 +7,15 @@
   }
 }
 
-body.barrel-roll-active,
-#results-page.barrel-roll-active,
-#results-layout.barrel-roll-active,
-#app.barrel-roll-active,
-main.barrel-roll-active {
+/* transform-origin is NOT set here — script.js sets it dynamically to
+   the viewport center (relative to body's bounding rect) before each roll,
+   so the visible page rotates around its center rather than the document top. */
+body.barrel-roll-active {
   animation: barrel-roll 2s cubic-bezier(0.4, 0, 0.2, 1) both;
-  transform-origin: center center;
+  /* Prevent horizontal scrollbar from flashing during rotation */
+  overflow: hidden !important;
 }
 
-body.barrel-roll-tilted,
-#results-page.barrel-roll-tilted,
-#results-layout.barrel-roll-tilted,
-#app.barrel-roll-tilted,
-main.barrel-roll-tilted {
+body.barrel-roll-tilted {
   transform: rotate(1deg) !important;
-  transform-origin: center center;
 }
