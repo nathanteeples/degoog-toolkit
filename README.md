@@ -2,9 +2,61 @@
 
 [degoog](https://github.com/fccview/degoog) store repository for SearXNG engines, plugins, and themes.
 
+This repository is forked from and based on the work by [SiaoZeng](https://github.com/SiaoZeng) (from [degoog-searxng-extensions](https://github.com/SiaoZeng/degoog-searxng-extensions)).
+
+We are incredibly grateful to the original authors and contributors in the `degoog` community whose tools, plugins, themes, and examples laid the foundation for this repository, including:
+
+- **[arky](https://github.com/arky)** (creator of the Trankil plugin suite, including `calculator`, `stopwatch`, `tmdb`, etc.)
+- **[Georgvwt](https://github.com/Georgvwt)** (creator of various slots and plugins like `reddit-slot`, `osm-slot`, `define-slot`, etc.)
+- **[TheAnnoying](https://github.com/TheAnnoying)** (creator of the original `LiterallyGoogle` theme)
+- **[Federico Dossena](https://github.com/adolfintel)** (creator of the underlying Speedtest)
+- **Ben Ng** (creator of the unit/convert-units code)
+- **[fccview](https://github.com/fccview)** (creator of degoog and various extensions)
+
 ## AI Usage Awareness
 
 Before I started this repository, I forked it from https://github.com/SiaoZeng/degoog-searxng-extensions, which was coded alongside Claude, and as such, Claude is a contributor on this repo. I myself don't "vibe code", but AI was used in the making of these extensions, with a combination of Github Copilot used for autocompletions, and a local llm running on my own machine for longer completions.
+
+## Included Themes
+
+- **LiterallyGoogle** — Google-like results styling with a sticky header and full-width above-results plugin slots
+
+## Included Plugins
+
+- **Calculator** — scientific calculator with safe expression parsing, interactive keypad, and local canvas graphing
+- **Coinflip** — realistic grey CSS coin flip for quick heads-or-tails decisions
+- **Currency** — live currency conversion with fiat and crypto support
+- **Dictionary** — shows definitions, pronunciation, synonyms, antonyms, and origin for explicit dictionary queries
+- **OpenStreetMap** — interactive maps for map, address, and location queries
+- **Reddit** — shows the top Reddit post and top comments above search results
+- **Search History** — local search history dropdown and `!history` results view
+- **Speedtest** — minimal internet speed test with selectable servers, latency, download-first flow, a circular gauge, and the `!speed` bang command
+- **Stocks** — no-key stock quotes with Yahoo Finance data and selectable chart ranges
+- **Timer / Stopwatch** — compact timer and stopwatch with smooth circular progress, editable durations, and optional sound
+- **TMDB** — rich movie, TV, and actor panels when film database or film-site links appear in results
+- **Translate** — no-key server-side translation with provider switching, romanization, speech, and leading natural-language triggers
+- **Unit Converter** — fuzzy natural unit conversion for length, mass, volume, temperature, area, and speed
+- **Until** — Chrono-powered countdown answers for searches like `years until 3000`, `days since Christmas`, `weeks until July 6th, 2033`, and `!until 5pm`
+- **Weather** — current weather with interactive tabbed charts (temperature, precipitation, wind, humidity), a 7-day forecast, rich current conditions (pressure, UV, visibility, dew point, cloud cover, wind gusts), a sunrise/sunset arc, and configurable units for temperature, wind speed, pressure and precipitation
+
+### Speedtest details
+
+**Speedtest** exposes:
+
+- `!speed` (primary trigger, chosen to avoid degoog core's built-in `!speedtest` conflict)
+- `!speedtest` alias (works when the core built-in is disabled or the deployment allows the alias to coexist)
+- Natural-language phrases like `speed test`, `speedtest`, `internet speed`, `wifi speed`, `check my speed`, `test my internet`, `how fast is my internet` — Speedtest defaults its per-command **Natural language** toggle on for fresh installs. Trailing-keyword phrases like `"my internet speed test"` do **not** trigger because degoog's natural-language matcher is prefix-anchored; front-load the keyword.
+
+> **Heads up — conflict with degoog's built-in `!speedtest`:**
+> degoog core ships its own `!speedtest` command. The command loader silently keeps the first registration and drops duplicate primary triggers, so this plugin uses `!speed` as its primary command.
+>
+> To use this plugin's Speedtest as `!speedtest`:
+>
+> 1. Go to **Settings → Plugins**
+> 2. Find the **built-in** `Speed Test` entry (from degoog core, not this plugin)
+> 3. Toggle it **off**
+>
+> If you prefer to keep the built-in, invoke this plugin via `!speed`, `!speed-test`, `!networkspeed`, `!internetspeed`, or any of the natural-language phrases above.
 
 ## Included Engines
 
@@ -24,43 +76,13 @@ All engines connect to your SearXNG instance via the JSON API.
 - **Engines** — Use specific SearXNG engines only (for example `google`, `bing`, `duckduckgo`, `wikipedia`)
 - **Safe Search** — 0 (off), 1 (moderate), 2 (strict)
 
-## Included Plugins
+## Sports Results
 
 - **Sports Results** — shows live sports scores, schedules, and standings above search results
-- **Currency** — live currency conversion with fiat and crypto support
-- **TMDB** — rich movie, TV, and actor panels when film database or film-site links appear in results
-- **Weather** — current weather with interactive tabbed charts (temperature, precipitation, wind, humidity), a 7-day forecast, rich current conditions (pressure, UV, visibility, dew point, cloud cover, wind gusts), a sunrise/sunset arc, and configurable units for temperature, wind speed, pressure and precipitation
-- **Speedtest** — minimal internet speed test with selectable servers, latency, download-first flow, a circular gauge, and the `!speed` bang command
-- **Coinflip** — realistic grey CSS coin flip for quick heads-or-tails decisions
-- **Search History** — local search history dropdown and `!history` results view
-- **Unit Converter** — fuzzy natural unit conversion for length, mass, volume, temperature, area, and speed
-- **Until** — Chrono-powered countdown answers for searches like `years until 3000`, `days since Christmas`, `weeks until July 6th, 2033`, and `!until 5pm`
-- **OpenStreetMap** — interactive maps for map, address, and location queries
 
-## Included Themes
+Sports Results ships as a slot plugin that appears directly in search results.
 
-- **LiterallyGoogle** — Google-like results styling with a sticky header and full-width above-results plugin slots
-
-**Speedtest** exposes:
-
-- `!speed` (primary trigger, chosen to avoid degoog core's built-in `!speedtest` conflict)
-- `!speedtest` alias (works when the core built-in is disabled or the deployment allows the alias to coexist)
-- Natural-language phrases like `speed test`, `speedtest`, `internet speed`, `wifi speed`, `check my speed`, `test my internet`, `how fast is my internet` — Speedtest defaults its per-command **Natural language** toggle on for fresh installs. Trailing-keyword phrases like `"my internet speed test"` do **not** trigger because degoog's natural-language matcher is prefix-anchored; front-load the keyword.
-
-> **Heads up — conflict with degoog's built-in `!speedtest`:**
-> degoog core ships its own `!speedtest` command. The command loader silently keeps the first registration and drops duplicate primary triggers, so this plugin uses `!speed` as its primary command.
->
-> To use this plugin's Speedtest as `!speedtest`:
->
-> 1. Go to **Settings → Plugins**
-> 2. Find the **built-in** `Speed Test` entry (from degoog core, not this plugin)
-> 3. Toggle it **off**
->
-> If you prefer to keep the built-in, invoke this plugin via `!speed`, `!speed-test`, `!networkspeed`, `!internetspeed`, or any of the natural-language phrases above.
-
-**Sports Results** ships as a slot plugin that appears directly in search results.
-
-Example queries:
+### Example queries
 
 - `arsenal vs chelsea`
 - `football barcelona score`
@@ -70,12 +92,14 @@ Example queries:
 - `football scores`
 - `yankees vs red sox`
 
-**Sports Results settings:**
+### Settings
+
 - **football-data.org API key** — required for soccer fixtures and standings
 - **BALLDONTLIE API key** — required for NFL, NBA, and MLB scores/schedules
 - **Preferred soccer competitions** — football-data.org competition codes searched first for generic soccer queries (`PL,PD,CL,BL1,SA,FL1` by default)
 
-**Notes:**
+### Notes
+
 - Soccer uses `football-data.org`
 - NFL, NBA, and MLB use `BALLDONTLIE`
 - NBA/NFL/MLB standings are intentionally limited on the free BALLDONTLIE tier; this plugin focuses on scores, schedules, and direct matchups there
