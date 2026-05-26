@@ -71,8 +71,6 @@ export const slot = {
     }
 
     const coinResult = Math.random() < 0.5 ? "heads" : "tails";
-    const coinResultLabel = coinResult === "heads" ? "Heads" : "Tails";
-    const displayCoinResult = shouldResolveCoin ? coinResult : "heads";
 
     const diceResultD6 = Math.floor(Math.random() * 6) + 1;
     const diceResultD20 = Math.floor(Math.random() * 20) + 1;
@@ -85,23 +83,34 @@ export const slot = {
       ? YES_MESSAGES[Math.floor(Math.random() * YES_MESSAGES.length)]
       : NO_MESSAGES[Math.floor(Math.random() * NO_MESSAGES.length)];
 
+    // Always render the "ready" state — results are stored as data-auto-* attributes
+    // so script.js can animate them on first visibility instead of showing them pre-resolved.
     const data = {
       active_tab: activeTab,
       die_type: dieType,
       num_min: String(numMin),
       num_max: String(numMax),
-      coin_result: displayCoinResult,
-      coin_result_label: shouldResolveCoin ? coinResultLabel : "Ready to flip",
-      coin_ticker: shouldResolveCoin ? `landed ${coinResult}` : "waiting",
-      dice_result_d6: shouldResolveDice ? String(diceResultD6) : "1",
-      dice_result_d20: shouldResolveDice ? String(diceResultD20) : "?",
-      dice_result_label: shouldResolveDice ? `Rolled ${diceResult}` : "Ready to roll",
-      dice_ticker: shouldResolveDice ? `landed ${diceResult}` : "waiting",
-      num_result: shouldResolveNumber ? String(numResult) : "?",
-      num_result_label: shouldResolveNumber ? `Picked ${numResult}` : "Pick a number",
+      // Auto-result attributes (read by script.js to trigger entrance animation)
+      auto_coin_result: shouldResolveCoin ? coinResult : "",
+      auto_dice_result_d6: shouldResolveDice ? String(diceResultD6) : "",
+      auto_dice_result_d20: shouldResolveDice ? String(diceResultD20) : "",
+      auto_die_type: shouldResolveDice ? dieType : "",
+      auto_num_result: shouldResolveNumber ? String(numResult) : "",
+      auto_yesno_result: shouldResolveYesNo ? yesnoResult : "",
+      auto_yesno_msg: shouldResolveYesNo ? yesnoMsg : "",
+      // Always show the neutral/ready state in the template
+      coin_result: "heads",
+      coin_result_label: "Ready to flip",
+      coin_ticker: "waiting",
+      dice_result_d6: "1",
+      dice_result_d20: "?",
+      dice_result_label: "Ready to roll",
+      dice_ticker: "waiting",
+      num_result: "?",
+      num_result_label: "Pick a number",
       yesno_result: yesnoResult,
-      yesno_msg: shouldResolveYesNo ? yesnoMsg : "Ask yes or no",
-      yesno_ticker: shouldResolveYesNo ? `landed ${yesnoResult}` : "waiting"
+      yesno_msg: "Ask yes or no",
+      yesno_ticker: "waiting"
     };
 
     const tpl = template || FALLBACK_TEMPLATE;

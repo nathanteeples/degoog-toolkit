@@ -84,6 +84,69 @@
 
     // 5. Yes or No Logic
     initYesNo(slot);
+
+    // 6. Entrance animation: fire once the slot is visible
+    scheduleEntranceAnimation(slot);
+  }
+
+  // --- ENTRANCE ANIMATION (fires once slot is first visible) ---
+  function scheduleEntranceAnimation(slot) {
+    const activeTab = slot.dataset.activeTab || "coin";
+
+    // Read pre-computed results from data-auto-* attrs set by index.js
+    const autoCoin   = slot.dataset.autoCoinResult   || "";
+    const autoDiceD6 = slot.dataset.autoDiceResultD6 || "";
+    const autoDiceD20= slot.dataset.autoDiceResultD20|| "";
+    const autoNum    = slot.dataset.autoNumResult    || "";
+    const autoYesno  = slot.dataset.autoYesnoResult  || "";
+    const autoYesnoMsg= slot.dataset.autoYesnoMsg    || "";
+
+    // Nothing to animate automatically
+    const hasAuto = autoCoin || autoDiceD6 || autoDiceD20 || autoNum || autoYesno;
+    if (!hasAuto) return;
+
+    function fireEntrance() {
+      // Small delay so the user can see the neutral starting pose before animation begins
+      setTimeout(() => {
+        if (activeTab === "coin" && autoCoin) {
+          animateCoinFlip(slot, autoCoin);
+        } else if (activeTab === "dice") {
+          const dieType = slot.dataset.autoDieType || slot.dataset.dieType || "d6";
+          if (dieType === "d20" && autoDiceD20) {
+            rollD20(slot, parseInt(autoDiceD20, 10));
+          } else if (autoDiceD6) {
+            rollD6(slot, parseInt(autoDiceD6, 10));
+          }
+        } else if (activeTab === "number" && autoNum) {
+          const min = parseInt(slot.dataset.numMin || "1", 10);
+          const max = parseInt(slot.dataset.numMax || "100", 10);
+          rollNumber(slot, parseInt(autoNum, 10), min, max);
+        } else if (activeTab === "yesno" && autoYesno) {
+          // Temporarily set the message so spinYesNoWheel lands on the right text
+          slot._autoYesnoMsg = autoYesnoMsg;
+          spinYesNoWheel(slot, autoYesno);
+        }
+      }, 120);
+    }
+
+    if (!window.IntersectionObserver) {
+      // Fallback: fire immediately if IntersectionObserver unavailable
+      fireEntrance();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            obs.disconnect();
+            fireEntrance();
+          }
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(slot);
   }
 
   // --- COIN FLIP ---
@@ -509,10 +572,11 @@
     ticker.textContent = "spinning";
 
     const msgList = result === "yes" ? YES_MESSAGES : NO_MESSAGES;
-    const finalMsg = msgList[Math.floor(Math.random() * msgList.length)];
+    const finalMsg = slot._autoYesnoMsg || msgList[Math.floor(Math.random() * msgList.length)];
 
     if (prefersReducedMotion()) {
       title.textContent = finalMsg;
+      slot._autoYesnoMsg = undefined;
       ticker.textContent = "landed " + result;
       btn.disabled = false;
       return;
@@ -556,6 +620,7 @@
 
     setTimeout(() => {
       title.textContent = finalMsg;
+      slot._autoYesnoMsg = undefined;
       ticker.textContent = "landed " + result;
       btn.disabled = false;
     }, 2250);
