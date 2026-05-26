@@ -33,6 +33,11 @@
       if (!target) continue;
 
       if (action === "roll") {
+        var rect = target.getBoundingClientRect();
+        var originX = (window.innerWidth / 2) - rect.left;
+        var originY = (window.innerHeight / 2) - rect.top;
+        target.style.transformOrigin = originX + "px " + originY + "px";
+
         // If it's already active, remove and trigger reflow to restart animation
         target.classList.remove(activeClass);
         void target.offsetWidth;
@@ -41,6 +46,7 @@
 
         var onEnd = function () {
           target.classList.remove(activeClass);
+          target.style.transformOrigin = "";
           target.removeEventListener("animationend", onEnd);
         };
         target.addEventListener("animationend", onEnd);
@@ -48,9 +54,14 @@
         // Fallback cleanup in case animationend isn't supported or fails to fire
         setTimeout(function () {
           target.classList.remove(activeClass);
+          target.style.transformOrigin = "";
         }, 2100);
 
       } else if (action === "tilt" || action === "askew") {
+        var rect = target.getBoundingClientRect();
+        var originX = (window.innerWidth / 2) - rect.left;
+        var originY = (window.innerHeight / 2) - rect.top;
+        target.style.transformOrigin = originX + "px " + originY + "px";
         target.classList.add(tiltedClass);
       }
     }

@@ -4,7 +4,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_hex}}">
+        <span class="clrtr-value" title="{{color_hex}}">{{color_hex}}</span>
         <span class="clrtr-label">CSS • Hexadecimal</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_hex}}" aria-label="Copy CSS Hex">
@@ -17,7 +17,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_rgb}}">
+        <span class="clrtr-value" title="{{color_rgb}}">{{color_rgb}}</span>
         <span class="clrtr-label">CSS • RGB</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_rgb}}" aria-label="Copy CSS RGB">
@@ -30,7 +30,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_rgb_percent}}">
+        <span class="clrtr-value" title="{{color_rgb_percent}}">{{color_rgb_percent}}</span>
         <span class="clrtr-label">CSS • RGB Percent</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_rgb_percent}}" aria-label="Copy CSS RGB Percent">
@@ -43,7 +43,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_hsl}}">
+        <span class="clrtr-value" title="{{color_hsl}}">{{color_hsl}}</span>
         <span class="clrtr-label">CSS • HSL</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_hsl}}" aria-label="Copy CSS HSL">
@@ -56,7 +56,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_name}}">
+        <span class="clrtr-value" title="{{color_name}}">{{color_name}}</span>
         <span class="clrtr-label">CSS • Named Color</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_name}}" aria-label="Copy CSS Named Color" {{color_name_disabled}}>
@@ -69,7 +69,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_ns_calibrated_rgb}}">
+        <span class="clrtr-value" title="{{color_ns_calibrated_rgb}}">{{color_ns_calibrated_rgb}}</span>
         <span class="clrtr-label">NSColor • Calibrated RGB</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_ns_calibrated_rgb}}" aria-label="Copy NSColor Calibrated RGB">
@@ -82,7 +82,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_ns_calibrated_hsb}}">
+        <span class="clrtr-value" title="{{color_ns_calibrated_hsb}}">{{color_ns_calibrated_hsb}}</span>
         <span class="clrtr-label">NSColor • Calibrated HSB</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_ns_calibrated_hsb}}" aria-label="Copy NSColor Calibrated HSB">
@@ -95,7 +95,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_ns_device_rgb}}">
+        <span class="clrtr-value" title="{{color_ns_device_rgb}}">{{color_ns_device_rgb}}</span>
         <span class="clrtr-label">NSColor • Device RGB</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_ns_device_rgb}}" aria-label="Copy NSColor Device RGB">
@@ -108,7 +108,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_ns_device_hsb}}">
+        <span class="clrtr-value" title="{{color_ns_device_hsb}}">{{color_ns_device_hsb}}</span>
         <span class="clrtr-label">NSColor • Device HSB</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_ns_device_hsb}}" aria-label="Copy NSColor Device HSB">
@@ -121,7 +121,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_ui_rgb}}">
+        <span class="clrtr-value" title="{{color_ui_rgb}}">{{color_ui_rgb}}</span>
         <span class="clrtr-label">UIColor • RGB</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_ui_rgb}}" aria-label="Copy UIColor RGB">
@@ -134,7 +134,7 @@
     <div class="clrtr-row">
       <div class="clrtr-color-swatch" style="background-color: {{color_css}}"></div>
       <div class="clrtr-text-group">
-        <input type="text" readonly class="clrtr-value" value="{{color_ui_hsb}}">
+        <span class="clrtr-value" title="{{color_ui_hsb}}">{{color_ui_hsb}}</span>
         <span class="clrtr-label">UIColor • HSB</span>
       </div>
       <button class="clrtr-copy-btn" data-copy="{{color_ui_hsb}}" aria-label="Copy UIColor HSB">

@@ -52,6 +52,7 @@
 }
 
 .clrtr-value {
+    display: block;
     font-family: var(--font-mono, monospace);
     font-size: 0.95rem;
     font-weight: 500;
