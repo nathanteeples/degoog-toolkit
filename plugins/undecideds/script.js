@@ -601,9 +601,13 @@
     const offset = (Math.random() * 28) - 14;
     
     // Keep angle positive and accumulate to ensure spinning forward
-    const baseSpins = 4 * 360; 
-    const targetSliceAngle = (360 - s * 45) % 360;
-    
+    const baseSpins = 4 * 360;
+    // Each CSS slice--N is centered at N*45+22.5 deg on the unrotated wheel.
+    // To bring that center under the top pointer we must rotate the wheel
+    // by exactly that amount. The ±14° jitter keeps it from looking mechanical
+    // but stays well within one 45° slice so the result is always correct.
+    const targetSliceAngle = s * 45 + 22.5;
+
     // Calculate new absolute target angle relative to current rotation
     const baseTarget = Math.ceil(currentWheelAngle / 360) * 360;
     currentWheelAngle = baseTarget + baseSpins + targetSliceAngle + offset;
