@@ -9,6 +9,10 @@
     border: none;
     box-sizing: border-box;
     width: 100%;
+    --tipcalc-surface: var(--bg-light, color-mix(in srgb, var(--bg, Canvas) 92%, var(--text-primary, CanvasText) 8%));
+    --tipcalc-field-bg: var(--bg, Canvas);
+    --tipcalc-border: var(--border-light, var(--border, rgba(128, 128, 128, 0.28)));
+    --tipcalc-muted: var(--text-secondary, color-mix(in srgb, var(--text-primary, CanvasText) 70%, transparent));
 }
 
 .tipcalc-header {
@@ -16,7 +20,7 @@
     align-items: center;
     justify-content: space-between;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--border-light, var(--border, #dadce0));
+    border-bottom: 1px solid var(--tipcalc-border);
     margin-bottom: 16px;
 }
 
@@ -28,7 +32,7 @@
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--text-secondary, #70757a);
+    color: var(--tipcalc-muted);
 }
 
 .tipcalc-title-icon {
@@ -82,8 +86,8 @@
 .tipcalc-input-suffix-container {
     display: inline-flex;
     align-items: center;
-    background: var(--bg-secondary, var(--bg, #f1f3f4));
-    border: 1px solid var(--border-light, var(--border, #dadce0));
+    background: var(--tipcalc-field-bg);
+    border: 1px solid var(--tipcalc-border);
     border-radius: 8px;
     padding: 6px 12px;
     height: 36px;
@@ -100,7 +104,7 @@
 .tipcalc-currency-symbol,
 .tipcalc-suffix {
     font-size: 0.9rem;
-    color: var(--text-secondary);
+    color: var(--tipcalc-muted);
     user-select: none;
 }
 
@@ -157,7 +161,7 @@
     width: 100%;
     height: 6px;
     border-radius: 3px;
-    background: var(--border-light, var(--border, #dadce0));
+    background: var(--tipcalc-border);
     outline: none;
     margin: 0;
     transition: background 150ms ease;
@@ -172,7 +176,7 @@
     height: 16px;
     border-radius: 50%;
     background: var(--primary, var(--text-link, #1a73e8));
-    border: 2px solid var(--bg-secondary, var(--bg, #ffffff));
+    border: 2px solid var(--tipcalc-field-bg);
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     transition: transform 100ms ease, background-color 100ms ease;
@@ -187,7 +191,7 @@
     height: 12px;
     border-radius: 50%;
     background: var(--primary, var(--text-link, #1a73e8));
-    border: 2px solid var(--bg-secondary, var(--bg, #ffffff));
+    border: 2px solid var(--tipcalc-field-bg);
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     transition: transform 100ms ease, background-color 100ms ease;
@@ -223,7 +227,7 @@
 
 .tipcalc-result-label {
     font-size: 0.9rem;
-    color: var(--text-secondary);
+    color: var(--tipcalc-muted);
 }
 
 .tipcalc-result-value {
@@ -251,7 +255,7 @@
 /* Divider inside results */
 .tipcalc-result-divider {
     height: 1px;
-    background: var(--border-light, var(--border, #dadce0));
+    background: var(--tipcalc-border);
     margin: 8px 0;
 }
 
@@ -276,13 +280,13 @@
 
 /* Theme support for degoog fullwidth slot */
 #results-page.degoog-fullwidth-slot-shell .tipcalc-card {
-    border: 1px solid var(--border-light, var(--border, #dadce0));
-    background: var(--bg-secondary, var(--bg, #ffffff));
+    border: 1px solid var(--tipcalc-border);
+    background: var(--bg-secondary, var(--tipcalc-surface));
     border-radius: 16px;
     padding: 16px 20px;
     margin: 0 auto;
 }
 
 #results-page.degoog-fullwidth-slot-shell .tipcalc-card .tipcalc-header {
-    border-bottom-color: var(--border-light, var(--border, #dadce0));
+    border-bottom-color: var(--tipcalc-border);
 }

@@ -419,7 +419,7 @@
     ticker.textContent = `range: ${min} to ${max}`;
 
     if (prefersReducedMotion()) {
-      roller.innerHTML = `<div class="undecideds-slot__digit-box"><div class="undecideds-slot__digit-strip-container"><span class="undecideds-slot__digit-static">${result}</span></div></div>`;
+      renderStaticNumber(roller, result);
       title.textContent = `Picked ${result}`;
       btn.disabled = false;
       return;
@@ -473,6 +473,7 @@
     // Calculate total duration based on last digit finish
     const totalDuration = 1000 + (digits.length - 1) * 100;
     setTimeout(() => {
+      renderStaticNumber(roller, result);
       title.textContent = `Picked ${result}`;
       btn.disabled = false;
     }, totalDuration);

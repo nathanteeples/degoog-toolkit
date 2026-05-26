@@ -5,7 +5,8 @@
   --undecideds-primary-hover: color-mix(in srgb, var(--undecideds-primary) 85%, #000);
   --undecideds-border: var(--border, rgba(128, 128, 128, 0.25));
   --undecideds-bg: var(--bg, Canvas);
-  --undecideds-card-bg: var(--bg-secondary, color-mix(in srgb, var(--bg, Canvas) 95%, currentColor 5%));
+  --undecideds-card-bg: var(--bg-light, color-mix(in srgb, var(--bg, Canvas) 92%, var(--text-primary, CanvasText) 8%));
+  --undecideds-field-bg: var(--bg, Canvas);
   --undecideds-text-secondary: var(--text-secondary, #70757a);
   --undecideds-coin-gold: linear-gradient(135deg, #ffd700, #ffa500, #d4af37, #ffd700);
   --undecideds-coin-silver: linear-gradient(135deg, #f0f0f0, #c0c0c0, #a9a9a9, #f0f0f0);
@@ -177,6 +178,25 @@
   align-items: center;
   justify-content: center;
   min-height: 170px;
+}
+
+.undecideds-slot__panel[data-panel="number"] .undecideds-slot__panel-layout {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+}
+
+.undecideds-slot__panel[data-panel="number"] .undecideds-slot__info {
+  align-items: center;
+  width: min(100%, 420px);
+}
+
+.undecideds-slot__panel[data-panel="number"] .undecideds-slot__btn {
+  align-self: center;
+}
+
+.undecideds-slot__panel[data-panel="number"] .undecideds-slot__visual {
+  min-height: auto;
 }
 
 /* 1. COIN FLIP ANIMATION */
@@ -395,6 +415,7 @@
 .undecideds-slot__inputs {
   display: flex;
   gap: 12px;
+  min-width: 0;
 }
 
 .undecideds-slot__input-field {
@@ -402,6 +423,7 @@
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  min-width: 0;
 }
 
 .undecideds-slot__input-field label {
@@ -411,10 +433,11 @@
 }
 
 .undecideds-slot__input-field input {
+  width: 100%;
   padding: 8px 12px;
   font-size: 0.9rem;
   font-weight: 600;
-  background: var(--undecideds-bg);
+  background: var(--undecideds-field-bg);
   border: 1px solid var(--undecideds-border);
   border-radius: 8px;
   color: var(--text-primary);
@@ -432,19 +455,28 @@
   justify-content: center;
   align-items: center;
   min-height: 56px;
+  max-width: 100%;
   padding: 6px 12px;
-  background: rgba(0, 0, 0, 0.03);
+  background: color-mix(in srgb, var(--undecideds-field-bg) 90%, var(--text-primary, CanvasText) 10%);
   border-radius: 12px;
   border: 1px dashed var(--undecideds-border);
+  box-sizing: border-box;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.undecideds-slot__number-roller::-webkit-scrollbar {
+  display: none;
 }
 
 .undecideds-slot__digit-slot {
+  flex: 0 0 32px;
   width: 32px;
   height: 40px;
   overflow: hidden;
   border: 1px solid var(--undecideds-border);
   border-radius: 6px;
-  background: var(--undecideds-bg);
+  background: var(--undecideds-field-bg);
   position: relative;
   box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
 }
@@ -483,6 +515,8 @@
   font-size: 1.8rem;
   font-weight: 800;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .undecideds-slot__digit-box {
