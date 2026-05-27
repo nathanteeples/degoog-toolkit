@@ -5,7 +5,7 @@ let jellyfinUrl = "";
 let jellyfinApiKey = "";
 let template = "";
 let pluginRuntimeContext = null;
-let pluginRouteBase = "/api/plugin/tmdb";
+let pluginRouteBase = "";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const IMAGE_BASE = "https://image.tmdb.org/t/p";
@@ -122,9 +122,16 @@ const _fetchFor = (ctx) => {
 };
 
 const _setPluginRouteBase = (ctx) => {
-  const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
-  const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
-  if (folder) pluginRouteBase = `/api/plugin/${encodeURIComponent(folder)}`;
+  if (ctx?.apiBase) {
+    pluginRouteBase = ctx.apiBase;
+  } else if (typeof ctx?.routeUrl === "function") {
+    pluginRouteBase = ctx.routeUrl();
+  } else {
+    const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
+    const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
+    const prefix = ["", "api", "plugin"].join("/");
+    pluginRouteBase = folder ? `${prefix}/${encodeURIComponent(folder)}` : `${prefix}/tmdb`;
+  }
 };
 
 const _encodeAssetUrl = (url) =>

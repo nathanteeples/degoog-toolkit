@@ -815,7 +815,7 @@ let balldontlieApiKey = "";
 let preferredSoccerCompetitions = [...DEFAULT_SOCCER_COMPETITIONS];
 let debugMode = false;
 let selectedSlotPosition = "at-a-glance";
-let pluginRouteBase = "/api/plugin/sports-slot";
+let pluginRouteBase = "";
 let pluginFetch = (...args) => fetch(...args);
 
 const cache = {
@@ -828,9 +828,16 @@ const refreshCache = new Map();
 const logoCache = new Map();
 
 function initRuntime(ctx) {
-  const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
-  const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
-  if (folder) pluginRouteBase = `/api/plugin/${encodeURIComponent(folder)}`;
+  if (ctx?.apiBase) {
+    pluginRouteBase = ctx.apiBase;
+  } else if (typeof ctx?.routeUrl === "function") {
+    pluginRouteBase = ctx.routeUrl();
+  } else {
+    const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
+    const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
+    const prefix = ["", "api", "plugin"].join("/");
+    pluginRouteBase = folder ? `${prefix}/${encodeURIComponent(folder)}` : `${prefix}/sports-slot`;
+  }
   if (typeof ctx?.fetch === "function") {
     pluginFetch = (...args) => ctx.fetch(...args);
   }

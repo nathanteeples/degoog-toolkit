@@ -10,13 +10,20 @@ const DATA_DIR = join(process.cwd(), "data");
 const HISTORY_PATH = join(DATA_DIR, "history.json");
 const PER_PAGE = 20;
 let maxEntries = 1000;
-let pluginRouteBase = "/api/plugin/search-history";
+let pluginRouteBase = "";
 let writeQueue = Promise.resolve();
 
 function setPluginRouteBase(ctx) {
-  const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
-  const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
-  if (folder) pluginRouteBase = `/api/plugin/${encodeURIComponent(folder)}`;
+  if (ctx?.apiBase) {
+    pluginRouteBase = ctx.apiBase;
+  } else if (typeof ctx?.routeUrl === "function") {
+    pluginRouteBase = ctx.routeUrl();
+  } else {
+    const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
+    const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
+    const prefix = ["", "api", "plugin"].join("/");
+    pluginRouteBase = folder ? `${prefix}/${encodeURIComponent(folder)}` : `${prefix}/search-history`;
+  }
 }
 
 const _loadHistory = async () => {

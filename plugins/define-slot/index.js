@@ -1,6 +1,6 @@
 let template = "";
 let pluginFetch = (...args) => fetch(...args);
-let pluginRouteBase = "/api/plugin/define-slot";
+let pluginRouteBase = "";
 let dictionaryCache = null;
 
 const DICTIONARY_API_BASE =
@@ -365,9 +365,16 @@ export const routes = [
 export default slot;
 
 function setPluginRouteBase(ctx) {
-  const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
-  const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
-  if (folder) pluginRouteBase = `/api/plugin/${encodeURIComponent(folder)}`;
+  if (ctx?.apiBase) {
+    pluginRouteBase = ctx.apiBase;
+  } else if (typeof ctx?.routeUrl === "function") {
+    pluginRouteBase = ctx.routeUrl();
+  } else {
+    const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
+    const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
+    const prefix = ["", "api", "plugin"].join("/");
+    pluginRouteBase = folder ? `${prefix}/${encodeURIComponent(folder)}` : `${prefix}/define-slot`;
+  }
 }
 
 function parseDictionaryQuery(query) {
