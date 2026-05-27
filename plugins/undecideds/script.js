@@ -602,11 +602,12 @@
     
     // Keep angle positive and accumulate to ensure spinning forward
     const baseSpins = 4 * 360;
-    // Each CSS slice--N is centered at N*45+22.5 deg on the unrotated wheel.
-    // To bring that center under the top pointer we must rotate the wheel
-    // by exactly that amount. The ±14° jitter keeps it from looking mechanical
-    // but stays well within one 45° slice so the result is always correct.
-    const targetSliceAngle = s * 45 + 22.5;
+    // Geometry: CSS rotate(R) shifts every point clockwise by R, so the
+    // original angle that ends up under the top pointer is (360 - R) % 360.
+    // Inverting: to bring slice--N (center at N*45+22.5° on the unrotated
+    // wheel) under the pointer, we need R = 360 - (s*45+22.5).
+    // ± 14° jitter stays well inside one 45° slice so result is always correct.
+    const targetSliceAngle = (337.5 - s * 45 + 360) % 360;
 
     // Calculate new absolute target angle relative to current rotation
     const baseTarget = Math.ceil(currentWheelAngle / 360) * 360;
