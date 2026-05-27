@@ -802,6 +802,63 @@ export const routes = [
   },
 ];
 
+const TriggerGuard = {
+  // Checks if a query looks like physical unit conversion (e.g. "5m to km")
+  isUnitConversion(q, lower) {
+    const TRANSLATE_KEYWORDS = /\b(translate|translation|say|говорить|mean|meaning)\b/i;
+    if (!TRANSLATE_KEYWORDS.test(lower)) {
+      const UNIT_CONV_RE = /^-?[\d][\d\s.,]*\s*\S.*?\b(?:to|into)\s+[a-z0-9°µ]{1,8}\s*$/i;
+      return UNIT_CONV_RE.test(q.trim());
+    }
+    return false;
+  },
+
+  // Checks if a query looks like currency conversion (e.g. "100 usd to eur")
+  isCurrencyConversion(q, lower) {
+    const TRANSLATE_KEYWORDS = /\b(translate|translation|say|говорить|mean|meaning)\b/i;
+    if (!TRANSLATE_KEYWORDS.test(lower)) {
+      const CURRENCY_CONV_RE = /^-?[\d][\d\s.,]*\s*[a-z]{3}\s+\b(?:to|into|in|=)\s+[a-z]{3}\s*$/i;
+      return CURRENCY_CONV_RE.test(q.trim());
+    }
+    return false;
+  },
+
+  // Checks if a query is language translation
+  isTranslation(q, lower) {
+    return /\b(translate|translation|say|говорить|mean|meaning)\b/i.test(q) ||
+           /how (do|would|can) you say\b/i.test(q);
+  },
+
+  // Checks if a query is a general non-financial tips article/advice (e.g. "gardening tips")
+  isTipAdvice(q) {
+    return /\b(tips?\s+(?:to|on\s+how|on|for|about|with|and|from|in)|(?:gardening|coding|interview|study|writing|clean|life|health|safety|cooking|travel|career|business)\s+tips?)\b/i.test(q);
+  },
+
+  // Checks if a query is a dice roll (e.g. "roll a 20 sided die", "d20")
+  isDiceRoll(q) {
+    return (
+      /roll\s+(?:a\s+)?(?:die|dice)\b/i.test(q) ||
+      /\bdice\s+roll\b/i.test(q) ||
+      /\bdie\s+roll\b/i.test(q) ||
+      /roll\s+d\d+\b/i.test(q) ||
+      /roll\s+(?:a\s+)?d\d+\b/i.test(q) ||
+      /roll\s+(?:a\s+)?\d+\s*-?\s*sided\s+(?:die|dice)\b/i.test(q) ||
+      /\b(d6|d20|d8|d10|d12|d100)\b/i.test(q) ||
+      /\b\d+\s*-?\s*sided\s+(?:die|dice)\b/i.test(q)
+    );
+  },
+
+  // Checks if a query specifically targets a 20-sided die
+  isD20Dice(q) {
+    return /\bd20\b/i.test(q) || /\b20\s*-?\s*sided\b/i.test(q);
+  },
+
+  // Checks if a query is a utility tool (calculator, weather, timer, stocks, etc.)
+  isUtility(q) {
+    return /\b(weather|forecast|погода|метео|temperature|humidity|wind|rain|snow|translate|translation|convert|currency|calculator|calculate|math|stopwatch|timer|countdown|coinflip|coin-flip|yesno|yes-no|tip|tips|gratuity|gratuities|stocks?)\b/i.test(q);
+  }
+};
+
 // ── Slot export ───────────────────────────────────────────────
 export const slot = {
   id: "currency-slot",
@@ -837,6 +894,10 @@ export const slot = {
     const q = query.trim();
     if (q.length < 3) return false;
     if (COMMAND_PREFIX_RE.test(q)) return true;
+
+    // Guard: reject queries with translation intent to avoid overlaps
+    if (TriggerGuard.isTranslation(q, q.toLowerCase())) return false;
+
     const parsed = parseQuery(q);
     return Boolean(parsed?.from && parsed?.to && _hasCurrencyTriggerIntent(q, parsed));
   },
