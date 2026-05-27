@@ -86,6 +86,7 @@ for (const [alias, abbr] of Object.entries(ALIASES)) {
 
 // ── Query parser ──────────────────────────────────────────────
 function parseQuery(query) {
+  if (query.trim().startsWith("#")) return null;
   // Separate numbers and letters so "100C to F" becomes "100 C to F"
   let q = query
     .trim()
@@ -354,6 +355,7 @@ function chooseUnitPair(amount, matches) {
 }
 
 function normalizeUnitPair(from, to) {
+  if (from === to) return null;
   try {
     let fromDesc = convert().describe(from);
     let toDesc = convert().describe(to);

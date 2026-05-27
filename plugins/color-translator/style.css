@@ -45,51 +45,6 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
-.clrtr-preview-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(10, 10, 10, 0.82);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    padding: 14px;
-    box-sizing: border-box;
-    font-size: 0.75rem;
-    gap: 6px;
-}
-
-.clrtr-preview-box:hover .clrtr-preview-overlay {
-    opacity: 1;
-}
-
-.clrtr-overlay-title {
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--primary, #4285f4);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-    width: 100%;
-    padding-bottom: 5px;
-    margin-bottom: 2px;
-}
-
-.clrtr-overlay-item {
-    font-family: var(--font-mono, monospace);
-    font-size: 0.7rem;
-    word-break: break-all;
-    color: #ffffffcc;
-}
-
 .clrtr-preview-badge {
     position: absolute;
     bottom: 0;
@@ -106,10 +61,6 @@
     text-align: center;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     transition: opacity 0.2s ease;
-}
-
-.clrtr-preview-box:hover .clrtr-preview-badge {
-    opacity: 0;
 }
 
 .clrtr-color-name {
