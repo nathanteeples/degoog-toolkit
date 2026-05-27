@@ -141,14 +141,16 @@ function parseQuery(query) {
   }
 
   // Dice
-  const d20Match = /\bd20\b/i.test(q);
+  const d20Match = /\bd20\b/i.test(q) || /\b20\s*-?\s*sided\b/i.test(q);
   if (
     /roll\s+(?:a\s+)?(?:die|dice)\b/i.test(q) ||
     /\bdice\s+roll\b/i.test(q) ||
     /\bdie\s+roll\b/i.test(q) ||
     /roll\s+d\d+\b/i.test(q) ||
     /roll\s+(?:a\s+)?d\d+\b/i.test(q) ||
-    /\b(d6|d20|d8|d10|d12|d100)\b/i.test(q)
+    /roll\s+(?:a\s+)?\d+\s*-?\s*sided\s+(?:die|dice)\b/i.test(q) ||
+    /\b(d6|d20|d8|d10|d12|d100)\b/i.test(q) ||
+    /\b\d+\s*-?\s*sided\s+(?:die|dice)\b/i.test(q)
   ) {
     return {
       mode: "dice",
