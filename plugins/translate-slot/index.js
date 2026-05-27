@@ -186,7 +186,7 @@ const POLITE_PREFIX_PATTERNS = [
   /^can\s+you\s+/i,
 ];
 const LEADING_INTENT_PATTERNS = [
-  /^translate(?:\s+this|\s+text)?\s+/i,
+  /^translate(?:\s+this|\s+text)?(?:\s+[:\-–—]?\s*|\s*[:\-–—]\s*)/i,
   /^translation\s+of\s+/i,
   /^how\s+(?:do|would|can)\s+(?:you|i|we)\s+say\s+/i,
   /^(?:what\s+is|what's)\s+(?:the\s+)?translation\s+of\s+/i,
