@@ -90,16 +90,7 @@
               
               <!-- D20 Element -->
               <div class="undecideds-slot__die-d20" data-die-d20-element>
-                <svg class="undecideds-slot__d20-svg" viewBox="0 0 100 100">
-                  <polygon points="50,5 95,30 95,70 50,95 5,70 5,30" class="undecideds-slot__d20-outline" />
-                  <polygon points="50,5 50,35 95,30" class="undecideds-slot__d20-facet" />
-                  <polygon points="95,30 50,35 72.5,65 95,70" class="undecideds-slot__d20-facet" />
-                  <polygon points="50,35 50,95 72.5,65" class="undecideds-slot__d20-facet" />
-                  <polygon points="50,95 50,35 27.5,65" class="undecideds-slot__d20-facet" />
-                  <polygon points="5,70 27.5,65 50,35 5,30" class="undecideds-slot__d20-facet" />
-                  <polygon points="5,30 50,35 50,5" class="undecideds-slot__d20-facet" />
-                  <text x="50" y="60" class="undecideds-slot__d20-text" data-d20-text-value>{{dice_result_d20}}</text>
-                </svg>
+                <canvas class="undecideds-slot__d20-canvas" data-d20-canvas width="200" height="200" data-initial-val="{{dice_result_d20}}"></canvas>
               </div>
               <div class="undecideds-slot__dice-drop-shadow"></div>
             </div>

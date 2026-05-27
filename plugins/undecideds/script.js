@@ -306,6 +306,17 @@
       const initialFace = parseInt(d6Element.dataset.face || "1", 10);
       setD6Pose(d6Element, initialFace);
     }
+
+    // Initial pose for D20
+    const d20Canvas = slot.querySelector("[data-d20-canvas]");
+    if (d20Canvas) {
+      const d20Controller = initD20(slot);
+      slot._d20Controller = d20Controller;
+      if (d20Controller) {
+        const initialFace = parseInt(d20Canvas.dataset.initialVal || "20", 10);
+        d20Controller.showFace(initialFace);
+      }
+    }
   }
 
   function setD6Pose(die, face) {
@@ -374,48 +385,370 @@
 
   function rollD20(slot, result) {
     const d20 = slot.querySelector("[data-die-d20-element]");
-    const textVal = slot.querySelector("[data-d20-text-value]");
     const title = slot.querySelector("[data-dice-result-text]");
     const ticker = slot.querySelector("[data-dice-ticker]");
     const btn = slot.querySelector("[data-dice-roll-btn]");
 
-    if (!d20 || !textVal || !title || !ticker || !btn) return;
+    if (!d20 || !title || !ticker || !btn) return;
 
     btn.disabled = true;
     title.textContent = "Rolling...";
     ticker.textContent = "rolling";
 
-    if (prefersReducedMotion()) {
-      textVal.textContent = String(result);
+    const d20Controller = slot._d20Controller;
+
+    if (prefersReducedMotion() || !d20Controller) {
+      if (d20Controller) d20Controller.showFace(result);
       title.textContent = `Rolled ${result}`;
       ticker.textContent = `landed ${result}`;
       btn.disabled = false;
       return;
     }
 
-    // Spin SVG in 3D space
-    d20.style.transition = "transform 1.2s cubic-bezier(0.15, 0.85, 0.35, 1.05)";
-    // Rotate on multiple axes
-    d20.style.transform = "rotate3d(1, 2.5, -1.5, 720deg) scale(0.9)";
-
-    // Flash numbers in the center
-    let flashes = 0;
-    const interval = setInterval(() => {
-      textVal.textContent = String(randomInt(20) + 1);
-      flashes++;
-      if (flashes >= 16) {
-        clearInterval(interval);
-        textVal.textContent = String(result);
-      }
-    }, 60);
-
-    setTimeout(() => {
-      d20.style.transition = "";
-      d20.style.transform = "rotate3d(0, 0, 0, 0deg) scale(1)";
+    d20Controller.animateRoll(result, 1200, () => {
       title.textContent = `Rolled ${result}`;
       ticker.textContent = `landed ${result}`;
       btn.disabled = false;
-    }, 1200);
+    });
+  }
+
+  function initD20(slot) {
+    const canvas = slot.querySelector("[data-d20-canvas]");
+    if (!canvas) return null;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    // 12 Vertices of regular icosahedron
+    const t = (1 + Math.sqrt(5)) / 2;
+    const rawVertices = [
+      [-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0],
+      [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t],
+      [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]
+    ];
+    const vertices = rawVertices.map(v => {
+      const len = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+      return { x: v[0]/len, y: v[1]/len, z: v[2]/len };
+    });
+
+    // 20 Faces
+    const faces = [
+      [0, 11, 5],  [0, 5, 1],   [0, 1, 7],   [0, 7, 10],  [0, 10, 11],
+      [1, 5, 9],   [5, 11, 4],  [11, 10, 2], [10, 7, 6],  [7, 1, 8],
+      [3, 9, 4],   [3, 4, 2],   [3, 2, 6],   [3, 6, 8],   [3, 8, 9],
+      [4, 9, 5],   [2, 4, 11],  [6, 2, 10],  [8, 6, 7],   [9, 8, 1]
+    ];
+
+    // Ensure all normals point outward
+    faces.forEach(f => {
+      const A = vertices[f[0]];
+      const B = vertices[f[1]];
+      const C = vertices[f[2]];
+      const ux = B.x - A.x, uy = B.y - A.y, uz = B.z - A.z;
+      const vx = C.x - A.x, vy = C.y - A.y, vz = C.z - A.z;
+      const nx = uy * vz - uz * vy;
+      const ny = uz * vx - ux * vz;
+      const nz = ux * vy - uy * vx;
+      const cx = (A.x + B.x + C.x)/3;
+      const cy = (A.y + B.y + C.y)/3;
+      const cz = (A.z + B.z + C.z)/3;
+      if (nx*cx + ny*cy + nz*cz < 0) {
+        const tmp = f[1];
+        f[1] = f[2];
+        f[2] = tmp;
+      }
+    });
+
+    // Precalculate face normals
+    const faceNormals = faces.map(f => {
+      const A = vertices[f[0]];
+      const B = vertices[f[1]];
+      const C = vertices[f[2]];
+      const ux = B.x - A.x, uy = B.y - A.y, uz = B.z - A.z;
+      const vx = C.x - A.x, vy = C.y - A.y, vz = C.z - A.z;
+      const nx = uy * vz - uz * vy;
+      const ny = uz * vx - ux * vz;
+      const nz = ux * vy - uy * vx;
+      const len = Math.sqrt(nx*nx + ny*ny + nz*nz);
+      return { x: nx/len, y: ny/len, z: nz/len };
+    });
+
+    // Pair opposite faces and assign numbers 1 to 20
+    const faceNumbers = new Array(20).fill(0);
+    const paired = new Set();
+    let pairIndex = 0;
+    const pairValues = [
+      [20, 1], [19, 2], [18, 3], [17, 4], [16, 5],
+      [15, 6], [14, 7], [13, 8], [12, 9], [11, 10]
+    ];
+    for (let i = 0; i < 20; i++) {
+      if (paired.has(i)) continue;
+      let bestJ = -1;
+      let minDot = 1;
+      for (let j = 0; j < 20; j++) {
+        if (i === j || paired.has(j)) continue;
+        const dot = faceNormals[i].x * faceNormals[j].x + faceNormals[i].y * faceNormals[j].y + faceNormals[i].z * faceNormals[j].z;
+        if (dot < minDot) {
+          minDot = dot;
+          bestJ = j;
+        }
+      }
+      if (bestJ !== -1) {
+        const vals = pairValues[pairIndex++];
+        faceNumbers[i] = vals[0];
+        faceNumbers[bestJ] = vals[1];
+        paired.add(i);
+        paired.add(bestJ);
+      }
+    }
+
+    // Precalculate local u and v axes for text drawing on each face
+    const faceAxes = faces.map((f, idx) => {
+      const A = vertices[f[0]];
+      const B = vertices[f[1]];
+      const C = vertices[f[2]];
+      const n = faceNormals[idx];
+
+      const ux = B.x - A.x, uy = B.y - A.y, uz = B.z - A.z;
+      const uLen = Math.sqrt(ux*ux + uy*uy + uz*uz);
+      const u = { x: ux/uLen, y: uy/uLen, z: uz/uLen };
+
+      const vx = n.y * u.z - n.z * u.y;
+      const vy = n.z * u.x - n.x * u.z;
+      const vz = n.x * u.y - n.y * u.x;
+      const v = { x: vx, y: vy, z: vz };
+
+      return { u, v };
+    });
+
+    // Helper: Matrix vector multiplication
+    function rotateVector(v, m) {
+      return {
+        x: m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z,
+        y: m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z,
+        z: m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z
+      };
+    }
+
+    // Helper: Get target rotation matrix to align normal to +z axis
+    function getFaceTargetRotation(n) {
+      let ux, uy, uz;
+      const xyLen = Math.sqrt(n.x*n.x + n.y*n.y);
+      if (xyLen > 0.001) {
+        ux = -n.y / xyLen;
+        uy = n.x / xyLen;
+        uz = 0;
+      } else {
+        ux = 1;
+        uy = 0;
+        uz = 0;
+      }
+      const vx = n.y * uz - n.z * uy;
+      const vy = n.z * ux - n.x * uz;
+      const vz = n.x * uy - n.y * ux;
+      return [
+        [ux, uy, uz],
+        [vx, vy, vz],
+        [n.x, n.y, n.z]
+      ];
+    }
+
+    // Helper: Multiply 3x3 matrices
+    function multiplyMatrices(A, B) {
+      const C = [[0,0,0],[0,0,0],[0,0,0]];
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          C[i][j] = A[i][0]*B[0][j] + A[i][1]*B[1][j] + A[i][2]*B[2][j];
+        }
+      }
+      return C;
+    }
+
+    // Helper: Rotation matrix from Euler angles
+    function getSpinMatrix(rx, ry, rz) {
+      const cx = Math.cos(rx), sx = Math.sin(rx);
+      const cy = Math.cos(ry), sy = Math.sin(ry);
+      const cz = Math.cos(rz), sz = Math.sin(rz);
+
+      const Rx = [
+        [1, 0, 0],
+        [0, cx, -sx],
+        [0, sx, cx]
+      ];
+      const Ry = [
+        [cy, 0, sy],
+        [0, 1, 0],
+        [-sy, 0, cy]
+      ];
+      const Rz = [
+        [cz, -sz, 0],
+        [sz, cz, 0],
+        [0, 0, 1]
+      ];
+
+      const RyRx = multiplyMatrices(Ry, Rx);
+      return multiplyMatrices(Rz, RyRx);
+    }
+
+    let currentMatrix = [[1,0,0],[0,1,0],[0,0,1]];
+
+    // Render the 3D die
+    function render(matrix) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const computedStyle = getComputedStyle(slot);
+      const primaryColor = computedStyle.getPropertyValue("--undecideds-primary").trim() || "#4285f4";
+
+      const width = canvas.width;
+      const height = canvas.height;
+      const xc = width / 2;
+      const yc = height / 2;
+      const scale = width * 0.42;
+
+      // Light source
+      const Lx = 0.408, Ly = 0.408, Lz = 0.816;
+
+      // Project vertices
+      const projVertices = vertices.map(v => {
+        const rot = rotateVector(v, matrix);
+        return {
+          x: xc + rot.x * scale,
+          y: yc - rot.y * scale,
+          z: rot.z
+        };
+      });
+
+      faces.forEach((f, idx) => {
+        const rotNormal = rotateVector(faceNormals[idx], matrix);
+
+        // Backface culling
+        if (rotNormal.z > 0) {
+          const p0 = projVertices[f[0]];
+          const p1 = projVertices[f[1]];
+          const p2 = projVertices[f[2]];
+
+          ctx.beginPath();
+          ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.closePath();
+
+          ctx.fillStyle = primaryColor;
+          ctx.fill();
+
+          // Lighting shading overlay
+          const d = rotNormal.x * Lx + rotNormal.y * Ly + rotNormal.z * Lz;
+          if (d > 0) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${d * 0.3})`;
+            ctx.fill();
+          } else {
+            ctx.fillStyle = `rgba(0, 0, 0, ${-d * 0.4})`;
+            ctx.fill();
+          }
+
+          // Outline
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.15)";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Subtle highlight edge
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+          ctx.stroke();
+
+          // Face number
+          const num = faceNumbers[idx];
+          const A = vertices[f[0]];
+          const B = vertices[f[1]];
+          const C = vertices[f[2]];
+          const cx = (A.x + B.x + C.x) / 3;
+          const cy = (A.y + B.y + C.y) / 3;
+          const cz = (A.z + B.z + C.z) / 3;
+          const rotCentroid = rotateVector({ x: cx, y: cy, z: cz }, matrix);
+          const screen_x = xc + rotCentroid.x * scale;
+          const screen_y = yc - rotCentroid.y * scale;
+
+          const u_rot = rotateVector(faceAxes[idx].u, matrix);
+          const v_rot = rotateVector(faceAxes[idx].v, matrix);
+
+          ctx.save();
+          const textScale = 0.34;
+          const x_u = (u_rot.x * textScale * scale) / 24;
+          const y_u = (-u_rot.y * textScale * scale) / 24;
+          const x_v = (-v_rot.x * textScale * scale) / 24;
+          const y_v = (v_rot.y * textScale * scale) / 24;
+
+          ctx.setTransform(x_u, y_u, x_v, y_v, screen_x, screen_y);
+
+          ctx.font = "bold 24px system-ui, -apple-system, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          // Shadow/stroke for contrast
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+          ctx.lineWidth = 3.5;
+          ctx.strokeText(String(num), 0, 0);
+
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(String(num), 0, 0);
+
+          ctx.restore();
+        }
+      });
+    }
+
+    function showFace(number) {
+      const faceIdx = faceNumbers.indexOf(number);
+      if (faceIdx === -1) return;
+      const targetRot = getFaceTargetRotation(faceNormals[faceIdx]);
+      currentMatrix = targetRot;
+      render(targetRot);
+    }
+
+    let animId = null;
+    function animateRoll(result, duration, callback) {
+      if (animId) cancelAnimationFrame(animId);
+
+      const faceIdx = faceNumbers.indexOf(result);
+      if (faceIdx === -1) return;
+
+      const targetRot = getFaceTargetRotation(faceNormals[faceIdx]);
+
+      const initRx = (4 + Math.random() * 3) * Math.PI * 2;
+      const initRy = (5 + Math.random() * 3) * Math.PI * 2;
+      const initRz = (3 + Math.random() * 2) * Math.PI * 2;
+
+      const startTime = Date.now();
+
+      function tick() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        if (progress >= 1) {
+          currentMatrix = targetRot;
+          render(targetRot);
+          animId = null;
+          if (callback) callback();
+        } else {
+          const factor = Math.pow(1 - progress, 2.5);
+          const rx = initRx * factor;
+          const ry = initRy * factor;
+          const rz = initRz * factor;
+
+          const spinMat = getSpinMatrix(rx, ry, rz);
+          const combinedMat = multiplyMatrices(spinMat, targetRot);
+
+          render(combinedMat);
+          animId = requestAnimationFrame(tick);
+        }
+      }
+
+      animId = requestAnimationFrame(tick);
+    }
+
+    return {
+      showFace,
+      animateRoll
+    };
   }
 
   // --- PICK NUMBER ---

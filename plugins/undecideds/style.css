@@ -436,32 +436,14 @@
   will-change: transform;
 }
 
-.undecideds-slot__d20-svg {
+.undecideds-slot__d20-canvas {
   width: 100%;
   height: 100%;
+  display: block;
   filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15));
 }
 
-.undecideds-slot__d20-outline {
-  fill: color-mix(in srgb, var(--undecideds-primary) 12%, var(--undecideds-bg));
-  stroke: var(--undecideds-primary);
-  stroke-width: 2.5;
-  stroke-linejoin: round;
-}
-
-.undecideds-slot__d20-facet {
-  fill: none;
-  stroke: color-mix(in srgb, var(--undecideds-primary) 40%, transparent);
-  stroke-width: 1.5;
-  stroke-linejoin: round;
-}
-
 .undecideds-slot__d20-text {
-  font-size: 1.85rem;
-  font-weight: 900;
-  fill: var(--text-primary);
-  text-anchor: middle;
-  dominant-baseline: middle;
   font-family: inherit;
 }
 
