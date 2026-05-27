@@ -237,6 +237,18 @@ export const slot = {
       if (lower === phrase || lower.startsWith(phrase + " ")) return true;
     }
 
+    // Guard: reject queries that look like unit conversions —
+    // i.e. they start with a number and contain "to/into/in" followed by a
+    // short alphanumeric token (≤8 chars, typical unit abbreviation) with no
+    // translate-intent keyword anywhere in the query.
+    const TRANSLATE_KEYWORDS = /\b(translate|translation|say|говорить|mean|meaning)\b/i;
+    if (!TRANSLATE_KEYWORDS.test(lower)) {
+      // Matches: optional leading units/words, a number, then units, then
+      // "to"/"into" and a short token — classic unit conversion shape.
+      const UNIT_CONV_RE = /^-?[\d][\d\s.,]*\s*\S.*?\b(?:to|into)\s+[a-z0-9°µ]{1,8}\s*$/i;
+      if (UNIT_CONV_RE.test(q.trim())) return false;
+    }
+
     // Check if query looks like a translation intent via the full parser
     const parsed = parseTranslationQuery(q, { forceIntent: false });
     return parsed.hasIntent && Boolean(parsed.text);
