@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.2.7";
+const PLUGIN_VERSION = "2.2.8";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -10,13 +10,15 @@ let _fetch = (...args) => fetch(...args);
 let _cache = null;
 
 const DEFAULT_PHOTON_URL = "https://photon.komoot.io";
-const FOURSQUARE_BASE = "https://api.foursquare.com/v3/places/search";
+const FOURSQUARE_BASE = "https://places-api.foursquare.com/places/search";
 const YELP_BASE = "https://api.yelp.com/v3/businesses/search";
 const NOMINATIM_BASE = "https://nominatim.openstreetmap.org/search";
 
 function _configure(s) {
   _settings = {
     foursquareApiKey: s?.foursquareApiKey || "",
+    foursquareClientId: s?.foursquareClientId || "",
+    foursquareClientSecret: s?.foursquareClientSecret || "",
     yelpApiKey: s?.yelpApiKey || "",
     defaultLat: s?.defaultLat || "",
     defaultLon: s?.defaultLon || "",
@@ -45,7 +47,23 @@ export const slot = {
       type: "password",
       secret: true,
       description:
-        "Optional. Provides rich business data (ratings, hours, phone). Get one at foursquare.com/developers.",
+        "Optional. Provides rich business data (ratings, hours, phone) for Foursquare v3. Get one at foursquare.com/developers.",
+    },
+    {
+      key: "foursquareClientId",
+      label: "Foursquare v2 Client ID",
+      type: "password",
+      secret: true,
+      description:
+        "Optional (Legacy v2 fallback). Use with Foursquare v2 Client Secret if you do not have a v3 API key.",
+    },
+    {
+      key: "foursquareClientSecret",
+      label: "Foursquare v2 Client Secret",
+      type: "password",
+      secret: true,
+      description:
+        "Optional (Legacy v2 fallback). Use with Foursquare v2 Client ID.",
     },
     {
       key: "yelpApiKey",
@@ -266,7 +284,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   const providerCalls = [];
 
   // Foursquare and Yelp provide rich commercial metadata when configured.
-  if (_settings.foursquareApiKey) {
+  if (_settings.foursquareApiKey || (_settings.foursquareClientId && _settings.foursquareClientSecret)) {
     providerCalls.push(_searchFoursquare(query, lat, lon, radiusM, limit, doFetch));
   }
 
@@ -312,51 +330,190 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
   const cached = _cache?.get(cacheKey);
   if (cached) return cached;
 
-  const fields = "name,location,geocodes,categories,tel,website,hours,rating,stats,fsq_id,distance,email,social_media,description,chains,price";
-  const url =
-    `${FOURSQUARE_BASE}?query=${encodeURIComponent(query)}` +
-    `&ll=${encodeURIComponent(`${lat},${lon}`)}` +
-    `&radius=${Math.round(radiusM)}` +
-    `&limit=${limit}` +
-    `&fields=${encodeURIComponent(fields)}`;
+  let out = [];
 
-  const res = await doFetch(url, {
-    headers: {
-      Authorization: _settings.foursquareApiKey,
-      Accept: "application/json",
-    },
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  if (!Array.isArray(data.results)) return [];
+  // V3 Flow
+  if (_settings.foursquareApiKey) {
+    try {
+      const authHeader = _settings.foursquareApiKey.toLowerCase().startsWith("bearer ")
+        ? _settings.foursquareApiKey
+        : `Bearer ${_settings.foursquareApiKey}`;
 
-  const out = data.results
-    .map((r) => {
-      const plat = r.geocodes?.main?.latitude;
-      const plon = r.geocodes?.main?.longitude;
-      if (plat == null || plon == null) return null;
-      return {
-        name: r.name,
-        address: _fmtFsqAddress(r.location),
-        lat: plat,
-        lon: plon,
-        distanceMeters: typeof r.distance === "number" ? r.distance : _haversine(lat, lon, plat, plon),
-        phone: r.tel || null,
-        website: r.website || null,
-        email: r.email || null,
-        socialMedia: r.social_media || null,
-        description: r.description || null,
-        chains: (r.chains || []).map((c) => c.name).filter(Boolean),
-        price: r.price || null,
-        categories: (r.categories || []).map((c) => c.short_name || c.name).filter(Boolean),
-        hours: r.hours ? { openNow: r.hours.open_now === true } : null,
-        rating: r.rating ? r.rating / 2 : null,
-        reviewCount: r.stats?.total_ratings || null,
-        source: "Foursquare",
-        sourceUrl: `https://foursquare.com/v/${r.fsq_id}`,
-      };
-    })
-    .filter(Boolean);
+      const fields = "name,location,geocodes,categories,tel,website,hours,rating,stats,fsq_id,distance,email,social_media,description,chains,price";
+      const url =
+        `${FOURSQUARE_BASE}?query=${encodeURIComponent(query)}` +
+        `&ll=${encodeURIComponent(`${lat},${lon}`)}` +
+        `&radius=${Math.round(radiusM)}` +
+        `&limit=${limit}` +
+        `&fields=${encodeURIComponent(fields)}`;
+
+      const res = await doFetch(url, {
+        headers: {
+          Authorization: authHeader,
+          Accept: "application/json",
+          "X-Places-Api-Version": "2025-06-17",
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.results)) {
+          for (const r of data.results) {
+            const plat = r.geocodes?.main?.latitude;
+            const plon = r.geocodes?.main?.longitude;
+            if (plat == null || plon == null) continue;
+
+            let phone = r.tel || null;
+            let website = r.website || null;
+
+            // Target top results to avoid slamming Overpass API (e.g. limit to first 3 results)
+            if (out.length < 3 && (!phone || !website)) {
+              const fallback = await _getVenueDetailsFromOverpass(r.name, plat, plon, doFetch);
+              if (fallback) {
+                phone = phone || fallback.phone;
+                website = website || fallback.website;
+              }
+            }
+
+            out.push({
+              name: r.name,
+              address: _fmtFsqAddress(r.location),
+              lat: plat,
+              lon: plon,
+              distanceMeters: typeof r.distance === "number" ? r.distance : _haversine(lat, lon, plat, plon),
+              phone,
+              website,
+              email: r.email || null,
+              socialMedia: r.social_media || null,
+              description: r.description || null,
+              chains: (r.chains || []).map((c) => c.name).filter(Boolean),
+              price: r.price || null,
+              categories: (r.categories || []).map((c) => c.short_name || c.name).filter(Boolean),
+              hours: r.hours ? { openNow: r.hours.open_now === true } : null,
+              rating: r.rating ? r.rating / 2 : null,
+              reviewCount: r.stats?.total_ratings || null,
+              source: "Foursquare",
+              sourceUrl: `https://foursquare.com/v/${r.fsq_id}`,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[places] Foursquare v3 query failed:", err);
+    }
+  }
+
+  // V2 Fallback Flow (runs if v3 produced no results or wasn't configured, and we have v2 credentials)
+  if (out.length === 0 && _settings.foursquareClientId && _settings.foursquareClientSecret) {
+    try {
+      const url = `https://api.foursquare.com/v2/venues/search` +
+        `?ll=${encodeURIComponent(`${lat},${lon}`)}` +
+        `&query=${encodeURIComponent(query)}` +
+        `&client_id=${encodeURIComponent(_settings.foursquareClientId)}` +
+        `&client_secret=${encodeURIComponent(_settings.foursquareClientSecret)}` +
+        `&v=20210324` +
+        `&limit=${limit}`;
+
+      const res = await doFetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const venues = data.response?.venues;
+        if (Array.isArray(venues)) {
+          for (const v of venues) {
+            const plat = v.location?.lat;
+            const plon = v.location?.lng;
+            if (plat == null || plon == null) continue;
+
+            let phone = null;
+            let website = null;
+            let rating = null;
+            let reviewCount = null;
+            let hours = null;
+            let email = null;
+            let description = null;
+            let price = null;
+
+            if (v.contact) {
+              phone = v.contact.formattedPhone || v.contact.phone || null;
+              email = v.contact.email || null;
+            }
+            if (v.url) {
+              website = v.url;
+            }
+
+            // Fetch details for the first 3 venues to keep it fast and respect quota limits
+            if (out.length < 3) {
+              try {
+                const detailUrl = `https://api.foursquare.com/v2/venues/${v.id}` +
+                  `?client_id=${encodeURIComponent(_settings.foursquareClientId)}` +
+                  `&client_secret=${encodeURIComponent(_settings.foursquareClientSecret)}` +
+                  `&v=20210324`;
+                const detailRes = await doFetch(detailUrl);
+                if (detailRes.ok) {
+                  const detailData = await detailRes.json();
+                  const dv = detailData.response?.venue;
+                  if (dv) {
+                    if (dv.contact) {
+                      phone = dv.contact.formattedPhone || dv.contact.phone || phone;
+                      email = dv.contact.email || email;
+                    }
+                    website = dv.url || dv.canonicalUrl || website;
+                    if (typeof dv.rating === "number") {
+                      rating = dv.rating / 2;
+                    }
+                    reviewCount = dv.ratingSignals || null;
+                    if (dv.hours) {
+                      hours = { openNow: dv.hours.isOpen === true };
+                    }
+                    if (dv.description) {
+                      description = dv.description;
+                    }
+                    if (dv.price) {
+                      price = dv.price.tier || null;
+                    }
+                  }
+                }
+              } catch (detailErr) {
+                console.warn(`[places] Foursquare v2 detail fetch failed for ${v.id}:`, detailErr);
+              }
+
+              // Fallback to Overpass if details fetch failed/was skipped or phone/website are missing
+              if (!phone || !website) {
+                const fallback = await _getVenueDetailsFromOverpass(v.name, plat, plon, doFetch);
+                if (fallback) {
+                  phone = phone || fallback.phone;
+                  website = website || fallback.website;
+                }
+              }
+            }
+
+            out.push({
+              name: v.name,
+              address: _fmtFsqAddress(v.location),
+              lat: plat,
+              lon: plon,
+              distanceMeters: typeof v.location.distance === "number" ? v.location.distance : _haversine(lat, lon, plat, plon),
+              phone,
+              website,
+              email,
+              socialMedia: null,
+              description,
+              chains: [],
+              price,
+              categories: (v.categories || []).map((c) => c.shortName || c.name).filter(Boolean),
+              hours,
+              rating,
+              reviewCount,
+              source: "Foursquare",
+              sourceUrl: `https://foursquare.com/v/${v.id}`,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[places] Foursquare v2 query failed:", err);
+    }
+  }
 
   _cache?.set(cacheKey, out);
   return out;
@@ -433,7 +590,10 @@ out center ${Math.max(limit * 2, 10)};
 
   const res = await doFetch("https://overpass-api.de/api/interpreter", {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": `degoog-places-slot/${PLUGIN_VERSION} (https://github.com/SoPat712/degoog-toolkit)`
+    },
     body: `data=${encodeURIComponent(q)}`,
   });
   if (!res.ok) return [];
@@ -1027,10 +1187,48 @@ function _fmtFsqAddress(loc) {
     loc.address,
     loc.locality || loc.city,
     loc.region || loc.state,
-    loc.postcode,
+    loc.postcode || loc.postalCode,
     loc.country,
   ].filter(Boolean);
   return parts.join(", ");
+}
+
+async function _getVenueDetailsFromOverpass(name, lat, lon, doFetch) {
+  if (!name) return null;
+  const escaped = name.replace(/"/g, '\\"').replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const q = `[out:json][timeout:10];
+(
+  node["name"~"${escaped}",i](around:150,${lat},${lon});
+  way["name"~"${escaped}",i](around:150,${lat},${lon});
+  relation["name"~"${escaped}",i](around:150,${lat},${lon});
+);
+out tags center 5;`.trim();
+
+  try {
+    const res = await doFetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": `degoog-places-slot/${PLUGIN_VERSION} (https://github.com/SoPat712/degoog-toolkit)`
+      },
+      body: `data=${encodeURIComponent(q)}`,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (Array.isArray(data.elements)) {
+      for (const el of data.elements) {
+        const tags = el.tags || {};
+        const phone = tags.phone || tags["contact:phone"] || tags["contact:mobile"] || null;
+        const website = tags.website || tags["contact:website"] || tags.url || null;
+        if (phone || website) {
+          return { phone, website };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`[places] Overpass details fetch failed for ${name}:`, err);
+  }
+  return null;
 }
 
 function _fmtOverpassAddress(tags) {
