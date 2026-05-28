@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.2.8";
+const PLUGIN_VERSION = "2.2.9";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -116,7 +116,7 @@ export const slot = {
       key: "resultsCount",
       label: "Results count",
       type: "select",
-      options: ["3", "5", "10"],
+      options: ["3", "5", "10", "15", "20", "25", "30"],
       default: "5",
       description: "How many place cards to show.",
     },
@@ -366,8 +366,8 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
             let phone = r.tel || null;
             let website = r.website || null;
 
-            // Target top results to avoid slamming Overpass API (e.g. limit to first 3 results)
-            if (out.length < 3 && (!phone || !website)) {
+            // Target top results to avoid slamming Overpass API (e.g. limit to first `limit` results)
+            if (out.length < limit && (!phone || !website)) {
               const fallback = await _getVenueDetailsFromOverpass(r.name, plat, plon, doFetch);
               if (fallback) {
                 phone = phone || fallback.phone;
@@ -441,8 +441,8 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
               website = v.url;
             }
 
-            // Fetch details for the first 3 venues to keep it fast and respect quota limits
-            if (out.length < 3) {
+            // Fetch details for the first `limit` venues to keep it fast and respect quota limits
+            if (out.length < limit) {
               try {
                 const detailUrl = `https://api.foursquare.com/v2/venues/${v.id}` +
                   `?client_id=${encodeURIComponent(_settings.foursquareClientId)}` +
@@ -831,7 +831,7 @@ function _processPlaces(query, rawPlaces, limit, options = {}) {
   });
 
   filtered.sort((a, b) => {
-    return b._compositeScore - a._compositeScore || (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity);
+    return (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity);
   });
 
   return filtered.slice(0, limit);

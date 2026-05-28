@@ -62,6 +62,26 @@
 .places-grid {
   display: grid;
   gap: 10px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.places-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.places-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.places-grid::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.places-grid::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
 }
 
 .places-layout {
