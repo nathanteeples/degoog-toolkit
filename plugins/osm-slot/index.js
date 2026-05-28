@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.0.1";
+const PLUGIN_VERSION = "2.0.2";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, and directions.";
 
@@ -26,6 +26,7 @@ function _configure(s) {
     resultsCount: s?.resultsCount || "5",
     distanceUnit: s?.distanceUnit || "miles",
     photonBaseUrl: s?.photonBaseUrl || DEFAULT_PHOTON_URL,
+    customTileUrl: s?.customTileUrl || "",
   };
 }
 
@@ -107,6 +108,14 @@ export const slot = {
       type: "select",
       options: ["miles", "km"],
       default: "miles",
+    },
+    {
+      key: "customTileUrl",
+      label: "Custom map tile URL",
+      type: "text",
+      placeholder: "https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=YOUR_KEY",
+      description:
+        "Optional raster tile template for the map. Supports {z}, {x}, and {y}. Leave blank to use the default OpenStreetMap embed.",
     },
     {
       key: "photonBaseUrl",
@@ -750,6 +759,11 @@ function _renderMap(places) {
   const mapPlace = places.find((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
   if (!mapPlace) return "";
 
+  const tileUrl = String(_settings.customTileUrl || "").trim();
+  if (_isTileTemplate(tileUrl)) {
+    return _renderCustomTileMap(mapPlace, tileUrl);
+  }
+
   const bounds = _mapBounds(places);
   const marker = `${mapPlace.lat},${mapPlace.lon}`;
   const bbox = `${bounds.minLon},${bounds.minLat},${bounds.maxLon},${bounds.maxLat}`;
@@ -777,6 +791,31 @@ function _renderMap(places) {
     </aside>`;
 }
 
+function _renderCustomTileMap(mapPlace, tileUrl) {
+  const viewUrl =
+    "https://www.openstreetmap.org/" +
+    `?mlat=${encodeURIComponent(mapPlace.lat)}` +
+    `&mlon=${encodeURIComponent(mapPlace.lon)}` +
+    `#map=15/${encodeURIComponent(mapPlace.lat)}/${encodeURIComponent(mapPlace.lon)}`;
+
+  return `
+    <aside class="places-map" aria-label="Map centered on ${_esc(mapPlace.name)}">
+      <div
+        class="places-tile-map"
+        data-tile-template="${_esc(tileUrl)}"
+        data-lat="${_esc(String(mapPlace.lat))}"
+        data-lon="${_esc(String(mapPlace.lon))}"
+        data-zoom="15"
+        role="img"
+        aria-label="Map for ${_esc(mapPlace.name)}"
+      >
+        <div class="places-tile-layer"></div>
+        <span class="places-map-pin" aria-hidden="true"></span>
+      </div>
+      <a class="places-map-link" href="${_esc(viewUrl)}" target="_blank" rel="noopener noreferrer">View larger map</a>
+    </aside>`;
+}
+
 /* ------------------------------------------------------------------ */
 /* Utilities                                                           */
 /* ------------------------------------------------------------------ */
@@ -795,6 +834,15 @@ function _normalizeName(name) {
     .replace(/[^\w\s]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function _isTileTemplate(url) {
+  return (
+    /^https?:\/\//i.test(url) &&
+    url.includes("{z}") &&
+    url.includes("{x}") &&
+    url.includes("{y}")
+  );
 }
 
 function _mapBounds(places) {

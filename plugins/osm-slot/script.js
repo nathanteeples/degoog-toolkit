@@ -1,5 +1,6 @@
 (function () {
   var REFRESH_TIMEOUT_MS = 22000;
+  var TILE_SIZE = 256;
 
   function _setButtonState(btn, text, disabled) {
     btn.textContent = text;
@@ -52,6 +53,7 @@
                 if (newWrap) {
                   wrap.replaceWith(newWrap);
                   _initGeoButtons();
+                  _initTileMaps();
                   return;
                 }
                 _setButtonState(btn, "No results", false);
@@ -80,8 +82,102 @@
     });
   }
 
-  _initGeoButtons();
+  function _initTileMaps() {
+    document.querySelectorAll(".places-tile-map:not([data-places-map-init])").forEach(function (map) {
+      map.dataset.placesMapInit = "1";
+      _renderTileMap(map);
 
-  var observer = new MutationObserver(_initGeoButtons);
+      if (typeof ResizeObserver === "function") {
+        var observer = new ResizeObserver(function () {
+          _renderTileMap(map);
+        });
+        observer.observe(map);
+      } else {
+        window.addEventListener("resize", function () {
+          _renderTileMap(map);
+        });
+      }
+    });
+  }
+
+  function _renderTileMap(map) {
+    var layer = map.querySelector(".places-tile-layer");
+    if (!layer) return;
+
+    var template = map.dataset.tileTemplate || "";
+    var lat = Number(map.dataset.lat);
+    var lon = Number(map.dataset.lon);
+    var zoom = Number(map.dataset.zoom || 15);
+    var width = Math.max(map.clientWidth, TILE_SIZE);
+    var height = Math.max(map.clientHeight, TILE_SIZE);
+
+    if (!template || !Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(zoom)) {
+      return;
+    }
+
+    var center = _latLonToTile(lat, lon, zoom);
+    var centerPxX = center.x * TILE_SIZE;
+    var centerPxY = center.y * TILE_SIZE;
+    var startX = Math.floor((centerPxX - width / 2) / TILE_SIZE);
+    var endX = Math.floor((centerPxX + width / 2) / TILE_SIZE);
+    var startY = Math.floor((centerPxY - height / 2) / TILE_SIZE);
+    var endY = Math.floor((centerPxY + height / 2) / TILE_SIZE);
+    var maxTile = Math.pow(2, zoom);
+    var html = "";
+
+    for (var x = startX; x <= endX; x += 1) {
+      for (var y = startY; y <= endY; y += 1) {
+        if (y < 0 || y >= maxTile) continue;
+
+        var wrappedX = ((x % maxTile) + maxTile) % maxTile;
+        var left = Math.round(x * TILE_SIZE - centerPxX + width / 2);
+        var top = Math.round(y * TILE_SIZE - centerPxY + height / 2);
+        var src = _tileUrl(template, zoom, wrappedX, y);
+
+        html +=
+          '<img class="places-tile" alt="" draggable="false" src="' +
+          _escapeAttr(src) +
+          '" style="left:' +
+          left +
+          "px;top:" +
+          top +
+          'px">';
+      }
+    }
+
+    layer.innerHTML = html;
+  }
+
+  function _latLonToTile(lat, lon, zoom) {
+    var sinLat = Math.sin((Math.max(-85.05112878, Math.min(85.05112878, lat)) * Math.PI) / 180);
+    var scale = Math.pow(2, zoom);
+    return {
+      x: ((lon + 180) / 360) * scale,
+      y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale,
+    };
+  }
+
+  function _tileUrl(template, zoom, x, y) {
+    return template
+      .replace(/\{z\}/g, String(zoom))
+      .replace(/\{x\}/g, String(x))
+      .replace(/\{y\}/g, String(y));
+  }
+
+  function _escapeAttr(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  _initGeoButtons();
+  _initTileMaps();
+
+  var observer = new MutationObserver(function () {
+    _initGeoButtons();
+    _initTileMaps();
+  });
   observer.observe(document.body, { childList: true, subtree: true });
 })();
