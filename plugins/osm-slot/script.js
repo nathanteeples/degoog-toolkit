@@ -68,14 +68,14 @@
 
         function _fallbackToIpLocation() {
           _setButtonState(btn, "Locating (IP)...", true);
-          fetch("/api/plugin/" + __PLUGIN_ID__ + "/ip-fallback")
+          fetch("https://free.freeipapi.com/api/json")
             .then(function (r) {
               if (!r.ok) throw new Error("IP geolocation failed");
               return r.json();
             })
             .then(function (data) {
-              if (data.lat != null && data.lon != null) {
-                _sendRefreshRequest(data.lat, data.lon);
+              if (data.latitude != null && data.longitude != null) {
+                _sendRefreshRequest(data.latitude, data.longitude);
               } else {
                 throw new Error("No coordinates in IP response");
               }
