@@ -53,6 +53,7 @@
                 if (newWrap) {
                   wrap.replaceWith(newWrap);
                   _initGeoButtons();
+                  _initPlaceCards();
                   _initTileMaps();
                   return;
                 }
@@ -80,6 +81,65 @@
         );
       });
     });
+  }
+
+  function _initPlaceCards() {
+    document.querySelectorAll(".places-card[data-place-card]:not([data-places-card-init])").forEach(function (card) {
+      card.dataset.placesCardInit = "1";
+      card.addEventListener("click", function (event) {
+        if (event.target.closest("a,button")) return;
+        _selectPlace(card);
+      });
+      card.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        if (event.target.closest("a,button")) return;
+        event.preventDefault();
+        _selectPlace(card);
+      });
+    });
+  }
+
+  function _selectPlace(card) {
+    var wrap = card.closest(".places-wrap");
+    if (!wrap) return;
+
+    var lat = Number(card.dataset.lat);
+    var lon = Number(card.dataset.lon);
+    var name = card.dataset.placeName || "";
+    var panel = wrap.querySelector("[data-map-panel]");
+    if (!panel || !Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+    wrap.querySelectorAll(".places-card-selected").forEach(function (selected) {
+      selected.classList.remove("places-card-selected");
+    });
+    card.classList.add("places-card-selected");
+
+    panel.dataset.lat = String(lat);
+    panel.dataset.lon = String(lon);
+    panel.dataset.placeName = name;
+    panel.setAttribute("aria-label", "Map centered on " + name);
+
+    var link = panel.querySelector("[data-map-link]");
+    if (link) {
+      link.href = _osmViewUrl(lat, lon);
+    }
+
+    if (panel.dataset.mapMode === "tiles") {
+      var tileMap = panel.querySelector(".places-tile-map");
+      if (tileMap) {
+        tileMap.dataset.lat = String(lat);
+        tileMap.dataset.lon = String(lon);
+        tileMap.setAttribute("aria-label", "Map for " + name);
+        _renderTileMap(tileMap);
+      }
+      return;
+    }
+
+    var frame = panel.querySelector(".places-map-frame");
+    if (frame) {
+      frame.src = _osmEmbedUrl(lat, lon);
+      frame.title = "Map for " + name;
+    }
   }
 
   function _initTileMaps() {
@@ -164,6 +224,37 @@
       .replace(/\{y\}/g, String(y));
   }
 
+  function _osmEmbedUrl(lat, lon) {
+    var latDelta = 0.01;
+    var lonDelta = 0.015;
+    var bbox = [
+      (lon - lonDelta).toFixed(6),
+      (lat - latDelta).toFixed(6),
+      (lon + lonDelta).toFixed(6),
+      (lat + latDelta).toFixed(6),
+    ].join(",");
+
+    return (
+      "https://www.openstreetmap.org/export/embed.html?bbox=" +
+      encodeURIComponent(bbox) +
+      "&layer=mapnik&marker=" +
+      encodeURIComponent(lat + "," + lon)
+    );
+  }
+
+  function _osmViewUrl(lat, lon) {
+    return (
+      "https://www.openstreetmap.org/?mlat=" +
+      encodeURIComponent(lat) +
+      "&mlon=" +
+      encodeURIComponent(lon) +
+      "#map=15/" +
+      encodeURIComponent(lat) +
+      "/" +
+      encodeURIComponent(lon)
+    );
+  }
+
   function _escapeAttr(value) {
     return String(value)
       .replace(/&/g, "&amp;")
@@ -173,10 +264,12 @@
   }
 
   _initGeoButtons();
+  _initPlaceCards();
   _initTileMaps();
 
   var observer = new MutationObserver(function () {
     _initGeoButtons();
+    _initPlaceCards();
     _initTileMaps();
   });
   observer.observe(document.body, { childList: true, subtree: true });

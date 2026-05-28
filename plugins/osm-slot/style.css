@@ -70,7 +70,7 @@
 }
 
 #results-page.degoog-fullwidth-slot-shell .places-layout {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  grid-template-columns: minmax(320px, 0.85fr) minmax(420px, 1.15fr);
   align-items: stretch;
 }
 
@@ -79,11 +79,20 @@
   border-radius: 12px;
   padding: 14px 16px;
   background: var(--bg-light);
-  transition: box-shadow 0.15s ease;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
-.places-card:hover {
+.places-card:hover,
+.places-card:focus-visible {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-color: var(--primary);
+  outline: none;
+}
+
+.places-card-selected {
+  border-color: var(--primary);
+  background: rgba(26, 115, 232, 0.045);
 }
 
 .places-card-header {
@@ -289,7 +298,7 @@
 }
 
 /* Mobile */
-@media (max-width: 900px) {
+@media (max-width: 1050px) {
   #results-page.degoog-fullwidth-slot-shell .places-layout {
     grid-template-columns: 1fr;
   }

@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.0.2";
+const PLUGIN_VERSION = "2.0.3";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, and directions.";
 
@@ -678,9 +678,10 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
   const unitAbbr = unit === "km" ? "km" : "mi";
 
   const cards = places
-    .map((p) => {
+    .map((p, index) => {
       const distVal = unit === "km" ? p.distanceMeters / 1000 : p.distanceMeters / 1609.34;
       const dist = distVal < 0.1 ? "<0.1" : distVal.toFixed(1);
+      const displayAddress = _shortAddress(p.address);
 
       const stars = p.rating
         ? `<span class="places-stars">${"★".repeat(Math.round(p.rating))}${"☆".repeat(5 - Math.round(p.rating))}</span>` +
@@ -713,7 +714,16 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
       const googleUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + " " + p.address)}`;
 
       return `
-<div class="places-card">
+<div
+  class="places-card${index === 0 ? " places-card-selected" : ""}"
+  data-place-card
+  data-lat="${_esc(String(p.lat))}"
+  data-lon="${_esc(String(p.lon))}"
+  data-place-name="${_esc(p.name)}"
+  tabindex="0"
+  role="button"
+  aria-label="Show ${_esc(p.name)} on the map"
+>
   <div class="places-card-header">
     <h3 class="places-name">${_esc(p.name)}</h3>
     <span class="places-distance">${dist} ${unitAbbr}</span>
@@ -723,7 +733,7 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
     ${hoursHtml}
     ${catsHtml}
   </div>
-  <p class="places-address">${_esc(p.address)}</p>
+  <p class="places-address" title="${_esc(p.address)}">${_esc(displayAddress)}</p>
   <div class="places-actions">
     ${websiteHtml}
     ${phoneHtml}
@@ -779,7 +789,15 @@ function _renderMap(places) {
     `#map=15/${encodeURIComponent(mapPlace.lat)}/${encodeURIComponent(mapPlace.lon)}`;
 
   return `
-    <aside class="places-map" aria-label="Map centered on ${_esc(mapPlace.name)}">
+    <aside
+      class="places-map"
+      data-map-panel
+      data-map-mode="iframe"
+      data-lat="${_esc(String(mapPlace.lat))}"
+      data-lon="${_esc(String(mapPlace.lon))}"
+      data-place-name="${_esc(mapPlace.name)}"
+      aria-label="Map centered on ${_esc(mapPlace.name)}"
+    >
       <iframe
         class="places-map-frame"
         title="Map for ${_esc(mapPlace.name)}"
@@ -787,7 +805,7 @@ function _renderMap(places) {
         loading="lazy"
         referrerpolicy="no-referrer-when-downgrade"
       ></iframe>
-      <a class="places-map-link" href="${_esc(viewUrl)}" target="_blank" rel="noopener noreferrer">View larger map</a>
+      <a class="places-map-link" data-map-link href="${_esc(viewUrl)}" target="_blank" rel="noopener noreferrer">View larger map</a>
     </aside>`;
 }
 
@@ -799,7 +817,15 @@ function _renderCustomTileMap(mapPlace, tileUrl) {
     `#map=15/${encodeURIComponent(mapPlace.lat)}/${encodeURIComponent(mapPlace.lon)}`;
 
   return `
-    <aside class="places-map" aria-label="Map centered on ${_esc(mapPlace.name)}">
+    <aside
+      class="places-map"
+      data-map-panel
+      data-map-mode="tiles"
+      data-lat="${_esc(String(mapPlace.lat))}"
+      data-lon="${_esc(String(mapPlace.lon))}"
+      data-place-name="${_esc(mapPlace.name)}"
+      aria-label="Map centered on ${_esc(mapPlace.name)}"
+    >
       <div
         class="places-tile-map"
         data-tile-template="${_esc(tileUrl)}"
@@ -812,7 +838,7 @@ function _renderCustomTileMap(mapPlace, tileUrl) {
         <div class="places-tile-layer"></div>
         <span class="places-map-pin" aria-hidden="true"></span>
       </div>
-      <a class="places-map-link" href="${_esc(viewUrl)}" target="_blank" rel="noopener noreferrer">View larger map</a>
+      <a class="places-map-link" data-map-link href="${_esc(viewUrl)}" target="_blank" rel="noopener noreferrer">View larger map</a>
     </aside>`;
 }
 
@@ -834,6 +860,30 @@ function _normalizeName(name) {
     .replace(/[^\w\s]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function _shortAddress(address) {
+  if (typeof address !== "string") return "";
+
+  const parts = address
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length <= 2) return address;
+
+  const compact = parts.filter((part) => !_looksPostalCode(part) && !_looksCountry(part));
+  if (compact.length >= 2) return compact.slice(-2).join(", ");
+
+  return parts.slice(0, 2).join(", ");
+}
+
+function _looksPostalCode(part) {
+  return /^[A-Z]?\d[A-Z\d]?[-\s]?\d[A-Z]{0,2}$/i.test(part) || /^\d{4,10}(-\d{3,6})?$/.test(part);
+}
+
+function _looksCountry(part) {
+  return /^(united states|usa|us|united kingdom|uk|canada|australia|new zealand)$/i.test(part);
 }
 
 function _isTileTemplate(url) {
