@@ -186,6 +186,7 @@
   justify-content: center;
   transition: background 150ms ease, transform 100ms ease;
   outline: none;
+  white-space: nowrap;
 }
 
 .snake-btn:active {
@@ -334,26 +335,9 @@
   }
 }
 
-/* full-width slot shell support (from AGENTS.md) */
-#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.snake-card) {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  margin: 0;
-  padding: 0;
-}
-
-#results-page.degoog-fullwidth-slot-shell .snake-card {
-  background: var(--bg-light, var(--bg, #ffffff));
-  border: 1px solid var(--border-light, #dadce0);
-  border-radius: 16px;
-  padding: 8px;
-}
-
 /* Fullscreen styling for Snake game console */
 .snake-card:fullscreen {
-  background: #0f172a !important;
+  background: radial-gradient(circle, #1e293b 0%, #090d16 100%) !important;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -361,6 +345,11 @@
   padding: 24px;
   overflow-y: auto;
   color: #f8fafc;
+}
+
+.snake-card:fullscreen .snake-game-container {
+  border: 4px solid #334155 !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.75);
 }
 
 .snake-card:fullscreen .snake-header {

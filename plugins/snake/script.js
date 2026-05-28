@@ -634,9 +634,19 @@
     }
   }
 
+  function handleFullscreenChange() {
+    var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    var fsBtn = qs("#snake-fullscreen-btn");
+    if (fsBtn) {
+      fsBtn.textContent = isFs ? "Exit Fullscreen" : "Full Screen";
+    }
+  }
+
   // Event Listeners
   document.addEventListener("keydown", handleKeyDown);
   document.addEventListener("click", handleClick);
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
   var observer = new MutationObserver(checkWidget);
   observer.observe(document.body, { childList: true, subtree: true });

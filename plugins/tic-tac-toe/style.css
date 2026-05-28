@@ -426,22 +426,6 @@
   cursor: not-allowed;
 }
 
-/* theme support */
-#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.ttt-card) {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  margin: 0;
-  padding: 0;
-}
-
-#results-page.degoog-fullwidth-slot-shell .ttt-card {
-  border: 1px solid var(--border-light, #dadce0);
-  border-radius: 16px;
-  background: var(--bg);
-}
-
 @media (max-width: 400px) {
   .ttt-card {
     padding: 12px;
