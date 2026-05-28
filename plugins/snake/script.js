@@ -34,19 +34,49 @@
 
   // Lazy initialize AudioContext to comply with autoplay policy
   function getAudioContext() {
+    if (!window.AudioContext && !window.webkitAudioContext) return null;
     if (!audioCtx || audioCtx.state === "closed") {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
+    return audioCtx;
+  }
+
+  function resumeAudioContext() {
+    var ctx = getAudioContext();
+    if (!ctx) return null;
     if (audioCtx.state === "suspended") {
-      audioCtx.resume();
+      var resumePromise = audioCtx.resume();
+      if (resumePromise && typeof resumePromise.catch === "function") {
+        resumePromise.catch(function () {});
+      }
     }
     return audioCtx;
+  }
+
+  function primeAudio() {
+    if (!state.soundEnabled) return;
+    try {
+      var ctx = resumeAudioContext();
+      if (!ctx || ctx.state !== "running") return;
+
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      var now = ctx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.005);
+    } catch (e) {
+      // Audio not supported
+    }
   }
 
   function playEatSound() {
     if (!state.soundEnabled) return;
     try {
-      var ctx = getAudioContext();
+      var ctx = resumeAudioContext();
+      if (!ctx) return;
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
       osc.type = "sine";
@@ -66,7 +96,8 @@
   function playGameOverSound() {
     if (!state.soundEnabled) return;
     try {
-      var ctx = getAudioContext();
+      var ctx = resumeAudioContext();
+      if (!ctx) return;
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
       osc.type = "triangle";
@@ -86,18 +117,21 @@
   function playMoveSound() {
     if (!state.soundEnabled) return;
     try {
-      var ctx = getAudioContext();
+      var ctx = resumeAudioContext();
+      if (!ctx || ctx.state !== "running") return;
+
       var osc = ctx.createOscillator();
       var gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(320, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + 0.04);
-      gain.gain.setValueAtTime(0.015, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      var now = ctx.currentTime;
+      osc.type = "square";
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(360, now + 0.025);
+      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.04);
+      osc.start(now);
+      osc.stop(now + 0.03);
     } catch (e) {
       // Audio not supported
     }
@@ -227,7 +261,7 @@
   }
 
   function startGame() {
-    getAudioContext(); // Enable Audio
+    primeAudio();
     resetGame();
     state.playing = true;
     lastTime = performance.now();
@@ -534,6 +568,7 @@
 
   function handleKeyDown(event) {
     if (!currentWidget) return;
+    resumeAudioContext();
     
     // Always intercept spacebar for pause/resume if game is running/playing
     if (event.key === " " && state.playing && !state.gameOver) {
@@ -640,6 +675,7 @@
     var soundBtn = event.target.closest("#snake-sound-btn");
     if (soundBtn) {
       state.soundEnabled = !state.soundEnabled;
+      primeAudio();
       updateUI();
       return;
     }
@@ -658,6 +694,7 @@
     if (w !== currentWidget) initFromWidget(w);
 
     event.preventDefault();
+    resumeAudioContext();
     setDirection(dir);
   }
 
