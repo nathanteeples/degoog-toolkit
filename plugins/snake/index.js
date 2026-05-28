@@ -35,14 +35,50 @@ function parseSnakeQuery(query) {
   const q = String(query || "").trim().toLowerCase();
   if (!q) return false;
   if (q.startsWith("!snake")) return true;
-  const playSnakeRx = /^(?:play\s+)?snake(?:\s+game)?$/i;
-  return playSnakeRx.test(q);
+  return /^(?:play\s+)?snake(?:\s+game)?\b/i.test(q);
 }
+
+function renderSnakeCard() {
+  const speedMsMap = { "Easy": 150, "Normal": 100, "Hard": 70 };
+  const initialSpeedMs = speedMsMap[initialSpeed] || 100;
+
+  return (template || "")
+    .replaceAll("{{initial_speed_ms}}", String(initialSpeedMs));
+}
+
+export const command = {
+  name: "Snake Game",
+  description: "A snake game plugin with mobile support and full screen mode.",
+  isClientExposed: false,
+  trigger: "snake",
+
+  async init(ctx) {
+    template = ctx?.template || "";
+    if (!template && typeof ctx?.readFile === "function") {
+      template = await ctx.readFile("template.html");
+    }
+  },
+
+  configure(settings) {
+    configureSettings(settings);
+  },
+
+  async execute() {
+    if (!enabled) {
+      return { title: "", html: "" };
+    }
+
+    return {
+      title: "",
+      html: renderSnakeCard(),
+    };
+  },
+};
 
 export const slot = {
   id: "snake",
   name: "Snake Game",
-  description: "A premium classic arcade Snake game with custom speeds, D-pad controls, particle effects, and score tracking.",
+  description: "A snake game plugin with mobile support and full screen mode.",
   isClientExposed: false,
   position: "above-results",
   slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],
@@ -68,15 +104,9 @@ export const slot = {
     if (context?.tab && context.tab !== "all") return { title: "", html: "" };
     if (!parseSnakeQuery(query)) return { title: "", html: "" };
 
-    const speedMsMap = { "Easy": 150, "Normal": 100, "Hard": 70 };
-    const initialSpeedMs = speedMsMap[initialSpeed] || 100;
-
-    const html = (template || "")
-      .replaceAll("{{initial_speed_ms}}", String(initialSpeedMs));
-
     return {
       title: "",
-      html: html,
+      html: renderSnakeCard(),
     };
   },
 };

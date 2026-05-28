@@ -37,7 +37,7 @@ Before I started this repository, I forked it from https://github.com/SiaoZeng/d
 - **Tip Calculator** — interactive tip calculator with real-time bill split, custom slider parameters, and animations
 - **TMDB** — rich movie, TV, and actor panels when film database or film-site links appear in results
 - **Translate** — no-key server-side translation command with provider switching, romanization, speech, and leading natural-language triggers
-- **Undecideds** — a premium multi-mode decision-making dashboard featuring Coin Flip, Roll Die, Pick Number, and Yes or No decisions
+- **Undecideds** — decision tools for coin flips, dice rolls, number picks, and yes/no choices
 - **Unit Converter** — fuzzy natural unit conversion for length, mass, volume, temperature, area, and speed
 - **Until** — Chrono-powered countdown answers for searches like `years until 3000`, `days since Christmas`, `weeks until July 6th, 2033`, and `!until 5pm`
 - **Weather** — current weather with interactive tabbed charts (temperature, precipitation, wind, humidity), a 7-day forecast, rich current conditions (pressure, UV, visibility, dew point, cloud cover, wind gusts), a sunrise/sunset arc, and configurable units for temperature, wind speed, pressure and precipitation

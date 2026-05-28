@@ -42,8 +42,8 @@
     {
       "path": "plugins/undecideds",
       "name": "Undecideds",
-      "description": "A premium multi-mode decision-making dashboard featuring Coin Flip, Roll Die, Pick Number, and Yes or No decisions.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.3.15",
+      "description": "Decision tools for coin flips, dice rolls, number picks, and yes/no choices.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
+      "version": "1.3.16",
       "type": "slot"
     },
     {
@@ -128,7 +128,7 @@
       "path": "plugins/color-translator",
       "name": "Color Translator",
       "description": "Translates colors between hex, RGB/RGBA, HSL/HSLA, HSB/HSV, UIColor, and NSColor. Triggers on CSS, iOS/macOS code color formats, and named colors.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.9",
+      "version": "1.0.10",
       "type": "slot"
     },
     {
@@ -141,29 +141,29 @@
     {
       "path": "plugins/snake",
       "name": "Snake Game",
-      "description": "A premium classic arcade Snake game with on-screen D-pad mobile controls, score/high-score tracking, visual overlays, sound support, and smooth particle effects. Triggers on !snake or natural queries like 'play snake game'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.2",
+      "description": "A snake game plugin with mobile support and full screen mode.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
+      "version": "1.0.3",
       "type": "slot"
     },
     {
       "path": "plugins/metronome",
       "name": "Metronome",
-      "description": "A premium metronome widget. Adjust tempo (40 - 240 BPM) via slider, tap to set tempo, select beat signatures, and hear clean Web Audio tick sounds.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.2",
+      "description": "Metronome widget with tempo controls, tap tempo, beat signatures, and Web Audio ticks.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
+      "version": "1.0.3",
       "type": "slot"
     },
     {
       "path": "plugins/minesweeper",
       "name": "Minesweeper",
       "description": "Play classic Minesweeper directly in your search results. Features classic board sizes/difficulties, flags, a mobile flag toggle, interactive emoji states, and a timer.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "type": "slot"
     },
     {
       "path": "plugins/tic-tac-toe",
       "name": "Tic-Tac-Toe",
-      "description": "A premium Tic-Tac-Toe game. Features Easy, Medium, Hard, and Unbeatable (Minimax-based) AI difficulties, local multiplayer (Play vs Friend), score tracking, and smooth drawing animations.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.2",
+      "description": "Tic-Tac-Toe game with AI difficulty settings, local multiplayer, score tracking, and win-line animation.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
+      "version": "1.0.3",
       "type": "slot"
     }
   ],

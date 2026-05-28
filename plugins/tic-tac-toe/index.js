@@ -26,7 +26,7 @@ export const slot = {
   id: "tic-tac-toe",
   name: "Tic-Tac-Toe",
   description:
-    "A premium Tic-Tac-Toe game with an unbeatable minimax AI option, difficulty settings, and win-line animation.",
+    "Tic-Tac-Toe game with AI difficulty settings, local multiplayer, and win-line animation.",
   isClientExposed: false,
   position: "above-results",
   slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],

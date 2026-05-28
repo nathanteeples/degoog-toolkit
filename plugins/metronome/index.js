@@ -67,7 +67,7 @@ function renderTemplate(request) {
 export const slot = {
   id: "metronome",
   name: "Metronome",
-  description: "A premium metronome with customizable beats and tap tempo support.",
+  description: "Metronome widget with tempo controls, tap tempo, and beat signatures.",
   isClientExposed: false,
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],

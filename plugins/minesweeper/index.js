@@ -14,7 +14,7 @@ const settingsSchema = [
 export const slot = {
   id: "minesweeper",
   name: "Minesweeper",
-  description: "A premium Minesweeper game card with classic board modes, emoji indicator, flag toggle, and interactive timer.",
+  description: "Minesweeper game card with board sizes, flags, a mobile flag toggle, and a timer.",
   isClientExposed: false,
   position: "above-results",
   slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],

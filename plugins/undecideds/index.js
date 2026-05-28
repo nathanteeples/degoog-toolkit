@@ -38,7 +38,7 @@ const FALLBACK_TEMPLATE = `<div class="undecideds-slot" data-undecideds-slot dat
 export const slot = {
   id: "undecideds-slot",
   name: "Undecideds",
-  description: "A premium multi-mode decision-making dashboard featuring Coin Flip, Roll Die, Pick Number, and Yes or No decisions.",
+  description: "Decision tools for coin flips, dice rolls, number picks, and yes/no choices.",
   isClientExposed: false,
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
