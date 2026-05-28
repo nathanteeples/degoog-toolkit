@@ -78,7 +78,7 @@
             _setButtonState(btn, denied ? "Location denied" : "Location unavailable", false);
             btn.dataset.placesBusy = "false";
           },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
         );
       });
     });

@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.2.1";
+const PLUGIN_VERSION = "2.2.2";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -948,7 +948,7 @@ function _tokenOverlapScore(a, b) {
     if (bb.has(token)) overlap++;
   }
 
-  return overlap / Math.max(aa.size, bb.size);
+  return overlap / Math.min(aa.size, bb.size);
 }
 
 // Scored, filtered, and sorted by composite scoring in _processPlaces.
