@@ -24,7 +24,11 @@
     direction: { x: 1, y: 0 },
     nextDirection: { x: 1, y: 0 },
     apple: { x: 0, y: 0 },
-    particles: []
+    particles: [],
+    
+    // Smooth movement interpolation
+    prevSnake: [],
+    lastTickTime: 0
   };
 
   // Lazy initialize AudioContext to comply with autoplay policy
@@ -78,6 +82,26 @@
     }
   }
 
+  function playMoveSound() {
+    if (!state.soundEnabled) return;
+    try {
+      var ctx = getAudioContext();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(320, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + 0.04);
+      gain.gain.setValueAtTime(0.015, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.04);
+    } catch (e) {
+      // Audio not supported
+    }
+  }
+
   function qs(selector) {
     return currentWidget ? currentWidget.querySelector(selector) : null;
   }
@@ -97,6 +121,8 @@
     }
 
     resetGame();
+    state.prevSnake = state.snake.map(function(s) { return { x: s.x, y: s.y }; });
+    state.lastTickTime = performance.now();
     updateUI();
   }
 
@@ -115,6 +141,8 @@
     state.direction = { x: 1, y: 0 };
     state.nextDirection = { x: 1, y: 0 };
     state.particles = [];
+    state.prevSnake = state.snake.map(function(s) { return { x: s.x, y: s.y }; });
+    state.lastTickTime = performance.now();
 
     spawnApple();
   }
@@ -177,10 +205,16 @@
   function setDirection(dir) {
     // Prevent 180-degree turns
     var cur = state.direction;
+    var changed = false;
     if (dir.x !== 0 && cur.x === 0) {
       state.nextDirection = dir;
+      changed = true;
     } else if (dir.y !== 0 && cur.y === 0) {
       state.nextDirection = dir;
+      changed = true;
+    }
+    if (changed) {
+      playMoveSound();
     }
   }
 
@@ -254,6 +288,9 @@
   function updateSnake() {
     if (state.paused || state.gameOver) return;
 
+    state.prevSnake = state.snake.map(function(s) { return { x: s.x, y: s.y }; });
+    state.lastTickTime = performance.now();
+
     state.direction = state.nextDirection;
     var head = state.snake[0];
     var nextHead = {
@@ -292,6 +329,14 @@
     } else {
       // Remove tail segment if apple was not eaten
       state.snake.pop();
+    }
+
+    // Pad prevSnake to match new length if grew
+    if (state.prevSnake) {
+      while (state.prevSnake.length < state.snake.length) {
+        var last = state.prevSnake[state.prevSnake.length - 1] || nextHead;
+        state.prevSnake.push({ x: last.x, y: last.y });
+      }
     }
   }
 
@@ -365,10 +410,26 @@
     }
 
     // Draw snake
+    var t = 1;
+    if (state.playing && !state.paused && !state.gameOver && state.lastTickTime) {
+      var now = performance.now();
+      t = (now - state.lastTickTime) / state.speedMs;
+      if (t > 1) t = 1;
+      if (t < 0) t = 0;
+    }
+
     for (var i = 0; i < state.snake.length; i++) {
       var segment = state.snake[i];
       var sx = segment.x * state.cellSize;
       var sy = segment.y * state.cellSize;
+
+      if (state.prevSnake && state.prevSnake[i]) {
+        var prevSegment = state.prevSnake[i];
+        var interpX = prevSegment.x + (segment.x - prevSegment.x) * t;
+        var interpY = prevSegment.y + (segment.y - prevSegment.y) * t;
+        sx = interpX * state.cellSize;
+        sy = interpY * state.cellSize;
+      }
       var size = state.cellSize;
 
       ctx.beginPath();
@@ -484,6 +545,27 @@
     }
   }
 
+  function toggleFullscreen() {
+    if (!currentWidget) return;
+    try {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (currentWidget.requestFullscreen) {
+          currentWidget.requestFullscreen();
+        } else if (currentWidget.webkitRequestFullscreen) {
+          currentWidget.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    } catch (e) {
+      console.warn("Fullscreen toggle failed:", e);
+    }
+  }
+
   function handleClick(event) {
     var w = event.target.closest("[data-snake-widget]");
     if (!w) return;
@@ -507,6 +589,12 @@
     if (pauseBtn && !pauseBtn.disabled) {
       if (state.paused) resumeGame();
       else pauseGame();
+      return;
+    }
+
+    var fullscreenBtn = event.target.closest("#snake-fullscreen-btn");
+    if (fullscreenBtn) {
+      toggleFullscreen();
       return;
     }
 

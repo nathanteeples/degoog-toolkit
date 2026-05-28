@@ -244,15 +244,25 @@
 }
 
 .snake-header-actions .snake-btn {
-  padding: 6px 12px;
-  height: 32px;
-  font-size: 0.85rem;
-  border-radius: 6px;
+  padding: 6px 14px;
+  height: 38px;
+  font-size: 0.92rem;
+  border-radius: 8px;
 }
 
 .snake-header-actions .snake-btn-icon {
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.snake-header-actions .snake-btn-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
 }
 
 /* D-Pad mobile controls: only visible on touchscreen devices */
@@ -331,4 +341,69 @@
   border: 1px solid var(--border-light, #dadce0);
   border-radius: 16px;
   padding: 8px;
+}
+
+/* Fullscreen styling for Snake game console */
+.snake-card:fullscreen {
+  background: #0f172a !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  overflow-y: auto;
+  color: #f8fafc;
+}
+
+.snake-card:fullscreen .snake-header {
+  width: 100%;
+  max-width: 480px;
+  border-bottom: 1px solid #334155;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+}
+
+.snake-card:fullscreen .snake-title {
+  color: #f8fafc;
+}
+
+.snake-card:fullscreen .snake-body {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+}
+
+.snake-card:fullscreen .snake-score-label {
+  color: #94a3b8;
+}
+
+.snake-card:fullscreen .snake-score-val {
+  color: #f8fafc;
+}
+
+.snake-card:fullscreen .snake-score-box {
+  background: #1e293b;
+}
+
+.snake-card:fullscreen .snake-btn-secondary {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+.snake-card:fullscreen .snake-btn-secondary:hover {
+  background: #334155;
+}
+
+.snake-card:fullscreen .snake-btn-icon {
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+.snake-card:fullscreen .snake-btn-icon:hover {
+  background: #1e293b;
+  color: #f8fafc;
 }
