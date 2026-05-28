@@ -1,9 +1,9 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.0.3";
+const PLUGIN_VERSION = "2.2.1";
 const PLUGIN_DESCRIPTION =
-  "Local place recognition — shows nearby businesses and POIs with address, hours, phone, and directions.";
+  "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
 let _settings = {};
 let _fetch = (...args) => fetch(...args);
@@ -151,51 +151,21 @@ export const slot = {
   },
 
   trigger(query) {
-    const q = query.trim().toLowerCase();
-    if (q.length < 2) return false;
-
-    // Local-intent keywords always pass through to execute.
-    if (/\b(near me|locations?|hours?|address|phone|open now|directions?)\b/i.test(q)) {
-      return true;
-    }
-
-    // Brand / place-like queries: short, not questions, not code.
-    const words = q.split(/\s+/).filter(Boolean);
-    if (words.length < 1 || words.length > 10) return false;
-
-    if (/^(what|how|why|when|where|who|is|are|does|do|can|should|would|could|will|did|has|have|was|were)\b/i.test(q)) {
-      return false;
-    }
-    if (/\?\s*$/.test(q)) return false;
-    if (/^https?:\/\//.test(q)) return false;
-    if (/\b(error|exception|stack trace|debug|console\.log|npm|pip|git|python|javascript|java|cpp|c\+\+|rust|golang|docker|kubernetes|sql)\b/i.test(q)) {
-      return false;
-    }
-    if (/\b(calculator|calculate|convert|conversion|percent|currency|exchange|stock|weather|forecast|define|meaning|synonym|translate)\b/i.test(q)) {
-      return false;
-    }
-
-    return true;
+    return _looksProbablyPlaceQuery(query);
   },
 
   async execute(query, context) {
+    // Defense-in-depth. Never trust trigger alone.
+    if (!_looksProbablyPlaceQuery(query)) {
+      return { html: "" };
+    }
+
     try {
       const q = query.trim();
-      const qLower = q.toLowerCase();
 
       const lat = parseFloat(_settings.defaultLat);
       const lon = parseFloat(_settings.defaultLon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-        return { html: "" };
-      }
-
-      const localIntentRe = /\b(near me|locations?|hours?|address|phone|open now|directions?)\b/i;
-      const hasLocalIntent = localIntentRe.test(qLower);
-
-      let searchQuery = q.replace(localIntentRe, "").trim();
-      if (searchQuery.length < 2) searchQuery = q;
-
-      if (!hasLocalIntent && _isClearlyNonPlaceQuery(searchQuery)) {
         return { html: "" };
       }
 
@@ -204,36 +174,28 @@ export const slot = {
       const limit = parseInt(_settings.resultsCount || "5", 10);
       const doFetch = typeof context?.fetch === "function" ? context.fetch : _fetch;
 
-      const places = await _searchAllProviders(searchQuery, lat, lon, radiusMeters, limit * 2, doFetch);
+      const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, doFetch);
 
       if (places.length === 0) return { html: "" };
 
-      let deduped = _dedupePlaces(places);
-      deduped = _rankPlaces(deduped, searchQuery);
+      const top = _processPlaces(q, places, limit, {
+        enforceDistanceGate: true,
+        enforceConfidenceGate: true,
+      });
 
-      // For brand queries without local intent, require at least one business-like result.
-      if (!hasLocalIntent) {
-        const hasBusiness = deduped.some(
-          (p) =>
-            p.source === "Foursquare" ||
-            p.source === "Yelp" ||
-            p.phone ||
-            p.website ||
-            p.categories.length > 0
-        );
-        if (!hasBusiness) return { html: "" };
+      if (top.length === 0) {
+        return { html: "" };
       }
-
-      const top = deduped.slice(0, limit);
 
       const html = _renderCard(
         top,
-        searchQuery,
+        q,
         _settings.defaultLocationLabel || "Home",
         _settings.useBrowserGeolocation
       );
       return { html };
     } catch (err) {
+      console.error("[places] lookup failed:", err);
       return { html: "" };
     }
   },
@@ -274,9 +236,10 @@ export const routes = [
           return _jsonResponse({ html: "" });
         }
 
-        let deduped = _dedupePlaces(places);
-        deduped = _rankPlaces(deduped, query || "");
-        const top = deduped.slice(0, limit);
+        const top = _processPlaces(query || "", places, limit, {
+          enforceDistanceGate: false,
+          enforceConfidenceGate: false,
+        });
 
         const html = _renderCard(top, query || "", "your location", false);
         return _jsonResponse({ html });
@@ -349,7 +312,7 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
   const cached = _cache?.get(cacheKey);
   if (cached) return cached;
 
-  const fields = "name,location,geocodes,categories,tel,website,hours,rating,stats,fsq_id,distance";
+  const fields = "name,location,geocodes,categories,tel,website,hours,rating,stats,fsq_id,distance,email,social_media,description,chains,price";
   const url =
     `${FOURSQUARE_BASE}?query=${encodeURIComponent(query)}` +
     `&ll=${encodeURIComponent(`${lat},${lon}`)}` +
@@ -380,6 +343,11 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
         distanceMeters: typeof r.distance === "number" ? r.distance : _haversine(lat, lon, plat, plon),
         phone: r.tel || null,
         website: r.website || null,
+        email: r.email || null,
+        socialMedia: r.social_media || null,
+        description: r.description || null,
+        chains: (r.chains || []).map((c) => c.name).filter(Boolean),
+        price: r.price || null,
         categories: (r.categories || []).map((c) => c.short_name || c.name).filter(Boolean),
         hours: r.hours ? { openNow: r.hours.open_now === true } : null,
         rating: r.rating ? r.rating / 2 : null,
@@ -609,11 +577,11 @@ async function _searchNominatim(query, lat, lon, limit, doFetch) {
 /* Normalization & dedupe                                              */
 /* ------------------------------------------------------------------ */
 
-function _dedupePlaces(places) {
+function _dedupeAndMergePlaces(places) {
   const out = [];
   for (const p of places) {
     const norm = _normalizeName(p.name);
-    let dup = false;
+    let existing = null;
     for (const e of out) {
       const dist = _haversine(p.lat, p.lon, e.lat, e.lon);
       const eNorm = _normalizeName(e.name);
@@ -624,49 +592,89 @@ function _dedupePlaces(places) {
       const samePhone = p.phone && e.phone && p.phone === e.phone;
       const sameWebsite = p.website && e.website && p.website === e.website;
       if (dist < 75 && (nameSimilar || samePhone || sameWebsite)) {
-        dup = true;
+        existing = e;
         break;
       }
     }
-    if (!dup) out.push(p);
+    if (existing) {
+      if (!existing.phone && p.phone) existing.phone = p.phone;
+      if (!existing.website && p.website) existing.website = p.website;
+      if (!existing.email && p.email) existing.email = p.email;
+      if (!existing.description && p.description) existing.description = p.description;
+      if (!existing.price && p.price) existing.price = p.price;
+      if (existing.rating == null && p.rating != null) {
+        existing.rating = p.rating;
+        existing.reviewCount = p.reviewCount;
+      }
+      if (p.categories && p.categories.length) {
+        const cats = new Set([...existing.categories, ...p.categories]);
+        existing.categories = Array.from(cats);
+      }
+    } else {
+      out.push({ ...p });
+    }
   }
   return out;
 }
 
-function _rankPlaces(places, queryRaw) {
-  const q = (queryRaw || "").toLowerCase().trim();
-  const qNorm = _normalizeName(q);
+function _processPlaces(query, rawPlaces, limit, options = {}) {
+  const deduped = _dedupeAndMergePlaces(rawPlaces);
+  const q = _normalizeName(query);
+  const words = _wordCount(query);
 
-  return places
-    .map((p) => {
-      let score = 0;
-      const pNorm = _normalizeName(p.name);
+  const closestDistance = Math.min(
+    ...deduped
+      .map((p) => p.distanceMeters ?? Infinity)
+      .filter((d) => isFinite(d))
+  );
 
-      if (pNorm === qNorm) score += 100;
-      else if (pNorm.startsWith(qNorm)) score += 80;
-      else if (pNorm.includes(qNorm)) score += 60;
+  if (options.enforceDistanceGate && words === 1 && closestDistance > 35 * 1609.34) {
+    return [];
+  }
 
-      if (p.distanceMeters != null) {
-        score += Math.max(0, 50 - p.distanceMeters / 1000);
-      }
+  const scored = deduped.map((place) => {
+    const name = _normalizeName(place.name);
+    const score = _tokenOverlapScore(q, name);
 
-      if (p.hours?.openNow === true) score += 30;
-      else if (p.hours?.openNow === false) score -= 5;
+    let distanceConfidence = 1;
+    const distKm = (place.distanceMeters ?? Infinity) / 1000;
 
-      if (p.source === "Foursquare") score += 20;
-      else if (p.source === "Yelp") score += 15;
+    if (distKm > 50) {
+      distanceConfidence = score > 0.9 ? 1 : 0.3;
+    } else if (distKm > 25) {
+      distanceConfidence = 0.7 + (0.3 * Math.max(0, 1 - (distKm - 25) / 50));
+    } else if (distKm > 10) {
+      distanceConfidence = 0.85 + (0.15 * Math.max(0, 1 - (distKm - 10) / 15));
+    } else {
+      distanceConfidence = 1;
+    }
 
-      if (p.rating) score += Math.min(25, p.rating * 5);
-      if (p.reviewCount) score += Math.min(10, p.reviewCount / 50);
+    return {
+      ...place,
+      _matchScore: score,
+      _distanceConfidence: distanceConfidence,
+      _compositeScore: score * distanceConfidence,
+    };
+  });
 
-      if (p.phone) score += 4;
-      if (p.website) score += 4;
-      if (p.hours) score += 4;
+  const filtered = scored.filter((place) => {
+    if (options.enforceConfidenceGate) {
+      if (place._matchScore < 0.55) return false;
+      if (closestDistance > 40 * 1000 && place._matchScore < 0.75) return false;
 
-      return { place: p, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .map((x) => x.place);
+      const hasLocation = place.address || (place.lat && place.lon);
+      const hasBusinessData = place.categories?.length || place.phone || place.website;
+
+      if (!hasLocation || !hasBusinessData) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    return b._compositeScore - a._compositeScore || (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity);
+  });
+
+  return filtered.slice(0, limit);
 }
 
 /* ------------------------------------------------------------------ */
@@ -703,15 +711,19 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
         .map((c) => `<span class="places-category">${_esc(c)}</span>`)
         .join("") || "";
 
-      const phoneHtml = p.phone
-        ? `<a class="places-action" href="tel:${_esc(p.phone)}">Call</a>`
-        : "";
-      const websiteHtml = p.website
-        ? `<a class="places-action" href="${_esc(p.website)}" target="_blank" rel="noopener noreferrer">Website</a>`
+      const priceHtml = p.price ? `<span class="places-price">${"$".repeat(p.price)}</span>` : "";
+
+      const descHtml = p.description
+        ? `<p class="places-description" title="${_esc(p.description)}">${_esc(p.description.substring(0, 100))}${p.description.length > 100 ? "…" : ""}</p>`
         : "";
 
-      const appleUrl = `https://maps.apple.com/?q=${encodeURIComponent(p.name)}&ll=${p.lat},${p.lon}`;
-      const googleUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + " " + p.address)}`;
+      const phoneHtml = p.phone
+        ? `<a class="places-action places-action-call" href="tel:${_esc(p.phone)}">Call</a>`
+        : "";
+      const websiteHtml = p.website
+        ? `<a class="places-action places-action-website" href="${_esc(p.website)}" target="_blank" rel="noopener noreferrer">Website</a>`
+        : "";
+      const directionsHtml = `<button class="places-action places-action-directions" data-directions-btn data-place-name="${_esc(p.name)}" data-lat="${p.lat}" data-lon="${p.lon}" data-address="${_esc(p.address)}" type="button">Directions</button>`;
 
       return `
 <div
@@ -732,13 +744,14 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
     ${ratingHtml}
     ${hoursHtml}
     ${catsHtml}
+    ${priceHtml}
   </div>
   <p class="places-address" title="${_esc(p.address)}">${_esc(displayAddress)}</p>
+  ${descHtml}
   <div class="places-actions">
-    ${websiteHtml}
     ${phoneHtml}
-    <a class="places-action places-action-maps" href="${_esc(appleUrl)}" target="_blank" rel="noopener noreferrer">Apple Maps</a>
-    <a class="places-action places-action-maps" href="${_esc(googleUrl)}" target="_blank" rel="noopener noreferrer">Google Maps</a>
+    ${websiteHtml}
+    ${directionsHtml}
   </div>
 </div>`;
     })
@@ -762,6 +775,20 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
     </div>
     ${mapHtml}
   </div>
+  <div class="places-modal" data-places-modal hidden>
+    <div class="places-modal-backdrop" data-modal-close></div>
+    <div class="places-modal-content">
+      <div class="places-modal-header">
+        <span class="places-modal-title">Get directions</span>
+        <button class="places-modal-close-btn" data-modal-close type="button">&times;</button>
+      </div>
+      <div class="places-modal-body">
+        <a class="places-modal-option" data-modal-option="apple" href="#" target="_blank" rel="noopener noreferrer">Apple Maps</a>
+        <a class="places-modal-option" data-modal-option="google" href="#" target="_blank" rel="noopener noreferrer">Google Maps</a>
+        <a class="places-modal-option" data-modal-option="osm" href="#" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>
+      </div>
+    </div>
+  </div>
 </div>`;
 }
 
@@ -769,19 +796,10 @@ function _renderMap(places) {
   const mapPlace = places.find((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
   if (!mapPlace) return "";
 
-  const tileUrl = String(_settings.customTileUrl || "").trim();
-  if (_isTileTemplate(tileUrl)) {
-    return _renderCustomTileMap(mapPlace, tileUrl);
-  }
+  const tileUrl = (_settings.customTileUrl && _isTileTemplate(_settings.customTileUrl))
+    ? _settings.customTileUrl
+    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
-  const bounds = _mapBounds(places);
-  const marker = `${mapPlace.lat},${mapPlace.lon}`;
-  const bbox = `${bounds.minLon},${bounds.minLat},${bounds.maxLon},${bounds.maxLat}`;
-  const mapUrl =
-    "https://www.openstreetmap.org/export/embed.html" +
-    `?bbox=${encodeURIComponent(bbox)}` +
-    "&layer=mapnik" +
-    `&marker=${encodeURIComponent(marker)}`;
   const viewUrl =
     "https://www.openstreetmap.org/" +
     `?mlat=${encodeURIComponent(mapPlace.lat)}` +
@@ -792,35 +810,6 @@ function _renderMap(places) {
     <aside
       class="places-map"
       data-map-panel
-      data-map-mode="iframe"
-      data-lat="${_esc(String(mapPlace.lat))}"
-      data-lon="${_esc(String(mapPlace.lon))}"
-      data-place-name="${_esc(mapPlace.name)}"
-      aria-label="Map centered on ${_esc(mapPlace.name)}"
-    >
-      <iframe
-        class="places-map-frame"
-        title="Map for ${_esc(mapPlace.name)}"
-        src="${_esc(mapUrl)}"
-        loading="lazy"
-        referrerpolicy="no-referrer-when-downgrade"
-      ></iframe>
-      <a class="places-map-link" data-map-link href="${_esc(viewUrl)}" target="_blank" rel="noopener noreferrer">View larger map</a>
-    </aside>`;
-}
-
-function _renderCustomTileMap(mapPlace, tileUrl) {
-  const viewUrl =
-    "https://www.openstreetmap.org/" +
-    `?mlat=${encodeURIComponent(mapPlace.lat)}` +
-    `&mlon=${encodeURIComponent(mapPlace.lon)}` +
-    `#map=15/${encodeURIComponent(mapPlace.lat)}/${encodeURIComponent(mapPlace.lon)}`;
-
-  return `
-    <aside
-      class="places-map"
-      data-map-panel
-      data-map-mode="tiles"
       data-lat="${_esc(String(mapPlace.lat))}"
       data-lon="${_esc(String(mapPlace.lon))}"
       data-place-name="${_esc(mapPlace.name)}"
@@ -837,6 +826,10 @@ function _renderCustomTileMap(mapPlace, tileUrl) {
       >
         <div class="places-tile-layer"></div>
         <span class="places-map-pin" aria-hidden="true"></span>
+        <div class="places-zoom-controls">
+          <button class="places-zoom-btn" data-zoom-in type="button" aria-label="Zoom in">+</button>
+          <button class="places-zoom-btn" data-zoom-out type="button" aria-label="Zoom out">−</button>
+        </div>
       </div>
       <a class="places-map-link" data-map-link href="${_esc(viewUrl)}" target="_blank" rel="noopener noreferrer">View larger map</a>
     </aside>`;
@@ -846,21 +839,119 @@ function _renderCustomTileMap(mapPlace, tileUrl) {
 /* Utilities                                                           */
 /* ------------------------------------------------------------------ */
 
-function _isClearlyNonPlaceQuery(q) {
-  const lower = q.toLowerCase();
-  if (/^(what|how|why|when|where|who|is|are|does|do|can|should|would|could|will|did|has|have|was|were)\b/i.test(lower)) return true;
-  if (/\b(calculator|calculate|convert|conversion|percent|currency|exchange|stock|weather|forecast|define|meaning|synonym|translate|tip|gratuity|split bill)\b/i.test(lower)) return true;
-  if (/\b(error|exception|stack trace|debug|console\.log|npm|pip|git|python|javascript|java|cpp|c\+\+|rust|golang|docker|kubernetes|sql)\b/i.test(lower)) return true;
+function _tileToLatLon(x, y, zoom) {
+  const n = Math.pow(2, zoom);
+  const lon = (x / n) * 360 - 180;
+  const latRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n)));
+  const lat = latRad * 180 / Math.PI;
+  return { lat, lon };
+}
+
+/* ------------------------------------------------------------------ */
+/* Conservative place query gate                                       */
+/* ------------------------------------------------------------------ */
+
+const LOCAL_INTENT_RE =
+  /\b(near me|nearby|nearest|closest|locations?|address|directions?|hours?|open now|phone|menu|reservations?|reviews?|in [a-z .'-]+|near [a-z .'-]+)\b/i;
+
+const PLACE_CATEGORY_RE =
+  /\b(restaurant|restaurants|tavern|tap|bar|grill|cafe|coffee|pizza|diner|bakery|brewery|pub|pharmacy|grocery|supermarket|market|bank|hotel|motel|gas station|store|shop|salon|gym|doctor|dentist|hospital|urgent care|auto|car wash|costco|target|walmart|home depot|lowe'?s|starbucks|mcdonald'?s|chipotle|domino'?s)\b/i;
+
+// Known chains/brands that are unambiguously physical places (can trigger as single words with local intent nearby).
+const KNOWN_CHAIN_RE =
+  /\b(costco|target|walmart|starbucks|mcdonald'?s|burger\s*king|wendy'?s|taco\s*bell|chipotle|domino'?s|pizza\s*hut|papa\s*john'?s|subway|dunkin'?|dunkin\s*donuts|kfc|five\s*guys|shake\s*shack|in-n-out|chick-fil-a|panera|olive\s*garden|red\s*lobster|longhorn|texas\s*roadhouse|cracker\s*barrel|ihop|denny'?s|applebee'?s|chili'?s|outback|buffalo\s*wild\s*wings|home\s*depot|lowe'?s|menards|best\s*buy|staples|office\s*depot|petco|petsmart|whole\s*foods|trader\s*joe'?s|kroger|safeway|albertsons|publix|wegmans|cvs|walgreens|rite\s*aid|sheetz|wawa|buc-ee'?s|flying\s*j|love'?s|pilot|speedway|shell|bp|exxon|mobil|sunoco|citgo|marathon|7-eleven|circle\s*k|royal\s*farms)\b/i;
+
+const NON_PLACE_RE =
+  /\b(how to|what is|why|when|who|reddit|github|docs|documentation|install|download|error|fix|linux|macos|windows|npm|pip|python|javascript|typescript|docker|nginx|proxmox|ai|llm|model|qwen|claude|gpt|gemini|ollama|benchmark|review|vs|price|best)\b/i;
+
+const URL_OR_CODE_RE =
+  /https?:\/\/|www\.|[{}[\]<>]|=>|==|!=|\/etc\/|\.js\b|\.ts\b|\.py\b|\.sh\b|@[a-z0-9_-]+/i;
+
+function _normalizeQuery(query) {
+  return String(query || "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function _wordCount(query) {
+  return _normalizeQuery(query).split(/\s+/).filter(Boolean).length;
+}
+
+function _hasCityOrZipHint(query) {
+  return /\b\d{5}(?:-\d{4})?\b/.test(query) || /\b[A-Z]{2}\b/.test(query);
+}
+
+function _looksProbablyPlaceQuery(rawQuery) {
+  const query = _normalizeQuery(rawQuery);
+  const lower = query.toLowerCase();
+  const words = _wordCount(query);
+
+  if (!query || query.length < 3) return false;
+  if (query.length > 80) return false;
+  if (URL_OR_CODE_RE.test(query)) return false;
+
+  // Explicit local intent always gets a chance, unless it looks like code.
+  if (LOCAL_INTENT_RE.test(lower)) return true;
+
+  // Obvious informational/software searches should not trigger.
+  if (NON_PLACE_RE.test(lower)) return false;
+
+  // Single-word queries: let distance gate decide.
+  if (words === 1) {
+    return true;
+  }
+
+  // Strong business/category or known chain/brand signal.
+  if (PLACE_CATEGORY_RE.test(lower) || KNOWN_CHAIN_RE.test(lower)) {
+    return true;
+  }
+
+  // "tacoria princeton", "tommy's bridgewater", "applebee's flemington"
+  // Multiword + location-ish hint can trigger.
+  if (words >= 2 && words <= 6 && _hasCityOrZipHint(query)) return true;
+
+  // Conservative brand-like fallback:
+  // allow short multiword names, but only if they look like a proper place/business,
+  // not a generic research query.
+  if (words >= 2 && words <= 5) {
+    const hasBusinessNameShape =
+      /'s\b/i.test(query) ||          // Tommy's, McDonald's
+      /\b(and|&|\+)\b/i.test(query); // Tavern and Tap, Bed Bath & Beyond
+
+    return hasBusinessNameShape && !NON_PLACE_RE.test(lower);
+  }
+
   return false;
 }
 
-function _normalizeName(name) {
-  return (name || "")
+function _normalizeName(value) {
+  return String(value || "")
     .toLowerCase()
-    .replace(/[^\w\s]/g, "")
+    .replace(/&/g, "and")
+    .replace(/\+/g, "and")
+    .replace(/[^a-z0-9 ]+/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
+
+function _tokenSet(value) {
+  return new Set(_normalizeName(value).split(" ").filter(Boolean));
+}
+
+function _tokenOverlapScore(a, b) {
+  const aa = _tokenSet(a);
+  const bb = _tokenSet(b);
+  if (!aa.size || !bb.size) return 0;
+
+  let overlap = 0;
+  for (const token of aa) {
+    if (bb.has(token)) overlap++;
+  }
+
+  return overlap / Math.max(aa.size, bb.size);
+}
+
+// Scored, filtered, and sorted by composite scoring in _processPlaces.
 
 function _shortAddress(address) {
   if (typeof address !== "string") return "";
