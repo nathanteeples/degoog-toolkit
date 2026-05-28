@@ -1,0 +1,436 @@
+(function () {
+  "use strict";
+
+  // Difficulty configurations
+  const CONFIGS = {
+    easy: { rows: 8, cols: 8, mines: 10 },
+    medium: { rows: 12, cols: 12, mines: 20 },
+    hard: { rows: 15, cols: 15, mines: 40 }
+  };
+
+  let currentDifficulty = "easy";
+  let rows = CONFIGS.easy.rows;
+  let cols = CONFIGS.easy.cols;
+  let mineCount = CONFIGS.easy.mines;
+
+  let board = []; // 2D array of cell objects: { row, col, isMine, isRevealed, isFlagged, neighborMines }
+  let gameOver = false;
+  let gameWon = false;
+  let firstClick = true;
+  let flaggingMode = false; // Mobile flag toggle
+  
+  let timerVal = 0;
+  let timerInterval = null;
+
+  let widgetEl = null;
+
+  function qs(selector) {
+    return widgetEl ? widgetEl.querySelector(selector) : null;
+  }
+
+  function getFaceEmoji() {
+    if (gameOver) return "😵";
+    if (gameWon) return "😎";
+    return "🙂";
+  }
+
+  function formatThreeDigits(num) {
+    if (num < 0) return "000";
+    if (num > 999) return "999";
+    return String(num).padStart(3, "0");
+  }
+
+  function updateDashboard() {
+    const mineDisplay = qs("[data-ms-mines-display]");
+    const timerDisplay = qs("[data-ms-timer-display]");
+    const faceBtn = qs("[data-ms-face]");
+
+    if (mineDisplay) {
+      const flaggedCount = board.flat().filter(c => c.isFlagged).length;
+      mineDisplay.textContent = formatThreeDigits(mineCount - flaggedCount);
+    }
+    if (timerDisplay) {
+      timerDisplay.textContent = formatThreeDigits(timerVal);
+    }
+    if (faceBtn) {
+      faceBtn.textContent = getFaceEmoji();
+    }
+  }
+
+  // Timer functions
+  function startTimer() {
+    stopTimer();
+    timerVal = 0;
+    updateDashboard();
+    timerInterval = setInterval(() => {
+      timerVal++;
+      if (timerVal > 999) timerVal = 999;
+      updateDashboard();
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  // Game Initialization
+  function initGame(diff = currentDifficulty) {
+    stopTimer();
+    currentDifficulty = diff;
+    rows = CONFIGS[diff].rows;
+    cols = CONFIGS[diff].cols;
+    mineCount = CONFIGS[diff].mines;
+
+    gameOver = false;
+    gameWon = false;
+    firstClick = true;
+    timerVal = 0;
+    
+    // Reset flagging mode on difficulty change
+    flaggingMode = false;
+    updateFlagButtonUI();
+
+    // Create board grid
+    board = [];
+    for (let r = 0; r < rows; r++) {
+      const row = [];
+      for (let c = 0; c < cols; c++) {
+        row.push({
+          row: r,
+          col: c,
+          isMine: false,
+          isRevealed: false,
+          isFlagged: false,
+          neighborMines: 0
+        });
+      }
+      board.push(row);
+    }
+
+    renderBoardGrid();
+    updateDashboard();
+  }
+
+  function updateFlagButtonUI() {
+    const flagBtn = qs('[data-ms-action="toggle-flag"]');
+    if (flagBtn) {
+      const textEl = flagBtn.querySelector(".ms-flag-mode-text");
+      if (flaggingMode) {
+        flagBtn.classList.add("ms-flagging");
+        if (textEl) textEl.textContent = "Flag Mode";
+      } else {
+        flagBtn.classList.remove("ms-flagging");
+        if (textEl) textEl.textContent = "Reveal Mode";
+      }
+    }
+  }
+
+  function renderBoardGrid() {
+    const gridEl = qs("[data-ms-grid]");
+    if (!gridEl) return;
+
+    gridEl.style.setProperty("--ms-cols", cols);
+    gridEl.style.setProperty("--ms-rows", rows);
+    gridEl.innerHTML = "";
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = board[r][c];
+        const cellEl = document.createElement("div");
+        cellEl.className = "ms-cell ms-unrevealed";
+        cellEl.dataset.row = r;
+        cellEl.dataset.col = c;
+        
+        gridEl.appendChild(cellEl);
+      }
+    }
+  }
+
+  // Place mines ensuring the first clicked cell and its neighbors are safe
+  function placeMines(startRow, startCol) {
+    let minesPlaced = 0;
+    while (minesPlaced < mineCount) {
+      const r = Math.floor(Math.random() * rows);
+      const c = Math.floor(Math.random() * cols);
+
+      // Do not place a mine on the first clicked cell or its immediate 8 neighbors
+      const isStartArea = Math.abs(r - startRow) <= 1 && Math.abs(c - startCol) <= 1;
+
+      if (!board[r][c].isMine && !isStartArea) {
+        board[r][c].isMine = true;
+        minesPlaced++;
+      }
+    }
+
+    // Calculate neighbors
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (!board[r][c].isMine) {
+          board[r][c].neighborMines = countNeighborMines(r, c);
+        }
+      }
+    }
+  }
+
+  function countNeighborMines(row, col) {
+    let count = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nr = row + dr;
+        const nc = col + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+          if (board[nr][nc].isMine) count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  // Reveal Cell logic
+  function revealCell(row, col) {
+    if (gameOver || gameWon) return;
+
+    const cell = board[row]?.[col];
+    if (!cell || cell.isRevealed || cell.isFlagged) return;
+
+    if (firstClick) {
+      firstClick = false;
+      placeMines(row, col);
+      startTimer();
+    }
+
+    cell.isRevealed = true;
+    const cellEl = qs(`.ms-cell[data-row="${row}"][data-col="${col}"]`);
+    if (!cellEl) return;
+    
+    if (cell.isMine) {
+      cellEl.className = "ms-cell ms-exploded";
+      handleGameOver(row, col);
+      return;
+    }
+
+    cellEl.className = "ms-cell ms-revealed";
+    if (cell.neighborMines > 0) {
+      cellEl.textContent = cell.neighborMines;
+      cellEl.classList.add(`ms-num-${cell.neighborMines}`);
+    } else {
+      // Reveal neighbors recursively for empty cells
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          const nr = row + dr;
+          const nc = col + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+            revealCell(nr, nc);
+          }
+        }
+      }
+    }
+
+    checkWinCondition();
+  }
+
+  // Toggle Flag logic
+  function toggleFlag(row, col) {
+    if (gameOver || gameWon) return;
+
+    const cell = board[row]?.[col];
+    if (!cell || cell.isRevealed) return;
+
+    cell.isFlagged = !cell.isFlagged;
+    const cellEl = qs(`.ms-cell[data-row="${row}"][data-col="${col}"]`);
+    if (!cellEl) return;
+    
+    if (cell.isFlagged) {
+      cellEl.classList.add("ms-flagged");
+    } else {
+      cellEl.classList.remove("ms-flagged");
+    }
+
+    updateDashboard();
+  }
+
+  function handleGameOver(explodedRow, explodedCol) {
+    gameOver = true;
+    stopTimer();
+
+    // Reveal all mines
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = board[r][c];
+        const cellEl = qs(`.ms-cell[data-row="${r}"][data-col="${c}"]`);
+        if (!cellEl) continue;
+        
+        if (cell.isMine) {
+          if (!cell.isRevealed && (r !== explodedRow || c !== explodedCol)) {
+            cellEl.className = "ms-cell ms-mine";
+          }
+        } else if (cell.isFlagged) {
+          cellEl.textContent = "❌";
+        }
+      }
+    }
+
+    updateDashboard();
+  }
+
+  function checkWinCondition() {
+    let won = true;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const cell = board[r][c];
+        if (!cell.isMine && !cell.isRevealed) {
+          won = false;
+          break;
+        }
+      }
+    }
+
+    if (won) {
+      gameWon = true;
+      stopTimer();
+      // Flag all remaining mines
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = board[r][c];
+          if (cell.isMine && !cell.isFlagged) {
+            cell.isFlagged = true;
+            const cellEl = qs(`.ms-cell[data-row="${r}"][data-col="${c}"]`);
+            if (cellEl) cellEl.classList.add("ms-flagged");
+          }
+        }
+      }
+      updateDashboard();
+    }
+  }
+
+  // Click handling
+  function handleCellClick(row, col) {
+    if (flaggingMode) {
+      toggleFlag(row, col);
+    } else {
+      revealCell(row, col);
+    }
+  }
+
+  // Set up event listeners
+  function initListeners() {
+    document.addEventListener("click", (event) => {
+      const w = event.target.closest("[data-ms-widget]");
+      if (!w) return;
+      if (w !== widgetEl) {
+        widgetEl = w;
+      }
+
+      // Difficulty Selector
+      const diffBtn = event.target.closest(".ms-diff-btn");
+      if (diffBtn && w.contains(diffBtn)) {
+        const diff = diffBtn.dataset.difficulty;
+        w.querySelectorAll(".ms-diff-btn").forEach(btn => btn.classList.remove("ms-active"));
+        diffBtn.classList.add("ms-active");
+        initGame(diff);
+        return;
+      }
+
+      // Face Button (Restart)
+      const faceBtn = event.target.closest("[data-ms-face]");
+      if (faceBtn && w.contains(faceBtn)) {
+        initGame(currentDifficulty);
+        return;
+      }
+
+      // Cell interaction
+      const cellEl = event.target.closest(".ms-cell");
+      if (cellEl && w.contains(cellEl)) {
+        const r = parseInt(cellEl.dataset.row, 10);
+        const c = parseInt(cellEl.dataset.col, 10);
+        handleCellClick(r, c);
+        return;
+      }
+
+      // Control Buttons
+      const actionBtn = event.target.closest("[data-ms-action]");
+      if (actionBtn && w.contains(actionBtn)) {
+        const action = actionBtn.dataset.msAction;
+        if (action === "toggle-flag") {
+          flaggingMode = !flaggingMode;
+          updateFlagButtonUI();
+        } else if (action === "reset") {
+          initGame(currentDifficulty);
+        }
+      }
+    });
+
+    // Right click to flag
+    document.addEventListener("contextmenu", (event) => {
+      const w = event.target.closest("[data-ms-widget]");
+      if (!w) return;
+
+      const cellEl = event.target.closest(".ms-cell");
+      if (cellEl && w.contains(cellEl)) {
+        event.preventDefault();
+        const r = parseInt(cellEl.dataset.row, 10);
+        const c = parseInt(cellEl.dataset.col, 10);
+        toggleFlag(r, c);
+      }
+    });
+
+    // Mouse down / up for 😮 emoji transition
+    document.addEventListener("mousedown", (event) => {
+      const w = event.target.closest("[data-ms-widget]");
+      if (!w) return;
+      if (w !== widgetEl) {
+        widgetEl = w;
+      }
+
+      const cellEl = event.target.closest(".ms-cell");
+      if (cellEl && w.contains(cellEl) && !gameOver && !gameWon) {
+        const r = parseInt(cellEl.dataset.row, 10);
+        const c = parseInt(cellEl.dataset.col, 10);
+        const cell = board[r]?.[c];
+        if (cell && !cell.isRevealed && !cell.isFlagged) {
+          const faceBtn = qs("[data-ms-face]");
+          if (faceBtn) faceBtn.textContent = "😮";
+        }
+      }
+    });
+
+    document.addEventListener("mouseup", (event) => {
+      const w = document.querySelector("[data-ms-widget]");
+      if (!w) return;
+      if (w !== widgetEl) {
+        widgetEl = w;
+      }
+      
+      const faceBtn = qs("[data-ms-face]");
+      if (faceBtn && !gameOver && !gameWon) {
+        faceBtn.textContent = getFaceEmoji();
+      }
+    });
+  }
+
+  function checkWidget() {
+    const w = document.querySelector("[data-ms-widget]");
+    if (!w) {
+      if (widgetEl) {
+        stopTimer();
+        widgetEl = null;
+      }
+      return;
+    }
+    if (w !== widgetEl) {
+      widgetEl = w;
+      const activeDiffEl = w.querySelector(".ms-diff-btn.ms-active");
+      const diff = activeDiffEl ? activeDiffEl.dataset.difficulty : "easy";
+      initGame(diff);
+    }
+  }
+
+  initListeners();
+
+  const observer = new MutationObserver(checkWidget);
+  observer.observe(document.body, { childList: true, subtree: true });
+  checkWidget();
+})();

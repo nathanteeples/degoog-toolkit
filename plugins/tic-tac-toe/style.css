@@ -1,0 +1,430 @@
+.ttt-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 16px;
+  background: transparent;
+  color: var(--text-primary, #202124);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  user-select: none;
+}
+
+.ttt-card *,
+.ttt-card *::before,
+.ttt-card *::after {
+  box-sizing: border-box;
+}
+
+.results-slot-panel:has(.ttt-card) {
+  overflow: hidden;
+}
+
+.results-slot-panel:has(.ttt-card) .results-slot-panel-body {
+  padding: 0;
+}
+
+.results-slot-panel:has(.ttt-card) .results-slot-panel-title {
+  display: none;
+}
+
+/* Header & Controls */
+.ttt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ttt-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary, #202124);
+}
+
+.ttt-select {
+  font-family: inherit;
+  font-size: 0.88rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-light, #dadce0);
+  background: var(--bg, #fff);
+  color: var(--text-primary, #202124);
+  outline: none;
+  cursor: pointer;
+}
+
+.ttt-select:focus {
+  border-color: var(--text-link, #1a73e8);
+}
+
+/* Turn Indicator */
+.ttt-turn-indicator {
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: center;
+  margin-bottom: 12px;
+  height: 20px;
+  line-height: 20px;
+  color: var(--text-primary, #202124);
+}
+
+/* Score Board */
+.ttt-score-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.ttt-score-box {
+  background: var(--bg-light, #f8fafd);
+  border: 1px solid var(--border-light, #dadce0);
+  border-radius: 8px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ttt-score-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #5f6368);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ttt-score-val {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #202124);
+}
+
+/* Game Board Area */
+.ttt-game-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.ttt-grid-wrapper {
+  width: 100%;
+  max-width: 260px;
+}
+
+.ttt-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 6px;
+  background: var(--border-light, #dadce0);
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ttt-cell {
+  background: var(--bg, #fff);
+  border: none;
+  outline: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18%;
+  color: var(--text-primary, #202124);
+  transition: background 150ms ease;
+  position: relative;
+}
+
+.ttt-cell:hover:not([disabled]) {
+  background: var(--bg-hover, rgba(60, 64, 67, 0.04));
+}
+
+.ttt-cell:focus-visible {
+  outline: 2px solid var(--text-link, #1a73e8);
+  outline-offset: -2px;
+}
+
+.ttt-cell[disabled] {
+  cursor: default;
+}
+
+/* Symbols SVG Styling */
+.ttt-symbol {
+  width: 100%;
+  height: 100%;
+}
+
+.ttt-symbol-x {
+  color: var(--text-link, #1a73e8);
+}
+
+.ttt-symbol-o {
+  color: #ea4335;
+}
+
+/* Drawing animations */
+.ttt-symbol-o circle {
+  stroke-dasharray: 188.5;
+  stroke-dashoffset: 188.5;
+  animation: ttt-draw 0.25s ease-out forwards;
+}
+
+.ttt-symbol-x line {
+  stroke-dasharray: 85;
+  stroke-dashoffset: 85;
+  animation: ttt-draw 0.15s ease-out forwards;
+}
+
+.ttt-symbol-x line:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+@keyframes ttt-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Win Line Overlay */
+.ttt-win-line {
+  position: absolute;
+  background: var(--primary, #1a73e8);
+  z-index: 10;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* Row 0 */
+.ttt-win-line.ttt-win-row-0 {
+  opacity: 1;
+  top: 16.66%;
+  left: 5%;
+  width: 90%;
+  height: 6px;
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  animation: ttt-scale-x 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Row 1 */
+.ttt-win-line.ttt-win-row-1 {
+  opacity: 1;
+  top: 50%;
+  left: 5%;
+  width: 90%;
+  height: 6px;
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  animation: ttt-scale-x 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Row 2 */
+.ttt-win-line.ttt-win-row-2 {
+  opacity: 1;
+  top: 83.33%;
+  left: 5%;
+  width: 90%;
+  height: 6px;
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  animation: ttt-scale-x 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Col 0 */
+.ttt-win-line.ttt-win-col-0 {
+  opacity: 1;
+  left: 16.66%;
+  top: 5%;
+  width: 6px;
+  height: 90%;
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: center top;
+  animation: ttt-scale-y 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Col 1 */
+.ttt-win-line.ttt-win-col-1 {
+  opacity: 1;
+  left: 50%;
+  top: 5%;
+  width: 6px;
+  height: 90%;
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: center top;
+  animation: ttt-scale-y 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Col 2 */
+.ttt-win-line.ttt-win-col-2 {
+  opacity: 1;
+  left: 83.33%;
+  top: 5%;
+  width: 6px;
+  height: 90%;
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: center top;
+  animation: ttt-scale-y 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Diag 0 (top-left to bottom-right) */
+.ttt-win-line.ttt-win-diag-0 {
+  opacity: 1;
+  top: 0;
+  left: 0;
+  width: 141.4%;
+  height: 6px;
+  transform: rotate(45deg) scaleX(0);
+  transform-origin: top left;
+  animation: ttt-scale-diag-0 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Diag 1 (bottom-left to top-right) */
+.ttt-win-line.ttt-win-diag-1 {
+  opacity: 1;
+  bottom: 0;
+  left: 0;
+  width: 141.4%;
+  height: 6px;
+  transform: rotate(-45deg) scaleX(0);
+  transform-origin: bottom left;
+  animation: ttt-scale-diag-1 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes ttt-scale-x {
+  to {
+    transform: translateY(-50%) scaleX(1);
+  }
+}
+
+@keyframes ttt-scale-y {
+  to {
+    transform: translateX(-50%) scaleY(1);
+  }
+}
+
+@keyframes ttt-scale-diag-0 {
+  to {
+    transform: rotate(45deg) scaleX(1);
+  }
+}
+
+@keyframes ttt-scale-diag-1 {
+  to {
+    transform: rotate(-45deg) scaleX(1);
+  }
+}
+
+/* Footer & Action Buttons */
+.ttt-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.ttt-btn {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0 16px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 120ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  outline: none;
+}
+
+.ttt-btn-primary {
+  background: var(--text-link, #1a73e8);
+  color: #fff;
+}
+
+.ttt-btn-primary:hover {
+  background: var(--primary, #1967d2);
+}
+
+.ttt-btn-primary:focus-visible {
+  outline: 2px solid var(--text-link, #1a73e8);
+  outline-offset: 1px;
+}
+
+.ttt-btn-secondary {
+  background: var(--bg, #fff);
+  border-color: var(--border-light, #dadce0);
+  color: var(--text-primary, #202124);
+}
+
+.ttt-btn-secondary:hover {
+  background: var(--bg-hover, rgba(60, 64, 67, 0.04));
+}
+
+.ttt-btn-secondary.ttt-btn-active {
+  background: var(--bg-active, rgba(26, 115, 232, 0.08));
+  border-color: var(--text-link, #1a73e8);
+  color: var(--text-link, #1a73e8);
+  font-weight: 600;
+}
+
+.ttt-btn-secondary:focus-visible {
+  outline: 2px solid var(--text-link, #1a73e8);
+  outline-offset: 1px;
+}
+
+.ttt-btn-text {
+  background: transparent;
+  color: var(--text-secondary, #5f6368);
+  border: none;
+  padding: 0 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.ttt-btn-text:hover {
+  color: var(--text-primary, #202124);
+  background: var(--bg-hover, rgba(60, 64, 67, 0.04));
+}
+
+.ttt-btn-text:focus-visible {
+  outline: 2px solid var(--text-link, #1a73e8);
+}
+
+.ttt-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* theme support */
+#results-page.degoog-fullwidth-slot-shell .ttt-card {
+  border: 1px solid var(--border-light, #dadce0);
+  border-radius: 16px;
+  background: var(--bg);
+}
+
+@media (max-width: 400px) {
+  .ttt-card {
+    padding: 12px;
+  }
+  .ttt-score-label {
+    font-size: 0.7rem;
+  }
+  .ttt-score-val {
+    font-size: 1.1rem;
+  }
+}

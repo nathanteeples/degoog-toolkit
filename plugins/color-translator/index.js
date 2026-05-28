@@ -164,6 +164,28 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-color-name">
         Name: <span>{{color_name}}</span>
       </div>
+
+      <!-- Color Picker section -->
+      <div class="clrtr-picker-section">
+        <div class="clrtr-wheel" data-clrtr-wheel>
+          <div class="clrtr-wheel-marker" data-clrtr-wheel-marker></div>
+        </div>
+        
+        <div class="clrtr-sliders">
+          <div class="clrtr-slider-row">
+            <span class="clrtr-slider-label">Hue</span>
+            <input type="range" min="0" max="360" value="0" class="clrtr-slider clrtr-hue-slider" data-clrtr-slider="hue">
+          </div>
+          <div class="clrtr-slider-row">
+            <span class="clrtr-slider-label">Lightness</span>
+            <input type="range" min="0" max="100" value="50" class="clrtr-slider clrtr-lightness-slider" data-clrtr-slider="lightness">
+          </div>
+          <div class="clrtr-slider-row">
+            <span class="clrtr-slider-label">Alpha</span>
+            <input type="range" min="0" max="1" step="0.01" value="1" class="clrtr-slider clrtr-opacity-slider" data-clrtr-slider="opacity">
+          </div>
+        </div>
+      </div>
     </div>
     
     <div class="clrtr-translations">
@@ -171,7 +193,7 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-row">
         <span class="clrtr-label">CSS Hex</span>
         <div class="clrtr-value-container">
-          <input type="text" readonly class="clrtr-value" value="{{color_hex}}">
+          <input type="text" class="clrtr-value" value="{{color_hex}}" data-clrtr-input="hex">
           <button class="clrtr-copy-btn" data-copy="{{color_hex}}" aria-label="Copy CSS Hex">
             <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -183,7 +205,7 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-row">
         <span class="clrtr-label">CSS RGB</span>
         <div class="clrtr-value-container">
-          <input type="text" readonly class="clrtr-value" value="{{color_rgb}}">
+          <input type="text" class="clrtr-value" value="{{color_rgb}}" data-clrtr-input="rgb">
           <button class="clrtr-copy-btn" data-copy="{{color_rgb}}" aria-label="Copy CSS RGB">
             <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -195,7 +217,7 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-row">
         <span class="clrtr-label">CSS RGB %</span>
         <div class="clrtr-value-container">
-          <input type="text" readonly class="clrtr-value" value="{{color_rgb_percent}}">
+          <input type="text" class="clrtr-value" value="{{color_rgb_percent}}" data-clrtr-input="rgb_percent">
           <button class="clrtr-copy-btn" data-copy="{{color_rgb_percent}}" aria-label="Copy CSS RGB Percent">
             <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -207,8 +229,32 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-row">
         <span class="clrtr-label">CSS HSL</span>
         <div class="clrtr-value-container">
-          <input type="text" readonly class="clrtr-value" value="{{color_hsl}}">
+          <input type="text" class="clrtr-value" value="{{color_hsl}}" data-clrtr-input="hsl">
           <button class="clrtr-copy-btn" data-copy="{{color_hsl}}" aria-label="Copy CSS HSL">
+            <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- CSS HSV -->
+      <div class="clrtr-row">
+        <span class="clrtr-label">CSS HSB/HSV</span>
+        <div class="clrtr-value-container">
+          <input type="text" class="clrtr-value" value="{{color_hsv}}" data-clrtr-input="hsv">
+          <button class="clrtr-copy-btn" data-copy="{{color_hsv}}" aria-label="Copy CSS HSB/HSV">
+            <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- CMYK -->
+      <div class="clrtr-row">
+        <span class="clrtr-label">CMYK</span>
+        <div class="clrtr-value-container">
+          <input type="text" class="clrtr-value" value="{{color_cmyk}}" data-clrtr-input="cmyk">
+          <button class="clrtr-copy-btn" data-copy="{{color_cmyk}}" aria-label="Copy CMYK">
             <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
           </button>
@@ -219,7 +265,7 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-row">
         <span class="clrtr-label">NSColor Calibrated RGB</span>
         <div class="clrtr-value-container">
-          <input type="text" readonly class="clrtr-value" value="{{color_ns_calibrated_rgb}}">
+          <input type="text" class="clrtr-value" value="{{color_ns_calibrated_rgb}}" data-clrtr-input="ns_calibrated_rgb">
           <button class="clrtr-copy-btn" data-copy="{{color_ns_calibrated_rgb}}" aria-label="Copy NSColor Calibrated RGB">
             <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -231,7 +277,7 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-row">
         <span class="clrtr-label">NSColor Calibrated HSB</span>
         <div class="clrtr-value-container">
-          <input type="text" readonly class="clrtr-value" value="{{color_ns_calibrated_hsb}}">
+          <input type="text" class="clrtr-value" value="{{color_ns_calibrated_hsb}}" data-clrtr-input="ns_calibrated_hsb">
           <button class="clrtr-copy-btn" data-copy="{{color_ns_calibrated_hsb}}" aria-label="Copy NSColor Calibrated HSB">
             <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -243,7 +289,7 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-row">
         <span class="clrtr-label">NSColor Device RGB</span>
         <div class="clrtr-value-container">
-          <input type="text" readonly class="clrtr-value" value="{{color_ns_device_rgb}}">
+          <input type="text" class="clrtr-value" value="{{color_ns_device_rgb}}" data-clrtr-input="ns_device_rgb">
           <button class="clrtr-copy-btn" data-copy="{{color_ns_device_rgb}}" aria-label="Copy NSColor Device RGB">
             <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -255,7 +301,7 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-row">
         <span class="clrtr-label">NSColor Device HSB</span>
         <div class="clrtr-value-container">
-          <input type="text" readonly class="clrtr-value" value="{{color_ns_device_hsb}}">
+          <input type="text" class="clrtr-value" value="{{color_ns_device_hsb}}" data-clrtr-input="ns_device_hsb">
           <button class="clrtr-copy-btn" data-copy="{{color_ns_device_hsb}}" aria-label="Copy NSColor Device HSB">
             <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -267,7 +313,7 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-row">
         <span class="clrtr-label">UIColor RGB</span>
         <div class="clrtr-value-container">
-          <input type="text" readonly class="clrtr-value" value="{{color_ui_rgb}}">
+          <input type="text" class="clrtr-value" value="{{color_ui_rgb}}" data-clrtr-input="ui_rgb">
           <button class="clrtr-copy-btn" data-copy="{{color_ui_rgb}}" aria-label="Copy UIColor RGB">
             <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -279,7 +325,7 @@ const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
       <div class="clrtr-row">
         <span class="clrtr-label">UIColor HSB</span>
         <div class="clrtr-value-container">
-          <input type="text" readonly class="clrtr-value" value="{{color_ui_hsb}}">
+          <input type="text" class="clrtr-value" value="{{color_ui_hsb}}" data-clrtr-input="ui_hsb">
           <button class="clrtr-copy-btn" data-copy="{{color_ui_hsb}}" aria-label="Copy UIColor HSB">
             <svg class="clrtr-copy-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             <svg class="clrtr-check-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
@@ -391,6 +437,39 @@ function hsbToRgb(h, s, b) {
   }
   
   return [Math.round(r * 255), Math.round(g * 255), Math.round(bl * 255)];
+}
+
+function rgbToCmyk(r, g, b) {
+  let c = 1 - (r / 255);
+  let m = 1 - (g / 255);
+  let y = 1 - (b / 255);
+  let k = Math.min(c, Math.min(m, y));
+  if (k === 1) {
+    c = 0;
+    m = 0;
+    y = 0;
+  } else {
+    c = (c - k) / (1 - k);
+    m = (m - k) / (1 - k);
+    y = (y - k) / (1 - k);
+  }
+  return [
+    Math.round(c * 100),
+    Math.round(m * 100),
+    Math.round(y * 100),
+    Math.round(k * 100)
+  ];
+}
+
+function cmykToRgb(c, m, y, k) {
+  c /= 100;
+  m /= 100;
+  y /= 100;
+  k /= 100;
+  const r = Math.round(255 * (1 - c) * (1 - k));
+  const g = Math.round(255 * (1 - m) * (1 - k));
+  const b = Math.round(255 * (1 - y) * (1 - k));
+  return [r, g, b];
 }
 
 function parseHex(hex) {
@@ -583,6 +662,32 @@ function parseColor(query) {
     }
   }
 
+  // 13. CMYK / Device-CMYK
+  const cmykMatch = q.match(/(?:device-)?cmyk\(\s*([0-9.]+)%?\s*,\s*([0-9.]+)%?\s*,\s*([0-9.]+)%?\s*,\s*([0-9.]+)%?\s*\)/i);
+  if (cmykMatch) {
+    const c = parseFloat(cmykMatch[1]);
+    const m = parseFloat(cmykMatch[2]);
+    const y = parseFloat(cmykMatch[3]);
+    const k = parseFloat(cmykMatch[4]);
+    if (!isNaN(c) && !isNaN(m) && !isNaN(y) && !isNaN(k)) {
+      const [r, g, b] = cmykToRgb(c, m, y, k);
+      return { r, g, b, a: 1 };
+    }
+  }
+
+  // 14. Space separated CMYK
+  const spaceCmykMatch = q.match(/^(?:device-)?cmyk\s+([0-9.]+)%?\s+([0-9.]+)%?\s+([0-9.]+)%?\s+([0-9.]+)%?$/i);
+  if (spaceCmykMatch) {
+    const c = parseFloat(spaceCmykMatch[1]);
+    const m = parseFloat(spaceCmykMatch[2]);
+    const y = parseFloat(spaceCmykMatch[3]);
+    const k = parseFloat(spaceCmykMatch[4]);
+    if (!isNaN(c) && !isNaN(m) && !isNaN(y) && !isNaN(k)) {
+      const [r, g, b] = cmykToRgb(c, m, y, k);
+      return { r, g, b, a: 1 };
+    }
+  }
+
   return null;
 }
 
@@ -620,6 +725,19 @@ function formatCssHsl(r, g, b, a) {
     return `hsl(${h}, ${s}%, ${l}%)`;
   }
   return `hsla(${h}, ${s}%, ${l}%, ${parseFloat(a.toFixed(3))})`;
+}
+
+function formatCssHsv(r, g, b, a) {
+  const [h, s, v] = rgbToHsb(r, g, b);
+  if (a >= 1) {
+    return `hsv(${h}, ${s}%, ${v}%)`;
+  }
+  return `hsva(${h}, ${s}%, ${v}%, ${parseFloat(a.toFixed(3))})`;
+}
+
+function formatCmyk(r, g, b) {
+  const [c, m, y, k] = rgbToCmyk(r, g, b);
+  return `cmyk(${c}%, ${m}%, ${y}%, ${k}%)`;
 }
 
 function formatNamedColor(r, g, b, a) {
@@ -696,6 +814,8 @@ function renderColorCard(color) {
   const cssRgb = formatCssRgb(color.r, color.g, color.b, color.a);
   const cssRgbPercent = formatCssRgbPercent(color.r, color.g, color.b, color.a);
   const cssHsl = formatCssHsl(color.r, color.g, color.b, color.a);
+  const cssHsv = formatCssHsv(color.r, color.g, color.b, color.a);
+  const cssCmyk = formatCmyk(color.r, color.g, color.b);
   const cssName = formatNamedColor(color.r, color.g, color.b, color.a);
   
   const placeholders = {
@@ -704,6 +824,8 @@ function renderColorCard(color) {
     color_rgb: cssRgb,
     color_rgb_percent: cssRgbPercent,
     color_hsl: cssHsl,
+    color_hsv: cssHsv,
+    color_cmyk: cssCmyk,
     color_name: cssName,
     color_name_disabled: cssName === "None" ? "disabled" : "",
     color_ns_calibrated_rgb: formatNsCalibratedRgb(color.r, color.g, color.b, color.a),

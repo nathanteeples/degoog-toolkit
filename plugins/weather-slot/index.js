@@ -120,21 +120,27 @@ const NATURAL_LANGUAGE_PHRASES = [
   "яка погода у",
   "weather today in",
   "weather tomorrow in",
+  "sunrise in",
+  "sunrise at",
+  "sunrise for",
+  "sunset in",
+  "sunset at",
+  "sunset for",
 ];
 
 // Bang prefixes the slot should accept (mirrors the old command's trigger +
 // aliases). Also used by execute() to strip the prefix off the query before
 // parsing the city out.
-const BANG_PREFIX_RX = /^!(weather|forecast|погода|прогноз|метео)\b\s*/i;
+const BANG_PREFIX_RX = /^!(weather|forecast|sunrise|sunset|погода|прогноз|метео)\b\s*/i;
 
 // Regex used for trailing-keyword matching ("rome weather", "london forecast
 // today"). Kept loose; the slot's trigger() does further checks to make sure
 // there's an actual location token in the query.
 const WEATHER_KEYWORD_RX =
-  /\b(weather|forecast|temperature|погода|прогноз|метео)\b/i;
+  /\b(weather|forecast|temperature|sunrise|sunset|погода|прогноз|метео)\b/i;
 
 const LOCATION_STRIP_RX =
-  /\b(weather|forecast|temperature|today|tomorrow|in|for|at|the|погода|прогноз|метео|в|у|для)\b/gi;
+  /\b(weather|forecast|temperature|sunrise|sunset|today|tomorrow|in|for|at|the|погода|прогноз|метео|в|у|для)\b/gi;
 const NON_LOCATION_WEATHER_TARGET_RX =
   /^(celsius|fahrenheit|kelvin|centigrade|metric|imperial|degrees?|deg|f|c|k|today|tomorrow|now|current)$/i;
 
@@ -228,11 +234,17 @@ const slotDef = {
       lower === "погода" ||
       lower === "метео" ||
       lower === "прогноз" ||
+      lower === "weather today" ||
+      lower === "weather tomorrow" ||
+      lower === "sunrise" ||
+      lower === "sunset" ||
       lower === "!weather" ||
       lower === "!forecast" ||
       lower === "!погода" ||
       lower === "!метео" ||
-      lower === "!прогноз";
+      lower === "!прогноз" ||
+      lower === "!sunrise" ||
+      lower === "!sunset";
 
     if (isBareTrigger) {
       return Boolean(settings.defaultCity);
@@ -265,6 +277,8 @@ const slotDef = {
     if (
       firstWord === "weather" ||
       firstWord === "forecast" ||
+      firstWord === "sunrise" ||
+      firstWord === "sunset" ||
       firstWord === "погода" ||
       firstWord === "метео"
     ) {
@@ -310,7 +324,7 @@ const slotDef = {
         "",
       )
       .replace(
-        /^(weather|forecast|temperature|прогноз\s+погоди|яка\s+погода|погода)\s*(in|for|at|в|у|для)?\s*/i,
+        /^(weather|forecast|temperature|sunrise|sunset|прогноз\s+погоди|яка\s+погода|погода)\s*(in|for|at|в|у|для)?\s*/i,
         "",
       )
       .replace(/^(in|for|at|в|у|для)\s+/i, "")
@@ -321,7 +335,7 @@ const slotDef = {
       // that degoog's prefix-only natural-language matcher skips) reuse
       // this same execute path without a separate parser.
       .replace(
-        /\s+(weather|forecast|temperature|погода|прогноз|метео)(\s+(today|tomorrow))?\s*$/i,
+        /\s+(weather|forecast|temperature|sunrise|sunset|погода|прогноз|метео)(\s+(today|tomorrow))?\s*$/i,
         "",
       )
       .replace(/\s+(today|tomorrow)\s*$/i, "")
