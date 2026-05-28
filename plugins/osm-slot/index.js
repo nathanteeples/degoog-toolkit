@@ -1,7 +1,7 @@
-// Places slot plugin — local place recognition with Foursquare, Photon, and Nominatim.
+// Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.0.0";
+const PLUGIN_VERSION = "2.0.1";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, and directions.";
 
@@ -11,11 +11,13 @@ let _cache = null;
 
 const DEFAULT_PHOTON_URL = "https://photon.komoot.io";
 const FOURSQUARE_BASE = "https://api.foursquare.com/v3/places/search";
+const YELP_BASE = "https://api.yelp.com/v3/businesses/search";
 const NOMINATIM_BASE = "https://nominatim.openstreetmap.org/search";
 
 function _configure(s) {
   _settings = {
     foursquareApiKey: s?.foursquareApiKey || "",
+    yelpApiKey: s?.yelpApiKey || "",
     defaultLat: s?.defaultLat || "",
     defaultLon: s?.defaultLon || "",
     defaultLocationLabel: s?.defaultLocationLabel || "Home",
@@ -31,7 +33,7 @@ export const slot = {
   id: "osm-slot",
   name: PLUGIN_NAME,
   description: PLUGIN_DESCRIPTION,
-  isClientExposed: false,
+  isClientExposed: true,
   position: "above-results",
   slotPositions: ["above-results", "knowledge-panel"],
 
@@ -43,6 +45,14 @@ export const slot = {
       secret: true,
       description:
         "Optional. Provides rich business data (ratings, hours, phone). Get one at foursquare.com/developers.",
+    },
+    {
+      key: "yelpApiKey",
+      label: "Yelp API key",
+      type: "password",
+      secret: true,
+      description:
+        "Optional. Great for restaurants and bars. Get one at yelp.com/developers.",
     },
     {
       key: "defaultLat",
@@ -136,13 +146,13 @@ export const slot = {
     if (q.length < 2) return false;
 
     // Local-intent keywords always pass through to execute.
-    if (/(near me|locations?|hours?|address|phone|open now|directions?)/i.test(q)) {
+    if (/\b(near me|locations?|hours?|address|phone|open now|directions?)\b/i.test(q)) {
       return true;
     }
 
     // Brand / place-like queries: short, not questions, not code.
     const words = q.split(/\s+/).filter(Boolean);
-    if (words.length < 1 || words.length > 8) return false;
+    if (words.length < 1 || words.length > 10) return false;
 
     if (/^(what|how|why|when|where|who|is|are|does|do|can|should|would|could|will|did|has|have|was|were)\b/i.test(q)) {
       return false;
@@ -185,37 +195,30 @@ export const slot = {
       const limit = parseInt(_settings.resultsCount || "5", 10);
       const doFetch = typeof context?.fetch === "function" ? context.fetch : _fetch;
 
-      let places = [];
-
-      if (_settings.foursquareApiKey) {
-        places = await _searchFoursquare(searchQuery, lat, lon, radiusMeters, limit * 2, doFetch);
-      }
-
-      if (places.length === 0) {
-        places = await _searchPhoton(searchQuery, lat, lon, radiusMeters, limit * 2, doFetch);
-      }
-
-      if (places.length === 0) {
-        places = await _searchNominatim(searchQuery, lat, lon, limit * 2, doFetch);
-      }
+      const places = await _searchAllProviders(searchQuery, lat, lon, radiusMeters, limit * 2, doFetch);
 
       if (places.length === 0) return { html: "" };
 
-      places = _dedupePlaces(places);
-      places = _rankPlaces(places, searchQuery);
+      let deduped = _dedupePlaces(places);
+      deduped = _rankPlaces(deduped, searchQuery);
 
       // For brand queries without local intent, require at least one business-like result.
       if (!hasLocalIntent) {
-        const hasBusiness = places.some(
-          (p) => p.source === "Foursquare" || p.phone || p.website || p.categories.length > 0
+        const hasBusiness = deduped.some(
+          (p) =>
+            p.source === "Foursquare" ||
+            p.source === "Yelp" ||
+            p.phone ||
+            p.website ||
+            p.categories.length > 0
         );
         if (!hasBusiness) return { html: "" };
       }
 
-      places = places.slice(0, limit);
+      const top = deduped.slice(0, limit);
 
       const html = _renderCard(
-        places,
+        top,
         searchQuery,
         _settings.defaultLocationLabel || "Home",
         _settings.useBrowserGeolocation
@@ -243,7 +246,6 @@ export const routes = [
         try {
           body = await request.json();
         } catch (_) {
-          // some proxies may pre-parse
           if (request.body && typeof request.body === "object") body = request.body;
         }
         const { lat, lon, query } = body;
@@ -257,26 +259,17 @@ export const routes = [
         const radiusMeters = radiusMiles * 1609.34;
         const limit = parseInt(_settings.resultsCount || "5", 10);
 
-        let places = [];
-        if (_settings.foursquareApiKey) {
-          places = await _searchFoursquare(query || "", latNum, lonNum, radiusMeters, limit * 2, _fetch);
-        }
-        if (places.length === 0) {
-          places = await _searchPhoton(query || "", latNum, lonNum, radiusMeters, limit * 2, _fetch);
-        }
-        if (places.length === 0) {
-          places = await _searchNominatim(query || "", latNum, lonNum, limit * 2, _fetch);
-        }
+        const places = await _searchAllProviders(query || "", latNum, lonNum, radiusMeters, limit * 2, _fetch);
 
         if (places.length === 0) {
           return _jsonResponse({ html: "" });
         }
 
-        places = _dedupePlaces(places);
-        places = _rankPlaces(places, query || "");
-        places = places.slice(0, limit);
+        let deduped = _dedupePlaces(places);
+        deduped = _rankPlaces(deduped, query || "");
+        const top = deduped.slice(0, limit);
 
-        const html = _renderCard(places, query || "", "your location", false);
+        const html = _renderCard(top, query || "", "your location", false);
         return _jsonResponse({ html });
       } catch (err) {
         return _jsonResponse({ html: "" });
@@ -293,7 +286,53 @@ function _jsonResponse(obj, status = 200) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Providers                                                           */
+/* Provider orchestration                                              */
+/* ------------------------------------------------------------------ */
+
+async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
+  const out = [];
+  const providerCalls = [];
+
+  // Foursquare and Yelp provide rich commercial metadata when configured.
+  if (_settings.foursquareApiKey) {
+    providerCalls.push(_searchFoursquare(query, lat, lon, radiusM, limit, doFetch));
+  }
+
+  if (_settings.yelpApiKey) {
+    providerCalls.push(_searchYelp(query, lat, lon, radiusM, limit, doFetch));
+  }
+
+  // Overpass is always included so OSM details can improve commercial results.
+  providerCalls.push(_searchOverpass(query, lat, lon, radiusM, limit, doFetch));
+
+  const settled = await Promise.allSettled(providerCalls);
+  for (const result of settled) {
+    if (result.status === "fulfilled" && Array.isArray(result.value)) {
+      out.push(...result.value);
+    }
+  }
+
+  // Photon — free geocoder fallback (no key)
+  if (out.length === 0) {
+    try {
+      const r = await _searchPhoton(query, lat, lon, radiusM, limit, doFetch);
+      out.push(...r);
+    } catch (_) {}
+  }
+
+  // Nominatim — free geocoder fallback (no key)
+  if (out.length === 0) {
+    try {
+      const r = await _searchNominatim(query, lat, lon, limit, doFetch);
+      out.push(...r);
+    } catch (_) {}
+  }
+
+  return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* Individual providers                                                */
 /* ------------------------------------------------------------------ */
 
 async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
@@ -338,6 +377,124 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
         reviewCount: r.stats?.total_ratings || null,
         source: "Foursquare",
         sourceUrl: `https://foursquare.com/v/${r.fsq_id}`,
+      };
+    })
+    .filter(Boolean);
+
+  _cache?.set(cacheKey, out);
+  return out;
+}
+
+async function _searchYelp(query, lat, lon, radiusM, limit, doFetch) {
+  const cacheKey = `yelp:${query}:${lat}:${lon}:${Math.round(radiusM)}:${limit}`;
+  const cached = _cache?.get(cacheKey);
+  if (cached) return cached;
+
+  const url =
+    `${YELP_BASE}?term=${encodeURIComponent(query)}` +
+    `&latitude=${lat}&longitude=${lon}` +
+    `&radius=${Math.min(Math.round(radiusM), 40000)}` +
+    `&limit=${limit}`;
+
+  const res = await doFetch(url, {
+    headers: {
+      Authorization: `Bearer ${_settings.yelpApiKey}`,
+      Accept: "application/json",
+    },
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!Array.isArray(data.businesses)) return [];
+
+  const out = data.businesses
+    .map((b) => {
+      if (!b.coordinates?.latitude || !b.coordinates?.longitude) return null;
+      const plat = b.coordinates.latitude;
+      const plon = b.coordinates.longitude;
+      const addrParts = [
+        b.location?.address1,
+        b.location?.city,
+        b.location?.state,
+        b.location?.zip_code,
+      ].filter(Boolean);
+      return {
+        name: b.name,
+        address: addrParts.join(", ") || b.location?.display_address?.join(", ") || "",
+        lat: plat,
+        lon: plon,
+        distanceMeters: b.distance || _haversine(lat, lon, plat, plon),
+        phone: b.phone || b.display_phone || null,
+        website: b.url || null,
+        categories: (b.categories || []).map((c) => c.title).filter(Boolean),
+        hours: b.hours ? { openNow: b.hours[0]?.is_open_now === true } : null,
+        rating: b.rating || null,
+        reviewCount: b.review_count || null,
+        source: "Yelp",
+        sourceUrl: b.url || null,
+      };
+    })
+    .filter(Boolean);
+
+  _cache?.set(cacheKey, out);
+  return out;
+}
+
+async function _searchOverpass(query, lat, lon, radiusM, limit, doFetch) {
+  const cacheKey = `ov:${query}:${lat}:${lon}:${Math.round(radiusM)}:${limit}`;
+  const cached = _cache?.get(cacheKey);
+  if (cached) return cached;
+
+  const escaped = query.replace(/"/g, '\\"').replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const q = `[out:json][timeout:15];
+(
+  node["name"~"${escaped}",i](around:${Math.round(radiusM)},${lat},${lon});
+  way["name"~"${escaped}",i](around:${Math.round(radiusM)},${lat},${lon});
+  relation["name"~"${escaped}",i](around:${Math.round(radiusM)},${lat},${lon});
+);
+out center ${Math.max(limit * 2, 10)};
+`.trim();
+
+  const res = await doFetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `data=${encodeURIComponent(q)}`,
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!Array.isArray(data.elements)) return [];
+
+  const out = data.elements
+    .map((el) => {
+      const tags = el.tags || {};
+      const plat = el.lat ?? el.center?.lat;
+      const plon = el.lon ?? el.center?.lon;
+      if (plat == null || plon == null) return null;
+
+      const categories = [];
+      if (tags.amenity) categories.push(tags.amenity.replace(/_/g, " "));
+      if (tags.shop) categories.push(tags.shop.replace(/_/g, " "));
+      if (tags.tourism) categories.push(tags.tourism.replace(/_/g, " "));
+      if (tags.leisure) categories.push(tags.leisure.replace(/_/g, " "));
+      if (tags.office) categories.push(tags.office.replace(/_/g, " "));
+      if (tags.craft) categories.push(tags.craft.replace(/_/g, " "));
+      if (tags.healthcare) categories.push(tags.healthcare.replace(/_/g, " "));
+      if (tags.cuisine) categories.push(tags.cuisine.replace(/;/g, ", "));
+      if (categories.length === 0 && !tags.phone && !tags.website && !tags.opening_hours) return null;
+
+      return {
+        name: tags.name || query,
+        address: _fmtOverpassAddress(tags),
+        lat: plat,
+        lon: plon,
+        distanceMeters: _haversine(lat, lon, plat, plon),
+        phone: tags.phone || null,
+        website: tags.website || null,
+        categories,
+        hours: tags.opening_hours ? { openNow: null } : null,
+        rating: null,
+        reviewCount: null,
+        source: "OpenStreetMap",
+        sourceUrl: `https://www.openstreetmap.org/${el.type}/${el.id}`,
       };
     })
     .filter(Boolean);
@@ -489,7 +646,6 @@ function _rankPlaces(places, queryRaw) {
 
       if (p.source === "Foursquare") score += 20;
       else if (p.source === "Yelp") score += 15;
-      else if (p.source === "Apple Maps") score += 10;
 
       if (p.rating) score += Math.min(25, p.rating * 5);
       if (p.reviewCount) score += Math.min(10, p.reviewCount / 50);
@@ -525,9 +681,11 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
       const ratingHtml = stars ? `<span class="places-rating">${stars}${reviews}</span>` : "";
 
       const hoursHtml = p.hours
-        ? p.hours.openNow
+        ? p.hours.openNow === true
           ? `<span class="places-hours places-hours-open">Open now</span>`
-          : `<span class="places-hours places-hours-closed">Closed</span>`
+          : p.hours.openNow === false
+            ? `<span class="places-hours places-hours-closed">Closed</span>`
+            : ""
         : "";
 
       const catsHtml = p.categories
@@ -570,6 +728,7 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
   const geoBtn = showGeoBtn
     ? `<button type="button" class="places-geo-btn" data-query="${_esc(query)}">Use my location</button>`
     : "";
+  const mapHtml = _renderMap(places);
 
   return `
 <div class="places-wrap slot-full-width">
@@ -578,10 +737,44 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
     <span class="places-subhead">near ${_esc(locationLabel)}</span>
     ${geoBtn}
   </div>
-  <div class="places-grid">
-    ${cards}
+  <div class="places-layout">
+    <div class="places-grid">
+      ${cards}
+    </div>
+    ${mapHtml}
   </div>
 </div>`;
+}
+
+function _renderMap(places) {
+  const mapPlace = places.find((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+  if (!mapPlace) return "";
+
+  const bounds = _mapBounds(places);
+  const marker = `${mapPlace.lat},${mapPlace.lon}`;
+  const bbox = `${bounds.minLon},${bounds.minLat},${bounds.maxLon},${bounds.maxLat}`;
+  const mapUrl =
+    "https://www.openstreetmap.org/export/embed.html" +
+    `?bbox=${encodeURIComponent(bbox)}` +
+    "&layer=mapnik" +
+    `&marker=${encodeURIComponent(marker)}`;
+  const viewUrl =
+    "https://www.openstreetmap.org/" +
+    `?mlat=${encodeURIComponent(mapPlace.lat)}` +
+    `&mlon=${encodeURIComponent(mapPlace.lon)}` +
+    `#map=15/${encodeURIComponent(mapPlace.lat)}/${encodeURIComponent(mapPlace.lon)}`;
+
+  return `
+    <aside class="places-map" aria-label="Map centered on ${_esc(mapPlace.name)}">
+      <iframe
+        class="places-map-frame"
+        title="Map for ${_esc(mapPlace.name)}"
+        src="${_esc(mapUrl)}"
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+      ></iframe>
+      <a class="places-map-link" href="${_esc(viewUrl)}" target="_blank" rel="noopener noreferrer">View larger map</a>
+    </aside>`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -602,6 +795,25 @@ function _normalizeName(name) {
     .replace(/[^\w\s]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function _mapBounds(places) {
+  const points = places.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+  const lats = points.map((p) => p.lat);
+  const lons = points.map((p) => p.lon);
+  const minLatRaw = Math.min(...lats);
+  const maxLatRaw = Math.max(...lats);
+  const minLonRaw = Math.min(...lons);
+  const maxLonRaw = Math.max(...lons);
+  const latPad = Math.max(0.01, (maxLatRaw - minLatRaw) * 0.25);
+  const lonPad = Math.max(0.01, (maxLonRaw - minLonRaw) * 0.25);
+
+  return {
+    minLat: Math.max(-90, minLatRaw - latPad).toFixed(6),
+    maxLat: Math.min(90, maxLatRaw + latPad).toFixed(6),
+    minLon: Math.max(-180, minLonRaw - lonPad).toFixed(6),
+    maxLon: Math.min(180, maxLonRaw + lonPad).toFixed(6),
+  };
 }
 
 function _haversine(lat1, lon1, lat2, lon2) {
@@ -635,6 +847,17 @@ function _fmtFsqAddress(loc) {
     loc.region || loc.state,
     loc.postcode,
     loc.country,
+  ].filter(Boolean);
+  return parts.join(", ");
+}
+
+function _fmtOverpassAddress(tags) {
+  const parts = [
+    tags["addr:housenumber"] ? `${tags["addr:housenumber"]} ${tags["addr:street"] || ""}` : tags["addr:street"],
+    tags["addr:city"],
+    tags["addr:state"],
+    tags["addr:postcode"],
+    tags["addr:country"],
   ].filter(Boolean);
   return parts.join(", ");
 }

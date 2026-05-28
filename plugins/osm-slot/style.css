@@ -64,6 +64,16 @@
   gap: 10px;
 }
 
+.places-layout {
+  display: grid;
+  gap: 12px;
+}
+
+#results-page.degoog-fullwidth-slot-shell .places-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  align-items: stretch;
+}
+
 .places-card {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -199,7 +209,46 @@
   background: var(--bg-hover);
 }
 
+.places-map {
+  min-height: 280px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-light);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.places-map-frame {
+  width: 100%;
+  min-height: 260px;
+  flex: 1;
+  border: 0;
+  background: var(--bg);
+}
+
+.places-map-link {
+  display: block;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-light);
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: none;
+  background: var(--bg-light);
+}
+
+.places-map-link:hover {
+  text-decoration: underline;
+}
+
 /* Mobile */
+@media (max-width: 900px) {
+  #results-page.degoog-fullwidth-slot-shell .places-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 520px) {
   .places-card {
     padding: 12px 14px;
@@ -212,5 +261,10 @@
 
   .places-distance {
     align-self: flex-start;
+  }
+
+  .places-map,
+  .places-map-frame {
+    min-height: 220px;
   }
 }

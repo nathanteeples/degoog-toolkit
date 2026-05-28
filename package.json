@@ -113,7 +113,7 @@
       "path": "plugins/osm-slot",
       "name": "Places",
       "description": "Local place recognition — shows nearby businesses and POIs with address, hours, phone, and directions. Triggers on place names and local intent queries like 'near me'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "type": "slot"
     },
 
