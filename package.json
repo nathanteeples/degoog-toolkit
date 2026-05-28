@@ -128,7 +128,7 @@
       "path": "plugins/color-translator",
       "name": "Color Translator",
       "description": "Translates colors between hex, RGB/RGBA, HSL/HSLA, HSB/HSV, UIColor, and NSColor. Triggers on CSS, iOS/macOS code color formats, and named colors.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.8",
+      "version": "1.0.9",
       "type": "slot"
     },
     {
@@ -142,28 +142,28 @@
       "path": "plugins/snake",
       "name": "Snake Game",
       "description": "A premium classic arcade Snake game with on-screen D-pad mobile controls, score/high-score tracking, visual overlays, sound support, and smooth particle effects. Triggers on !snake or natural queries like 'play snake game'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "type": "slot"
     },
     {
       "path": "plugins/metronome",
       "name": "Metronome",
       "description": "A premium metronome widget. Adjust tempo (40 - 240 BPM) via slider, tap to set tempo, select beat signatures, and hear clean Web Audio tick sounds.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "type": "slot"
     },
     {
       "path": "plugins/minesweeper",
       "name": "Minesweeper",
       "description": "Play classic Minesweeper directly in your search results. Features classic board sizes/difficulties, flags, a mobile flag toggle, interactive emoji states, and a timer.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "type": "slot"
     },
     {
       "path": "plugins/tic-tac-toe",
       "name": "Tic-Tac-Toe",
       "description": "A premium Tic-Tac-Toe game. Features Easy, Medium, Hard, and Unbeatable (Minimax-based) AI difficulties, local multiplayer (Play vs Friend), score tracking, and smooth drawing animations.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "type": "slot"
     }
   ],

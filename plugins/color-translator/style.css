@@ -353,6 +353,15 @@
 }
 
 /* LiterallyGoogle presents controls as rounded pills; mirror that in this slot. */
+#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.clrtr-card) {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+}
+
 #results-page.degoog-fullwidth-slot-shell .clrtr-panel {
     border-radius: 24px;
 }

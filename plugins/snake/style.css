@@ -173,13 +173,12 @@
   margin: 0 0 6px 0;
 }
 
-/* Buttons */
 .snake-btn {
   font: inherit;
   font-size: 0.9rem;
   font-weight: 600;
   padding: 8px 20px;
-  border-radius: 8px;
+  border-radius: 100px;
   border: none;
   cursor: pointer;
   display: inline-flex;
@@ -247,7 +246,7 @@
   padding: 6px 14px;
   height: 38px;
   font-size: 0.92rem;
-  border-radius: 8px;
+  border-radius: 100px;
 }
 
 .snake-header-actions .snake-btn-icon {
@@ -336,6 +335,15 @@
 }
 
 /* full-width slot shell support (from AGENTS.md) */
+#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.snake-card) {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+}
+
 #results-page.degoog-fullwidth-slot-shell .snake-card {
   background: var(--bg-light, var(--bg, #ffffff));
   border: 1px solid var(--border-light, #dadce0);

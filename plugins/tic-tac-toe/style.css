@@ -55,13 +55,19 @@
 .ttt-select {
   font-family: inherit;
   font-size: 0.88rem;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 6px 28px 6px 12px;
+  border-radius: 100px;
   border: 1px solid var(--border-light, #dadce0);
   background: var(--bg, #fff);
   color: var(--text-primary, #202124);
   outline: none;
   cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
 }
 
 .ttt-select:focus {
@@ -350,7 +356,7 @@
   font-size: 0.85rem;
   font-weight: 500;
   padding: 0 16px;
-  border-radius: 6px;
+  border-radius: 100px;
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 120ms ease;
@@ -421,6 +427,15 @@
 }
 
 /* theme support */
+#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.ttt-card) {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+}
+
 #results-page.degoog-fullwidth-slot-shell .ttt-card {
   border: 1px solid var(--border-light, #dadce0);
   border-radius: 16px;

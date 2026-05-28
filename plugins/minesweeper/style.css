@@ -52,10 +52,10 @@
   background: var(--bg, #f1f5f9);
   border: 1px solid var(--border-light, var(--border, #cbd5e1));
   color: var(--text-secondary, #64748b);
-  padding: 5px 10px;
+  padding: 5px 12px;
   font-size: 0.8rem;
   font-weight: 600;
-  border-radius: 6px;
+  border-radius: 100px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -226,10 +226,10 @@
   background: var(--bg, #f1f5f9);
   border: 1px solid var(--border-light, var(--border, #cbd5e1));
   color: var(--text-primary);
-  padding: 8px 12px;
+  padding: 8px 16px;
   font-size: 0.9rem;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 100px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -339,6 +339,15 @@
 }
 
 /* fullwidth shell theme support */
+#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.ms-card) {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+}
+
 #results-page.degoog-fullwidth-slot-shell .ms-card {
   background: var(--bg-light, var(--bg, #ffffff));
   border: 1px solid var(--border-light, var(--border, #cbd5e1));
