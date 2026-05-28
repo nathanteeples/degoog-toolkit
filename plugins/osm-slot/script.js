@@ -10,76 +10,97 @@
   function _initGeoButtons() {
     document.querySelectorAll(".places-geo-btn:not([data-places-init])").forEach(function (btn) {
       btn.dataset.placesInit = "1";
-      btn.addEventListener("click", async function () {
+      btn.addEventListener("click", function () {
         if (btn.dataset.placesBusy === "true") return;
-
-        if (!navigator.geolocation) {
-          _setButtonState(btn, "Not supported", true);
-          return;
-        }
 
         btn.dataset.placesBusy = "true";
         _setButtonState(btn, "Locating...", true);
 
-        navigator.geolocation.getCurrentPosition(
-          async function (pos) {
-            _setButtonState(btn, "Searching...", true);
-            var controller = new AbortController();
-            var timeout = window.setTimeout(function () {
-              controller.abort();
-            }, REFRESH_TIMEOUT_MS);
+        async function _sendRefreshRequest(lat, lon) {
+          _setButtonState(btn, "Searching...", true);
+          var controller = new AbortController();
+          var timeout = window.setTimeout(function () {
+            controller.abort();
+          }, REFRESH_TIMEOUT_MS);
 
-            try {
-              const res = await fetch(
-                "/api/plugin/" + __PLUGIN_ID__ + "/refresh",
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  signal: controller.signal,
-                  body: JSON.stringify({
-                    lat: pos.coords.latitude,
-                    lon: pos.coords.longitude,
-                    query: btn.dataset.query || "",
-                  }),
-                }
-              );
-              if (!res.ok) throw new Error("Refresh failed");
-              const data = await res.json();
-              const wrap = btn.closest(".places-wrap");
-              if (wrap && data.html) {
-                const temp = document.createElement("div");
-                temp.innerHTML = data.html.trim();
-                const newWrap = temp.firstElementChild;
-                if (newWrap) {
-                  wrap.replaceWith(newWrap);
-                  _initGeoButtons();
-                  _initPlaceCards();
-                  _initInteractiveMaps();
-                  _initDirectionsModals();
-                  return;
-                }
-                _setButtonState(btn, "No results", false);
-              } else {
-                _setButtonState(btn, "No results", false);
+          try {
+            var res = await fetch(
+              "/api/plugin/" + __PLUGIN_ID__ + "/refresh",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                signal: controller.signal,
+                body: JSON.stringify({
+                  lat: lat,
+                  lon: lon,
+                  query: btn.dataset.query || "",
+                }),
               }
-            } catch (e) {
-              _setButtonState(
-                btn,
-                e && e.name === "AbortError" ? "Search timed out" : "Refresh failed",
-                false
-              );
-            } finally {
-              window.clearTimeout(timeout);
-              btn.dataset.placesBusy = "false";
+            );
+            if (!res.ok) throw new Error("Refresh failed");
+            var data = await res.json();
+            var wrap = btn.closest(".places-wrap");
+            if (wrap && data.html) {
+              var temp = document.createElement("div");
+              temp.innerHTML = data.html.trim();
+              var newWrap = temp.firstElementChild;
+              if (newWrap) {
+                wrap.replaceWith(newWrap);
+                _initGeoButtons();
+                _initPlaceCards();
+                _initInteractiveMaps();
+                _initDirectionsModals();
+                return;
+              }
             }
+            _setButtonState(btn, "No results", false);
+          } catch (e) {
+            _setButtonState(
+              btn,
+              e && e.name === "AbortError" ? "Search timed out" : "Refresh failed",
+              false
+            );
+          } finally {
+            window.clearTimeout(timeout);
+            btn.dataset.placesBusy = "false";
+          }
+        }
+
+        function _fallbackToIpLocation() {
+          _setButtonState(btn, "Locating (IP)...", true);
+          fetch("https://freeipapi.com/api/json")
+            .then(function (r) {
+              if (!r.ok) throw new Error("IP geolocation failed");
+              return r.json();
+            })
+            .then(function (data) {
+              if (data.latitude != null && data.longitude != null) {
+                _sendRefreshRequest(data.latitude, data.longitude);
+              } else {
+                throw new Error("No coordinates in IP response");
+              }
+            })
+            .catch(function (err) {
+              console.error("[places] IP fallback error:", err);
+              _setButtonState(btn, "Location unavailable", false);
+              btn.dataset.placesBusy = "false";
+            });
+        }
+
+        if (!navigator.geolocation) {
+          _fallbackToIpLocation();
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            _sendRefreshRequest(pos.coords.latitude, pos.coords.longitude);
           },
           function (err) {
-            console.error("[places] Geolocation error:", err);
-            var denied = err && err.code === err.PERMISSION_DENIED;
-            _setButtonState(btn, denied ? "Location denied" : "Location unavailable", false);
-            btn.dataset.placesBusy = "false";
+            console.error("[places] Browser geolocation error, falling back to IP:", err);
+            _fallbackToIpLocation();
           },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
         );
       });
     });
