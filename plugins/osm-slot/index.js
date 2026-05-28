@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.2.5";
+const PLUGIN_VERSION = "2.2.6";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -215,7 +215,7 @@ export const routes = [
       try {
         const ip = _getClientIp(request);
         if (!ip || _isPrivateIp(ip)) {
-          const res = await _fetch("https://freeipapi.com/api/json");
+          const res = await _fetch("https://free.freeipapi.com/api/json");
           if (!res.ok) {
             return _jsonResponse({ error: "Failed to geolocate server IP" }, 500);
           }
@@ -223,7 +223,7 @@ export const routes = [
           return _jsonResponse({ lat: data.latitude, lon: data.longitude });
         }
 
-        const url = `https://freeipapi.com/api/json/${encodeURIComponent(ip)}`;
+        const url = `https://free.freeipapi.com/api/json/${encodeURIComponent(ip)}`;
         const res = await _fetch(url);
         if (!res.ok) {
           return _jsonResponse({ error: "IP geolocation failed" }, 500);
@@ -920,6 +920,12 @@ const KNOWN_CHAIN_RE =
 const NON_PLACE_RE =
   /\b(how to|what is|why|when|who|reddit|github|docs|documentation|install|download|error|fix|linux|macos|windows|npm|pip|python|javascript|typescript|docker|nginx|proxmox|ai|llm|model|qwen|claude|gpt|gemini|ollama|benchmark|review|vs|price|best)\b/i;
 
+const GENERAL_INFO_RE =
+  /\b(tutorial|course|book|pdf|lyrics|chords|movie|show|cast|actor|actress|season|episode|news|wiki|wikipedia|definition|meaning|synonym|antonym|pronunciation|translate|translation|weather|forecast|stock|chart|price|convert|converter|calculator|calculate|history|biography|photo|image|picture|wallpaper|video|youtube|song|album|lyrics|map|maps|recipe|ingredients|cooking)\b/i;
+
+const TECH_SCIENCE_RE =
+  /\b(react|angular|vue|svelte|node|npm|pip|python|javascript|typescript|golang|rust|java|c\+\+|c#|php|html|css|sql|git|docker|kubernetes|aws|azure|gcp|api|json|xml|csv|yaml|markdown|github|gitlab|bitbucket|stackoverflow|mdn|w3schools|npm|package|library|framework|module|class|function|object|array|string|number|boolean|null|undefined|regexp|regex|compiler|interpreter|theory|theorem|equation|formula|chemical|molecule|atom|cell|organism|species|evolution|math|physics|chemistry|biology)\b/i;
+
 const URL_OR_CODE_RE =
   /https?:\/\/|www\.|[{}[\]<>]|=>|==|!=|\/etc\/|\.js\b|\.ts\b|\.py\b|\.sh\b|@[a-z0-9_-]+/i;
 
@@ -949,32 +955,19 @@ function _looksProbablyPlaceQuery(rawQuery) {
   // Explicit local intent always gets a chance, unless it looks like code.
   if (LOCAL_INTENT_RE.test(lower)) return true;
 
-  // Obvious informational/software searches should not trigger.
-  if (NON_PLACE_RE.test(lower)) return false;
+  // Obvious informational/software/scientific/tech searches should not trigger.
+  if (NON_PLACE_RE.test(lower) || GENERAL_INFO_RE.test(lower) || TECH_SCIENCE_RE.test(lower)) {
+    return false;
+  }
 
   // Single-word queries: let distance gate decide.
   if (words === 1) {
     return true;
   }
 
-  // Strong business/category or known chain/brand signal.
-  if (PLACE_CATEGORY_RE.test(lower) || KNOWN_CHAIN_RE.test(lower)) {
+  // Multi-word queries: 2 to 6 words.
+  if (words >= 2 && words <= 6) {
     return true;
-  }
-
-  // "tacoria princeton", "tommy's bridgewater", "applebee's flemington"
-  // Multiword + location-ish hint can trigger.
-  if (words >= 2 && words <= 6 && _hasCityOrZipHint(query)) return true;
-
-  // Conservative brand-like fallback:
-  // allow short multiword names, but only if they look like a proper place/business,
-  // not a generic research query.
-  if (words >= 2 && words <= 5) {
-    const hasBusinessNameShape =
-      /'s\b/i.test(query) ||          // Tommy's, McDonald's
-      /\b(and|&|\+)\b/i.test(query); // Tavern and Tap, Bed Bath & Beyond
-
-    return hasBusinessNameShape && !NON_PLACE_RE.test(lower);
   }
 
   return false;
