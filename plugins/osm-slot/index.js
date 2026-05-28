@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.2.4";
+const PLUGIN_VERSION = "2.2.5";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -209,6 +209,33 @@ export default slot;
 
 export const routes = [
   {
+    method: "get",
+    path: "ip-fallback",
+    handler: async (request) => {
+      try {
+        const ip = _getClientIp(request);
+        if (!ip || _isPrivateIp(ip)) {
+          const res = await _fetch("https://freeipapi.com/api/json");
+          if (!res.ok) {
+            return _jsonResponse({ error: "Failed to geolocate server IP" }, 500);
+          }
+          const data = await res.json();
+          return _jsonResponse({ lat: data.latitude, lon: data.longitude });
+        }
+
+        const url = `https://freeipapi.com/api/json/${encodeURIComponent(ip)}`;
+        const res = await _fetch(url);
+        if (!res.ok) {
+          return _jsonResponse({ error: "IP geolocation failed" }, 500);
+        }
+        const data = await res.json();
+        return _jsonResponse({ lat: data.latitude, lon: data.longitude });
+      } catch (err) {
+        return _jsonResponse({ error: err.message }, 500);
+      }
+    },
+  },
+  {
     method: "post",
     path: "refresh",
     handler: async (request) => {
@@ -249,6 +276,35 @@ export const routes = [
     },
   },
 ];
+
+function _getClientIp(request) {
+  const headers = request.headers;
+  if (!headers) return null;
+
+  const cf = headers.get("cf-connecting-ip");
+  if (cf) return cf.trim();
+
+  const xff = headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff.split(",");
+    const first = parts[0].trim();
+    if (first) return first;
+  }
+
+  const xri = headers.get("x-real-ip");
+  if (xri) return xri.trim();
+
+  return null;
+}
+
+function _isPrivateIp(ip) {
+  if (!ip) return true;
+  const clean = ip.trim();
+  if (clean === "127.0.0.1" || clean === "::1" || clean === "localhost") return true;
+  if (/^(?:10\.|192\.168\.|172\.(?:1[6-9]|2[0-9]|3[0-1])\.)/.test(clean)) return true;
+  if (/^169\.254\./.test(clean)) return true;
+  return false;
+}
 
 function _jsonResponse(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
