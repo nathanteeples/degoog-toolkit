@@ -74,6 +74,7 @@
             }
           },
           function (err) {
+            console.error("[places] Geolocation error:", err);
             var denied = err && err.code === err.PERMISSION_DENIED;
             _setButtonState(btn, denied ? "Location denied" : "Location unavailable", false);
             btn.dataset.placesBusy = "false";
