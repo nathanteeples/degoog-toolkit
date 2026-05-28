@@ -23,6 +23,7 @@
     snake: [],
     direction: { x: 1, y: 0 },
     nextDirection: { x: 1, y: 0 },
+    directionQueue: [],
     apple: { x: 0, y: 0 },
     particles: [],
     
@@ -140,6 +141,7 @@
     ];
     state.direction = { x: 1, y: 0 };
     state.nextDirection = { x: 1, y: 0 };
+    state.directionQueue = [];
     state.particles = [];
     state.prevSnake = state.snake.map(function(s) { return { x: s.x, y: s.y }; });
     state.lastTickTime = performance.now();
@@ -202,20 +204,26 @@
     }
   }
 
+  function sameDirection(a, b) {
+    return a && b && a.x === b.x && a.y === b.y;
+  }
+
+  function oppositeDirection(a, b) {
+    return a && b && a.x + b.x === 0 && a.y + b.y === 0;
+  }
+
   function setDirection(dir) {
-    // Prevent 180-degree turns
-    var cur = state.direction;
-    var changed = false;
-    if (dir.x !== 0 && cur.x === 0) {
-      state.nextDirection = dir;
-      changed = true;
-    } else if (dir.y !== 0 && cur.y === 0) {
-      state.nextDirection = dir;
-      changed = true;
-    }
-    if (changed) {
-      playMoveSound();
-    }
+    if (!dir || !state.playing || state.paused || state.gameOver) return;
+
+    var queuedCount = state.directionQueue.length;
+    var basis = queuedCount ? state.directionQueue[queuedCount - 1] : state.direction;
+
+    if (queuedCount >= 3) return;
+    if (sameDirection(dir, basis) || oppositeDirection(dir, basis)) return;
+
+    state.directionQueue.push({ x: dir.x, y: dir.y });
+    state.nextDirection = state.directionQueue[0] || state.direction;
+    playMoveSound();
   }
 
   function startGame() {
@@ -291,7 +299,11 @@
     state.prevSnake = state.snake.map(function(s) { return { x: s.x, y: s.y }; });
     state.lastTickTime = performance.now();
 
-    state.direction = state.nextDirection;
+    if (state.directionQueue.length) {
+      state.direction = state.directionQueue.shift();
+    }
+    state.nextDirection = state.directionQueue[0] || state.direction;
+
     var head = state.snake[0];
     var nextHead = {
       x: head.x + state.direction.x,
@@ -418,6 +430,7 @@
       if (t < 0) t = 0;
     }
 
+    var displaySnake = [];
     for (var i = 0; i < state.snake.length; i++) {
       var segment = state.snake[i];
       var sx = segment.x * state.cellSize;
@@ -430,43 +443,60 @@
         sx = interpX * state.cellSize;
         sy = interpY * state.cellSize;
       }
-      var size = state.cellSize;
+      displaySnake.push({
+        x: sx + state.cellSize / 2,
+        y: sy + state.cellSize / 2
+      });
+    }
 
-      ctx.beginPath();
-      if (i === 0) {
-        // Head: bright green with eyes
-        ctx.fillStyle = "#34d399";
+    if (displaySnake.length) {
+      var bodyRadius = state.cellSize * 0.42;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      if (displaySnake.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(displaySnake[0].x, displaySnake[0].y);
+        for (var bodyIndex = 1; bodyIndex < displaySnake.length; bodyIndex++) {
+          ctx.lineTo(displaySnake[bodyIndex].x, displaySnake[bodyIndex].y);
+        }
+        ctx.strokeStyle = "#047857";
+        ctx.lineWidth = bodyRadius * 2;
         ctx.shadowBlur = 8;
-        ctx.shadowColor = "rgba(52, 211, 153, 0.6)";
-        ctx.roundRect ? ctx.roundRect(sx + 1, sy + 1, size - 2, size - 2, 4) : ctx.rect(sx + 1, sy + 1, size - 2, size - 2);
-        ctx.fill();
+        ctx.shadowColor = "rgba(5, 150, 105, 0.45)";
+        ctx.stroke();
         ctx.shadowBlur = 0;
 
-        // Draw eyes
-        ctx.fillStyle = "#0f172a";
-        var eyeSize = 3;
-        var offset = 5;
-        // Direction-based eye offset
-        if (state.direction.x > 0) { // Right
-          ctx.fillRect(sx + size - offset - eyeSize, sy + offset, eyeSize, eyeSize);
-          ctx.fillRect(sx + size - offset - eyeSize, sy + size - offset - eyeSize, eyeSize, eyeSize);
-        } else if (state.direction.x < 0) { // Left
-          ctx.fillRect(sx + offset, sy + offset, eyeSize, eyeSize);
-          ctx.fillRect(sx + offset, sy + size - offset - eyeSize, eyeSize, eyeSize);
-        } else if (state.direction.y > 0) { // Down
-          ctx.fillRect(sx + offset, sy + size - offset - eyeSize, eyeSize, eyeSize);
-          ctx.fillRect(sx + size - offset - eyeSize, sy + size - offset - eyeSize, eyeSize, eyeSize);
-        } else if (state.direction.y < 0) { // Up
-          ctx.fillRect(sx + offset, sy + offset, eyeSize, eyeSize);
-          ctx.fillRect(sx + size - offset - eyeSize, sy + offset, eyeSize, eyeSize);
+        ctx.beginPath();
+        ctx.moveTo(displaySnake[0].x, displaySnake[0].y);
+        for (var highlightIndex = 1; highlightIndex < displaySnake.length; highlightIndex++) {
+          ctx.lineTo(displaySnake[highlightIndex].x, displaySnake[highlightIndex].y);
         }
-      } else {
-        // Body segments: smooth green
-        ctx.fillStyle = "#059669";
-        var r = Math.max(1, 4 - (i / 5)); // trailing taper
-        ctx.roundRect ? ctx.roundRect(sx + r, sy + r, size - r * 2, size - r * 2, 3) : ctx.rect(sx + r, sy + r, size - r * 2, size - r * 2);
-        ctx.fill();
+        ctx.strokeStyle = "rgba(110, 231, 183, 0.22)";
+        ctx.lineWidth = bodyRadius * 0.9;
+        ctx.stroke();
       }
+
+      var head = displaySnake[0];
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, bodyRadius + 1, 0, Math.PI * 2);
+      ctx.fillStyle = "#34d399";
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "rgba(52, 211, 153, 0.6)";
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = "#0f172a";
+      var eyeSize = 3;
+      var eyeForward = bodyRadius * 0.45;
+      var eyeSide = bodyRadius * 0.42;
+      var facing = state.nextDirection || state.direction;
+      var sideX = facing.y;
+      var sideY = -facing.x;
+      var eyeCenterX = head.x + facing.x * eyeForward;
+      var eyeCenterY = head.y + facing.y * eyeForward;
+      ctx.fillRect(eyeCenterX + sideX * eyeSide - eyeSize / 2, eyeCenterY + sideY * eyeSide - eyeSize / 2, eyeSize, eyeSize);
+      ctx.fillRect(eyeCenterX - sideX * eyeSide - eyeSize / 2, eyeCenterY - sideY * eyeSide - eyeSize / 2, eyeSize, eyeSize);
     }
 
     // Draw eating particles
@@ -545,6 +575,15 @@
     }
   }
 
+  function getDpadDirection(target) {
+    if (!target || typeof target.closest !== "function") return null;
+    if (target.closest("#snake-dpad-up")) return { x: 0, y: -1 };
+    if (target.closest("#snake-dpad-down")) return { x: 0, y: 1 };
+    if (target.closest("#snake-dpad-left")) return { x: -1, y: 0 };
+    if (target.closest("#snake-dpad-right")) return { x: 1, y: 0 };
+    return null;
+  }
+
   function toggleFullscreen() {
     if (!currentWidget) return;
     try {
@@ -605,16 +644,21 @@
       return;
     }
 
-    // Touch D-Pad Handling
-    var dpadUp = event.target.closest("#snake-dpad-up");
-    var dpadDown = event.target.closest("#snake-dpad-down");
-    var dpadLeft = event.target.closest("#snake-dpad-left");
-    var dpadRight = event.target.closest("#snake-dpad-right");
+    if (getDpadDirection(event.target)) {
+      return;
+    }
+  }
 
-    if (dpadUp) setDirection({ x: 0, y: -1 });
-    if (dpadDown) setDirection({ x: 0, y: 1 });
-    if (dpadLeft) setDirection({ x: -1, y: 0 });
-    if (dpadRight) setDirection({ x: 1, y: 0 });
+  function handlePointerDown(event) {
+    var dir = getDpadDirection(event.target);
+    if (!dir) return;
+
+    var w = event.target.closest("[data-snake-widget]");
+    if (!w) return;
+    if (w !== currentWidget) initFromWidget(w);
+
+    event.preventDefault();
+    setDirection(dir);
   }
 
   function checkWidget() {
@@ -644,6 +688,7 @@
 
   // Event Listeners
   document.addEventListener("keydown", handleKeyDown);
+  document.addEventListener("pointerdown", handlePointerDown);
   document.addEventListener("click", handleClick);
   document.addEventListener("fullscreenchange", handleFullscreenChange);
   document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
