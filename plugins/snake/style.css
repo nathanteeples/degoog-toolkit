@@ -1,7 +1,7 @@
 .snake-card {
   box-sizing: border-box;
   width: 100%;
-  max-width: 420px;
+  max-width: 600px;
   margin: 0 auto;
   color: var(--text-primary, #202124);
   background: transparent;
@@ -95,7 +95,7 @@
 .snake-game-container {
   position: relative;
   width: 100%;
-  max-width: 380px;
+  max-width: 450px;
   aspect-ratio: 1 / 1;
   background: #0f172a;
   border-radius: 12px;
@@ -226,29 +226,39 @@
   display: none !important;
 }
 
-/* Controls row */
-.snake-controls-row {
-  width: 100%;
-  max-width: 380px;
+/* Header Action buttons layout */
+.snake-header-actions {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: 12px;
-  gap: 10px;
+  gap: 8px;
 }
 
-#snake-pause-btn {
-  flex-grow: 1;
+.snake-header-actions .snake-btn {
+  padding: 6px 12px;
+  height: 32px;
+  font-size: 0.85rem;
+  border-radius: 6px;
 }
 
-/* D-Pad mobile controls */
+.snake-header-actions .snake-btn-icon {
+  width: 32px;
+  height: 32px;
+}
+
+/* D-Pad mobile controls: only visible on touchscreen devices */
 .snake-dpad {
-  display: flex;
+  display: none;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   margin-top: 16px;
   width: 100%;
+}
+
+@media (pointer: coarse) {
+  .snake-dpad {
+    display: flex;
+  }
 }
 
 .snake-dpad-row {

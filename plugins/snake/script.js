@@ -319,8 +319,20 @@
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw background grid lines (extremely subtle)
-    ctx.strokeStyle = "rgba(30, 41, 59, 0.3)";
+    // Draw alternating checkerboard squares (Google-style but retro dark)
+    for (var col = 0; col < state.gridSize; col++) {
+      for (var row = 0; row < state.gridSize; row++) {
+        if ((col + row) % 2 === 0) {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
+        } else {
+          ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+        }
+        ctx.fillRect(col * state.cellSize, row * state.cellSize, state.cellSize, state.cellSize);
+      }
+    }
+    
+    // Draw background grid lines
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
     ctx.lineWidth = 1;
     for (var col = 0; col <= state.gridSize; col++) {
       var x = col * state.cellSize;
