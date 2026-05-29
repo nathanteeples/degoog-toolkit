@@ -215,6 +215,8 @@
       var state = _getMapState(tileMap);
       state.lat = lat;
       state.lon = lon;
+      state.storeLat = lat;
+      state.storeLon = lon;
       state.offsetX = 0;
       state.offsetY = 0;
       tileMap.dataset.lat = String(lat);
@@ -233,6 +235,8 @@
       mapEl._mapState = {
         lat: Number(mapEl.dataset.lat),
         lon: Number(mapEl.dataset.lon),
+        storeLat: Number(mapEl.dataset.lat),
+        storeLon: Number(mapEl.dataset.lon),
         zoom: Number(mapEl.dataset.zoom || 15),
         dragging: false,
         startX: 0,
@@ -437,6 +441,19 @@
     }
 
     layer.innerHTML = html;
+
+    var pin = mapEl.querySelector(".places-map-pin");
+    if (pin) {
+      var storeLat = state.storeLat !== undefined ? state.storeLat : state.lat;
+      var storeLon = state.storeLon !== undefined ? state.storeLon : state.lon;
+      var storeTile = _latLonToTile(storeLat, storeLon, state.zoom);
+      var storePxX = storeTile.x * TILE_SIZE;
+      var storePxY = storeTile.y * TILE_SIZE;
+      var pinLeft = Math.round(storePxX - centerPxX + viewCenterX);
+      var pinTop = Math.round(storePxY - centerPxY + viewCenterY);
+      pin.style.left = pinLeft + "px";
+      pin.style.top = pinTop + "px";
+    }
   }
 
   function _pixelOffsetToLatLon(offsetX, offsetY, lat, lon, zoom) {

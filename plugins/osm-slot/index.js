@@ -1,7 +1,7 @@
-// Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
+// Places slot plugin — local place recognition with Foursquare v2, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "3.0.0";
+const PLUGIN_VERSION = "3.1.0";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -16,10 +16,8 @@ const NOMINATIM_BASE = "https://nominatim.openstreetmap.org/search";
 
 function _configure(s) {
   _settings = {
-    foursquareApiKey: s?.foursquareApiKey || "",
     foursquareClientId: s?.foursquareClientId || "",
     foursquareClientSecret: s?.foursquareClientSecret || "",
-    yelpApiKey: s?.yelpApiKey || "",
     defaultLat: s?.defaultLat || "",
     defaultLon: s?.defaultLon || "",
     defaultLocationLabel: s?.defaultLocationLabel || "Home",
@@ -42,36 +40,20 @@ export const slot = {
 
   settingsSchema: [
     {
-      key: "foursquareApiKey",
-      label: "Foursquare API key",
-      type: "password",
-      secret: true,
-      description:
-        "Optional. Provides rich business data (ratings, hours, phone) for Foursquare v3. Get one at foursquare.com/developers.",
-    },
-    {
       key: "foursquareClientId",
-      label: "Foursquare v2 Client ID",
+      label: "Foursquare Client ID",
       type: "password",
       secret: true,
       description:
-        "Optional (Legacy v2 fallback). Use with Foursquare v2 Client Secret if you do not have a v3 API key.",
+        "Optional. Provides rich business data (ratings, hours, phone). Get one at foursquare.com/developers.",
     },
     {
       key: "foursquareClientSecret",
-      label: "Foursquare v2 Client Secret",
+      label: "Foursquare Client Secret",
       type: "password",
       secret: true,
       description:
-        "Optional (Legacy v2 fallback). Use with Foursquare v2 Client ID.",
-    },
-    {
-      key: "yelpApiKey",
-      label: "Yelp API key",
-      type: "password",
-      secret: true,
-      description:
-        "Optional. Great for restaurants and bars. Get one at yelp.com/developers.",
+        "Optional. Use with Foursquare Client ID.",
     },
     {
       key: "defaultLat",
@@ -131,9 +113,9 @@ export const slot = {
       key: "customTileUrl",
       label: "Custom map tile URL",
       type: "text",
-      placeholder: "https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=YOUR_KEY",
+      placeholder: "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
       description:
-        "Optional raster tile template for the map. Supports {z}, {x}, and {y}. Leave blank to use the default OpenStreetMap embed.",
+        "Optional raster tile template for the map. Supports {z}, {x}, and {y}. Leave blank to use the default CartoDB Voyager map tiles.",
     },
     {
       key: "photonBaseUrl",
@@ -219,16 +201,14 @@ export const slot = {
       };
 
       const apiStatus = {
-        foursquareV3: { configured: !!_settings.foursquareApiKey, status: "unused", error: null, count: 0 },
         foursquareV2: { configured: !!(_settings.foursquareClientId && _settings.foursquareClientSecret), status: "unused", error: null, count: 0 },
-        yelp: { configured: !!_settings.yelpApiKey, status: "unused", error: null, count: 0 },
         overpassSearch: { status: "unused", error: null, count: 0 },
         photon: { status: "unused", error: null, count: 0 },
         nominatim: { status: "unused", error: null, count: 0 }
       };
 
       console.log(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" at lat=${lat}, lon=${lon}`);
-      console.log(`[Places Server v${PLUGIN_VERSION}] Configured APIs: FoursquareApiKey=${!!_settings.foursquareApiKey}, YelpApiKey=${!!_settings.yelpApiKey}, FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
+      console.log(`[Places Server v${PLUGIN_VERSION}] Configured APIs: FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
 
       const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus);
 
@@ -319,12 +299,10 @@ export const routes = [
         const limit = parseInt(_settings.resultsCount || "5", 10);
 
         console.log(`[Places Server] Refresh Query: "${query || ""}" at lat=${latNum}, lon=${lonNum}`);
-        console.log(`[Places Server] Configured APIs (refresh): FoursquareApiKey=${!!_settings.foursquareApiKey}, YelpApiKey=${!!_settings.yelpApiKey}, FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
+        console.log(`[Places Server] Configured APIs (refresh): FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
 
         const apiStatus = {
-          foursquareV3: { configured: !!_settings.foursquareApiKey, status: "unused", error: null, count: 0 },
           foursquareV2: { configured: !!(_settings.foursquareClientId && _settings.foursquareClientSecret), status: "unused", error: null, count: 0 },
-          yelp: { configured: !!_settings.yelpApiKey, status: "unused", error: null, count: 0 },
           overpassSearch: { status: "unused", error: null, count: 0 },
           photon: { status: "unused", error: null, count: 0 },
           nominatim: { status: "unused", error: null, count: 0 }
@@ -426,70 +404,57 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch, api
 
   const providerCalls = [];
 
-  if (_settings.foursquareApiKey || (_settings.foursquareClientId && _settings.foursquareClientSecret)) {
+  // Foursquare v2 (if configured)
+  if (_settings.foursquareClientId && _settings.foursquareClientSecret) {
     const fqStart = Date.now();
     providerCalls.push(
       _searchFoursquare(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 10000), apiStatus).then((res) => {
         console.log(`[Places Performance v${PLUGIN_VERSION}] Foursquare search completed in ${Date.now() - fqStart}ms (found ${res.length} places)`);
         return res;
+      }).catch(err => {
+        console.error(`[Places Performance v${PLUGIN_VERSION}] Foursquare search failed:`, err);
+        return [];
       })
     );
   }
 
-  if (_settings.yelpApiKey) {
-    const yelpStart = Date.now();
-    providerCalls.push(
-      _searchYelp(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 10000), apiStatus).then((res) => {
-        console.log(`[Places Performance v${PLUGIN_VERSION}] Yelp search completed in ${Date.now() - yelpStart}ms (found ${res.length} places)`);
-        return res;
-      })
-    );
-  }
+  // Overpass
+  const ovStart = Date.now();
+  providerCalls.push(
+    _searchOverpass(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 5000), apiStatus).then((res) => {
+      console.log(`[Places Performance v${PLUGIN_VERSION}] Overpass search completed in ${Date.now() - ovStart}ms (found ${res.length} places)`);
+      return res;
+    }).catch(err => {
+      console.error(`[Places Performance v${PLUGIN_VERSION}] Overpass search failed:`, err);
+      return [];
+    })
+  );
 
-  if (providerCalls.length > 0) {
-    const settled = await Promise.allSettled(providerCalls);
-    for (const result of settled) {
-      if (result.status === "fulfilled" && Array.isArray(result.value)) {
-        out.push(...result.value);
-      } else if (result.status === "rejected") {
-        console.error(`[Places Performance v${PLUGIN_VERSION}] Provider promise rejected:`, result.reason);
-      }
+  // Photon
+  const phStart = Date.now();
+  providerCalls.push(
+    _searchPhoton(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 4000), apiStatus).then((res) => {
+      console.log(`[Places Performance v${PLUGIN_VERSION}] Photon search completed in ${Date.now() - phStart}ms (found ${res.length} places)`);
+      return res;
+    }).catch(() => [])
+  );
+
+  // Nominatim
+  const nomStart = Date.now();
+  providerCalls.push(
+    _searchNominatim(query, lat, lon, limit, (url, init) => doFetch(url, init, 4000), apiStatus).then((res) => {
+      console.log(`[Places Performance v${PLUGIN_VERSION}] Nominatim search completed in ${Date.now() - nomStart}ms (found ${res.length} places)`);
+      return res;
+    }).catch(() => [])
+  );
+
+  const settled = await Promise.allSettled(providerCalls);
+  for (const result of settled) {
+    if (result.status === "fulfilled" && Array.isArray(result.value)) {
+      out.push(...result.value);
+    } else if (result.status === "rejected") {
+      console.error(`[Places Performance v${PLUGIN_VERSION}] Provider promise rejected:`, result.reason);
     }
-  }
-
-  // If no results from Foursquare/Yelp, or if neither is configured, fallback to general Overpass search
-  if (out.length === 0) {
-    console.log(`[Places Performance v${PLUGIN_VERSION}] No commercial API results. Triggering general Overpass search...`);
-    const ovStart = Date.now();
-    try {
-      const r = await _searchOverpass(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 5000), apiStatus);
-      console.log(`[Places Performance v${PLUGIN_VERSION}] General Overpass search completed in ${Date.now() - ovStart}ms (found ${r.length} places)`);
-      out.push(...r);
-    } catch (err) {
-      console.error(`[Places Performance v${PLUGIN_VERSION}] General Overpass search failed after ${Date.now() - ovStart}ms:`, err);
-    }
-  } else {
-    console.log(`[Places Performance v${PLUGIN_VERSION}] Skipping general Overpass search (found ${out.length} commercial places).`);
-  }
-
-  // Photon — free geocoder fallback (no key)
-  if (out.length === 0) {
-    const phStart = Date.now();
-    try {
-      const r = await _searchPhoton(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 4000), apiStatus);
-      console.log(`[Places Performance v${PLUGIN_VERSION}] Photon geocoder fallback completed in ${Date.now() - phStart}ms (found ${r.length} places)`);
-      out.push(...r);
-    } catch (_) {}
-  }
-
-  // Nominatim — free geocoder fallback (no key)
-  if (out.length === 0) {
-    const nomStart = Date.now();
-    try {
-      const r = await _searchNominatim(query, lat, lon, limit, (url, init) => doFetch(url, init, 4000), apiStatus);
-      console.log(`[Places Performance v${PLUGIN_VERSION}] Nominatim geocoder fallback completed in ${Date.now() - nomStart}ms (found ${r.length} places)`);
-      out.push(...r);
-    } catch (_) {}
   }
 
   console.log(`[Places Performance v${PLUGIN_VERSION}] Total _searchAllProviders execution time: ${Date.now() - startAll}ms`);
@@ -507,119 +472,7 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiSt
 
   let out = [];
 
-  // V3 Flow
-  if (_settings.foursquareApiKey) {
-    try {
-      let authHeader = _settings.foursquareApiKey;
-      const lowerKey = _settings.foursquareApiKey.toLowerCase();
-      if (!lowerKey.startsWith("fsq3") && !lowerKey.startsWith("bearer ")) {
-        authHeader = `Bearer ${_settings.foursquareApiKey}`;
-      }
-
-      const fields = "name,location,geocodes,categories,tel,website,hours,rating,stats,fsq_id,distance,email,social_media,description,chains,price";
-      const url =
-        `${FOURSQUARE_BASE}?query=${encodeURIComponent(query)}` +
-        `&ll=${encodeURIComponent(`${lat},${lon}`)}` +
-        `&radius=${Math.round(radiusM)}` +
-        `&limit=${limit}` +
-        `&fields=${encodeURIComponent(fields)}`;
-
-      let res = await doFetch(url, {
-        headers: {
-          Authorization: authHeader,
-          Accept: "application/json",
-          "X-Places-Api-Version": "2025-06-17",
-        },
-      });
-
-      // Auto-retry with Pro-only fields on quota/credit limits (429/402)
-      if (!res.ok && (res.status === 429 || res.status === 402)) {
-        console.warn(`[places] Foursquare v3 query returned status ${res.status} (likely credit/quota limit). Retrying with Pro-only fields...`);
-        const proFields = "fsq_id,name,location,geocodes,categories,distance,tel,website";
-        const retryUrl =
-          `${FOURSQUARE_BASE}?query=${encodeURIComponent(query)}` +
-          `&ll=${encodeURIComponent(`${lat},${lon}`)}` +
-          `&radius=${Math.round(radiusM)}` +
-          `&limit=${limit}` +
-          `&fields=${encodeURIComponent(proFields)}`;
-
-        const retryRes = await doFetch(retryUrl, {
-          headers: {
-            Authorization: authHeader,
-            Accept: "application/json",
-            "X-Places-Api-Version": "2025-06-17",
-          },
-        });
-        if (retryRes.ok) {
-          res = retryRes;
-        } else {
-          const retryErrText = await retryRes.text();
-          console.error(`[places] Foursquare v3 pro retry failed with status ${retryRes.status}: ${retryErrText}`);
-        }
-      }
-
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.results)) {
-          for (const r of data.results) {
-            const plat = r.geocodes?.main?.latitude;
-            const plon = r.geocodes?.main?.longitude;
-            if (plat == null || plon == null) continue;
-
-            const place = {
-              name: r.name,
-              address: _fmtFsqAddress(r.location),
-              lat: plat,
-              lon: plon,
-              distanceMeters: typeof r.distance === "number" ? r.distance : _haversine(lat, lon, plat, plon),
-              phone: r.tel || null,
-              website: r.website || null,
-              email: r.email || null,
-              socialMedia: r.social_media || null,
-              description: r.description || null,
-              chains: (r.chains || []).map((c) => c.name).filter(Boolean),
-              price: r.price || null,
-              categories: (r.categories || []).map((c) => c.short_name || c.name).filter(Boolean),
-              hours: r.hours
-                ? {
-                    openNow: r.hours.open_now === true,
-                    display: r.hours.display || null,
-                    status: null,
-                  }
-                : null,
-              rating: r.rating ? r.rating / 2 : null,
-              reviewCount: r.stats?.total_ratings || null,
-              source: "Foursquare",
-              sourceUrl: `https://foursquare.com/v/${r.fsq_id}`,
-            };
-            out.push(place);
-          }
-        }
-        if (apiStatus && apiStatus.foursquareV3) {
-          apiStatus.foursquareV3.status = "success";
-          apiStatus.foursquareV3.count = out.length;
-        }
-      } else {
-        const errText = await res.text();
-        const msg = `HTTP status ${res.status}: ${errText}`;
-        console.error(`[places] Foursquare v3 API search returned error: ${msg}`);
-        if (apiStatus && apiStatus.foursquareV3) {
-          apiStatus.foursquareV3.status = "error";
-          apiStatus.foursquareV3.error = msg;
-        }
-      }
-    } catch (err) {
-      console.error("[places] Foursquare v3 query failed:", err);
-      if (apiStatus && apiStatus.foursquareV3) {
-        apiStatus.foursquareV3.status = "error";
-        apiStatus.foursquareV3.error = err.message;
-      }
-      return [];
-    }
-  }
-
-  // V2 Fallback Flow (runs if v3 produced no results or wasn't configured, and we have v2 credentials)
-  if (out.length === 0 && _settings.foursquareClientId && _settings.foursquareClientSecret) {
+  if (_settings.foursquareClientId && _settings.foursquareClientSecret) {
     try {
       const url = `https://api.foursquare.com/v2/venues/search` +
         `?ll=${encodeURIComponent(`${lat},${lon}`)}` +
@@ -737,82 +590,6 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiSt
 
   _cache?.set(cacheKey, out);
   return out;
-}
-
-async function _searchYelp(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
-  const cacheKey = `yelp:${query}:${lat}:${lon}:${Math.round(radiusM)}:${limit}`;
-  const cached = _cache?.get(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const url =
-      `${YELP_BASE}?term=${encodeURIComponent(query)}` +
-      `&latitude=${lat}&longitude=${lon}` +
-      `&radius=${Math.min(Math.round(radiusM), 40000)}` +
-      `&limit=${limit}`;
-
-    const res = await doFetch(url, {
-      headers: {
-        Authorization: `Bearer ${_settings.yelpApiKey}`,
-        Accept: "application/json",
-      },
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      const msg = `HTTP status ${res.status}: ${errText}`;
-      console.error(`[places] Yelp API search returned error: ${msg}`);
-      if (apiStatus && apiStatus.yelp) {
-        apiStatus.yelp.status = "error";
-        apiStatus.yelp.error = msg;
-      }
-      return [];
-    }
-    const data = await res.json();
-    if (!Array.isArray(data.businesses)) return [];
-
-    const out = data.businesses
-      .map((b) => {
-        if (!b.coordinates?.latitude || !b.coordinates?.longitude) return null;
-        const plat = b.coordinates.latitude;
-        const plon = b.coordinates.longitude;
-        const addrParts = [
-          b.location?.address1,
-          b.location?.city,
-          b.location?.state,
-          b.location?.zip_code,
-        ].filter(Boolean);
-        return {
-          name: b.name,
-          address: addrParts.join(", ") || b.location?.display_address?.join(", ") || "",
-          lat: plat,
-          lon: plon,
-          distanceMeters: b.distance || _haversine(lat, lon, plat, plon),
-          phone: b.phone || b.display_phone || null,
-          website: b.url || null,
-          categories: (b.categories || []).map((c) => c.title).filter(Boolean),
-          hours: b.hours ? { openNow: b.hours[0]?.is_open_now === true, display: null, status: null } : null,
-          rating: b.rating || null,
-          reviewCount: b.review_count || null,
-          source: "Yelp",
-          sourceUrl: b.url || null,
-        };
-      })
-      .filter(Boolean);
-
-    if (apiStatus && apiStatus.yelp) {
-      apiStatus.yelp.status = "success";
-      apiStatus.yelp.count = out.length;
-    }
-    _cache?.set(cacheKey, out);
-    return out;
-  } catch (err) {
-    console.error("[places] Yelp query failed:", err);
-    if (apiStatus && apiStatus.yelp) {
-      apiStatus.yelp.status = "error";
-      apiStatus.yelp.error = err.message;
-    }
-    return [];
-  }
 }
 
 async function _searchOverpass(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
@@ -1277,7 +1054,7 @@ function _renderMap(places) {
 
   const tileUrl = (_settings.customTileUrl && _isTileTemplate(_settings.customTileUrl))
     ? _settings.customTileUrl
-    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+    : "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png";
 
   const viewUrl =
     "https://www.openstreetmap.org/" +
