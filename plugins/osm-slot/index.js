@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.4.0";
+const PLUGIN_VERSION = "2.4.1";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -379,6 +379,8 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
     for (const result of settled) {
       if (result.status === "fulfilled" && Array.isArray(result.value)) {
         out.push(...result.value);
+      } else if (result.status === "rejected") {
+        console.error(`[Places Performance v${PLUGIN_VERSION}] Provider promise rejected:`, result.reason);
       }
     }
   }
@@ -493,9 +495,13 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
             out.push(place);
           }
         }
+      } else {
+        const errText = await res.text();
+        console.error(`[places] Foursquare v3 API search returned error status ${res.status}: ${errText}`);
       }
     } catch (err) {
       console.error("[places] Foursquare v3 query failed:", err);
+      return [];
     }
   }
 
@@ -579,6 +585,9 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
                         place.price = dv.price.tier || null;
                       }
                     }
+                  } else {
+                    const errText = await detailRes.text();
+                    console.error(`[places] Foursquare v2 API details returned error status ${detailRes.status} for ${v.id}: ${errText}`);
                   }
                 } catch (detailErr) {
                   console.warn(`[places] Foursquare v2 detail fetch failed for ${v.id}:`, detailErr);
@@ -590,9 +599,13 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
             await Promise.allSettled(v2Promises);
           }
         }
+      } else {
+        const errText = await res.text();
+        console.error(`[places] Foursquare v2 API search returned error status ${res.status}: ${errText}`);
       }
     } catch (err) {
       console.error("[places] Foursquare v2 query failed:", err);
+      return [];
     }
   }
 
@@ -605,53 +618,62 @@ async function _searchYelp(query, lat, lon, radiusM, limit, doFetch) {
   const cached = _cache?.get(cacheKey);
   if (cached) return cached;
 
-  const url =
-    `${YELP_BASE}?term=${encodeURIComponent(query)}` +
-    `&latitude=${lat}&longitude=${lon}` +
-    `&radius=${Math.min(Math.round(radiusM), 40000)}` +
-    `&limit=${limit}`;
+  try {
+    const url =
+      `${YELP_BASE}?term=${encodeURIComponent(query)}` +
+      `&latitude=${lat}&longitude=${lon}` +
+      `&radius=${Math.min(Math.round(radiusM), 40000)}` +
+      `&limit=${limit}`;
 
-  const res = await doFetch(url, {
-    headers: {
-      Authorization: `Bearer ${_settings.yelpApiKey}`,
-      Accept: "application/json",
-    },
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  if (!Array.isArray(data.businesses)) return [];
+    const res = await doFetch(url, {
+      headers: {
+        Authorization: `Bearer ${_settings.yelpApiKey}`,
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[places] Yelp API search returned error status ${res.status}: ${errText}`);
+      return [];
+    }
+    const data = await res.json();
+    if (!Array.isArray(data.businesses)) return [];
 
-  const out = data.businesses
-    .map((b) => {
-      if (!b.coordinates?.latitude || !b.coordinates?.longitude) return null;
-      const plat = b.coordinates.latitude;
-      const plon = b.coordinates.longitude;
-      const addrParts = [
-        b.location?.address1,
-        b.location?.city,
-        b.location?.state,
-        b.location?.zip_code,
-      ].filter(Boolean);
-      return {
-        name: b.name,
-        address: addrParts.join(", ") || b.location?.display_address?.join(", ") || "",
-        lat: plat,
-        lon: plon,
-        distanceMeters: b.distance || _haversine(lat, lon, plat, plon),
-        phone: b.phone || b.display_phone || null,
-        website: b.url || null,
-        categories: (b.categories || []).map((c) => c.title).filter(Boolean),
-        hours: b.hours ? { openNow: b.hours[0]?.is_open_now === true, display: null, status: null } : null,
-        rating: b.rating || null,
-        reviewCount: b.review_count || null,
-        source: "Yelp",
-        sourceUrl: b.url || null,
-      };
-    })
-    .filter(Boolean);
+    const out = data.businesses
+      .map((b) => {
+        if (!b.coordinates?.latitude || !b.coordinates?.longitude) return null;
+        const plat = b.coordinates.latitude;
+        const plon = b.coordinates.longitude;
+        const addrParts = [
+          b.location?.address1,
+          b.location?.city,
+          b.location?.state,
+          b.location?.zip_code,
+        ].filter(Boolean);
+        return {
+          name: b.name,
+          address: addrParts.join(", ") || b.location?.display_address?.join(", ") || "",
+          lat: plat,
+          lon: plon,
+          distanceMeters: b.distance || _haversine(lat, lon, plat, plon),
+          phone: b.phone || b.display_phone || null,
+          website: b.url || null,
+          categories: (b.categories || []).map((c) => c.title).filter(Boolean),
+          hours: b.hours ? { openNow: b.hours[0]?.is_open_now === true, display: null, status: null } : null,
+          rating: b.rating || null,
+          reviewCount: b.review_count || null,
+          source: "Yelp",
+          sourceUrl: b.url || null,
+        };
+      })
+      .filter(Boolean);
 
-  _cache?.set(cacheKey, out);
-  return out;
+    _cache?.set(cacheKey, out);
+    return out;
+  } catch (err) {
+    console.error("[places] Yelp query failed:", err);
+    return [];
+  }
 }
 
 async function _searchOverpass(query, lat, lon, radiusM, limit, doFetch) {
@@ -677,7 +699,11 @@ out center ${Math.max(limit * 2, 10)};
     },
     body: `data=${encodeURIComponent(q)}`,
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error(`[places] Overpass API search returned error status ${res.status}: ${errText}`);
+    return [];
+  }
   const data = await res.json();
   if (!Array.isArray(data.elements)) return [];
 
