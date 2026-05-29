@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Geoapify (primary) and Foursquare (booster).
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.8.2";
+const PLUGIN_VERSION = "2.8.3";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -160,8 +160,19 @@ export const slot = {
         const id = setTimeout(() => controller.abort(), timeoutMs);
         const mergedInit = { ...init };
         if (!mergedInit.signal) mergedInit.signal = controller.signal;
-        return doFetch(url, mergedInit).then(res => { clearTimeout(id); return res; }).catch(err => { clearTimeout(id); throw err; });
+        const start = Date.now();
+        return doFetch(url, mergedInit).then(res => { 
+          clearTimeout(id); 
+          console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch OK: ${url.split("?")[0]} (${Date.now() - start}ms)`);
+          return res; 
+        }).catch(err => { 
+          clearTimeout(id); 
+          console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch FAIL: ${url.split("?")[0]} (${Date.now() - start}ms): ${err.message}`);
+          throw err; 
+        });
       };
+
+      console.log(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" at lat=${lat}, lon=${lon}`);
 
       const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus);
 
@@ -171,11 +182,13 @@ export const slot = {
       });
 
       if (top.length === 0) {
+        console.log(`[Places Server v${PLUGIN_VERSION}] No results passing gate for: "${q}" (Total found: ${places.length})`);
         return { 
           html: `<div class="places-wrap" style="display:none" data-places-version="${PLUGIN_VERSION}" data-places-apis='${JSON.stringify(apiStatus)}'></div>` 
         };
       }
 
+      console.log(`[Places Server v${PLUGIN_VERSION}] Returning ${top.length} places.`);
       const html = _renderCard(
         top,
         q,
@@ -280,15 +293,15 @@ async function _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStat
 
   const key = _settings.geoapifyApiKey || "0a2341f20dfa4b92952a726eb1e36554";
   const categories = _inferGeoapifyCategories(query);
+  const fallbackCats = "catering,commercial,service,accommodation,leisure,amenity";
 
   const buildUrl = (cats) => {
-    let url = `${GEOAPIFY_BASE}?name=${encodeURIComponent(query)}` +
+    return `${GEOAPIFY_BASE}?name=${encodeURIComponent(query)}` +
       `&filter=circle:${lon},${lat},${Math.round(radiusM)}` +
       `&bias=proximity:${lon},${lat}` +
       `&limit=${limit}` +
-      `&apiKey=${key}`;
-    if (cats) url += `&categories=${encodeURIComponent(cats)}`;
-    return url;
+      `&apiKey=${key}` +
+      `&categories=${encodeURIComponent(cats || fallbackCats)}`;
   };
 
   try {
@@ -300,7 +313,8 @@ async function _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStat
 
     let data = await res.json();
     if ((!data.features || data.features.length === 0) && categories) {
-      res = await doFetch(buildUrl(""), {}, 5000);
+      console.log(`[Places Server] Geoapify zero results with strict categories, retrying with broad...`);
+      res = await doFetch(buildUrl(""), {}, 5000); // broad fallback
       if (res.ok) data = await res.json();
     }
 
@@ -339,18 +353,18 @@ function _inferGeoapifyCategories(query) {
   const q = query.toLowerCase();
   const cats = [];
   if (/\b(coffee|cafe|starbucks|dunkin|espresso)\b/.test(q)) cats.push("catering.cafe");
-  if (/\b(pizza|domino|hut|papa)\b/.test(q)) cats.push("catering.restaurant.pizza");
-  if (/\b(taco|mexican|tacoria|chipotle|bell)\b/.test(q)) cats.push("catering.restaurant.mexican");
-  if (/\b(burger|king|mcdonald|wendy|five guys|shake shack)\b/.test(q)) cats.push("catering.restaurant.burger");
+  if (/\b(pizza|domino|hut|papa)\b/.test(q)) cats.push("catering.restaurant");
+  if (/\b(taco|mexican|tacoria|chipotle|bell)\b/.test(q)) cats.push("catering.restaurant");
+  if (/\b(burger|king|mcdonald|wendy|five guys|shake shack)\b/.test(q)) cats.push("catering.restaurant");
   if (/\b(restaurant|food|eat|dinner|lunch|steak|grill|tavern|tap)\b/.test(q)) cats.push("catering.restaurant");
-  if (/\b(ice cream|dessert|bear|yogurt|sweet)\b/.test(q)) cats.push("catering.cafe.dessert");
+  if (/\b(ice cream|dessert|bear|yogurt|sweet)\b/.test(q)) cats.push("catering.cafe");
   if (/\b(bank|atm|chase|well|citibank|bofa)\b/.test(q)) cats.push("service.financial");
   if (/\b(gas|fuel|shell|exxon|mobil)\b/.test(q)) cats.push("service.fuel");
   if (/\b(pharmacy|cvs|walgreens|drugstore)\b/.test(q)) cats.push("healthcare.pharmacy");
-  if (/\b(grocery|supermarket|market|whole foods|trader|depot)\b/.test(q)) cats.push("commercial.supermarket");
-  if (/\b(home depot|lowes?|hardware|construction)\b/.test(q)) cats.push("commercial.construction", "commercial.houseware_and_furniture");
+  if (/\b(grocery|supermarket|market|whole foods|trader|depot|store|shop)\b/.test(q)) cats.push("commercial.supermarket");
+  if (/\b(home depot|lowes?|hardware|construction)\b/.test(q)) cats.push("commercial.construction");
   if (/\b(hotel|motel|inn|stay|accommodation)\b/.test(q)) cats.push("accommodation");
-  return cats.length === 0 ? "commercial,catering,service,accommodation,leisure" : cats.join(",");
+  return cats.length === 0 ? "" : cats.join(",");
 }
 
 async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
@@ -449,7 +463,8 @@ function _processPlaces(query, places, limit, options = {}) {
   out.sort((a, b) => b.score - a.score);
   if (options.enforceConfidenceGate) {
     const topScore = out[0]?.score || 0;
-    if (topScore < 0.60) return []; // Lowered significantly
+    console.log(`[Places Server v${PLUGIN_VERSION}] Top Score: ${topScore.toFixed(3)} for "${out[0]?.name || "N/A"}" (Gate: 0.50)`);
+    if (topScore < 0.50) return []; // Threshold lowered significantly
   }
   if (options.enforceDistanceGate) out = out.filter(p => p.distanceMeters < 80467);
   return out.slice(0, limit);
