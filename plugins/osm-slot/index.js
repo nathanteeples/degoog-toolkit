@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.3.4";
+const PLUGIN_VERSION = "2.3.5";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -303,12 +303,30 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   const out = [];
   const startAll = Date.now();
 
+  const wrapFetch = (url, init = {}, timeoutMs = 5000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    const mergedInit = { ...init };
+    if (!mergedInit.signal) {
+      mergedInit.signal = controller.signal;
+    }
+    return doFetch(url, mergedInit)
+      .then((res) => {
+        clearTimeout(id);
+        return res;
+      })
+      .catch((err) => {
+        clearTimeout(id);
+        throw err;
+      });
+  };
+
   const providerCalls = [];
 
   if (_settings.foursquareApiKey || (_settings.foursquareClientId && _settings.foursquareClientSecret)) {
     const fqStart = Date.now();
     providerCalls.push(
-      _searchFoursquare(query, lat, lon, radiusM, limit, doFetch).then((res) => {
+      _searchFoursquare(query, lat, lon, radiusM, limit, wrapFetch).then((res) => {
         console.log(`[Places Performance] Foursquare search took ${Date.now() - fqStart}ms (found ${res.length} places)`);
         return res;
       })
@@ -318,7 +336,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   if (_settings.yelpApiKey) {
     const yelpStart = Date.now();
     providerCalls.push(
-      _searchYelp(query, lat, lon, radiusM, limit, doFetch).then((res) => {
+      _searchYelp(query, lat, lon, radiusM, limit, wrapFetch).then((res) => {
         console.log(`[Places Performance] Yelp search took ${Date.now() - yelpStart}ms (found ${res.length} places)`);
         return res;
       })
@@ -339,7 +357,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
     console.log(`[Places Performance] No commercial API results. Triggering general Overpass search...`);
     const ovStart = Date.now();
     try {
-      const r = await _searchOverpass(query, lat, lon, radiusM, limit, doFetch);
+      const r = await _searchOverpass(query, lat, lon, radiusM, limit, wrapFetch);
       console.log(`[Places Performance] General Overpass search completed in ${Date.now() - ovStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (err) {
@@ -353,7 +371,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   if (out.length === 0) {
     const phStart = Date.now();
     try {
-      const r = await _searchPhoton(query, lat, lon, radiusM, limit, doFetch);
+      const r = await _searchPhoton(query, lat, lon, radiusM, limit, wrapFetch);
       console.log(`[Places Performance] Photon geocoder fallback completed in ${Date.now() - phStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (_) {}
@@ -363,7 +381,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   if (out.length === 0) {
     const nomStart = Date.now();
     try {
-      const r = await _searchNominatim(query, lat, lon, limit, doFetch);
+      const r = await _searchNominatim(query, lat, lon, limit, wrapFetch);
       console.log(`[Places Performance] Nominatim geocoder fallback completed in ${Date.now() - nomStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (_) {}
@@ -1154,14 +1172,35 @@ function _tokenSet(value) {
   return new Set(_normalizeName(value).split(" ").filter(Boolean));
 }
 
+function _tokensMatch(t1, t2) {
+  if (t1 === t2) return true;
+  if (t1 === t2 + "s" || t2 === t1 + "s") return true;
+  // Handle pizzeria / pizza / pizzas equivalence
+  if ((t1.includes("pizz") && t2.includes("pizz")) || (t1.startsWith("pizzer") && t2.startsWith("pizz"))) {
+    return true;
+  }
+  // Substring matching for longer tokens (prefix matching)
+  if (t1.length > 4 && t2.length > 4) {
+    if (t1.startsWith(t2.substring(0, 4)) || t2.startsWith(t1.substring(0, 4))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function _tokenOverlapScore(a, b) {
   const aa = _tokenSet(a);
   const bb = _tokenSet(b);
   if (!aa.size || !bb.size) return 0;
 
   let overlap = 0;
-  for (const token of aa) {
-    if (bb.has(token)) overlap++;
+  for (const t1 of aa) {
+    for (const t2 of bb) {
+      if (_tokensMatch(t1, t2)) {
+        overlap++;
+        break;
+      }
+    }
   }
 
   return overlap / Math.min(aa.size, bb.size);
