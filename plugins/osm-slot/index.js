@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.3.9";
+const PLUGIN_VERSION = "2.4.0";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -192,10 +192,36 @@ export const slot = {
       const limit = parseInt(_settings.resultsCount || "5", 10);
       const doFetch = typeof context?.fetch === "function" ? context.fetch : _fetch;
 
+      const wrapFetch = (url, init = {}, timeoutMs = 15000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        const mergedInit = { ...init };
+        if (!mergedInit.signal) {
+          mergedInit.signal = controller.signal;
+        }
+        const startFetch = Date.now();
+        console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch starting: ${url} (Timeout: ${timeoutMs}ms)`);
+        return doFetch(url, mergedInit)
+          .then((res) => {
+            clearTimeout(id);
+            console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch completed: ${url} in ${Date.now() - startFetch}ms (Status: ${res.status})`);
+            return res;
+          })
+          .catch((err) => {
+            clearTimeout(id);
+            if (err.name === "AbortError") {
+              console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch timed out: ${url} (gave up after ${timeoutMs / 1000} seconds)`);
+            } else {
+              console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch failed: ${url} in ${Date.now() - startFetch}ms:`, err);
+            }
+            throw err;
+          });
+      };
+
       console.log(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" at lat=${lat}, lon=${lon}`);
       console.log(`[Places Server v${PLUGIN_VERSION}] Configured APIs: FoursquareApiKey=${!!_settings.foursquareApiKey}, YelpApiKey=${!!_settings.yelpApiKey}, FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
 
-      const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, doFetch);
+      const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, wrapFetch);
 
       if (places.length === 0) {
         console.log(`[Places Server v${PLUGIN_VERSION}] No places found from any provider.`);
@@ -218,7 +244,7 @@ export const slot = {
         if (fallbackCount < 2 && (!place.phone || !place.website) && place.lat != null && place.lon != null) {
           fallbackCount++;
           fallbackPromises.push((async () => {
-            const fallback = await _getVenueDetailsFromOverpass(place.name, place.lat, place.lon, doFetch);
+            const fallback = await _getVenueDetailsFromOverpass(place.name, place.lat, place.lon, (url, init) => wrapFetch(url, init, 5000));
             if (fallback) {
               place.phone = place.phone || fallback.phone;
               place.website = place.website || fallback.website;
@@ -326,34 +352,13 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   const out = [];
   const startAll = Date.now();
 
-  const wrapFetch = (url, init = {}, timeoutMs = 15000) => {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeoutMs);
-    const mergedInit = { ...init };
-    if (!mergedInit.signal) {
-      mergedInit.signal = controller.signal;
-    }
-    return doFetch(url, mergedInit)
-      .then((res) => {
-        clearTimeout(id);
-        return res;
-      })
-      .catch((err) => {
-        clearTimeout(id);
-        if (err.name === "AbortError") {
-          console.warn(`[Places Performance] Request to ${url} timed out: gave up after ${timeoutMs / 1000} seconds.`);
-        }
-        throw err;
-      });
-  };
-
   const providerCalls = [];
 
   if (_settings.foursquareApiKey || (_settings.foursquareClientId && _settings.foursquareClientSecret)) {
     const fqStart = Date.now();
     providerCalls.push(
-      _searchFoursquare(query, lat, lon, radiusM, limit, wrapFetch).then((res) => {
-        console.log(`[Places Performance] Foursquare search took ${Date.now() - fqStart}ms (found ${res.length} places)`);
+      _searchFoursquare(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 10000)).then((res) => {
+        console.log(`[Places Performance v${PLUGIN_VERSION}] Foursquare search completed in ${Date.now() - fqStart}ms (found ${res.length} places)`);
         return res;
       })
     );
@@ -362,8 +367,8 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   if (_settings.yelpApiKey) {
     const yelpStart = Date.now();
     providerCalls.push(
-      _searchYelp(query, lat, lon, radiusM, limit, wrapFetch).then((res) => {
-        console.log(`[Places Performance] Yelp search took ${Date.now() - yelpStart}ms (found ${res.length} places)`);
+      _searchYelp(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 10000)).then((res) => {
+        console.log(`[Places Performance v${PLUGIN_VERSION}] Yelp search completed in ${Date.now() - yelpStart}ms (found ${res.length} places)`);
         return res;
       })
     );
@@ -380,25 +385,25 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
 
   // If no results from Foursquare/Yelp, or if neither is configured, fallback to general Overpass search
   if (out.length === 0) {
-    console.log(`[Places Performance] No commercial API results. Triggering general Overpass search...`);
+    console.log(`[Places Performance v${PLUGIN_VERSION}] No commercial API results. Triggering general Overpass search...`);
     const ovStart = Date.now();
     try {
-      const r = await _searchOverpass(query, lat, lon, radiusM, limit, wrapFetch);
-      console.log(`[Places Performance] General Overpass search completed in ${Date.now() - ovStart}ms (found ${r.length} places)`);
+      const r = await _searchOverpass(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 5000));
+      console.log(`[Places Performance v${PLUGIN_VERSION}] General Overpass search completed in ${Date.now() - ovStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (err) {
-      console.error(`[Places Performance] General Overpass search failed after ${Date.now() - ovStart}ms:`, err);
+      console.error(`[Places Performance v${PLUGIN_VERSION}] General Overpass search failed after ${Date.now() - ovStart}ms:`, err);
     }
   } else {
-    console.log(`[Places Performance] Skipping general Overpass search (found ${out.length} commercial places).`);
+    console.log(`[Places Performance v${PLUGIN_VERSION}] Skipping general Overpass search (found ${out.length} commercial places).`);
   }
 
   // Photon — free geocoder fallback (no key)
   if (out.length === 0) {
     const phStart = Date.now();
     try {
-      const r = await _searchPhoton(query, lat, lon, radiusM, limit, wrapFetch);
-      console.log(`[Places Performance] Photon geocoder fallback completed in ${Date.now() - phStart}ms (found ${r.length} places)`);
+      const r = await _searchPhoton(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 4000));
+      console.log(`[Places Performance v${PLUGIN_VERSION}] Photon geocoder fallback completed in ${Date.now() - phStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (_) {}
   }
@@ -407,13 +412,13 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   if (out.length === 0) {
     const nomStart = Date.now();
     try {
-      const r = await _searchNominatim(query, lat, lon, limit, wrapFetch);
-      console.log(`[Places Performance] Nominatim geocoder fallback completed in ${Date.now() - nomStart}ms (found ${r.length} places)`);
+      const r = await _searchNominatim(query, lat, lon, limit, (url, init) => doFetch(url, init, 4000));
+      console.log(`[Places Performance v${PLUGIN_VERSION}] Nominatim geocoder fallback completed in ${Date.now() - nomStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (_) {}
   }
 
-  console.log(`[Places Performance] Total _searchAllProviders execution time: ${Date.now() - startAll}ms`);
+  console.log(`[Places Performance v${PLUGIN_VERSION}] Total _searchAllProviders execution time: ${Date.now() - startAll}ms`);
   return out;
 }
 
@@ -1328,9 +1333,10 @@ function _fmtFsqAddress(loc) {
 async function _getVenueDetailsFromOverpass(name, lat, lon, doFetch) {
   if (!name) return null;
   const start = Date.now();
+  console.log(`[Places Performance v${PLUGIN_VERSION}] Starting targeted Overpass details fallback for "${name}" at lat=${lat}, lon=${lon}...`);
   
   // Query all named elements within 300 meters
-  const q = `[out:json][timeout:15];
+  const q = `[out:json][timeout:5];
 (
   node["name"](around:300,${lat},${lon});
   way["name"](around:300,${lat},${lon});
@@ -1339,7 +1345,7 @@ async function _getVenueDetailsFromOverpass(name, lat, lon, doFetch) {
 out center 20;`.trim();
 
   const controller = new AbortController();
-  const timeoutMs = 15000;
+  const timeoutMs = 5000;
   const id = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
