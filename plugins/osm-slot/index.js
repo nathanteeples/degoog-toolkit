@@ -1,6 +1,6 @@
 // Places slot plugin — local place recognition with Foursquare v2, Overpass, Photon, and Nominatim.
 
-const PLUGIN_NAME = "Places";
+const PLUGIN_NAME = "Places - alpha";
 const PLUGIN_VERSION = "3.1.0";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
@@ -892,6 +892,11 @@ function _processPlaces(query, rawPlaces, limit, options = {}) {
   });
 
   const filtered = scored.filter((place) => {
+    // Filter out places that are too far (e.g. > 100 miles) as they are not local.
+    if (place.distanceMeters > 100 * 1609.34) {
+      return false;
+    }
+
     if (options.enforceConfidenceGate) {
       if (place._matchScore < 0.55) return false;
       if (closestDistance > 40 * 1000 && place._matchScore < 0.75) return false;
@@ -1146,31 +1151,23 @@ function _hasCityOrZipHint(query) {
 function _looksProbablyPlaceQuery(rawQuery) {
   const query = _normalizeQuery(rawQuery);
   const lower = query.toLowerCase();
-  const words = _wordCount(query);
 
   if (!query || query.length < 3) return false;
   if (query.length > 80) return false;
   if (URL_OR_CODE_RE.test(query)) return false;
-
-  // Explicit local intent always gets a chance, unless it looks like code.
-  if (LOCAL_INTENT_RE.test(lower)) return true;
 
   // Obvious informational/software/scientific/tech searches should not trigger.
   if (NON_PLACE_RE.test(lower) || GENERAL_INFO_RE.test(lower) || TECH_SCIENCE_RE.test(lower)) {
     return false;
   }
 
-  // Single-word queries: let distance gate decide.
-  if (words === 1) {
-    return true;
-  }
+  // To trigger, the query MUST have a local intent, a place category, a known chain, or a city/state/zip hint.
+  const hasLocalIntent = LOCAL_INTENT_RE.test(lower);
+  const hasCategory = PLACE_CATEGORY_RE.test(lower);
+  const hasChain = KNOWN_CHAIN_RE.test(lower);
+  const hasLocationHint = _hasCityOrZipHint(lower);
 
-  // Multi-word queries: 2 to 6 words.
-  if (words >= 2 && words <= 6) {
-    return true;
-  }
-
-  return false;
+  return hasLocalIntent || hasCategory || hasChain || hasLocationHint;
 }
 
 function _normalizeName(value) {
