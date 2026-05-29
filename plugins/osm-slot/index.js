@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.3.8";
+const PLUGIN_VERSION = "2.3.9";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -192,13 +192,13 @@ export const slot = {
       const limit = parseInt(_settings.resultsCount || "5", 10);
       const doFetch = typeof context?.fetch === "function" ? context.fetch : _fetch;
 
-      console.log(`[Places Server] Query: "${q}" at lat=${lat}, lon=${lon}`);
-      console.log(`[Places Server] Configured APIs: FoursquareApiKey=${!!_settings.foursquareApiKey}, YelpApiKey=${!!_settings.yelpApiKey}, FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
+      console.log(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" at lat=${lat}, lon=${lon}`);
+      console.log(`[Places Server v${PLUGIN_VERSION}] Configured APIs: FoursquareApiKey=${!!_settings.foursquareApiKey}, YelpApiKey=${!!_settings.yelpApiKey}, FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
 
       const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, doFetch);
 
       if (places.length === 0) {
-        console.log(`[Places Server] No places found from any provider.`);
+        console.log(`[Places Server v${PLUGIN_VERSION}] No places found from any provider.`);
         return { html: "" };
       }
 
@@ -207,14 +207,37 @@ export const slot = {
         enforceConfidenceGate: true,
       });
 
-      console.log(`[Places Server] Final ${top.length} processed places:`);
-      top.forEach((p, idx) => {
-        console.log(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source}`);
-      });
-
       if (top.length === 0) {
         return { html: "" };
       }
+
+      // Centralized fallback details fetch for top displayed results
+      const fallbackPromises = [];
+      let fallbackCount = 0;
+      for (const place of top) {
+        if (fallbackCount < 2 && (!place.phone || !place.website) && place.lat != null && place.lon != null) {
+          fallbackCount++;
+          fallbackPromises.push((async () => {
+            const fallback = await _getVenueDetailsFromOverpass(place.name, place.lat, place.lon, doFetch);
+            if (fallback) {
+              place.phone = place.phone || fallback.phone;
+              place.website = place.website || fallback.website;
+              if (fallback.openingHours && !place.hours?.display) {
+                place.hours = place.hours || { openNow: null, display: null, status: null };
+                place.hours.display = fallback.openingHours;
+              }
+            }
+          })());
+        }
+      }
+      if (fallbackPromises.length > 0) {
+        await Promise.allSettled(fallbackPromises);
+      }
+
+      console.log(`[Places Server v${PLUGIN_VERSION}] Final ${top.length} processed places:`);
+      top.forEach((p, idx) => {
+        console.log(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source} - Hours: ${p.hours ? JSON.stringify(p.hours) : "None"}`);
+      });
 
       const html = _renderCard(
         top,
@@ -431,7 +454,6 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.results)) {
-          const fallbackPromises = [];
           for (const r of data.results) {
             const plat = r.geocodes?.main?.latitude;
             const plon = r.geocodes?.main?.longitude;
@@ -464,24 +486,6 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
               sourceUrl: `https://foursquare.com/v/${r.fsq_id}`,
             };
             out.push(place);
-
-            // Target top results to avoid slamming Overpass API
-            if (out.length <= limit && (!place.phone || !place.website)) {
-              fallbackPromises.push((async () => {
-                const fallback = await _getVenueDetailsFromOverpass(r.name, plat, plon, doFetch);
-                if (fallback) {
-                  place.phone = place.phone || fallback.phone;
-                  place.website = place.website || fallback.website;
-                  if (fallback.openingHours && !place.hours?.display) {
-                    place.hours = place.hours || { openNow: null, display: null, status: null };
-                    place.hours.display = fallback.openingHours;
-                  }
-                }
-              })());
-            }
-          }
-          if (fallbackPromises.length > 0) {
-            await Promise.allSettled(fallbackPromises);
           }
         }
       }
@@ -573,19 +577,6 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
                   }
                 } catch (detailErr) {
                   console.warn(`[places] Foursquare v2 detail fetch failed for ${v.id}:`, detailErr);
-                }
-
-                // Fallback to Overpass if details fetch failed/was skipped or phone/website are missing
-                if (!place.phone || !place.website) {
-                  const fallback = await _getVenueDetailsFromOverpass(v.name, plat, plon, doFetch);
-                  if (fallback) {
-                    place.phone = place.phone || fallback.phone;
-                    place.website = place.website || fallback.website;
-                    if (fallback.openingHours && !place.hours?.display) {
-                      place.hours = place.hours || { openNow: null, display: null, status: null };
-                      place.hours.display = fallback.openingHours;
-                    }
-                  }
                 }
               })());
             }
@@ -1043,7 +1034,7 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
   const mapHtml = _renderMap(places);
 
   return `
-<div class="places-wrap slot-full-width">
+<div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}">
   <div class="places-header">
     <span class="places-label">Places</span>
     <span class="places-subhead">near ${_esc(locationLabel)}</span>

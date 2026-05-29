@@ -112,20 +112,30 @@
 
   var loggingTimeout = null;
   function _logClientSummary() {
+    var wrap = document.querySelector(".places-wrap");
+    var version = wrap ? wrap.dataset.placesVersion : "unknown";
     var cards = document.querySelectorAll(".places-card[data-place-card]");
     if (cards.length === 0) return;
-    console.log("[Places Client] Active Place Cards Summary:");
+    console.log("[Places Client v" + version + "] Active Place Cards Summary:");
     cards.forEach(function (card, idx) {
       var name = card.querySelector(".places-name")?.textContent || "Unknown";
       var dist = card.querySelector(".places-distance")?.textContent || "Unknown";
       var hasPhone = !card.querySelector(".places-action-call")?.classList.contains("places-disabled");
       var hasWebsite = !card.querySelector(".places-action-website")?.classList.contains("places-disabled");
       var address = card.querySelector(".places-address")?.title || "Unknown";
+      var hoursBadge = card.querySelector(".places-hours")?.textContent || "NONE";
+      var hoursDetail = card.querySelector(".places-hours-detail")?.textContent || "NONE";
+      var lat = card.dataset.lat || "unknown";
+      var lon = card.dataset.lon || "unknown";
       console.log(
         "  [" + idx + "] Name: " + name + 
         " | Dist: " + dist + 
+        " | Lat: " + lat + 
+        " | Lon: " + lon + 
         " | Phone: " + (hasPhone ? "AVAILABLE" : "MISSING") + 
         " | Website: " + (hasWebsite ? "AVAILABLE" : "MISSING") +
+        " | Hours Badge: " + hoursBadge +
+        " | Hours Detail: " + hoursDetail +
         " | Address: " + address
       );
     });
