@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.4.9";
+const PLUGIN_VERSION = "2.5.0";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -1814,6 +1814,23 @@ function _formatOsmHours(openingHours) {
         return `${to12Hr(parts[0])}–${to12Hr(parts[1])}`;
       }
       return range;
+    });
+
+    const timesJoined = formattedRanges.join(", ");
+    if (daysPart) {
+      if (daysPart.endsWith(":")) {
+        formattedSegments.push(`${daysPart} ${timesJoined}`);
+      } else {
+        formattedSegments.push(`${daysPart}: ${timesJoined}`);
+      }
+    } else {
+      formattedSegments.push(timesJoined);
+    }
+  }
+
+  return formattedSegments.join(", ");
+}
+eturn range;
     });
 
     const timesJoined = formattedRanges.join(", ");
