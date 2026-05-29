@@ -115,6 +115,28 @@
     document.querySelectorAll(".places-wrap").forEach(function (wrap) {
       var version = wrap.dataset.placesVersion || "unknown";
       var cards = wrap.querySelectorAll(".places-card[data-place-card]");
+      
+      // LOG ALWAYS if dataset has API status, even if 0 cards
+      if (wrap.dataset.placesApis) {
+        try {
+          var apis = JSON.parse(wrap.dataset.placesApis);
+          console.log("[Places Client v" + version + "] API Execution Status:");
+          Object.keys(apis).forEach(function (key) {
+            var api = apis[key];
+            var statusStr = api.status;
+            if (api.configured === false) {
+              statusStr = "not configured";
+            }
+            var detail = "Status: " + statusStr;
+            if (api.count !== undefined) detail += " | Results: " + api.count;
+            if (api.error) detail += " | Error: " + api.error;
+            console.log("  - " + key + ": " + detail);
+          });
+        } catch (err) {
+          console.warn("[Places Client] Failed to parse API status:", err);
+        }
+      }
+
       if (cards.length === 0) return;
 
       console.log("[Places Client v" + version + "] Active Place Cards Summary:");
@@ -140,46 +162,28 @@
           " | Address: " + address
         );
       });
-
-      if (wrap.dataset.placesApis) {
-        try {
-          var apis = JSON.parse(wrap.dataset.placesApis);
-          console.log("[Places Client v" + version + "] API Execution Status:");
-          Object.keys(apis).forEach(function (key) {
-            var api = apis[key];
-            var statusStr = api.status;
-            if (api.configured === false) {
-              statusStr = "not configured";
-            }
-            var detail = "Status: " + statusStr;
-            if (api.count !== undefined) detail += " | Results: " + api.count;
-            if (api.error) detail += " | Error: " + api.error;
-            console.log("  - " + key + ": " + detail);
-          });
-        } catch (err) {
-          console.warn("[Places Client] Failed to parse API status:", err);
-        }
-      }
     });
   }
 
   function _initPlaceCards() {
-    var newCardsFound = false;
-    document.querySelectorAll(".places-card[data-place-card]:not([data-places-card-init])").forEach(function (card) {
-      card.dataset.placesCardInit = "1";
-      newCardsFound = true;
-      card.addEventListener("click", function (event) {
-        if (event.target.closest("a,button")) return;
-        _selectPlace(card);
-      });
-      card.addEventListener("keydown", function (event) {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        if (event.target.closest("a,button")) return;
-        event.preventDefault();
-        _selectPlace(card);
+    var anyWrapFound = false;
+    document.querySelectorAll(".places-wrap:not([data-places-card-init])").forEach(function (wrap) {
+      wrap.dataset.placesCardInit = "1";
+      anyWrapFound = true;
+      wrap.querySelectorAll(".places-card[data-place-card]").forEach(function (card) {
+        card.addEventListener("click", function (event) {
+          if (event.target.closest("a,button")) return;
+          _selectPlace(card);
+        });
+        card.addEventListener("keydown", function (event) {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          if (event.target.closest("a,button")) return;
+          event.preventDefault();
+          _selectPlace(card);
+        });
       });
     });
-    if (newCardsFound) {
+    if (anyWrapFound) {
       if (loggingTimeout) clearTimeout(loggingTimeout);
       loggingTimeout = setTimeout(_logClientSummary, 100);
     }
