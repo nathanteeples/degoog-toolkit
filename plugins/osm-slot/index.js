@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Geoapify (primary) and Foursquare (booster).
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.8.3";
+const PLUGIN_VERSION = "2.8.4";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -163,16 +163,16 @@ export const slot = {
         const start = Date.now();
         return doFetch(url, mergedInit).then(res => { 
           clearTimeout(id); 
-          console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch OK: ${url.split("?")[0]} (${Date.now() - start}ms)`);
+          console.log(`[Places v${PLUGIN_VERSION}] Fetch OK: ${url.split("?")[0]} (${Date.now() - start}ms)`);
           return res; 
         }).catch(err => { 
           clearTimeout(id); 
-          console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch FAIL: ${url.split("?")[0]} (${Date.now() - start}ms): ${err.message}`);
+          console.warn(`[Places v${PLUGIN_VERSION}] Fetch FAIL: ${url.split("?")[0]}: ${err.message}`);
           throw err; 
         });
       };
 
-      console.log(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" at lat=${lat}, lon=${lon}`);
+      console.log(`[Places v${PLUGIN_VERSION}] Query: "${q}" at lat=${lat}, lon=${lon}`);
 
       const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus);
 
@@ -182,20 +182,14 @@ export const slot = {
       });
 
       if (top.length === 0) {
-        console.log(`[Places Server v${PLUGIN_VERSION}] No results passing gate for: "${q}" (Total found: ${places.length})`);
+        console.log(`[Places v${PLUGIN_VERSION}] No results passing gate for: "${q}" (Found: ${places.length})`);
         return { 
           html: `<div class="places-wrap" style="display:none" data-places-version="${PLUGIN_VERSION}" data-places-apis='${JSON.stringify(apiStatus)}'></div>` 
         };
       }
 
-      console.log(`[Places Server v${PLUGIN_VERSION}] Returning ${top.length} places.`);
-      const html = _renderCard(
-        top,
-        q,
-        _settings.defaultLocationLabel || "Home",
-        _settings.useBrowserGeolocation,
-        apiStatus
-      );
+      console.log(`[Places v${PLUGIN_VERSION}] Returning ${top.length} places.`);
+      const html = _renderCard(top, q, _settings.defaultLocationLabel || "Home", _settings.useBrowserGeolocation, apiStatus);
       return { html };
     } catch (err) {
       console.error("[places] execute failed:", err);
@@ -219,8 +213,7 @@ export const routes = [
         let body = {};
         try { body = await request.json(); } catch (_) { if (request.body) body = request.body; }
         const { lat, lon, query } = body;
-        const latNum = parseFloat(lat);
-        const lonNum = parseFloat(lon);
+        const latNum = parseFloat(lat); const lonNum = parseFloat(lon);
         if (!Number.isFinite(latNum) || !Number.isFinite(lonNum)) return _jsonResponse({ error: "Invalid coords" }, 400);
 
         const radiusMiles = parseInt(_settings.defaultRadius || "25", 10);
@@ -238,16 +231,12 @@ export const routes = [
         if (top.length === 0) return _jsonResponse({ html: "" });
         const html = _renderCard(top, query || "", "your location", false, apiStatus);
         return _jsonResponse({ html });
-      } catch (err) {
-        return _jsonResponse({ html: "" });
-      }
+      } catch (err) { return _jsonResponse({ html: "" }); }
     },
   },
 ];
 
-function _jsonResponse(obj, status = 200) {
-  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
-}
+function _jsonResponse(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }
 
 /* ------------------------------------------------------------------ */
 /* Provider orchestration                                              */
@@ -255,32 +244,24 @@ function _jsonResponse(obj, status = 200) {
 
 async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
   let out = [];
-
   if (_settings.geoapifyApiKey) {
     try {
       out = await _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStatus);
-      if (out.length > 0) return out;
-    } catch (err) {
-      console.error(`[Places] Geoapify failed:`, err);
-    }
+      if (out.length > 0) { console.log(`[Places] Geoapify primary success (${out.length} results)`); return out; }
+    } catch (err) { console.error(`[Places] Geoapify failed:`, err); }
   }
-
   if (out.length < limit && _settings.foursquareApiKey) {
     try {
       const fqResults = await _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiStatus);
-      out.push(...fqResults);
-    } catch (err) {
-      console.error(`[Places] Foursquare failed:`, err);
-    }
+      if (fqResults.length > 0) { console.log(`[Places] Foursquare booster added ${fqResults.length} results`); out.push(...fqResults); }
+    } catch (err) { console.error(`[Places] Foursquare failed:`, err); }
   }
-
   if (out.length === 0 && _settings.locationiqApiKey) {
     try {
       const liqResults = await _searchLocationIQ(query, lat, lon, limit, doFetch, apiStatus);
-      out.push(...liqResults);
+      if (liqResults.length > 0) { console.log(`[Places] LocationIQ fallback added ${liqResults.length} results`); out.push(...liqResults); }
     } catch (_) {}
   }
-
   return out;
 }
 
@@ -290,7 +271,6 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch, api
 
 async function _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
   if (apiStatus?.geoapify) apiStatus.geoapify.status = "processing";
-
   const key = _settings.geoapifyApiKey || "0a2341f20dfa4b92952a726eb1e36554";
   const categories = _inferGeoapifyCategories(query);
   const fallbackCats = "catering,commercial,service,accommodation,leisure,amenity";
@@ -310,27 +290,20 @@ async function _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStat
       if (apiStatus?.geoapify) { apiStatus.geoapify.status = "error"; apiStatus.geoapify.error = `HTTP ${res.status}`; }
       return [];
     }
-
     let data = await res.json();
     if ((!data.features || data.features.length === 0) && categories) {
-      console.log(`[Places Server] Geoapify zero results with strict categories, retrying with broad...`);
-      res = await doFetch(buildUrl(""), {}, 5000); // broad fallback
+      console.log(`[Places] Geoapify 0 results with categories, retrying broad...`);
+      res = await doFetch(buildUrl(""), {}, 5000);
       if (res.ok) data = await res.json();
     }
-
-    if (!data?.features || !Array.isArray(data.features)) {
-      if (apiStatus?.geoapify) apiStatus.geoapify.status = "success";
-      return [];
-    }
+    if (!data?.features || !Array.isArray(data.features)) { if (apiStatus?.geoapify) apiStatus.geoapify.status = "success"; return []; }
 
     const out = data.features.map(f => {
-      const p = f.properties;
-      if (!p) return null;
+      const p = f.properties; if (!p) return null;
       return {
         name: p.name || p.street || query,
         address: p.formatted || p.address_line2 || "",
-        lat: p.lat,
-        lon: p.lon,
+        lat: p.lat, lon: p.lon,
         distanceMeters: p.distance || _haversine(lat, lon, p.lat, p.lon),
         phone: p.contact?.phone || null,
         website: p.contact?.website || null,
@@ -362,7 +335,7 @@ function _inferGeoapifyCategories(query) {
   if (/\b(gas|fuel|shell|exxon|mobil)\b/.test(q)) cats.push("service.fuel");
   if (/\b(pharmacy|cvs|walgreens|drugstore)\b/.test(q)) cats.push("healthcare.pharmacy");
   if (/\b(grocery|supermarket|market|whole foods|trader|depot|store|shop)\b/.test(q)) cats.push("commercial.supermarket");
-  if (/\b(home depot|lowes?|hardware|construction)\b/.test(q)) cats.push("commercial.construction");
+  if (/\b(home depot|lowes?|hardware|construction)\b/.test(q)) cats.push("commercial.houseware_and_hardware");
   if (/\b(hotel|motel|inn|stay|accommodation)\b/.test(q)) cats.push("accommodation");
   return cats.length === 0 ? "" : cats.join(",");
 }
@@ -370,53 +343,38 @@ function _inferGeoapifyCategories(query) {
 async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
   if (apiStatus?.foursquareV3) apiStatus.foursquareV3.status = "processing";
   if (!_settings.foursquareApiKey) { if (apiStatus?.foursquareV3) apiStatus.foursquareV3.status = "unused"; return []; }
-
   try {
     const authHeader = _settings.foursquareApiKey.startsWith("fsq3") ? _settings.foursquareApiKey : `Bearer ${_settings.foursquareApiKey}`;
     const fields = "name,location,geocodes,categories,tel,website,hours,rating,stats,fsq_id,distance";
     const url = `${FOURSQUARE_BASE}?query=${encodeURIComponent(query)}&ll=${lat},${lon}&radius=${Math.round(radiusM)}&limit=${limit}&fields=${encodeURIComponent(fields)}`;
     const res = await doFetch(url, { headers: { Authorization: authHeader, Accept: "application/json", "X-Places-Api-Version": "2025-06-17" } });
-
     if (res.ok) {
       const data = await res.json();
       const out = (data.results || []).map((r) => ({
-        name: r.name,
-        address: _fmtFsqAddress(r.location),
-        lat: r.geocodes?.main?.latitude,
-        lon: r.geocodes?.main?.longitude,
+        name: r.name, address: _fmtFsqAddress(r.location),
+        lat: r.geocodes?.main?.latitude, lon: r.geocodes?.main?.longitude,
         distanceMeters: r.distance || _haversine(lat, lon, r.geocodes?.main?.latitude, r.geocodes?.main?.longitude),
-        phone: r.tel || null,
-        website: r.website || null,
+        phone: r.tel || null, website: r.website || null,
         categories: (r.categories || []).map((c) => c.name),
         hours: r.hours?.display ? { display: r.hours.display, openNow: r.hours.open_now } : null,
-        rating: r.rating ? r.rating / 2 : null,
-        reviewCount: r.stats?.total_ratings || null,
-        source: "Foursquare",
-        sourceUrl: `https://foursquare.com/v/${r.fsq_id}`,
+        rating: r.rating ? r.rating / 2 : null, reviewCount: r.stats?.total_ratings || null,
+        source: "Foursquare", sourceUrl: `https://foursquare.com/v/${r.fsq_id}`,
       }));
       if (apiStatus?.foursquareV3) { apiStatus.foursquareV3.status = "success"; apiStatus.foursquareV3.count = out.length; }
       return out;
-    } else {
-      if (apiStatus?.foursquareV3) { apiStatus.foursquareV3.status = "error"; apiStatus.foursquareV3.error = `HTTP ${res.status}`; }
-      return [];
-    }
-  } catch (e) {
-    if (apiStatus?.foursquareV3) { apiStatus.foursquareV3.status = "error"; apiStatus.foursquareV3.error = e.message; }
-    return [];
-  }
+    } else { if (apiStatus?.foursquareV3) { apiStatus.foursquareV3.status = "error"; apiStatus.foursquareV3.error = `HTTP ${res.status}`; } return []; }
+  } catch (e) { if (apiStatus?.foursquareV3) { apiStatus.foursquareV3.status = "error"; apiStatus.foursquareV3.error = e.message; } return []; }
 }
 
 async function _searchLocationIQ(query, lat, lon, limit, doFetch, apiStatus) {
   if (apiStatus?.locationiq) apiStatus.locationiq.status = "processing";
   const key = _settings.locationiqApiKey || "pk.14ed93f5ee290008c448b4a0f07f73ad";
   const url = `https://us1.locationiq.com/v1/search?key=${encodeURIComponent(key)}&q=${encodeURIComponent(query)}&format=json&limit=${limit}&addressdetails=1&extratags=1&lat=${lat}&lon=${lon}`;
-
   try {
     const res = await doFetch(url, {}, 5000);
     if (!res.ok) { if (apiStatus?.locationiq) { apiStatus.locationiq.status = "error"; apiStatus.locationiq.error = `HTTP ${res.status}`; } return []; }
     const data = await res.json();
     if (!Array.isArray(data)) { if (apiStatus?.locationiq) apiStatus.locationiq.status = "success"; return []; }
-
     const out = data.map((r) => {
       const plat = parseFloat(r.lat); const plon = parseFloat(r.lon);
       if (!Number.isFinite(plat) || !Number.isFinite(plon)) return null;
@@ -434,13 +392,9 @@ async function _searchLocationIQ(query, lat, lon, limit, doFetch, apiStatus) {
         sourceUrl: r.osm_type && r.osm_id ? `https://www.openstreetmap.org/${r.osm_type}/${r.osm_id}` : `https://www.openstreetmap.org/?mlat=${plat}&mlon=${plon}`,
       };
     }).filter(Boolean);
-
     if (apiStatus?.locationiq) { apiStatus.locationiq.status = "success"; apiStatus.locationiq.count = out.length; }
     return out;
-  } catch (e) {
-    if (apiStatus?.locationiq) { apiStatus.locationiq.status = "error"; apiStatus.locationiq.error = e.message; }
-    return [];
-  }
+  } catch (e) { if (apiStatus?.locationiq) { apiStatus.locationiq.status = "error"; apiStatus.locationiq.error = e.message; } return []; }
 }
 
 /* ------------------------------------------------------------------ */
@@ -458,13 +412,13 @@ function _processPlaces(query, places, limit, options = {}) {
     const categoryRelevance = hasCategoryMatch ? 1 : 0.5;
     const completeness = (p.phone ? 0.3 : 0) + (p.website ? 0.3 : 0) + (p.hours ? 0.3 : 0) + 0.1;
     p.score = (0.45 * nameSim) + (0.25 * distanceScore) + (0.20 * categoryRelevance) + (0.10 * completeness);
+    console.log(`[Places] Scored "${p.name}": ${p.score.toFixed(3)} (Sim: ${nameSim.toFixed(2)}, Dist: ${distanceScore.toFixed(2)})`);
   });
 
   out.sort((a, b) => b.score - a.score);
   if (options.enforceConfidenceGate) {
     const topScore = out[0]?.score || 0;
-    console.log(`[Places Server v${PLUGIN_VERSION}] Top Score: ${topScore.toFixed(3)} for "${out[0]?.name || "N/A"}" (Gate: 0.50)`);
-    if (topScore < 0.50) return []; // Threshold lowered significantly
+    if (topScore < 0.40) return []; // Lowered significantly to 0.40
   }
   if (options.enforceDistanceGate) out = out.filter(p => p.distanceMeters < 80467);
   return out.slice(0, limit);
