@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Geoapify (primary) and Foursquare (booster).
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.8.4";
+const PLUGIN_VERSION = "2.8.5";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -141,9 +141,7 @@ export const slot = {
       locationiq: { configured: !!_settings.locationiqApiKey, status: "unused", error: null, count: 0 }
     };
 
-    if (!_looksProbablyPlaceQuery(q)) {
-      return { html: "" };
-    }
+    if (!_looksProbablyPlaceQuery(q)) return { html: "" };
 
     try {
       const lat = parseFloat(_settings.defaultLat);
@@ -172,7 +170,7 @@ export const slot = {
         });
       };
 
-      console.log(`[Places v${PLUGIN_VERSION}] Query: "${q}" at lat=${lat}, lon=${lon}`);
+      console.log(`[Places v${PLUGIN_VERSION}] Executing: "${q}" (Radius: ${radiusMiles}mi) at ${lat}, ${lon}`);
 
       const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus);
 
@@ -182,13 +180,13 @@ export const slot = {
       });
 
       if (top.length === 0) {
-        console.log(`[Places v${PLUGIN_VERSION}] No results passing gate for: "${q}" (Found: ${places.length})`);
+        console.log(`[Places v${PLUGIN_VERSION}] 0 results passed gate for "${q}" (Total found: ${places.length})`);
         return { 
           html: `<div class="places-wrap" style="display:none" data-places-version="${PLUGIN_VERSION}" data-places-apis='${JSON.stringify(apiStatus)}'></div>` 
         };
       }
 
-      console.log(`[Places v${PLUGIN_VERSION}] Returning ${top.length} places.`);
+      console.log(`[Places v${PLUGIN_VERSION}] Success: Returning ${top.length} places.`);
       const html = _renderCard(top, q, _settings.defaultLocationLabel || "Home", _settings.useBrowserGeolocation, apiStatus);
       return { html };
     } catch (err) {
@@ -246,20 +244,20 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch, api
   let out = [];
   if (_settings.geoapifyApiKey) {
     try {
-      out = await _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStatus);
-      if (out.length > 0) { console.log(`[Places] Geoapify primary success (${out.length} results)`); return out; }
+      const results = await _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStatus);
+      if (results.length > 0) { console.log(`[Places] Geoapify success: ${results.length} found.`); out.push(...results); }
     } catch (err) { console.error(`[Places] Geoapify failed:`, err); }
   }
   if (out.length < limit && _settings.foursquareApiKey) {
     try {
       const fqResults = await _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiStatus);
-      if (fqResults.length > 0) { console.log(`[Places] Foursquare booster added ${fqResults.length} results`); out.push(...fqResults); }
+      if (fqResults.length > 0) { console.log(`[Places] Foursquare booster: ${fqResults.length} added.`); out.push(...fqResults); }
     } catch (err) { console.error(`[Places] Foursquare failed:`, err); }
   }
-  if (out.length === 0 && _settings.locationiqApiKey) {
+  if (out.length < limit && _settings.locationiqApiKey) {
     try {
       const liqResults = await _searchLocationIQ(query, lat, lon, limit, doFetch, apiStatus);
-      if (liqResults.length > 0) { console.log(`[Places] LocationIQ fallback added ${liqResults.length} results`); out.push(...liqResults); }
+      if (liqResults.length > 0) { console.log(`[Places] LocationIQ fallback: ${liqResults.length} added.`); out.push(...liqResults); }
     } catch (_) {}
   }
   return out;
@@ -292,7 +290,6 @@ async function _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStat
     }
     let data = await res.json();
     if ((!data.features || data.features.length === 0) && categories) {
-      console.log(`[Places] Geoapify 0 results with categories, retrying broad...`);
       res = await doFetch(buildUrl(""), {}, 5000);
       if (res.ok) data = await res.json();
     }
@@ -326,18 +323,18 @@ function _inferGeoapifyCategories(query) {
   const q = query.toLowerCase();
   const cats = [];
   if (/\b(coffee|cafe|starbucks|dunkin|espresso)\b/.test(q)) cats.push("catering.cafe");
-  if (/\b(pizza|domino|hut|papa)\b/.test(q)) cats.push("catering.restaurant");
-  if (/\b(taco|mexican|tacoria|chipotle|bell)\b/.test(q)) cats.push("catering.restaurant");
-  if (/\b(burger|king|mcdonald|wendy|five guys|shake shack)\b/.test(q)) cats.push("catering.restaurant");
+  if (/\b(pizza|domino|hut|papa)\b/.test(q)) cats.push("catering.restaurant.pizza");
+  if (/\b(taco|mexican|tacoria|chipotle|bell)\b/.test(q)) cats.push("catering.restaurant.mexican");
+  if (/\b(burger|king|mcdonald|wendy|five guys|shake shack)\b/.test(q)) cats.push("catering.restaurant.burger");
   if (/\b(restaurant|food|eat|dinner|lunch|steak|grill|tavern|tap)\b/.test(q)) cats.push("catering.restaurant");
-  if (/\b(ice cream|dessert|bear|yogurt|sweet)\b/.test(q)) cats.push("catering.cafe");
-  if (/\b(bank|atm|chase|well|citibank|bofa)\b/.test(q)) cats.push("service.financial");
+  if (/\b(ice cream|dessert|bear|yogurt|sweet)\b/.test(q)) cats.push("catering.cafe.ice_cream");
+  if (/\b(bank|atm|chase|well|citibank|bofa)\b/.test(q)) cats.push("service.financial.bank");
   if (/\b(gas|fuel|shell|exxon|mobil)\b/.test(q)) cats.push("service.fuel");
   if (/\b(pharmacy|cvs|walgreens|drugstore)\b/.test(q)) cats.push("healthcare.pharmacy");
-  if (/\b(grocery|supermarket|market|whole foods|trader|depot|store|shop)\b/.test(q)) cats.push("commercial.supermarket");
-  if (/\b(home depot|lowes?|hardware|construction)\b/.test(q)) cats.push("commercial.houseware_and_hardware");
+  if (/\b(grocery|supermarket|market|whole foods|trader)\b/.test(q)) cats.push("commercial.supermarket");
+  if (/\b(home depot|lowes?|hardware|construction|depot)\b/.test(q)) cats.push("commercial.houseware_and_hardware");
   if (/\b(hotel|motel|inn|stay|accommodation)\b/.test(q)) cats.push("accommodation");
-  return cats.length === 0 ? "" : cats.join(",");
+  return cats.join(",");
 }
 
 async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
@@ -417,8 +414,12 @@ function _processPlaces(query, places, limit, options = {}) {
 
   out.sort((a, b) => b.score - a.score);
   if (options.enforceConfidenceGate) {
-    const topScore = out[0]?.score || 0;
-    if (topScore < 0.40) return []; // Lowered significantly to 0.40
+    const top = out[0];
+    if (!top) return [];
+    const nameSim = _nameSimilarity(normQuery, top.name);
+    // BYPASS gate for brand/named hits
+    if (nameSim > 0.8) { console.log(`[Places] Gate Bypass for hit "${top.name}"`); return out.slice(0, limit); }
+    if (top.score < 0.40) return [];
   }
   if (options.enforceDistanceGate) out = out.filter(p => p.distanceMeters < 80467);
   return out.slice(0, limit);
