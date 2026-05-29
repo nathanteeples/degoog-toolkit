@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.3.5";
+const PLUGIN_VERSION = "2.3.6";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -303,7 +303,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   const out = [];
   const startAll = Date.now();
 
-  const wrapFetch = (url, init = {}, timeoutMs = 5000) => {
+  const wrapFetch = (url, init = {}, timeoutMs = 15000) => {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
     const mergedInit = { ...init };
@@ -317,6 +317,9 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
       })
       .catch((err) => {
         clearTimeout(id);
+        if (err.name === "AbortError") {
+          console.warn(`[Places Performance] Request to ${url} timed out: gave up after ${timeoutMs / 1000} seconds.`);
+        }
         throw err;
       });
   };
@@ -1299,13 +1302,17 @@ async function _getVenueDetailsFromOverpass(name, lat, lon, doFetch) {
   if (!name) return null;
   const start = Date.now();
   const escaped = name.replace(/"/g, '\\"').replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const q = `[out:json][timeout:10];
+  const q = `[out:json][timeout:15];
 (
   node["name"~"${escaped}",i](around:150,${lat},${lon});
   way["name"~"${escaped}",i](around:150,${lat},${lon});
   relation["name"~"${escaped}",i](around:150,${lat},${lon});
 );
 out tags center 5;`.trim();
+
+  const controller = new AbortController();
+  const timeoutMs = 15000;
+  const id = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await doFetch("https://overpass-api.de/api/interpreter", {
@@ -1315,7 +1322,9 @@ out tags center 5;`.trim();
         "User-Agent": `degoog-places-slot/${PLUGIN_VERSION} (https://github.com/SoPat712/degoog-toolkit)`
       },
       body: `data=${encodeURIComponent(q)}`,
+      signal: controller.signal,
     });
+    clearTimeout(id);
     if (!res.ok) {
       console.log(`[Places Performance] Targeted Overpass fallback details request for "${name}" failed in ${Date.now() - start}ms`);
       return null;
@@ -1336,7 +1345,12 @@ out tags center 5;`.trim();
     console.log(`[Places Performance] Targeted Overpass fallback details for "${name}" took ${Date.now() - start}ms (found details: ${!!found})`);
     return found;
   } catch (err) {
-    console.warn(`[places] Overpass details fetch failed for ${name} in ${Date.now() - start}ms:`, err);
+    clearTimeout(id);
+    if (err.name === "AbortError") {
+      console.warn(`[Places Performance] Targeted Overpass details request for "${name}" timed out: gave up after ${timeoutMs / 1000} seconds.`);
+    } else {
+      console.warn(`[places] Overpass details fetch failed for ${name} in ${Date.now() - start}ms:`, err);
+    }
   }
   return null;
 }
