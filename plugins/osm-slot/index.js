@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.4.4";
+const PLUGIN_VERSION = "2.4.5";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -535,7 +535,7 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiSt
       // Auto-retry with Pro-only fields on quota/credit limits (429/402)
       if (!res.ok && (res.status === 429 || res.status === 402)) {
         console.warn(`[places] Foursquare v3 query returned status ${res.status} (likely credit/quota limit). Retrying with Pro-only fields...`);
-        const proFields = "name,location,geocodes,categories,tel,website,fsq_id,distance,email,social_media,chains";
+        const proFields = "fsq_id,name,location,geocodes,categories,distance,tel,website";
         const retryUrl =
           `${FOURSQUARE_BASE}?query=${encodeURIComponent(query)}` +
           `&ll=${encodeURIComponent(`${lat},${lon}`)}` +
@@ -552,6 +552,9 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiSt
         });
         if (retryRes.ok) {
           res = retryRes;
+        } else {
+          const retryErrText = await retryRes.text();
+          console.error(`[places] Foursquare v3 pro retry failed with status ${retryRes.status}: ${retryErrText}`);
         }
       }
 
