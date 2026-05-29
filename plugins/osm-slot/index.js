@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.4.1";
+const PLUGIN_VERSION = "2.4.2";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -218,10 +218,19 @@ export const slot = {
           });
       };
 
+      const apiStatus = {
+        foursquareV3: { configured: !!_settings.foursquareApiKey, status: "unused", error: null, count: 0 },
+        foursquareV2: { configured: !!(_settings.foursquareClientId && _settings.foursquareClientSecret), status: "unused", error: null, count: 0 },
+        yelp: { configured: !!_settings.yelpApiKey, status: "unused", error: null, count: 0 },
+        overpassSearch: { status: "unused", error: null, count: 0 },
+        photon: { status: "unused", error: null, count: 0 },
+        nominatim: { status: "unused", error: null, count: 0 }
+      };
+
       console.log(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" at lat=${lat}, lon=${lon}`);
       console.log(`[Places Server v${PLUGIN_VERSION}] Configured APIs: FoursquareApiKey=${!!_settings.foursquareApiKey}, YelpApiKey=${!!_settings.yelpApiKey}, FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
 
-      const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, wrapFetch);
+      const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus);
 
       if (places.length === 0) {
         console.log(`[Places Server v${PLUGIN_VERSION}] No places found from any provider.`);
@@ -269,7 +278,8 @@ export const slot = {
         top,
         q,
         _settings.defaultLocationLabel || "Home",
-        _settings.useBrowserGeolocation
+        _settings.useBrowserGeolocation,
+        apiStatus
       );
       return { html };
     } catch (err) {
@@ -308,10 +318,45 @@ export const routes = [
         const radiusMeters = radiusMiles * 1609.34;
         const limit = parseInt(_settings.resultsCount || "5", 10);
 
-               console.log(`[Places Server] Refresh Query: "${query || ""}" at lat=${latNum}, lon=${lonNum}`);
+        console.log(`[Places Server] Refresh Query: "${query || ""}" at lat=${latNum}, lon=${lonNum}`);
         console.log(`[Places Server] Configured APIs (refresh): FoursquareApiKey=${!!_settings.foursquareApiKey}, YelpApiKey=${!!_settings.yelpApiKey}, FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
 
-        const places = await _searchAllProviders(query || "", latNum, lonNum, radiusMeters, limit * 2, _fetch);
+        const apiStatus = {
+          foursquareV3: { configured: !!_settings.foursquareApiKey, status: "unused", error: null, count: 0 },
+          foursquareV2: { configured: !!(_settings.foursquareClientId && _settings.foursquareClientSecret), status: "unused", error: null, count: 0 },
+          yelp: { configured: !!_settings.yelpApiKey, status: "unused", error: null, count: 0 },
+          overpassSearch: { status: "unused", error: null, count: 0 },
+          photon: { status: "unused", error: null, count: 0 },
+          nominatim: { status: "unused", error: null, count: 0 }
+        };
+
+        const wrapFetch = (url, init = {}, timeoutMs = 15000) => {
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), timeoutMs);
+          const mergedInit = { ...init };
+          if (!mergedInit.signal) {
+            mergedInit.signal = controller.signal;
+          }
+          const startFetch = Date.now();
+          console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch starting (refresh): ${url} (Timeout: ${timeoutMs}ms)`);
+          return _fetch(url, mergedInit)
+            .then((res) => {
+              clearTimeout(id);
+              console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch completed (refresh): ${url} in ${Date.now() - startFetch}ms (Status: ${res.status})`);
+              return res;
+            })
+            .catch((err) => {
+              clearTimeout(id);
+              if (err.name === "AbortError") {
+                console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch timed out (refresh): ${url} (gave up after ${timeoutMs / 1000} seconds)`);
+              } else {
+                console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch failed (refresh): ${url} in ${Date.now() - startFetch}ms:`, err);
+              }
+              throw err;
+            });
+        };
+
+        const places = await _searchAllProviders(query || "", latNum, lonNum, radiusMeters, limit * 2, wrapFetch, apiStatus);
 
         if (places.length === 0) {
           console.log(`[Places Server] No places found for refresh query.`);
@@ -323,12 +368,39 @@ export const routes = [
           enforceConfidenceGate: false,
         });
 
+        if (top.length === 0) {
+          return _jsonResponse({ html: "" });
+        }
+
+        // Centralized fallback details fetch for top displayed results
+        const fallbackPromises = [];
+        let fallbackCount = 0;
+        for (const place of top) {
+          if (fallbackCount < 2 && (!place.phone || !place.website) && place.lat != null && place.lon != null) {
+            fallbackCount++;
+            fallbackPromises.push((async () => {
+              const fallback = await _getVenueDetailsFromOverpass(place.name, place.lat, place.lon, (url, init) => wrapFetch(url, init, 5000));
+              if (fallback) {
+                place.phone = place.phone || fallback.phone;
+                place.website = place.website || fallback.website;
+                if (fallback.openingHours && !place.hours?.display) {
+                  place.hours = place.hours || { openNow: null, display: null, status: null };
+                  place.hours.display = fallback.openingHours;
+                }
+              }
+            })());
+          }
+        }
+        if (fallbackPromises.length > 0) {
+          await Promise.allSettled(fallbackPromises);
+        }
+
         console.log(`[Places Server] Final ${top.length} processed places (refresh):`);
         top.forEach((p, idx) => {
-          console.log(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source}`);
+          console.log(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source} - Hours: ${p.hours ? JSON.stringify(p.hours) : "None"}`);
         });
 
-        const html = _renderCard(top, query || "", "your location", false);
+        const html = _renderCard(top, query || "", "your location", false, apiStatus);
         return _jsonResponse({ html });
       } catch (err) {
         return _jsonResponse({ html: "" });
@@ -348,7 +420,7 @@ function _jsonResponse(obj, status = 200) {
 /* Provider orchestration                                              */
 /* ------------------------------------------------------------------ */
 
-async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
+async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
   const out = [];
   const startAll = Date.now();
 
@@ -357,7 +429,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   if (_settings.foursquareApiKey || (_settings.foursquareClientId && _settings.foursquareClientSecret)) {
     const fqStart = Date.now();
     providerCalls.push(
-      _searchFoursquare(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 10000)).then((res) => {
+      _searchFoursquare(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 10000), apiStatus).then((res) => {
         console.log(`[Places Performance v${PLUGIN_VERSION}] Foursquare search completed in ${Date.now() - fqStart}ms (found ${res.length} places)`);
         return res;
       })
@@ -367,7 +439,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   if (_settings.yelpApiKey) {
     const yelpStart = Date.now();
     providerCalls.push(
-      _searchYelp(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 10000)).then((res) => {
+      _searchYelp(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 10000), apiStatus).then((res) => {
         console.log(`[Places Performance v${PLUGIN_VERSION}] Yelp search completed in ${Date.now() - yelpStart}ms (found ${res.length} places)`);
         return res;
       })
@@ -390,7 +462,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
     console.log(`[Places Performance v${PLUGIN_VERSION}] No commercial API results. Triggering general Overpass search...`);
     const ovStart = Date.now();
     try {
-      const r = await _searchOverpass(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 5000));
+      const r = await _searchOverpass(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 5000), apiStatus);
       console.log(`[Places Performance v${PLUGIN_VERSION}] General Overpass search completed in ${Date.now() - ovStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (err) {
@@ -404,7 +476,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   if (out.length === 0) {
     const phStart = Date.now();
     try {
-      const r = await _searchPhoton(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 4000));
+      const r = await _searchPhoton(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 4000), apiStatus);
       console.log(`[Places Performance v${PLUGIN_VERSION}] Photon geocoder fallback completed in ${Date.now() - phStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (_) {}
@@ -414,7 +486,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   if (out.length === 0) {
     const nomStart = Date.now();
     try {
-      const r = await _searchNominatim(query, lat, lon, limit, (url, init) => doFetch(url, init, 4000));
+      const r = await _searchNominatim(query, lat, lon, limit, (url, init) => doFetch(url, init, 4000), apiStatus);
       console.log(`[Places Performance v${PLUGIN_VERSION}] Nominatim geocoder fallback completed in ${Date.now() - nomStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (_) {}
@@ -428,7 +500,7 @@ async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
 /* Individual providers                                                */
 /* ------------------------------------------------------------------ */
 
-async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
+async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
   const cacheKey = `fq:${query}:${lat}:${lon}:${Math.round(radiusM)}:${limit}`;
   const cached = _cache?.get(cacheKey);
   if (cached) return cached;
@@ -495,12 +567,25 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
             out.push(place);
           }
         }
+        if (apiStatus && apiStatus.foursquareV3) {
+          apiStatus.foursquareV3.status = "success";
+          apiStatus.foursquareV3.count = out.length;
+        }
       } else {
         const errText = await res.text();
-        console.error(`[places] Foursquare v3 API search returned error status ${res.status}: ${errText}`);
+        const msg = `HTTP status ${res.status}: ${errText}`;
+        console.error(`[places] Foursquare v3 API search returned error: ${msg}`);
+        if (apiStatus && apiStatus.foursquareV3) {
+          apiStatus.foursquareV3.status = "error";
+          apiStatus.foursquareV3.error = msg;
+        }
       }
     } catch (err) {
       console.error("[places] Foursquare v3 query failed:", err);
+      if (apiStatus && apiStatus.foursquareV3) {
+        apiStatus.foursquareV3.status = "error";
+        apiStatus.foursquareV3.error = err.message;
+      }
       return [];
     }
   }
@@ -555,7 +640,7 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
                 try {
                   const detailUrl = `https://api.foursquare.com/v2/venues/${v.id}` +
                     `?client_id=${encodeURIComponent(_settings.foursquareClientId)}` +
-                    `&client_secret=${encodeURIComponent(_settings.foursquareClientSecret)}` +
+                    `?client_secret=${encodeURIComponent(_settings.foursquareClientSecret)}` +
                     `&v=20210324`;
                   const detailRes = await doFetch(detailUrl);
                   if (detailRes.ok) {
@@ -599,12 +684,25 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
             await Promise.allSettled(v2Promises);
           }
         }
+        if (apiStatus && apiStatus.foursquareV2) {
+          apiStatus.foursquareV2.status = "success";
+          apiStatus.foursquareV2.count = out.length;
+        }
       } else {
         const errText = await res.text();
-        console.error(`[places] Foursquare v2 API search returned error status ${res.status}: ${errText}`);
+        const msg = `HTTP status ${res.status}: ${errText}`;
+        console.error(`[places] Foursquare v2 API search returned error: ${msg}`);
+        if (apiStatus && apiStatus.foursquareV2) {
+          apiStatus.foursquareV2.status = "error";
+          apiStatus.foursquareV2.error = msg;
+        }
       }
     } catch (err) {
       console.error("[places] Foursquare v2 query failed:", err);
+      if (apiStatus && apiStatus.foursquareV2) {
+        apiStatus.foursquareV2.status = "error";
+        apiStatus.foursquareV2.error = err.message;
+      }
       return [];
     }
   }
@@ -613,7 +711,7 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
   return out;
 }
 
-async function _searchYelp(query, lat, lon, radiusM, limit, doFetch) {
+async function _searchYelp(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
   const cacheKey = `yelp:${query}:${lat}:${lon}:${Math.round(radiusM)}:${limit}`;
   const cached = _cache?.get(cacheKey);
   if (cached) return cached;
@@ -633,7 +731,12 @@ async function _searchYelp(query, lat, lon, radiusM, limit, doFetch) {
     });
     if (!res.ok) {
       const errText = await res.text();
-      console.error(`[places] Yelp API search returned error status ${res.status}: ${errText}`);
+      const msg = `HTTP status ${res.status}: ${errText}`;
+      console.error(`[places] Yelp API search returned error: ${msg}`);
+      if (apiStatus && apiStatus.yelp) {
+        apiStatus.yelp.status = "error";
+        apiStatus.yelp.error = msg;
+      }
       return [];
     }
     const data = await res.json();
@@ -668,15 +771,23 @@ async function _searchYelp(query, lat, lon, radiusM, limit, doFetch) {
       })
       .filter(Boolean);
 
+    if (apiStatus && apiStatus.yelp) {
+      apiStatus.yelp.status = "success";
+      apiStatus.yelp.count = out.length;
+    }
     _cache?.set(cacheKey, out);
     return out;
   } catch (err) {
     console.error("[places] Yelp query failed:", err);
+    if (apiStatus && apiStatus.yelp) {
+      apiStatus.yelp.status = "error";
+      apiStatus.yelp.error = err.message;
+    }
     return [];
   }
 }
 
-async function _searchOverpass(query, lat, lon, radiusM, limit, doFetch) {
+async function _searchOverpass(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
   const cacheKey = `ov:${query}:${lat}:${lon}:${Math.round(radiusM)}:${limit}`;
   const cached = _cache?.get(cacheKey);
   if (cached) return cached;
@@ -701,7 +812,12 @@ out center ${Math.max(limit * 2, 10)};
   });
   if (!res.ok) {
     const errText = await res.text();
-    console.error(`[places] Overpass API search returned error status ${res.status}: ${errText}`);
+    const msg = `HTTP status ${res.status}: ${errText}`;
+    console.error(`[places] Overpass API search returned error: ${msg}`);
+    if (apiStatus && apiStatus.overpassSearch) {
+      apiStatus.overpassSearch.status = "error";
+      apiStatus.overpassSearch.error = msg;
+    }
     return [];
   }
   const data = await res.json();
@@ -747,11 +863,16 @@ out center ${Math.max(limit * 2, 10)};
     })
     .filter(Boolean);
 
+  if (apiStatus && apiStatus.overpassSearch) {
+    apiStatus.overpassSearch.status = "success";
+    apiStatus.overpassSearch.count = out.length;
+  }
+
   _cache?.set(cacheKey, out);
   return out;
 }
 
-async function _searchPhoton(query, lat, lon, radiusM, limit, doFetch) {
+async function _searchPhoton(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
   const cacheKey = `ph:${query}:${lat}:${lon}:${Math.round(radiusM)}:${limit}`;
   const cached = _cache?.get(cacheKey);
   if (cached) return cached;
@@ -762,7 +883,16 @@ async function _searchPhoton(query, lat, lon, radiusM, limit, doFetch) {
     `&lat=${lat}&lon=${lon}&limit=${limit}`;
 
   const res = await doFetch(url);
-  if (!res.ok) return [];
+  if (!res.ok) {
+    const errText = await res.text();
+    const msg = `HTTP status ${res.status}: ${errText}`;
+    console.error(`[places] Photon API search returned error: ${msg}`);
+    if (apiStatus && apiStatus.photon) {
+      apiStatus.photon.status = "error";
+      apiStatus.photon.error = msg;
+    }
+    return [];
+  }
   const data = await res.json();
   if (!Array.isArray(data.features)) return [];
 
@@ -793,11 +923,16 @@ async function _searchPhoton(query, lat, lon, radiusM, limit, doFetch) {
     })
     .filter(Boolean);
 
+  if (apiStatus && apiStatus.photon) {
+    apiStatus.photon.status = "success";
+    apiStatus.photon.count = out.length;
+  }
+
   _cache?.set(cacheKey, out);
   return out;
 }
 
-async function _searchNominatim(query, lat, lon, limit, doFetch) {
+async function _searchNominatim(query, lat, lon, limit, doFetch, apiStatus) {
   const cacheKey = `nm:${query}:${lat}:${lon}:${limit}`;
   const cached = _cache?.get(cacheKey);
   if (cached) return cached;
@@ -813,7 +948,16 @@ async function _searchNominatim(query, lat, lon, limit, doFetch) {
       "Accept-Language": "en",
     },
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    const errText = await res.text();
+    const msg = `HTTP status ${res.status}: ${errText}`;
+    console.error(`[places] Nominatim API search returned error: ${msg}`);
+    if (apiStatus && apiStatus.nominatim) {
+      apiStatus.nominatim.status = "error";
+      apiStatus.nominatim.error = msg;
+    }
+    return [];
+  }
   const data = await res.json();
   if (!Array.isArray(data)) return [];
 
@@ -839,6 +983,11 @@ async function _searchNominatim(query, lat, lon, limit, doFetch) {
       };
     })
     .filter(Boolean);
+
+  if (apiStatus && apiStatus.nominatim) {
+    apiStatus.nominatim.status = "success";
+    apiStatus.nominatim.count = out.length;
+  }
 
   _cache?.set(cacheKey, out);
   return out;
@@ -961,7 +1110,7 @@ function _processPlaces(query, rawPlaces, limit, options = {}) {
 /* Rendering                                                           */
 /* ------------------------------------------------------------------ */
 
-function _renderCard(places, query, locationLabel, showGeoBtn) {
+function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus) {
   const unit = _settings.distanceUnit || "miles";
   const unitAbbr = unit === "km" ? "km" : "mi";
 
@@ -1065,7 +1214,7 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
   const mapHtml = _renderMap(places);
 
   return `
-<div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}">
+<div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}" data-places-apis="${_esc(JSON.stringify(apiStatus || {}))}">
   <div class="places-header">
     <span class="places-label">Places</span>
     <span class="places-subhead">near ${_esc(locationLabel)}</span>
