@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.4.3";
+const PLUGIN_VERSION = "2.4.4";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -524,13 +524,36 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiSt
         `&limit=${limit}` +
         `&fields=${encodeURIComponent(fields)}`;
 
-      const res = await doFetch(url, {
+      let res = await doFetch(url, {
         headers: {
           Authorization: authHeader,
           Accept: "application/json",
           "X-Places-Api-Version": "2025-06-17",
         },
       });
+
+      // Auto-retry with Pro-only fields on quota/credit limits (429/402)
+      if (!res.ok && (res.status === 429 || res.status === 402)) {
+        console.warn(`[places] Foursquare v3 query returned status ${res.status} (likely credit/quota limit). Retrying with Pro-only fields...`);
+        const proFields = "name,location,geocodes,categories,tel,website,fsq_id,distance,email,social_media,chains";
+        const retryUrl =
+          `${FOURSQUARE_BASE}?query=${encodeURIComponent(query)}` +
+          `&ll=${encodeURIComponent(`${lat},${lon}`)}` +
+          `&radius=${Math.round(radiusM)}` +
+          `&limit=${limit}` +
+          `&fields=${encodeURIComponent(proFields)}`;
+
+        const retryRes = await doFetch(retryUrl, {
+          headers: {
+            Authorization: authHeader,
+            Accept: "application/json",
+            "X-Places-Api-Version": "2025-06-17",
+          },
+        });
+        if (retryRes.ok) {
+          res = retryRes;
+        }
+      }
 
       if (res.ok) {
         const data = await res.json();
