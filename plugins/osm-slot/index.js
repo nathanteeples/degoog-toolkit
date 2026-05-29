@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.3.3";
+const PLUGIN_VERSION = "2.3.4";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -301,43 +301,75 @@ function _jsonResponse(obj, status = 200) {
 
 async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch) {
   const out = [];
+  const startAll = Date.now();
+
   const providerCalls = [];
 
-  // Foursquare and Yelp provide rich commercial metadata when configured.
   if (_settings.foursquareApiKey || (_settings.foursquareClientId && _settings.foursquareClientSecret)) {
-    providerCalls.push(_searchFoursquare(query, lat, lon, radiusM, limit, doFetch));
+    const fqStart = Date.now();
+    providerCalls.push(
+      _searchFoursquare(query, lat, lon, radiusM, limit, doFetch).then((res) => {
+        console.log(`[Places Performance] Foursquare search took ${Date.now() - fqStart}ms (found ${res.length} places)`);
+        return res;
+      })
+    );
   }
 
   if (_settings.yelpApiKey) {
-    providerCalls.push(_searchYelp(query, lat, lon, radiusM, limit, doFetch));
+    const yelpStart = Date.now();
+    providerCalls.push(
+      _searchYelp(query, lat, lon, radiusM, limit, doFetch).then((res) => {
+        console.log(`[Places Performance] Yelp search took ${Date.now() - yelpStart}ms (found ${res.length} places)`);
+        return res;
+      })
+    );
   }
 
-  // Overpass is always included so OSM details can improve commercial results.
-  providerCalls.push(_searchOverpass(query, lat, lon, radiusM, limit, doFetch));
-
-  const settled = await Promise.allSettled(providerCalls);
-  for (const result of settled) {
-    if (result.status === "fulfilled" && Array.isArray(result.value)) {
-      out.push(...result.value);
+  if (providerCalls.length > 0) {
+    const settled = await Promise.allSettled(providerCalls);
+    for (const result of settled) {
+      if (result.status === "fulfilled" && Array.isArray(result.value)) {
+        out.push(...result.value);
+      }
     }
+  }
+
+  // If no results from Foursquare/Yelp, or if neither is configured, fallback to general Overpass search
+  if (out.length === 0) {
+    console.log(`[Places Performance] No commercial API results. Triggering general Overpass search...`);
+    const ovStart = Date.now();
+    try {
+      const r = await _searchOverpass(query, lat, lon, radiusM, limit, doFetch);
+      console.log(`[Places Performance] General Overpass search completed in ${Date.now() - ovStart}ms (found ${r.length} places)`);
+      out.push(...r);
+    } catch (err) {
+      console.error(`[Places Performance] General Overpass search failed after ${Date.now() - ovStart}ms:`, err);
+    }
+  } else {
+    console.log(`[Places Performance] Skipping general Overpass search (found ${out.length} commercial places).`);
   }
 
   // Photon — free geocoder fallback (no key)
   if (out.length === 0) {
+    const phStart = Date.now();
     try {
       const r = await _searchPhoton(query, lat, lon, radiusM, limit, doFetch);
+      console.log(`[Places Performance] Photon geocoder fallback completed in ${Date.now() - phStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (_) {}
   }
 
   // Nominatim — free geocoder fallback (no key)
   if (out.length === 0) {
+    const nomStart = Date.now();
     try {
       const r = await _searchNominatim(query, lat, lon, limit, doFetch);
+      console.log(`[Places Performance] Nominatim geocoder fallback completed in ${Date.now() - nomStart}ms (found ${r.length} places)`);
       out.push(...r);
     } catch (_) {}
   }
 
+  console.log(`[Places Performance] Total _searchAllProviders execution time: ${Date.now() - startAll}ms`);
   return out;
 }
 
@@ -378,31 +410,20 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.results)) {
+          const fallbackPromises = [];
           for (const r of data.results) {
             const plat = r.geocodes?.main?.latitude;
             const plon = r.geocodes?.main?.longitude;
             if (plat == null || plon == null) continue;
 
-            let phone = r.tel || null;
-            let website = r.website || null;
-
-            // Target top results to avoid slamming Overpass API (e.g. limit to first `limit` results)
-            if (out.length < limit && (!phone || !website)) {
-              const fallback = await _getVenueDetailsFromOverpass(r.name, plat, plon, doFetch);
-              if (fallback) {
-                phone = phone || fallback.phone;
-                website = website || fallback.website;
-              }
-            }
-
-            out.push({
+            const place = {
               name: r.name,
               address: _fmtFsqAddress(r.location),
               lat: plat,
               lon: plon,
               distanceMeters: typeof r.distance === "number" ? r.distance : _haversine(lat, lon, plat, plon),
-              phone,
-              website,
+              phone: r.tel || null,
+              website: r.website || null,
               email: r.email || null,
               socialMedia: r.social_media || null,
               description: r.description || null,
@@ -414,7 +435,22 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
               reviewCount: r.stats?.total_ratings || null,
               source: "Foursquare",
               sourceUrl: `https://foursquare.com/v/${r.fsq_id}`,
-            });
+            };
+            out.push(place);
+
+            // Target top results to avoid slamming Overpass API
+            if (out.length <= limit && (!place.phone || !place.website)) {
+              fallbackPromises.push((async () => {
+                const fallback = await _getVenueDetailsFromOverpass(r.name, plat, plon, doFetch);
+                if (fallback) {
+                  place.phone = place.phone || fallback.phone;
+                  place.website = place.website || fallback.website;
+                }
+              })());
+            }
+          }
+          if (fallbackPromises.length > 0) {
+            await Promise.allSettled(fallbackPromises);
           }
         }
       }
@@ -439,94 +475,84 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
         const data = await res.json();
         const venues = data.response?.venues;
         if (Array.isArray(venues)) {
+          const v2Promises = [];
           for (const v of venues) {
             const plat = v.location?.lat;
             const plon = v.location?.lng;
             if (plat == null || plon == null) continue;
 
-            let phone = null;
-            let website = null;
-            let rating = null;
-            let reviewCount = null;
-            let hours = null;
-            let email = null;
-            let description = null;
-            let price = null;
-
-            if (v.contact) {
-              phone = v.contact.formattedPhone || v.contact.phone || null;
-              email = v.contact.email || null;
-            }
-            if (v.url) {
-              website = v.url;
-            }
-
-            // Fetch details for the first `limit` venues to keep it fast and respect quota limits
-            if (out.length < limit) {
-              try {
-                const detailUrl = `https://api.foursquare.com/v2/venues/${v.id}` +
-                  `?client_id=${encodeURIComponent(_settings.foursquareClientId)}` +
-                  `&client_secret=${encodeURIComponent(_settings.foursquareClientSecret)}` +
-                  `&v=20210324`;
-                const detailRes = await doFetch(detailUrl);
-                if (detailRes.ok) {
-                  const detailData = await detailRes.json();
-                  const dv = detailData.response?.venue;
-                  if (dv) {
-                    if (dv.contact) {
-                      phone = dv.contact.formattedPhone || dv.contact.phone || phone;
-                      email = dv.contact.email || email;
-                    }
-                    website = dv.url || dv.canonicalUrl || website;
-                    if (typeof dv.rating === "number") {
-                      rating = dv.rating / 2;
-                    }
-                    reviewCount = dv.ratingSignals || null;
-                    if (dv.hours) {
-                      hours = { openNow: dv.hours.isOpen === true };
-                    }
-                    if (dv.description) {
-                      description = dv.description;
-                    }
-                    if (dv.price) {
-                      price = dv.price.tier || null;
-                    }
-                  }
-                }
-              } catch (detailErr) {
-                console.warn(`[places] Foursquare v2 detail fetch failed for ${v.id}:`, detailErr);
-              }
-
-              // Fallback to Overpass if details fetch failed/was skipped or phone/website are missing
-              if (!phone || !website) {
-                const fallback = await _getVenueDetailsFromOverpass(v.name, plat, plon, doFetch);
-                if (fallback) {
-                  phone = phone || fallback.phone;
-                  website = website || fallback.website;
-                }
-              }
-            }
-
-            out.push({
+            const place = {
               name: v.name,
               address: _fmtFsqAddress(v.location),
               lat: plat,
               lon: plon,
               distanceMeters: typeof v.location.distance === "number" ? v.location.distance : _haversine(lat, lon, plat, plon),
-              phone,
-              website,
-              email,
+              phone: v.contact?.formattedPhone || v.contact?.phone || null,
+              website: v.url || null,
+              email: v.contact?.email || null,
               socialMedia: null,
-              description,
+              description: null,
               chains: [],
-              price,
+              price: null,
               categories: (v.categories || []).map((c) => c.shortName || c.name).filter(Boolean),
-              hours,
-              rating,
-              reviewCount,
+              hours: null,
+              rating: null,
+              reviewCount: null,
               source: "Foursquare",
               sourceUrl: `https://foursquare.com/v/${v.id}`,
-            });
+            };
+            out.push(place);
+
+            // Fetch details and fallback concurrently
+            if (out.length <= limit) {
+              v2Promises.push((async () => {
+                try {
+                  const detailUrl = `https://api.foursquare.com/v2/venues/${v.id}` +
+                    `?client_id=${encodeURIComponent(_settings.foursquareClientId)}` +
+                    `&client_secret=${encodeURIComponent(_settings.foursquareClientSecret)}` +
+                    `&v=20210324`;
+                  const detailRes = await doFetch(detailUrl);
+                  if (detailRes.ok) {
+                    const detailData = await detailRes.json();
+                    const dv = detailData.response?.venue;
+                    if (dv) {
+                      if (dv.contact) {
+                        place.phone = dv.contact.formattedPhone || dv.contact.phone || place.phone;
+                        place.email = dv.contact.email || place.email;
+                      }
+                      place.website = dv.url || dv.canonicalUrl || place.website;
+                      if (typeof dv.rating === "number") {
+                        place.rating = dv.rating / 2;
+                      }
+                      place.reviewCount = dv.ratingSignals || null;
+                      if (dv.hours) {
+                        place.hours = { openNow: dv.hours.isOpen === true };
+                      }
+                      if (dv.description) {
+                        place.description = dv.description;
+                      }
+                      if (dv.price) {
+                        place.price = dv.price.tier || null;
+                      }
+                    }
+                  }
+                } catch (detailErr) {
+                  console.warn(`[places] Foursquare v2 detail fetch failed for ${v.id}:`, detailErr);
+                }
+
+                // Fallback to Overpass if details fetch failed/was skipped or phone/website are missing
+                if (!place.phone || !place.website) {
+                  const fallback = await _getVenueDetailsFromOverpass(v.name, plat, plon, doFetch);
+                  if (fallback) {
+                    place.phone = place.phone || fallback.phone;
+                    place.website = place.website || fallback.website;
+                  }
+                }
+              })());
+            }
+          }
+          if (v2Promises.length > 0) {
+            await Promise.allSettled(v2Promises);
           }
         }
       }
@@ -1232,6 +1258,7 @@ function _fmtFsqAddress(loc) {
 
 async function _getVenueDetailsFromOverpass(name, lat, lon, doFetch) {
   if (!name) return null;
+  const start = Date.now();
   const escaped = name.replace(/"/g, '\\"').replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const q = `[out:json][timeout:10];
 (
@@ -1250,20 +1277,27 @@ out tags center 5;`.trim();
       },
       body: `data=${encodeURIComponent(q)}`,
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log(`[Places Performance] Targeted Overpass fallback details request for "${name}" failed in ${Date.now() - start}ms`);
+      return null;
+    }
     const data = await res.json();
+    let found = null;
     if (Array.isArray(data.elements)) {
       for (const el of data.elements) {
         const tags = el.tags || {};
         const phone = tags.phone || tags["contact:phone"] || tags["contact:mobile"] || null;
         const website = tags.website || tags["contact:website"] || tags.url || null;
         if (phone || website) {
-          return { phone, website };
+          found = { phone, website };
+          break;
         }
       }
     }
+    console.log(`[Places Performance] Targeted Overpass fallback details for "${name}" took ${Date.now() - start}ms (found details: ${!!found})`);
+    return found;
   } catch (err) {
-    console.warn(`[places] Overpass details fetch failed for ${name}:`, err);
+    console.warn(`[places] Overpass details fetch failed for ${name} in ${Date.now() - start}ms:`, err);
   }
   return null;
 }
