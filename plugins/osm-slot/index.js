@@ -510,7 +510,11 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiSt
   // V3 Flow
   if (_settings.foursquareApiKey) {
     try {
-      const authHeader = _settings.foursquareApiKey;
+      let authHeader = _settings.foursquareApiKey;
+      const lowerKey = _settings.foursquareApiKey.toLowerCase();
+      if (!lowerKey.startsWith("fsq3") && !lowerKey.startsWith("bearer ")) {
+        authHeader = `Bearer ${_settings.foursquareApiKey}`;
+      }
 
       const fields = "name,location,geocodes,categories,tel,website,hours,rating,stats,fsq_id,distance,email,social_media,description,chains,price";
       const url =
