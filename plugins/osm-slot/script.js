@@ -110,9 +110,32 @@
   /* Place cards                                                         */
   /* ------------------------------------------------------------------ */
 
+  var loggingTimeout = null;
+  function _logClientSummary() {
+    var cards = document.querySelectorAll(".places-card[data-place-card]");
+    if (cards.length === 0) return;
+    console.log("[Places Client] Active Place Cards Summary:");
+    cards.forEach(function (card, idx) {
+      var name = card.querySelector(".places-name")?.textContent || "Unknown";
+      var dist = card.querySelector(".places-distance")?.textContent || "Unknown";
+      var hasPhone = !card.querySelector(".places-action-call")?.classList.contains("places-disabled");
+      var hasWebsite = !card.querySelector(".places-action-website")?.classList.contains("places-disabled");
+      var address = card.querySelector(".places-address")?.title || "Unknown";
+      console.log(
+        "  [" + idx + "] Name: " + name + 
+        " | Dist: " + dist + 
+        " | Phone: " + (hasPhone ? "AVAILABLE" : "MISSING") + 
+        " | Website: " + (hasWebsite ? "AVAILABLE" : "MISSING") +
+        " | Address: " + address
+      );
+    });
+  }
+
   function _initPlaceCards() {
+    var newCardsFound = false;
     document.querySelectorAll(".places-card[data-place-card]:not([data-places-card-init])").forEach(function (card) {
       card.dataset.placesCardInit = "1";
+      newCardsFound = true;
       card.addEventListener("click", function (event) {
         if (event.target.closest("a,button")) return;
         _selectPlace(card);
@@ -124,6 +147,10 @@
         _selectPlace(card);
       });
     });
+    if (newCardsFound) {
+      if (loggingTimeout) clearTimeout(loggingTimeout);
+      loggingTimeout = setTimeout(_logClientSummary, 100);
+    }
   }
 
   function _selectPlace(card) {

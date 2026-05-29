@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.3.2";
+const PLUGIN_VERSION = "2.3.3";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -192,13 +192,24 @@ export const slot = {
       const limit = parseInt(_settings.resultsCount || "5", 10);
       const doFetch = typeof context?.fetch === "function" ? context.fetch : _fetch;
 
+      console.log(`[Places Server] Query: "${q}" at lat=${lat}, lon=${lon}`);
+      console.log(`[Places Server] Configured APIs: FoursquareApiKey=${!!_settings.foursquareApiKey}, YelpApiKey=${!!_settings.yelpApiKey}, FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
+
       const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, doFetch);
 
-      if (places.length === 0) return { html: "" };
+      if (places.length === 0) {
+        console.log(`[Places Server] No places found from any provider.`);
+        return { html: "" };
+      }
 
       const top = _processPlaces(q, places, limit, {
         enforceDistanceGate: true,
         enforceConfidenceGate: true,
+      });
+
+      console.log(`[Places Server] Final ${top.length} processed places:`);
+      top.forEach((p, idx) => {
+        console.log(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source}`);
       });
 
       if (top.length === 0) {
@@ -248,15 +259,24 @@ export const routes = [
         const radiusMeters = radiusMiles * 1609.34;
         const limit = parseInt(_settings.resultsCount || "5", 10);
 
+               console.log(`[Places Server] Refresh Query: "${query || ""}" at lat=${latNum}, lon=${lonNum}`);
+        console.log(`[Places Server] Configured APIs (refresh): FoursquareApiKey=${!!_settings.foursquareApiKey}, YelpApiKey=${!!_settings.yelpApiKey}, FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
+
         const places = await _searchAllProviders(query || "", latNum, lonNum, radiusMeters, limit * 2, _fetch);
 
         if (places.length === 0) {
+          console.log(`[Places Server] No places found for refresh query.`);
           return _jsonResponse({ html: "" });
         }
 
         const top = _processPlaces(query || "", places, limit, {
           enforceDistanceGate: false,
           enforceConfidenceGate: false,
+        });
+
+        console.log(`[Places Server] Final ${top.length} processed places (refresh):`);
+        top.forEach((p, idx) => {
+          console.log(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source}`);
         });
 
         const html = _renderCard(top, query || "", "your location", false);
@@ -616,7 +636,9 @@ out center ${Math.max(limit * 2, 10)};
       if (tags.craft) categories.push(tags.craft.replace(/_/g, " "));
       if (tags.healthcare) categories.push(tags.healthcare.replace(/_/g, " "));
       if (tags.cuisine) categories.push(tags.cuisine.replace(/;/g, ", "));
-      if (categories.length === 0 && !tags.phone && !tags.website && !tags.opening_hours) return null;
+      const hasPhone = tags.phone || tags["contact:phone"] || tags["contact:mobile"];
+      const hasWebsite = tags.website || tags["contact:website"] || tags.url;
+      if (categories.length === 0 && !hasPhone && !hasWebsite && !tags.opening_hours) return null;
 
       return {
         name: tags.name || query,
@@ -624,8 +646,8 @@ out center ${Math.max(limit * 2, 10)};
         lat: plat,
         lon: plon,
         distanceMeters: _haversine(lat, lon, plat, plon),
-        phone: tags.phone || null,
-        website: tags.website || null,
+        phone: hasPhone || null,
+        website: hasWebsite || null,
         categories,
         hours: tags.opening_hours ? { openNow: null } : null,
         rating: null,
