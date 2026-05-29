@@ -495,6 +495,23 @@
   _initInteractiveMaps();
   _initDirectionsModals();
 
+  // Handle failed tile image retries
+  document.addEventListener("error", function (e) {
+    if (e.target && e.target.tagName === "IMG" && e.target.classList.contains("places-tile")) {
+      var img = e.target;
+      var retryCount = parseInt(img.dataset.retryCount || "0", 10);
+      if (retryCount < 3) {
+        img.dataset.retryCount = String(retryCount + 1);
+        var baseSrc = img.src.split(/[?&]_retry=/)[0];
+        var separator = baseSrc.indexOf("?") !== -1 ? "&" : "?";
+        var delay = 1000 * Math.pow(2, retryCount); // Exponential backoff: 1s, 2s, 4s
+        setTimeout(function () {
+          img.src = baseSrc + separator + "_retry=" + (retryCount + 1);
+        }, delay);
+      }
+    }
+  }, true);
+
   var observer = new MutationObserver(function () {
     _initGeoButtons();
     _initPlaceCards();
