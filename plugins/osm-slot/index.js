@@ -1,7 +1,7 @@
-// Places slot plugin — local place recognition with Geoapify (primary) and Foursquare (booster).
+// Places slot plugin — local place recognition with Geoapify and LocationIQ in parallel.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.8.5";
+const PLUGIN_VERSION = "2.8.6";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -43,14 +43,6 @@ export const slot = {
       secret: true,
       required: true,
       default: "0a2341f20dfa4b92952a726eb1e36554",
-      description: "Primary provider for nearby places and POIs. Required. Get a free key at geoapify.com.",
-    },
-    {
-      key: "foursquareApiKey",
-      label: "Foursquare API key",
-      type: "password",
-      secret: true,
-      description: "Optional booster. Provides rich business data. Get one at foursquare.com/developers.",
     },
     {
       key: "locationiqApiKey",
@@ -58,80 +50,51 @@ export const slot = {
       type: "password",
       secret: true,
       default: "pk.14ed93f5ee290008c448b4a0f07f73ad",
-      description: "Optional fallback geocoder. Get a free key at locationiq.com.",
     },
     {
-      key: "defaultLat",
-      label: "Default latitude",
-      type: "text",
-      required: true,
-      placeholder: "40.7128",
+      key: "foursquareApiKey",
+      label: "Foursquare API key",
+      type: "password",
+      secret: true,
     },
     {
-      key: "defaultLon",
-      label: "Default longitude",
-      type: "text",
-      required: true,
-      placeholder: "-74.0060",
+      key: "defaultLat", label: "Default latitude", type: "text", required: true, placeholder: "40.7128",
     },
     {
-      key: "defaultLocationLabel",
-      label: "Default location label",
-      type: "text",
-      default: "Home",
+      key: "defaultLon", label: "Default longitude", type: "text", required: true, placeholder: "-74.0060",
     },
     {
-      key: "useBrowserGeolocation",
-      label: "Ask browser for precise location",
-      type: "toggle",
-      default: false,
+      key: "defaultLocationLabel", label: "Default location label", type: "text", default: "Home",
     },
     {
-      key: "defaultRadius",
-      label: "Search radius",
-      type: "select",
-      options: ["5", "10", "25", "50"],
-      default: "25",
+      key: "useBrowserGeolocation", label: "Precise location", type: "toggle", default: false,
     },
     {
-      key: "resultsCount",
-      label: "Results count",
-      type: "select",
-      options: ["3", "5", "10", "15", "20", "25", "30"],
-      default: "5",
+      key: "defaultRadius", label: "Search radius", type: "select", options: ["5", "10", "25", "50"], default: "25",
     },
     {
-      key: "distanceUnit",
-      label: "Distance unit",
-      type: "select",
-      options: ["miles", "km"],
-      default: "miles",
+      key: "resultsCount", label: "Results count", type: "select", options: ["3", "5", "10", "15", "20", "25", "30"], default: "5",
     },
     {
-      key: "customTileUrl",
-      label: "Custom map tile URL",
-      type: "text",
-      placeholder: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      key: "distanceUnit", label: "Distance unit", type: "select", options: ["miles", "km"], default: "miles",
+    },
+    {
+      key: "customTileUrl", label: "Custom map tiles", type: "text", placeholder: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     },
   ],
 
   init(ctx) {
-    if (typeof ctx?.fetch === "function") {
-      _fetch = (...args) => ctx.fetch(...args);
-    }
+    if (typeof ctx?.fetch === "function") _fetch = (...args) => ctx.fetch(...args);
   },
 
   configure: _configure,
 
   isConfigured() {
-    const lat = parseFloat(_settings.defaultLat);
-    const lon = parseFloat(_settings.defaultLon);
+    const lat = parseFloat(_settings.defaultLat); const lon = parseFloat(_settings.defaultLon);
     return Number.isFinite(lat) && Number.isFinite(lon);
   },
 
-  trigger(query) {
-    return _looksProbablyPlaceQuery(query);
-  },
+  trigger(query) { return _looksProbablyPlaceQuery(query); },
 
   async execute(query, context) {
     const q = query.trim();
@@ -144,8 +107,7 @@ export const slot = {
     if (!_looksProbablyPlaceQuery(q)) return { html: "" };
 
     try {
-      const lat = parseFloat(_settings.defaultLat);
-      const lon = parseFloat(_settings.defaultLon);
+      const lat = parseFloat(_settings.defaultLat); const lon = parseFloat(_settings.defaultLon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { html: "" };
 
       const radiusMiles = parseInt(_settings.defaultRadius || "25", 10);
@@ -161,16 +123,12 @@ export const slot = {
         const start = Date.now();
         return doFetch(url, mergedInit).then(res => { 
           clearTimeout(id); 
-          console.log(`[Places v${PLUGIN_VERSION}] Fetch OK: ${url.split("?")[0]} (${Date.now() - start}ms)`);
+          console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch OK: ${url.split("?")[0]} (${Date.now() - start}ms)`);
           return res; 
-        }).catch(err => { 
-          clearTimeout(id); 
-          console.warn(`[Places v${PLUGIN_VERSION}] Fetch FAIL: ${url.split("?")[0]}: ${err.message}`);
-          throw err; 
-        });
+        }).catch(err => { clearTimeout(id); throw err; });
       };
 
-      console.log(`[Places v${PLUGIN_VERSION}] Executing: "${q}" (Radius: ${radiusMiles}mi) at ${lat}, ${lon}`);
+      console.log(`[Places v${PLUGIN_VERSION}] Query: "${q}" at ${lat}, ${lon}`);
 
       const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus);
 
@@ -180,13 +138,12 @@ export const slot = {
       });
 
       if (top.length === 0) {
-        console.log(`[Places v${PLUGIN_VERSION}] 0 results passed gate for "${q}" (Total found: ${places.length})`);
+        console.log(`[Places v${PLUGIN_VERSION}] 0 results passed gate for "${q}" (Found: ${places.length})`);
         return { 
           html: `<div class="places-wrap" style="display:none" data-places-version="${PLUGIN_VERSION}" data-places-apis='${JSON.stringify(apiStatus)}'></div>` 
         };
       }
 
-      console.log(`[Places v${PLUGIN_VERSION}] Success: Returning ${top.length} places.`);
       const html = _renderCard(top, q, _settings.defaultLocationLabel || "Home", _settings.useBrowserGeolocation, apiStatus);
       return { html };
     } catch (err) {
@@ -241,25 +198,30 @@ function _jsonResponse(obj, status = 200) { return new Response(JSON.stringify(o
 /* ------------------------------------------------------------------ */
 
 async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
-  let out = [];
+  const providerCalls = [];
+
+  // RUN ALL PRIMARY PROVIDERS IN PARALLEL
   if (_settings.geoapifyApiKey) {
-    try {
-      const results = await _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStatus);
-      if (results.length > 0) { console.log(`[Places] Geoapify success: ${results.length} found.`); out.push(...results); }
-    } catch (err) { console.error(`[Places] Geoapify failed:`, err); }
+    providerCalls.push(_searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStatus));
   }
+  if (_settings.locationiqApiKey) {
+    providerCalls.push(_searchLocationIQ(query, lat, lon, limit, doFetch, apiStatus));
+  }
+
+  const results = await Promise.allSettled(providerCalls);
+  let out = [];
+  for (const res of results) {
+    if (res.status === "fulfilled" && Array.isArray(res.value)) out.push(...res.status === "fulfilled" ? res.value : []);
+  }
+
+  // BOOSTER (Foursquare)
   if (out.length < limit && _settings.foursquareApiKey) {
     try {
       const fqResults = await _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiStatus);
-      if (fqResults.length > 0) { console.log(`[Places] Foursquare booster: ${fqResults.length} added.`); out.push(...fqResults); }
+      out.push(...fqResults);
     } catch (err) { console.error(`[Places] Foursquare failed:`, err); }
   }
-  if (out.length < limit && _settings.locationiqApiKey) {
-    try {
-      const liqResults = await _searchLocationIQ(query, lat, lon, limit, doFetch, apiStatus);
-      if (liqResults.length > 0) { console.log(`[Places] LocationIQ fallback: ${liqResults.length} added.`); out.push(...liqResults); }
-    } catch (_) {}
-  }
+
   return out;
 }
 
@@ -271,7 +233,7 @@ async function _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStat
   if (apiStatus?.geoapify) apiStatus.geoapify.status = "processing";
   const key = _settings.geoapifyApiKey || "0a2341f20dfa4b92952a726eb1e36554";
   const categories = _inferGeoapifyCategories(query);
-  const fallbackCats = "catering,commercial,service,accommodation,leisure,amenity";
+  const fallbackCats = "catering,commercial,service,accommodation,leisure,amenity,tourism,office,production,healthcare,education,activity,building";
 
   const buildUrl = (cats) => {
     return `${GEOAPIFY_BASE}?name=${encodeURIComponent(query)}` +
@@ -320,8 +282,7 @@ async function _searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStat
 }
 
 function _inferGeoapifyCategories(query) {
-  const q = query.toLowerCase();
-  const cats = [];
+  const q = query.toLowerCase(); const cats = [];
   if (/\b(coffee|cafe|starbucks|dunkin|espresso)\b/.test(q)) cats.push("catering.cafe");
   if (/\b(pizza|domino|hut|papa)\b/.test(q)) cats.push("catering.restaurant.pizza");
   if (/\b(taco|mexican|tacoria|chipotle|bell)\b/.test(q)) cats.push("catering.restaurant.mexican");
@@ -414,12 +375,10 @@ function _processPlaces(query, places, limit, options = {}) {
 
   out.sort((a, b) => b.score - a.score);
   if (options.enforceConfidenceGate) {
-    const top = out[0];
-    if (!top) return [];
+    const top = out[0]; if (!top) return [];
     const nameSim = _nameSimilarity(normQuery, top.name);
-    // BYPASS gate for brand/named hits
     if (nameSim > 0.8) { console.log(`[Places] Gate Bypass for hit "${top.name}"`); return out.slice(0, limit); }
-    if (top.score < 0.40) return [];
+    if (top.score < 0.35) return [];
   }
   if (options.enforceDistanceGate) out = out.filter(p => p.distanceMeters < 80467);
   return out.slice(0, limit);
