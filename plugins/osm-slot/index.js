@@ -47,6 +47,7 @@ export const slot = {
       label: "LocationIQ API key",
       type: "password",
       secret: true,
+      required: true,
       default: "pk.14ed93f5ee290008c448b4a0f07f73ad",
       description: "Required for high-quality results. This is the primary provider for place data. Get a free key at locationiq.com.",
     },
