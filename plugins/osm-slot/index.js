@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Geoapify and LocationIQ in parallel.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.8.6";
+const PLUGIN_VERSION = "2.8.7";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -36,51 +36,17 @@ export const slot = {
   slotPositions: ["above-results", "knowledge-panel"],
 
   settingsSchema: [
-    {
-      key: "geoapifyApiKey",
-      label: "Geoapify API key",
-      type: "password",
-      secret: true,
-      required: true,
-      default: "0a2341f20dfa4b92952a726eb1e36554",
-    },
-    {
-      key: "locationiqApiKey",
-      label: "LocationIQ API key",
-      type: "password",
-      secret: true,
-      default: "pk.14ed93f5ee290008c448b4a0f07f73ad",
-    },
-    {
-      key: "foursquareApiKey",
-      label: "Foursquare API key",
-      type: "password",
-      secret: true,
-    },
-    {
-      key: "defaultLat", label: "Default latitude", type: "text", required: true, placeholder: "40.7128",
-    },
-    {
-      key: "defaultLon", label: "Default longitude", type: "text", required: true, placeholder: "-74.0060",
-    },
-    {
-      key: "defaultLocationLabel", label: "Default location label", type: "text", default: "Home",
-    },
-    {
-      key: "useBrowserGeolocation", label: "Precise location", type: "toggle", default: false,
-    },
-    {
-      key: "defaultRadius", label: "Search radius", type: "select", options: ["5", "10", "25", "50"], default: "25",
-    },
-    {
-      key: "resultsCount", label: "Results count", type: "select", options: ["3", "5", "10", "15", "20", "25", "30"], default: "5",
-    },
-    {
-      key: "distanceUnit", label: "Distance unit", type: "select", options: ["miles", "km"], default: "miles",
-    },
-    {
-      key: "customTileUrl", label: "Custom map tiles", type: "text", placeholder: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    },
+    { key: "geoapifyApiKey", label: "Geoapify API key", type: "password", secret: true, required: true, default: "0a2341f20dfa4b92952a726eb1e36554" },
+    { key: "locationiqApiKey", label: "LocationIQ API key", type: "password", secret: true, default: "pk.14ed93f5ee290008c448b4a0f07f73ad" },
+    { key: "foursquareApiKey", label: "Foursquare API key", type: "password", secret: true },
+    { key: "defaultLat", label: "Default latitude", type: "text", required: true, placeholder: "40.7128" },
+    { key: "defaultLon", label: "Default longitude", type: "text", required: true, placeholder: "-74.0060" },
+    { key: "defaultLocationLabel", label: "Default location label", type: "text", default: "Home" },
+    { key: "useBrowserGeolocation", label: "Precise location", type: "toggle", default: false },
+    { key: "defaultRadius", label: "Search radius", type: "select", options: ["5", "10", "25", "50"], default: "25" },
+    { key: "resultsCount", label: "Results count", type: "select", options: ["3", "5", "10", "15", "20", "25", "30"], default: "5" },
+    { key: "distanceUnit", label: "Distance unit", type: "select", options: ["miles", "km"], default: "miles" },
+    { key: "customTileUrl", label: "Custom map tiles", type: "text", placeholder: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" },
   ],
 
   init(ctx) {
@@ -140,7 +106,7 @@ export const slot = {
       if (top.length === 0) {
         console.log(`[Places v${PLUGIN_VERSION}] 0 results passed gate for "${q}" (Found: ${places.length})`);
         return { 
-          html: `<div class="places-wrap" style="display:none" data-places-version="${PLUGIN_VERSION}" data-places-apis='${JSON.stringify(apiStatus)}'></div>` 
+          html: `<div class="places-wrap slot-full-width" style="display:none" data-places-version="${PLUGIN_VERSION}" data-places-apis='${JSON.stringify(apiStatus)}'></div>` 
         };
       }
 
@@ -199,29 +165,21 @@ function _jsonResponse(obj, status = 200) { return new Response(JSON.stringify(o
 
 async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
   const providerCalls = [];
-
-  // RUN ALL PRIMARY PROVIDERS IN PARALLEL
-  if (_settings.geoapifyApiKey) {
-    providerCalls.push(_searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStatus));
-  }
-  if (_settings.locationiqApiKey) {
-    providerCalls.push(_searchLocationIQ(query, lat, lon, limit, doFetch, apiStatus));
-  }
+  if (_settings.geoapifyApiKey) providerCalls.push(_searchGeoapify(query, lat, lon, radiusM, limit, doFetch, apiStatus));
+  if (_settings.locationiqApiKey) providerCalls.push(_searchLocationIQ(query, lat, lon, limit, doFetch, apiStatus));
 
   const results = await Promise.allSettled(providerCalls);
   let out = [];
   for (const res of results) {
-    if (res.status === "fulfilled" && Array.isArray(res.value)) out.push(...res.status === "fulfilled" ? res.value : []);
+    if (res.status === "fulfilled" && Array.isArray(res.value)) out.push(...res.value);
   }
 
-  // BOOSTER (Foursquare)
   if (out.length < limit && _settings.foursquareApiKey) {
     try {
       const fqResults = await _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiStatus);
       out.push(...fqResults);
     } catch (err) { console.error(`[Places] Foursquare failed:`, err); }
   }
-
   return out;
 }
 
@@ -370,14 +328,13 @@ function _processPlaces(query, places, limit, options = {}) {
     const categoryRelevance = hasCategoryMatch ? 1 : 0.5;
     const completeness = (p.phone ? 0.3 : 0) + (p.website ? 0.3 : 0) + (p.hours ? 0.3 : 0) + 0.1;
     p.score = (0.45 * nameSim) + (0.25 * distanceScore) + (0.20 * categoryRelevance) + (0.10 * completeness);
-    console.log(`[Places] Scored "${p.name}": ${p.score.toFixed(3)} (Sim: ${nameSim.toFixed(2)}, Dist: ${distanceScore.toFixed(2)})`);
   });
 
   out.sort((a, b) => b.score - a.score);
   if (options.enforceConfidenceGate) {
     const top = out[0]; if (!top) return [];
     const nameSim = _nameSimilarity(normQuery, top.name);
-    if (nameSim > 0.8) { console.log(`[Places] Gate Bypass for hit "${top.name}"`); return out.slice(0, limit); }
+    if (nameSim > 0.8) return out.slice(0, limit);
     if (top.score < 0.35) return [];
   }
   if (options.enforceDistanceGate) out = out.filter(p => p.distanceMeters < 80467);
@@ -435,13 +392,36 @@ function _looksProbablyPlaceQuery(query) {
 function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus) {
   const listHtml = places.map((p, idx) => {
     const distStr = _settings.distanceUnit === "km" ? (p.distanceMeters/1000).toFixed(1)+" km" : (p.distanceMeters/1609.34).toFixed(1)+" mi";
-    const hoursBadge = p.hours?.display ? `<span class="places-hours">${p.hours.display.split(",")[0]}</span>` : "";
-    const stars = p.rating ? `<div class="places-rating"><span class="places-stars" style="--rating: ${p.rating}"></span><span class="places-count">(${p.reviewCount || 0})</span></div>` : "";
-    return `<div class="places-card ${idx===0?"places-card-selected":""}" data-place-card data-lat="${p.lat}" data-lon="${p.lon}" data-place-name="${_esc(p.name)}"><div class="places-card-main"><div class="places-name-row"><span class="places-name">${_esc(p.name)}</span><span class="places-distance">${distStr}</span></div><div class="places-meta">${hoursBadge}<span class="places-category">${_esc(p.categories[0] || "")}</span></div>${stars}<div class="places-address" title="${_esc(p.address)}">${_esc(p.address)}</div></div><div class="places-actions"><a href="${_esc(p.website || "#")}" class="places-action-website ${!p.website ? "places-disabled" : ""}" target="_blank" rel="noopener">Website</a><a href="tel:${_esc(p.phone || "")}" class="places-action-call ${!p.phone ? "places-disabled" : ""}">Call</a><button type="button" class="places-action-directions" data-directions-btn data-place-name="${_esc(p.name)}" data-lat="${p.lat}" data-lon="${p.lon}" data-address="${_esc(p.address)}">Directions</button></div></div>`;
+    const hoursBadge = p.hours?.display ? `<span class="places-hours ${p.hours.openNow===true?"places-hours-open":p.hours.openNow===false?"places-hours-closed":""}">${p.hours.display.split(",")[0]}</span>` : "";
+    const stars = p.rating ? `<div class="places-rating"><span class="places-stars">${"★".repeat(Math.round(p.rating))}${"☆".repeat(5-Math.round(p.rating))}</span><span class="places-rating-num">${p.rating.toFixed(1)}</span><span class="places-review-count">(${p.reviewCount || 0})</span></div>` : "";
+    
+    return `<div class="places-card ${idx===0?"places-card-selected":""}" data-place-card data-lat="${p.lat}" data-lon="${p.lon}" data-place-name="${_esc(p.name)}">
+      <div class="places-card-header">
+        <h3 class="places-name">${_esc(p.name)}</h3>
+        <span class="places-distance">${distStr}</span>
+      </div>
+      <div class="places-meta">
+        ${hoursBadge}
+        <span class="places-category">${_esc(p.categories[0] || "Business")}</span>
+        ${stars}
+      </div>
+      <div class="places-address" title="${_esc(p.address)}">${_esc(p.address)}</div>
+      <div class="places-actions">
+        <div class="places-action-item"><a href="${_esc(p.website || "#")}" class="places-circle-btn places-action-website ${!p.website ? "places-disabled" : ""}" target="_blank" rel="noopener">🌐</a><span class="places-action-text">Website</span></div>
+        <div class="places-action-item"><a href="tel:${_esc(p.phone || "")}" class="places-circle-btn places-action-call ${!p.phone ? "places-disabled" : ""}">📞</a><span class="places-action-text">Call</span></div>
+        <div class="places-action-item"><button type="button" class="places-circle-btn places-action-directions" data-directions-btn data-place-name="${_esc(p.name)}" data-lat="${p.lat}" data-lon="${p.lon}" data-address="${_esc(p.address)}">📍</button><span class="places-action-text">Directions</span></div>
+      </div>
+    </div>`;
   }).join("");
+
   const first = places[0];
-  const mapHtml = `<div class="places-map-panel" data-map-panel data-lat="${first.lat}" data-lon="${first.lon}" data-place-name="${_esc(first.name)}"><div class="places-tile-map" data-lat="${first.lat}" data-lon="${first.lon}" data-zoom="15" data-tile-template="${_esc(_settings.customTileUrl || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")}"><div class="places-tile-layer"></div><div class="places-map-controls"><button type="button" class="places-map-btn" data-zoom-in>+</button><button type="button" class="places-map-btn" data-zoom-out>−</button></div></div><a href="https://www.openstreetmap.org/?mlat=${first.lat}&mlon=${first.lon}#map=15/${first.lat}/${first.lon}" class="places-map-link" target="_blank" rel="noopener" data-map-link>View on OpenStreetMap</a></div>`;
-  return `<div class="places-wrap" data-places-version="${PLUGIN_VERSION}" data-places-apis='${JSON.stringify(apiStatus || {})}'><div class="places-header"><div class="places-title-row"><span class="places-title">Local Places</span>${showGeoBtn ? `<button type="button" class="places-geo-btn" data-query="${_esc(query)}">Use my location</button>` : ""}</div><span class="places-subhead">near ${_esc(locationLabel)}</span></div><div class="places-content"><div class="places-list">${listHtml}</div>${mapHtml}</div><div class="places-modal" data-places-modal hidden><div class="places-modal-content"><div class="places-modal-header"><span>Get Directions</span><button type="button" class="places-modal-close" data-modal-close>&times;</button></div><div class="places-modal-body"><a href="#" class="places-modal-option" data-modal-option="google" target="_blank" rel="noopener">Google Maps</a><a href="#" class="places-modal-option" data-modal-option="apple" target="_blank" rel="noopener">Apple Maps</a><a href="#" class="places-modal-option" data-modal-option="osm" target="_blank" rel="noopener">OpenStreetMap</a></div></div></div></div>`;
+  const mapHtml = `<div class="places-map"><div class="places-tile-map" data-lat="${first.lat}" data-lon="${first.lon}" data-zoom="15" data-tile-template="${_esc(_settings.customTileUrl || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")}"><div class="places-tile-layer"></div><div class="places-map-pin"></div><div class="places-zoom-controls"><button type="button" class="places-zoom-btn" data-zoom-in>+</button><button type="button" class="places-zoom-btn" data-zoom-out>−</button></div></div><a href="https://www.openstreetmap.org/?mlat=${first.lat}&mlon=${first.lon}#map=15/${first.lat}/${first.lon}" class="places-map-link" target="_blank" rel="noopener" data-map-link>View on OpenStreetMap</a></div>`;
+
+  return `<div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}" data-places-apis='${JSON.stringify(apiStatus || {})}'>
+    <div class="places-header"><span class="places-label">Local Places</span><span class="places-subhead">near ${_esc(locationLabel)}</span>${showGeoBtn ? `<button type="button" class="places-geo-btn" data-query="${_esc(query)}">Use my location</button>` : ""}</div>
+    <div class="places-layout"><div class="places-grid">${listHtml}</div>${mapHtml}</div>
+    <div class="places-modal" data-places-modal hidden><div class="places-modal-backdrop" data-modal-close></div><div class="places-modal-content"><div class="places-modal-header"><span class="places-modal-title">Get Directions</span><button type="button" class="places-modal-close-btn" data-modal-close>&times;</button></div><div class="places-modal-body"><a href="#" class="places-modal-option" data-modal-option="google" target="_blank" rel="noopener">Google Maps</a><a href="#" class="places-modal-option" data-modal-option="apple" target="_blank" rel="noopener">Apple Maps</a><a href="#" class="places-modal-option" data-modal-option="osm" target="_blank" rel="noopener">OpenStreetMap</a></div></div></div>
+  </div>`;
 }
 
 function _fmtFsqAddress(loc) { if (!loc) return ""; if (loc.formatted_address) return loc.formatted_address; return [loc.address, loc.cross_street, loc.city, loc.state, loc.postcode].filter(Boolean).join(", "); }
