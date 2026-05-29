@@ -202,6 +202,17 @@
   color: #c5221f;
 }
 
+.places-hours-detail {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+  vertical-align: middle;
+}
+
 .places-category {
   font-size: 0.7rem;
   padding: 2px 10px;

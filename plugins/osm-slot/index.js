@@ -1,7 +1,7 @@
 // Places slot plugin — local place recognition with Foursquare, Yelp, Overpass, Photon, and Nominatim.
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "2.3.7";
+const PLUGIN_VERSION = "2.3.8";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -451,7 +451,13 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
               chains: (r.chains || []).map((c) => c.name).filter(Boolean),
               price: r.price || null,
               categories: (r.categories || []).map((c) => c.short_name || c.name).filter(Boolean),
-              hours: r.hours ? { openNow: r.hours.open_now === true } : null,
+              hours: r.hours
+                ? {
+                    openNow: r.hours.open_now === true,
+                    display: r.hours.display || null,
+                    status: null,
+                  }
+                : null,
               rating: r.rating ? r.rating / 2 : null,
               reviewCount: r.stats?.total_ratings || null,
               source: "Foursquare",
@@ -466,6 +472,10 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
                 if (fallback) {
                   place.phone = place.phone || fallback.phone;
                   place.website = place.website || fallback.website;
+                  if (fallback.openingHours && !place.hours?.display) {
+                    place.hours = place.hours || { openNow: null, display: null, status: null };
+                    place.hours.display = fallback.openingHours;
+                  }
                 }
               })());
             }
@@ -547,7 +557,11 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
                       }
                       place.reviewCount = dv.ratingSignals || null;
                       if (dv.hours) {
-                        place.hours = { openNow: dv.hours.isOpen === true };
+                        place.hours = {
+                          openNow: dv.hours.isOpen === true,
+                          display: null,
+                          status: dv.hours.status || null,
+                        };
                       }
                       if (dv.description) {
                         place.description = dv.description;
@@ -567,6 +581,10 @@ async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch) {
                   if (fallback) {
                     place.phone = place.phone || fallback.phone;
                     place.website = place.website || fallback.website;
+                    if (fallback.openingHours && !place.hours?.display) {
+                      place.hours = place.hours || { openNow: null, display: null, status: null };
+                      place.hours.display = fallback.openingHours;
+                    }
                   }
                 }
               })());
@@ -627,7 +645,7 @@ async function _searchYelp(query, lat, lon, radiusM, limit, doFetch) {
         phone: b.phone || b.display_phone || null,
         website: b.url || null,
         categories: (b.categories || []).map((c) => c.title).filter(Boolean),
-        hours: b.hours ? { openNow: b.hours[0]?.is_open_now === true } : null,
+        hours: b.hours ? { openNow: b.hours[0]?.is_open_now === true, display: null, status: null } : null,
         rating: b.rating || null,
         reviewCount: b.review_count || null,
         source: "Yelp",
@@ -696,7 +714,9 @@ out center ${Math.max(limit * 2, 10)};
         phone: hasPhone || null,
         website: hasWebsite || null,
         categories,
-        hours: tags.opening_hours ? { openNow: null } : null,
+        hours: tags.opening_hours
+          ? { openNow: null, display: _formatOsmHours(tags.opening_hours), status: null }
+          : null,
         rating: null,
         reviewCount: null,
         source: "OpenStreetMap",
@@ -839,6 +859,15 @@ function _dedupeAndMergePlaces(places) {
         const cats = new Set([...existing.categories, ...p.categories]);
         existing.categories = Array.from(cats);
       }
+      if (!existing.hours && p.hours) existing.hours = p.hours;
+      else if (existing.hours && p.hours) {
+        if (existing.hours.openNow == null && p.hours.openNow != null)
+          existing.hours.openNow = p.hours.openNow;
+        if (!existing.hours.display && p.hours.display)
+          existing.hours.display = p.hours.display;
+        if (!existing.hours.status && p.hours.status)
+          existing.hours.status = p.hours.status;
+      }
     } else {
       out.push({ ...p });
     }
@@ -928,11 +957,18 @@ function _renderCard(places, query, locationLabel, showGeoBtn) {
       const ratingHtml = stars ? `<span class="places-rating">${stars}${reviews}</span>` : "";
 
       const hoursHtml = p.hours
-        ? p.hours.openNow === true
-          ? `<span class="places-hours places-hours-open">Open now</span>`
-          : p.hours.openNow === false
-            ? `<span class="places-hours places-hours-closed">Closed</span>`
-            : ""
+        ? (() => {
+            const badge = p.hours.openNow === true
+              ? `<span class="places-hours places-hours-open">Open now</span>`
+              : p.hours.openNow === false
+                ? `<span class="places-hours places-hours-closed">Closed</span>`
+                : "";
+            const detail = p.hours.status || p.hours.display || "";
+            const detailHtml = detail
+              ? `<span class="places-hours-detail" title="${_esc(detail)}">${_esc(detail)}</span>`
+              : "";
+            return badge + detailHtml;
+          })()
         : "";
 
       const catsHtml = p.categories
@@ -1351,9 +1387,10 @@ out center 20;`.trim();
       const tags = best.tags || {};
       const phone = tags.phone || tags["contact:phone"] || tags["contact:mobile"] || null;
       const website = tags.website || tags["contact:website"] || tags.url || null;
-      console.log(`[Places Performance] Targeted Overpass fallback details for "${name}" matched "${tags.name}" (score: ${scoredElements[0].score.toFixed(2)}) in ${Date.now() - start}ms (Website: ${!!website}, Phone: ${!!phone})`);
-      if (phone || website) {
-        return { phone, website };
+      const openingHours = _formatOsmHours(tags.opening_hours);
+      console.log(`[Places Performance] Targeted Overpass fallback details for "${name}" matched "${tags.name}" (score: ${scoredElements[0].score.toFixed(2)}) in ${Date.now() - start}ms (Website: ${!!website}, Phone: ${!!phone}, Hours: ${!!openingHours})`);
+      if (phone || website || openingHours) {
+        return { phone, website, openingHours };
       }
     } else {
       console.log(`[Places Performance] Targeted Overpass fallback details for "${name}" found no fuzzy match in ${data.elements.length} elements in ${Date.now() - start}ms`);
@@ -1408,4 +1445,98 @@ function _fmtNominatimAddress(r) {
     if (parts.length) return parts.join(", ");
   }
   return r.display_name || "";
+}
+
+function _formatOsmHours(openingHours) {
+  if (!openingHours) return null;
+  if (openingHours.toLowerCase() === "24/7") {
+    return "Open 24/7";
+  }
+  
+  const daysMap = {
+    "Mo": "Mon",
+    "Tu": "Tue",
+    "We": "Wed",
+    "Th": "Thu",
+    "Fr": "Fri",
+    "Sa": "Sat",
+    "Su": "Sun"
+  };
+
+  const to12Hr = (t) => {
+    const parts = t.split(":");
+    if (parts.length !== 2) return t;
+    let h = parseInt(parts[0], 10);
+    const m = parts[1];
+    if (isNaN(h)) return t;
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${h}:${m} ${ampm}`;
+  };
+
+  const segments = openingHours.split(";").map(s => s.trim()).filter(Boolean);
+  const formattedSegments = [];
+
+  for (const seg of segments) {
+    if (seg.toLowerCase() === "24/7") {
+      formattedSegments.push("Open 24/7");
+      continue;
+    }
+    if (seg.toLowerCase() === "off" || seg.toLowerCase().endsWith("off")) {
+      let dayPart = seg.replace(/off/i, "").trim();
+      if (dayPart) {
+        for (const [k, v] of Object.entries(daysMap)) {
+          dayPart = dayPart.replace(new RegExp(k, "g"), v);
+        }
+        dayPart = dayPart.replace(/-/g, "–");
+        formattedSegments.push(`${dayPart}: Closed`);
+      } else {
+        formattedSegments.push("Closed");
+      }
+      continue;
+    }
+
+    const timeMatch = seg.match(/\d{2}:\d{2}/);
+    if (!timeMatch) {
+      let cleanSeg = seg;
+      for (const [k, v] of Object.entries(daysMap)) {
+        cleanSeg = cleanSeg.replace(new RegExp(k, "g"), v);
+      }
+      cleanSeg = cleanSeg.replace(/-/g, "–");
+      formattedSegments.push(cleanSeg);
+      continue;
+    }
+
+    const timeIndex = timeMatch.index;
+    let daysPart = seg.substring(0, timeIndex).trim();
+    let timesPart = seg.substring(timeIndex).trim();
+
+    for (const [k, v] of Object.entries(daysMap)) {
+      daysPart = daysPart.replace(new RegExp(k, "g"), v);
+    }
+    daysPart = daysPart.replace(/-/g, "–");
+
+    const timeRanges = timesPart.split(",").map(t => t.trim()).filter(Boolean);
+    const formattedRanges = timeRanges.map(range => {
+      const parts = range.split("-").map(p => p.trim());
+      if (parts.length === 2) {
+        return `${to12Hr(parts[0])}–${to12Hr(parts[1])}`;
+      }
+      return range;
+    });
+
+    const timesJoined = formattedRanges.join(", ");
+    if (daysPart) {
+      if (daysPart.endsWith(":")) {
+        formattedSegments.push(`${daysPart} ${timesJoined}`);
+      } else {
+        formattedSegments.push(`${daysPart}: ${timesJoined}`);
+      }
+    } else {
+      formattedSegments.push(timesJoined);
+    }
+  }
+
+  return formattedSegments.join(", ");
 }
