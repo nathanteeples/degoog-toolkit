@@ -2,7 +2,7 @@
 // (hybrid of /browse with verified category codes and /discover free-text).
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.3.3";
+const PLUGIN_VERSION = "4.3.4";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -1023,6 +1023,7 @@ const GENERIC_NAME_STOPWORDS = new Set([
 // searching; if the remainder is a proper place/landmark name (not a local
 // category) the search goes GLOBAL so far-away landmarks resolve.
 const WHERE_IS_RE = /^(where(?:'s|s| is| are| can i (?:find|get|buy)| to find))\s+/i;
+const WHERE_PLAIN_RE = /^where\s+/i;
 const LEADING_ARTICLE_RE = /^(the|a|an)\s+/i;
 
 // Classifies the (already where-is-stripped) text against the local signals.
@@ -1065,7 +1066,7 @@ function _classifyPlaceQuery(rawQuery) {
   const query = _normalizeQuery(rawQuery);
   if (!query || query.length > 80) return null;
 
-  const whereMatch = WHERE_IS_RE.exec(query);
+  const whereMatch = WHERE_IS_RE.exec(query) || WHERE_PLAIN_RE.exec(query);
 
   if (whereMatch) {
     // Strip the "where is" prefix (and a leading article) before searching.
