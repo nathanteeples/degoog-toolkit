@@ -39,8 +39,9 @@ function parseSnakeQuery(query) {
 }
 
 function renderSnakeCard() {
-  const speedMsMap = { "Easy": 150, "Normal": 100, "Hard": 70 };
-  const initialSpeedMs = speedMsMap[initialSpeed] || 100;
+  // Slightly slower defaults for better control, especially on touch devices.
+  const speedMsMap = { "Easy": 185, "Normal": 130, "Hard": 95 };
+  const initialSpeedMs = speedMsMap[initialSpeed] || 130;
 
   return (template || "")
     .replaceAll("{{initial_speed_ms}}", String(initialSpeedMs));

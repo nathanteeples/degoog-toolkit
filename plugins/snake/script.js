@@ -26,6 +26,7 @@
     directionQueue: [],
     apple: { x: 0, y: 0 },
     particles: [],
+    collisionGraceUntil: 0,
     
     // Smooth movement interpolation
     prevSnake: [],
@@ -177,6 +178,7 @@
     state.nextDirection = { x: 1, y: 0 };
     state.directionQueue = [];
     state.particles = [];
+    state.collisionGraceUntil = 0;
     state.prevSnake = state.snake.map(function(s) { return { x: s.x, y: s.y }; });
     state.lastTickTime = performance.now();
 
@@ -316,6 +318,13 @@
 
     var finalScoreSpan = qs("#snake-final-score");
     if (finalScoreSpan) finalScoreSpan.textContent = String(state.score);
+    var extra = qs("#snake-gameover-extra");
+    if (extra) {
+      var newBest = state.score === state.highScore && state.score > 0;
+      extra.textContent = newBest
+        ? "New best score! Keep it up."
+        : "Best: " + state.highScore + " \u00b7 Tip: queue turns a little earlier.";
+    }
     
     qs("#snake-overlay-gameover").classList.remove("snake-hidden");
     
@@ -344,24 +353,34 @@
       y: head.y + state.direction.y
     };
 
-    // Collision Detection: Wall
-    if (
+    // Collision detection with a short "mercy" window (~half a frame) to allow
+    // a just-in-time input like Nintendo-style leniency.
+    var collision =
       nextHead.x < 0 ||
       nextHead.x >= state.gridSize ||
       nextHead.y < 0 ||
-      nextHead.y >= state.gridSize
-    ) {
+      nextHead.y >= state.gridSize;
+    if (!collision) {
+      for (var i = 0; i < state.snake.length; i++) {
+        if (state.snake[i].x === nextHead.x && state.snake[i].y === nextHead.y) {
+          collision = true;
+          break;
+        }
+      }
+    }
+    if (collision) {
+      var now = performance.now();
+      if (state.collisionGraceUntil === 0) {
+        state.collisionGraceUntil = now + Math.max(28, state.speedMs * 0.5);
+        return;
+      }
+      if (now < state.collisionGraceUntil) {
+        return;
+      }
       triggerGameOver();
       return;
     }
-
-    // Collision Detection: Self
-    for (var i = 0; i < state.snake.length; i++) {
-      if (state.snake[i].x === nextHead.x && state.snake[i].y === nextHead.y) {
-        triggerGameOver();
-        return;
-      }
-    }
+    state.collisionGraceUntil = 0;
 
     // Move snake head forward
     state.snake.unshift(nextHead);

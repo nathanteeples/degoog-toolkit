@@ -2,7 +2,7 @@
 // (hybrid of /browse with verified category codes and /discover free-text).
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.3.1";
+const PLUGIN_VERSION = "4.3.2";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -999,6 +999,24 @@ const GENERIC_NAME_STOPWORDS = new Set([
   "good", "bad", "new", "old", "free", "love", "life", "time", "day", "today",
   "tomorrow", "yesterday", "now", "here", "there", "this", "that", "them",
   "thanks", "please", "help", "info", "about", "home", "work", "name",
+  // Very generic nouns/adjectives frequently searched in non-local contexts.
+  "best", "top", "cheap", "near", "local", "nearby", "open", "closed", "hours",
+  "menu", "price", "prices", "review", "reviews", "rating", "ratings",
+  "address", "location", "locations", "directions", "phone", "website",
+  "news", "wiki", "wikipedia", "video", "videos", "image", "images", "photo",
+  "photos", "map", "maps", "weather", "forecast", "translate", "calculator",
+  "converter", "stock", "stocks", "crypto", "bitcoin",
+  // Broad topic words that should not trigger Places.
+  "music", "movie", "movies", "show", "shows", "book", "books", "recipe",
+  "recipes", "game", "games", "school", "college", "university", "hospitality",
+  "software", "hardware", "app", "apps", "website", "websites",
+  // Common animals/colors/objects that often collide with road names/business names.
+  "snake", "wolf", "fox", "bear", "eagle", "hawk", "deer", "dog", "cat",
+  "red", "blue", "green", "black", "white", "orange", "purple", "yellow",
+  "hill", "ridge", "valley", "river", "lake", "road", "street", "avenue",
+  // Game/animal terms that often collide with utility plugins and should not
+  // trigger Places as optimistic single-word business-name searches.
+  "snake", "minesweeper", "tictactoe", "tic", "toe",
 ]);
 
 // Leading "where is / where's / where can i find ..." phrasing. Stripped before
@@ -1084,6 +1102,11 @@ function _looksLikeNameQuery(query) {
   const tokens = _normalizeQuery(query).split(/\s+/).filter(Boolean);
   if (tokens.length < 1 || tokens.length > 3) return false;
 
+  // Be conservative for quota safety: optimistic name mode now requires
+  // at least two words. Single-word queries must use explicit local intent
+  // ("near me"), a place category, or a known chain to trigger.
+  if (tokens.length === 1) return false;
+
   for (const token of tokens) {
     // Each token must read like a name word: starts with a letter, only
     // letters plus internal apostrophes/hyphens/ampersands/dots. No digits.
@@ -1093,15 +1116,8 @@ function _looksLikeNameQuery(query) {
   const compact = tokens.join("");
   if (compact.length < 3) return false;
 
-  // Quota guard: a single ultra-short token (<4 chars) is rarely a real
-  // business name and just burns Discover calls. Genuine short brands (CVS,
-  // BP, KFC, ...) are caught earlier by KNOWN_CHAIN_RE, so this is safe.
-  if (tokens.length === 1 && tokens[0].length < 4) return false;
-
-  // A lone generic stopword (e.g. "the", "good") is not a business name.
-  if (tokens.length === 1 && GENERIC_NAME_STOPWORDS.has(tokens[0].toLowerCase())) {
-    return false;
-  }
+  // Filter generic noun/adjective phrases that are unlikely to be business names.
+  if (tokens.every((t) => GENERIC_NAME_STOPWORDS.has(t.toLowerCase()))) return false;
 
   return true;
 }
