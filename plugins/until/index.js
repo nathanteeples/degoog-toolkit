@@ -25,6 +25,10 @@ if (untilChrono?.parsers) {
 const FALLBACK_TEMPLATE = `
 <div class="until-card {{state_class}}" data-until-card data-until-target="{{target_iso}}" data-until-unit="{{requested_unit}}" data-until-top-units="{{top_units}}">
   <div class="until-card__panel">
+    <div class="until-card__header">
+      <span class="until-card__kicker">Countdown board</span>
+      <span class="until-card__status">{{status_label}}</span>
+    </div>
     <div class="until-card__main">
       <div class="until-card__eyebrow">{{eyebrow}}</div>
       <div class="until-card__answer" data-until-answer aria-live="polite">
@@ -41,6 +45,10 @@ const FALLBACK_TEMPLATE = `
 const USAGE_HTML = `
 <div class="until-card until-card--usage">
   <div class="until-card__panel">
+    <div class="until-card__header">
+      <span class="until-card__kicker">Countdown board</span>
+      <span class="until-card__status">Ready</span>
+    </div>
     <div class="until-card__main">
       <div class="until-card__eyebrow">Until</div>
       <div class="until-card__answer until-card__answer--small">Try a countdown query</div>
@@ -782,6 +790,8 @@ function renderUntil(parsed, now) {
     .join(String(settings.topUnits))
     .split("{{eyebrow}}")
     .join(_esc(future ? `Until ${targetLabel}` : `Since ${targetLabel}`))
+    .split("{{status_label}}")
+    .join(_esc(future ? "Approaching" : "Arrived"))
     .split("{{primary_html}}")
     .join(primary.html)
     .split("{{primary_caption}}")
@@ -805,8 +815,13 @@ function renderPrimaryHtml(parts) {
   return parts
     .map((part, index) => {
       const level = Math.min(index, MAX_TOP_UNITS - 1);
+      const digits = Math.max(2, formatWhole(part.value).length);
       return `<span class="until-card__part until-card__part--${level}">
-        <span class="until-card__part-value">${_esc(formatWhole(part.value))}</span>
+        <span class="until-card__flap" style="--until-digits:${_esc(String(digits))}" data-until-part data-until-unit="${_esc(part.unit)}" data-until-value="${_esc(String(part.value))}">
+          <span class="until-card__flap-half until-card__flap-half--top">${_esc(formatWhole(part.value))}</span>
+          <span class="until-card__flap-half until-card__flap-half--bottom">${_esc(formatWhole(part.value))}</span>
+          <span class="until-card__flap-value">${_esc(formatWhole(part.value))}</span>
+        </span>
         <span class="until-card__part-unit">${_esc(plural(part.unit.slice(0, -1), part.value))}</span>
       </span>`;
     })

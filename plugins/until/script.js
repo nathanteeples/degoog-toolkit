@@ -49,7 +49,7 @@
     const answerEl = card.querySelector("[data-until-answer]");
     const captionEl = card.querySelector("[data-until-caption]");
 
-    if (answerEl) answerEl.innerHTML = primary.html;
+    if (answerEl) updateAnswer(answerEl, primary.html);
     if (captionEl) captionEl.textContent = future ? "from now" : "ago";
 
     for (const detailUnit of DETAIL_UNITS) {
@@ -75,12 +75,39 @@
     return parts
       .map((part, index) => {
         const level = Math.min(index, DETAIL_UNITS.length - 1);
+        const digits = Math.max(2, formatWhole(part.value).length);
         return `<span class="until-card__part until-card__part--${level}">
-          <span class="until-card__part-value">${escapeHtml(formatWhole(part.value))}</span>
+          <span class="until-card__flap" style="--until-digits:${escapeHtml(String(digits))}" data-until-part data-until-unit="${escapeHtml(part.unit)}" data-until-value="${escapeHtml(String(part.value))}">
+            <span class="until-card__flap-half until-card__flap-half--top">${escapeHtml(formatWhole(part.value))}</span>
+            <span class="until-card__flap-half until-card__flap-half--bottom">${escapeHtml(formatWhole(part.value))}</span>
+            <span class="until-card__flap-value">${escapeHtml(formatWhole(part.value))}</span>
+          </span>
           <span class="until-card__part-unit">${escapeHtml(plural(part.unit.slice(0, -1), part.value))}</span>
         </span>`;
       })
       .join("");
+  }
+
+  function updateAnswer(answerEl, nextHtml) {
+    const previous = new Map();
+    answerEl.querySelectorAll("[data-until-part]").forEach((el) => {
+      const unit = el.getAttribute("data-until-unit");
+      const value = Number(el.getAttribute("data-until-value"));
+      if (unit && Number.isFinite(value)) previous.set(unit, value);
+    });
+
+    answerEl.innerHTML = nextHtml;
+
+    answerEl.querySelectorAll("[data-until-part]").forEach((el) => {
+      const unit = el.getAttribute("data-until-unit");
+      const next = Number(el.getAttribute("data-until-value"));
+      const prev = previous.get(unit);
+      if (!unit || !Number.isFinite(prev) || !Number.isFinite(next) || prev === next) {
+        return;
+      }
+
+      el.classList.add(next < prev ? "until-card__flap--down" : "until-card__flap--up");
+    });
   }
 
   function decomposeDuration(absMs, requestedUnit, count) {

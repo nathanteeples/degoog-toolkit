@@ -95,6 +95,7 @@ function parseQuery(query) {
 
   const explicitCommand = COMMAND_PREFIX_RE.test(q);
   const hasConversionIntent = explicitCommand || hasNaturalConversionIntent(q);
+  if (!explicitCommand && isCountdownDateQuery(q)) return null;
 
   const clean = q
     .replace(/^!(unit|convert|conv)\s*/i, "")
@@ -134,6 +135,33 @@ function hasNaturalConversionIntent(query) {
   return query
     .split(/\s+/)
     .some((token) => splitCompactUnitToken(token).some((part) => part.score === 2));
+}
+
+function isCountdownDateQuery(query) {
+  const q = String(query || "").trim().toLowerCase();
+  const unitRelation = q.match(
+    /^(?:please\s+)?(?:how\s+many\s+)?(?:years?|yrs?|months?|mos?|weeks?|wks?|days?|hours?|hrs?|minutes?|mins?|seconds?|secs?)\s+(?:are\s+there\s+)?(?:until|till|til|since)\s+(?<target>.+)$/i,
+  );
+  if (!unitRelation?.groups?.target) return false;
+  return isLikelyDateTarget(unitRelation.groups.target);
+}
+
+function isLikelyDateTarget(target) {
+  const t = String(target || "")
+    .trim()
+    .replace(/[?!.]+$/g, "")
+    .replace(/\b(\d{1,2})(st|nd|rd|th)\b/gi, "$1");
+  if (!t) return false;
+
+  return (
+    /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(t) ||
+    /\b(mon|monday|tue|tues|tuesday|wed|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday|sun|sunday)\b/i.test(t) ||
+    /\b(today|tomorrow|tonight|eod|christmas|halloween|valentine|independence|new year)\b/i.test(t) ||
+    /\b(?:next|last|this)\s+(?:week|month|year|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday|sun|sunday)\b/i.test(t) ||
+    /^\d{4}-\d{1,2}-\d{1,2}(?:\s|$)/.test(t) ||
+    /^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?(?:\s|$)/.test(t) ||
+    /^[1-9]\d{2,3}$/.test(t)
+  );
 }
 
 function addAlias(alias, abbr) {
