@@ -77,15 +77,23 @@
         const level = Math.min(index, DETAIL_UNITS.length - 1);
         const displayValue = formatWhole(part.value);
         const digits = Math.max(2, displayValue.length);
+        const safe = escapeHtml(displayValue);
         return `<span class="until-card__part until-card__part--${level}">
-          <span class="until-card__flap" style="--until-digits:${escapeHtml(String(digits))}" data-until-part data-until-unit="${escapeHtml(part.unit)}" data-until-value="${escapeHtml(String(part.value))}" data-until-display="${escapeHtml(displayValue)}">
-            <span class="until-card__flap-value">${escapeHtml(displayValue)}</span>
+          <span class="until-card__flap" style="--until-digits:${escapeHtml(String(digits))}" data-until-part data-until-unit="${escapeHtml(part.unit)}" data-until-value="${escapeHtml(String(part.value))}" data-until-display="${safe}">
+            <span class="until-card__flap-card until-card__flap-card--upper"><span class="until-card__flap-text" data-until-upper>${safe}</span></span>
+            <span class="until-card__flap-card until-card__flap-card--lower"><span class="until-card__flap-text" data-until-lower>${safe}</span></span>
+            <span class="until-card__flap-card until-card__flap-card--flip-upper"><span class="until-card__flap-text" data-until-flip-upper>${safe}</span></span>
+            <span class="until-card__flap-card until-card__flap-card--flip-lower"><span class="until-card__flap-text" data-until-flip-lower>${safe}</span></span>
           </span>
           <span class="until-card__part-unit">${escapeHtml(plural(part.unit.slice(0, -1), part.value))}</span>
         </span>`;
       })
       .join("");
   }
+
+  const prefersReducedMotion =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function updateAnswer(answerEl, nextHtml) {
     const previous = new Map();
@@ -98,16 +106,31 @@
 
     answerEl.innerHTML = nextHtml;
 
+    if (prefersReducedMotion) return;
+
     answerEl.querySelectorAll("[data-until-part]").forEach((el) => {
       const unit = el.getAttribute("data-until-unit");
       const next = Number(el.getAttribute("data-until-value"));
       const prev = previous.get(unit);
-      if (!unit || !prev || !Number.isFinite(prev.value) || !Number.isFinite(next) || prev.value === next) {
+      if (
+        !unit ||
+        !prev ||
+        !Number.isFinite(prev.value) ||
+        !Number.isFinite(next) ||
+        prev.value === next
+      ) {
         return;
       }
 
-      el.setAttribute("data-until-prev-display", prev.display);
-      el.classList.add(next < prev.value ? "until-card__flap--down" : "until-card__flap--up");
+      // Split-flap fall: the top leaf shows the OLD value and drops away to
+      // reveal the NEW top, while the static lower half keeps showing the OLD
+      // value until the NEW lower leaf lands over it. NEW value lives in the
+      // static upper half and the lower flap (already rendered above).
+      const lower = el.querySelector("[data-until-lower]");
+      const flipUpper = el.querySelector("[data-until-flip-upper]");
+      if (lower) lower.textContent = prev.display;
+      if (flipUpper) flipUpper.textContent = prev.display;
+      el.classList.add("until-card__flap--anim");
     });
   }
 

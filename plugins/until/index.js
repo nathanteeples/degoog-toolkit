@@ -815,11 +815,15 @@ function renderPrimaryHtml(parts) {
   return parts
     .map((part, index) => {
       const level = Math.min(index, MAX_TOP_UNITS - 1);
-      const digits = Math.max(2, formatWhole(part.value).length);
       const displayValue = formatWhole(part.value);
+      const digits = Math.max(2, displayValue.length);
+      const safe = _esc(displayValue);
       return `<span class="until-card__part until-card__part--${level}">
-        <span class="until-card__flap" style="--until-digits:${_esc(String(digits))}" data-until-part data-until-unit="${_esc(part.unit)}" data-until-value="${_esc(String(part.value))}" data-until-display="${_esc(displayValue)}">
-          <span class="until-card__flap-value">${_esc(formatWhole(part.value))}</span>
+        <span class="until-card__flap" style="--until-digits:${_esc(String(digits))}" data-until-part data-until-unit="${_esc(part.unit)}" data-until-value="${_esc(String(part.value))}" data-until-display="${safe}">
+          <span class="until-card__flap-card until-card__flap-card--upper"><span class="until-card__flap-text" data-until-upper>${safe}</span></span>
+          <span class="until-card__flap-card until-card__flap-card--lower"><span class="until-card__flap-text" data-until-lower>${safe}</span></span>
+          <span class="until-card__flap-card until-card__flap-card--flip-upper"><span class="until-card__flap-text" data-until-flip-upper>${safe}</span></span>
+          <span class="until-card__flap-card until-card__flap-card--flip-lower"><span class="until-card__flap-text" data-until-flip-lower>${safe}</span></span>
         </span>
         <span class="until-card__part-unit">${_esc(plural(part.unit.slice(0, -1), part.value))}</span>
       </span>`;
