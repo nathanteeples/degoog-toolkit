@@ -1,5 +1,10 @@
 let template = "";
 import convert from "./convert-units.cjs.js";
+import {
+  hasNumericConversionPattern,
+  isInformationalQuestion,
+  isUnitConversionIn,
+} from "./query-guards.js";
 
 // ── Build Alias Map ──────────────────────────────────────────
 const ALIASES = {
@@ -87,6 +92,8 @@ for (const [alias, abbr] of Object.entries(ALIASES)) {
 // ── Query parser ──────────────────────────────────────────────
 function parseQuery(query) {
   if (query.trim().startsWith("#")) return null;
+  if (isInformationalQuestion(query)) return null;
+
   // Separate numbers and letters so "100C to F" becomes "100 C to F"
   let q = query
     .trim()
@@ -113,6 +120,14 @@ function parseQuery(query) {
   const matches = findUnitMatches(clean);
   if (matches.length < 2) return null;
 
+  // Without a number or explicit connector, reject long prose that merely mentions
+  // unit words (e.g. "how many days of the week …").
+  if (!amountMatch && !explicitCommand && !hasNumericConversionPattern(q)) {
+    const hasConnector =
+      /\b(?:to|into)\b/i.test(q) || isUnitConversionIn(q, isCompactUnitToken);
+    if (!hasConnector) return null;
+  }
+
   const afterAmount = amountMatch
     ? matches.filter(
         (match) => match.index >= amountMatch.index + amountMatch[0].length,
@@ -130,11 +145,23 @@ function parseQuery(query) {
 }
 
 function hasNaturalConversionIntent(query) {
-  if (/\b(?:to|into|in)\b|=/.test(query)) return true;
+  if (hasNumericConversionPattern(query)) return true;
 
-  return query
-    .split(/\s+/)
-    .some((token) => splitCompactUnitToken(token).some((part) => part.score === 2));
+  if (
+    query
+      .split(/\s+/)
+      .some((token) => splitCompactUnitToken(token).some((part) => part.score === 2))
+  ) {
+    return true;
+  }
+
+  // Plain English "in them / in the week" is not a conversion connector.
+  if (/\bin\b/i.test(query) && isUnitConversionIn(query, isCompactUnitToken)) {
+    return true;
+  }
+
+  if (/\b(?:to|into)\b|=/.test(query)) return true;
+  return false;
 }
 
 function isCountdownDateQuery(query) {

@@ -1,5 +1,6 @@
 let template = "";
 let externalFetch = (...args) => fetch(...args);
+import { isInformationalQuestion } from "./query-guards.js";
 
 const settings = {
   // Default to imperial units for brand-new installs. Existing saved
@@ -226,6 +227,7 @@ const slotDef = {
   trigger(query) {
     const q = String(query || "").trim();
     if (q.length < 2 || q.length > 200) return false;
+    if (isInformationalQuestion(q)) return false;
 
     const lower = q.toLowerCase();
     const isBareTrigger =

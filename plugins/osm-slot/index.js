@@ -1,8 +1,10 @@
 // Places slot plugin — local place recognition powered by the HERE Search API
 // (hybrid of /browse with verified category codes and /discover free-text).
 
+import { isInformationalQuestion, isPlaceInLocation } from "./query-guards.js";
+
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.3.9";
+const PLUGIN_VERSION = "4.4.0";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -978,7 +980,7 @@ function _formatHoursLineDisplay(line) {
 /* ------------------------------------------------------------------ */
 
 const LOCAL_INTENT_RE =
-  /\b(near me|nearby|nearest|closest|locations?|address|directions?|hours?|open now|phone|menu|reservations?|reviews?|in [a-z .'-]+|near [a-z .'-]+)\b/i;
+  /\b(near me|nearby|nearest|closest|locations?|address|directions?|hours?|open now|phone|menu|reservations?|reviews?|near [a-z .'-]+)\b/i;
 
 const PLACE_CATEGORY_RE =
   /\b(restaurant|restaurants|tavern|tap|bar|grill|cafe|coffee|pizza|diner|bakery|brewery|pub|pharmacy|grocery|supermarket|market|bank|hotel|motel|gas station|store|shop|salon|gym|doctor|dentist|hospital|urgent care|auto|car wash|costco|target|walmart|home depot|lowe'?s|starbucks|mcdonald'?s|chipotle|domino'?s)\b/i;
@@ -988,7 +990,7 @@ const KNOWN_CHAIN_RE =
   /\b(costco|target|walmart|starbucks|mcdonald'?s|burger\s*king|wendy'?s|taco\s*bell|chipotle|domino'?s|pizza\s*hut|papa\s*john'?s|subway|dunkin'?|dunkin\s*donuts|kfc|five\s*guys|shake\s*shack|in-n-out|chick-fil-a|panera|olive\s*garden|red\s*lobster|longhorn|texas\s*roadhouse|cracker\s*barrel|ihop|denny'?s|applebee'?s|chili'?s|outback|buffalo\s*wild\s*wings|home\s*depot|lowe'?s|menards|best\s*buy|staples|office\s*depot|petco|petsmart|whole\s*foods|trader\s*joe'?s|kroger|safeway|albertsons|publix|wegmans|cvs|walgreens|rite\s*aid|sheetz|wawa|buc-ee'?s|flying\s*j|love'?s|pilot|speedway|shell|bp|exxon|mobil|sunoco|citgo|marathon|7-eleven|circle\s*k|royal\s*farms)\b/i;
 
 const NON_PLACE_RE =
-  /\b(how to|what is|why|when|who|reddit|github|docs|documentation|install|download|error|fix|linux|macos|windows|npm|pip|python|javascript|typescript|docker|nginx|proxmox|ai|llm|model|qwen|claude|gpt|gemini|ollama|benchmark|review|vs|price|best)\b/i;
+  /\b(how to|how many|how much|what is|why|when|who|reddit|github|docs|documentation|install|download|error|fix|linux|macos|windows|npm|pip|python|javascript|typescript|docker|nginx|proxmox|ai|llm|model|qwen|claude|gpt|gemini|ollama|benchmark|review|vs|price|best)\b/i;
 
 const GENERAL_INFO_RE =
   /\b(tutorial|course|book|pdf|lyrics|chords|movie|show|cast|actor|actress|season|episode|news|wiki|wikipedia|definition|meaning|synonym|antonym|pronunciation|translate|translation|weather|forecast|stock|chart|price|convert|converter|calculator|calculate|history|biography|photo|image|picture|wallpaper|video|youtube|song|album|lyrics|map|maps|recipe|ingredients|cooking)\b/i;
@@ -1087,7 +1089,8 @@ function _classifyLocalText(text) {
   }
 
   // Strong signals: local intent, place category, a known chain, or a city/state/zip hint.
-  const hasLocalIntent = LOCAL_INTENT_RE.test(lower);
+  const hasLocalIntent =
+    LOCAL_INTENT_RE.test(lower) || isPlaceInLocation(lower);
   const hasCategory = PLACE_CATEGORY_RE.test(lower);
   const hasChain = KNOWN_CHAIN_RE.test(lower);
   const hasLocationHint = _hasCityOrZipHint(lower);
@@ -1108,6 +1111,7 @@ function _classifyLocalText(text) {
 function _classifyPlaceQuery(rawQuery) {
   const query = _normalizeQuery(rawQuery);
   if (!query || query.length > 80) return null;
+  if (isInformationalQuestion(query)) return null;
   if (GAME_QUERY_RE.test(query)) return null;
   const wantsOpenNow = /\bopen(?:\s+now)?\b/i.test(query);
 
@@ -1134,6 +1138,7 @@ function _classifyPlaceQuery(rawQuery) {
     // Local category/intent/chain/zip remainder -> stay local (e.g. "nearest pharmacy").
     if (
       LOCAL_INTENT_RE.test(lower) ||
+      isPlaceInLocation(lower) ||
       PLACE_CATEGORY_RE.test(lower) ||
       KNOWN_CHAIN_RE.test(lower) ||
       _hasCityOrZipHint(lower)

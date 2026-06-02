@@ -15,7 +15,7 @@
       "path": "plugins/weather-slot",
       "name": "Weather",
       "description": "Current weather with interactive charts (temperature, precipitation, wind, humidity), a 7-day forecast and configurable units (imperial by default — Fahrenheit, mph, mmHg, inch). Supports !weather <city>, leading phrases like 'weather in rome', and trailing-keyword queries like 'rome weather' or 'london forecast today'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.8.0",
+      "version": "1.8.1",
       "type": "slot"
     },
     {
@@ -29,14 +29,14 @@
       "path": "plugins/unit-slot",
       "name": "Unit Converter",
       "description": "Unit converter for length, mass, volume, temperature, area, and speed. Supports fuzzy natural queries like '25.4oz toml' or '!unit 100c f'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.2.22",
+      "version": "1.2.23",
       "type": "slot"
     },
     {
       "path": "plugins/currency-slot",
       "name": "Currency",
       "description": "Currency converter with live rates. Triggers on !cur / !currency / !convert and on bare natural queries like '100 usd to eur'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.6.16",
+      "version": "1.6.17",
       "type": "slot"
     },
     {
@@ -57,7 +57,7 @@
       "path": "plugins/osm-slot",
       "name": "Places",
       "description": "HERE-powered local place recognition — shows nearby businesses and POIs with address, today's hours (expandable to the full week), cuisine, phone, directions, and an interactive multi-pin fit-to-bounds map. Recognizes bare brand/business names (e.g. 'Tim Hortons'), category/'near me' queries, and 'where is …' landmark lookups (resolved globally), while a conservative gate + confident-match check avoid false positives. 'Use my location' resolves precise browser coordinates with a robust server-side IP fallback. Requires a free HERE API key.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "4.3.9",
+      "version": "4.4.0",
       "type": "slot"
     },
     {

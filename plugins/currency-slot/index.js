@@ -1,5 +1,10 @@
 let template = "";
 let externalFetch = (...args) => fetch(...args);
+import {
+  hasNumericConversionPattern,
+  isEnglishPrepositionIn,
+  isInformationalQuestion,
+} from "./query-guards.js";
 
 const FRANKFURTER_BASE = "https://api.frankfurter.dev/v2";
 const COINGECKO_SIMPLE_PRICE =
@@ -422,9 +427,11 @@ function parseQuery(query) {
 
 function _hasCurrencyTriggerIntent(query, parsed) {
   const q = String(query || "");
+  if (isInformationalQuestion(q)) return false;
   if (COMMAND_PREFIX_RE.test(q)) return true;
   if (/\d/.test(q)) return true;
-  if (/\b(to|into|in|=)\b/i.test(q)) return true;
+  if (hasNumericConversionPattern(q)) return true;
+  if (/\b(?:to|into)\b/i.test(q) && !isEnglishPrepositionIn(q)) return true;
   if (/\b(convert|currency|exchange|rate|rates|price)\b/i.test(q)) return true;
   return _isBareCurrencyPair(q, parsed);
 }
@@ -893,6 +900,7 @@ export const slot = {
   trigger(query) {
     const q = query.trim();
     if (q.length < 3) return false;
+    if (isInformationalQuestion(q)) return false;
     if (COMMAND_PREFIX_RE.test(q)) return true;
 
     // Guard: reject queries with translation intent to avoid overlaps
