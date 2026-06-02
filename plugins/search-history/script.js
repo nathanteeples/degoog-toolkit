@@ -152,132 +152,123 @@ function appendHistory(entry) {
   }
 }
 
-function bindInputFocus(input, dropdown) {
-  if (!input || !dropdown) return;
-  input.addEventListener("focus", () => {
+function getHistoryInput(target) {
+  if (!(target instanceof HTMLElement)) return null;
+  if (target.id === "search-input" || target.id === "results-search-input") {
+    return target;
+  }
+  return null;
+}
+
+function getDropdownForInput(input) {
+  if (!input) return null;
+  if (input.id === "search-input") {
+    return document.getElementById("ac-dropdown-home");
+  }
+  if (input.id === "results-search-input") {
+    return document.getElementById("ac-dropdown-results");
+  }
+  return null;
+}
+
+function submitHistoryInput(input, dropdown) {
+  dropdown.style.display = "none";
+  if (dropdown.parentElement) {
+    dropdown.parentElement.classList.remove("ac-open");
+  }
+  const form = input.closest("form");
+  if (form) {
+    form.requestSubmit
+      ? form.requestSubmit()
+      : form.dispatchEvent(new Event("submit", { cancelable: true }));
+    return;
+  }
+  const resultsBtn = document.getElementById("results-search-btn");
+  if (resultsBtn) resultsBtn.click();
+}
+
+function useHighlightedHistory(input, dropdown, event) {
+  if (!dropdown || dropdown.style.display === "none" || !dropdown.offsetParent) {
+    return false;
+  }
+  // degoog highlights AC items with an inline background or a class; check
+  // for the most common indicators that a history row is "active".
+  const highlighted = dropdown.querySelector(
+    ".ac-item--history.active, .ac-item--history.selected, .ac-item--history[aria-selected=\"true\"], .ac-item--history:hover"
+  );
+  if (!highlighted) return false;
+  const entry = highlighted.dataset.entry;
+  if (!entry) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  input.value = entry;
+  submitHistoryInput(input, dropdown);
+  return true;
+}
+
+let initialized = false;
+
+function initSearchHistory() {
+  if (initialized) return;
+  initialized = true;
+
+  document.addEventListener("focusin", (e) => {
+    const input = getHistoryInput(e.target);
+    const dropdown = getDropdownForInput(input);
+    if (!input || !dropdown) return;
     paintCachedHistoryIfAny(input, dropdown);
     fetchAndShowHistory(input, dropdown);
   });
-  // When the field is cleared while focused (e.g. backspace), show history without blur/refocus.
-  input.addEventListener("input", () => {
-    if (input.value.trim() === "") {
-      paintCachedHistoryIfAny(input, dropdown);
-      fetchAndShowHistory(input, dropdown);
-    }
-  });
-  // Arrow-key navigation highlights history items but doesn't update the input.
-  // Intercept Enter to search the highlighted entry.
-  input.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    if (dropdown.style.display === "none" || !dropdown.offsetParent) return;
-    // degoog highlights AC items with an inline background or a class; check
-    // for the most common indicators that a history row is "active".
-    const highlighted = dropdown.querySelector(
-      ".ac-item--history.active, .ac-item--history.selected, .ac-item--history[aria-selected=\"true\"], .ac-item--history:hover"
-    );
-    if (!highlighted) return;
-    const entry = highlighted.dataset.entry;
-    if (!entry) return;
-    e.preventDefault();
-    e.stopPropagation();
-    input.value = entry;
-    dropdown.style.display = "none";
-    if (dropdown.parentElement) {
-      dropdown.parentElement.classList.remove("ac-open");
-    }
-    const form = input.closest("form");
-    if (form) {
-      form.requestSubmit
-        ? form.requestSubmit()
-        : form.dispatchEvent(new Event("submit", { cancelable: true }));
-      return;
-    }
-    const resultsBtn = document.getElementById("results-search-btn");
-    if (resultsBtn) resultsBtn.click();
-  });
-}
 
-function bindHomeForm(form, input) {
-  if (!form || !input) return;
-  // Use capture so we fire before degoog's own submit handler that
-  // calls preventDefault() and navigates via window.location.href.
-  form.addEventListener(
+  // When the field is cleared while focused (e.g. backspace), show history without blur/refocus.
+  document.addEventListener("input", (e) => {
+    const input = getHistoryInput(e.target);
+    const dropdown = getDropdownForInput(input);
+    if (!input || !dropdown || input.value.trim() !== "") return;
+    paintCachedHistoryIfAny(input, dropdown);
+    fetchAndShowHistory(input, dropdown);
+  });
+
+  document.addEventListener(
     "submit",
-    () => {
-      appendHistory(input.value);
+    (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement) || target.id !== "search-form-home") return;
+      const input = document.getElementById("search-input");
+      if (input) appendHistory(input.value);
     },
     true,
   );
-}
 
-function bindResultsControls(input, btn) {
-  if (!input) return;
-  if (btn) {
-    btn.addEventListener(
-      "click",
-      () => {
-        appendHistory(input.value);
-      },
-      true,
-    );
-  }
-  input.addEventListener(
+  document.addEventListener(
+    "click",
+    (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement) || !target.closest("#results-search-btn")) return;
+      const input = document.getElementById("results-search-input");
+      if (input) appendHistory(input.value);
+    },
+    true,
+  );
+
+  document.addEventListener(
     "keydown",
     (e) => {
-      if (e.key === "Enter") appendHistory(input.value);
+      if (e.key !== "Enter") return;
+      const input = getHistoryInput(e.target);
+      const dropdown = getDropdownForInput(input);
+      if (!input) return;
+      if (useHighlightedHistory(input, dropdown, e)) return;
+      if (input.id === "results-search-input") appendHistory(input.value);
     },
     true,
   );
-}
-
-let bound = false;
-
-function initSearchHistory() {
-  if (bound) return;
-
-  const searchInput = document.getElementById("search-input");
-  const resultsInput = document.getElementById("results-search-input");
-  const dropdownHome = document.getElementById("ac-dropdown-home");
-  const dropdownResults = document.getElementById("ac-dropdown-results");
-  const formHome = document.getElementById("search-form-home");
-  const resultsBtn = document.getElementById("results-search-btn");
-
-  // Each page (home vs results) only renders ONE of these input pairs.
-  // Bail only when neither is present — otherwise attach to whichever
-  // side is available so entries get persisted on either page.
-  if (!searchInput && !resultsInput) return;
-
-  bound = true;
-
-  bindInputFocus(searchInput, dropdownHome);
-  bindInputFocus(resultsInput, dropdownResults);
-
-  bindHomeForm(formHome, searchInput);
-  bindResultsControls(resultsInput, resultsBtn);
 
   prefetchHistoryList();
 }
 
-function tryInit() {
-  initSearchHistory();
-  if (bound) return;
-  // degoog renders page templates client-side (renderPageTemplates),
-  // so the search inputs may appear shortly after DOMContentLoaded.
-  // Observe and retry until we've bound once.
-  const observer = new MutationObserver(() => {
-    initSearchHistory();
-    if (bound) observer.disconnect();
-  });
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-  });
-  // Safety net: stop observing after 10s regardless.
-  setTimeout(() => observer.disconnect(), 10000);
-}
-
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", tryInit);
+  document.addEventListener("DOMContentLoaded", initSearchHistory);
 } else {
-  tryInit();
+  initSearchHistory();
 }
