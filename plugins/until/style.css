@@ -8,6 +8,12 @@
     --until-amber: #fbbf24;
     --until-blue: #8ab4f8;
     --until-green: #86efac;
+    /* Google blue (dark-surface tone) used for accents/hover. */
+    --until-accent: #8ab4f8;
+    /* Material-ish rounding hierarchy. */
+    --until-radius: 24px;
+    --until-radius-sm: 14px;
+    --until-radius-flap: 10px;
 }
 
 .results-slot-panel:has(> .results-slot-panel-body > .until-card) {
@@ -32,16 +38,17 @@
     gap: 14px 18px;
     align-items: stretch;
     min-width: 0;
-    padding: 14px;
+    padding: 16px;
     border: 1px solid var(--until-edge);
-    border-radius: 14px;
+    border-radius: var(--until-radius);
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 36%),
         linear-gradient(135deg, color-mix(in srgb, var(--until-blue) 10%, transparent), transparent 52%),
         var(--until-board);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.08),
-        0 10px 28px rgba(0, 0, 0, 0.2);
+        0 1px 2px rgba(0, 0, 0, 0.3),
+        0 10px 30px rgba(0, 0, 0, 0.24);
 }
 
 .until-card__header {
@@ -67,16 +74,34 @@
 }
 
 .until-card__kicker {
+    flex: 0 0 auto;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--until-line);
+    background: rgba(255, 255, 255, 0.05);
     color: color-mix(in srgb, var(--text-secondary, #a1a1aa) 88%, #fff);
 }
 
 .until-card__status {
     flex: 0 0 auto;
-    padding: 5px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
     border: 1px solid color-mix(in srgb, var(--until-green) 42%, transparent);
     border-radius: 999px;
     color: var(--until-green);
     background: color-mix(in srgb, var(--until-green) 10%, transparent);
+}
+
+/* Google-style status chip dot. */
+.until-card__status::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
 }
 
 .until-card--past .until-card__status {
@@ -128,10 +153,11 @@
 .until-card__flap {
     position: relative;
     display: block;
-    min-width: max(var(--until-flap-width, 76px), calc(var(--until-digits, 2) * 1.18em + 24px));
+    width: max-content;
+    min-width: var(--until-flap-width, 76px);
     height: var(--until-flap-height, 64px);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
+    border-radius: var(--until-radius-flap);
     overflow: hidden;
     color: #f8fafc;
     background: var(--until-board-2);
@@ -141,6 +167,22 @@
         0 6px 16px rgba(0, 0, 0, 0.26);
     font-variant-numeric: tabular-nums;
     perspective: 320px;
+}
+
+/* Hidden in-flow element rendered at the real value size so the flap grows
+   to fit any number (e.g. "366,000" days). The four animated leaves are
+   absolutely positioned and don't contribute width, so this is what the
+   max-content box measures; --until-flap-width stays a per-level minimum. */
+.until-card__flap-sizer {
+    display: block;
+    visibility: hidden;
+    height: var(--until-flap-height, 64px);
+    padding: 0 14px;
+    font-size: var(--until-part-value-size, 1.42rem);
+    font-weight: var(--until-part-value-weight, 820);
+    line-height: var(--until-flap-height, 64px);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Hairline hinge that splits the flap into two leaves. */
@@ -170,20 +212,20 @@
 .until-card__flap-card--upper {
     top: 0;
     z-index: 1;
-    border-radius: 8px 8px 0 0;
+    border-radius: var(--until-radius-flap) var(--until-radius-flap) 0 0;
 }
 
 .until-card__flap-card--lower {
     bottom: 0;
     z-index: 1;
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 var(--until-radius-flap) var(--until-radius-flap);
 }
 
 /* Top leaf: starts upright over the upper half and falls forward/down. */
 .until-card__flap-card--flip-upper {
     top: 0;
     z-index: 4;
-    border-radius: 8px 8px 0 0;
+    border-radius: var(--until-radius-flap) var(--until-radius-flap) 0 0;
     transform-origin: center bottom;
     transform: rotateX(0deg);
 }
@@ -192,7 +234,7 @@
 .until-card__flap-card--flip-lower {
     bottom: 0;
     z-index: 3;
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 var(--until-radius-flap) var(--until-radius-flap);
     transform-origin: center top;
     transform: rotateX(90deg);
 }
@@ -299,11 +341,21 @@
     display: grid;
     gap: 4px;
     min-width: 0;
-    padding: 9px 10px;
+    padding: 10px 12px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    border-radius: var(--until-radius-sm);
     background: rgba(255, 255, 255, 0.045);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        transform 160ms ease;
+}
+
+.until-card__detail:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: color-mix(in srgb, var(--until-accent) 40%, rgba(255, 255, 255, 0.1));
 }
 
 .until-card__detail dt {
