@@ -2,7 +2,7 @@
 // (hybrid of /browse with verified category codes and /discover free-text).
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.3.5";
+const PLUGIN_VERSION = "4.3.6";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -205,6 +205,10 @@ export const slot = {
 
       let top = _processHerePlaces(places, radiusMeters, limit, { noRadiusFilter: isGlobal });
 
+      if (plan.wantsOpenNow) {
+        top = _filterOpenNow(top);
+      }
+
       // Optimistic name/brand and landmark queries only render when HERE returns
       // a confident name/brand match. This keeps false positives on
       // informational/tech queries near zero.
@@ -319,6 +323,10 @@ export const routes = [
         }
 
         let top = _processHerePlaces(places, radiusMeters, limit, { noRadiusFilter: isGlobal });
+
+        if (plan?.wantsOpenNow) {
+          top = _filterOpenNow(top);
+        }
 
         if (isGlobal) {
           top = top.filter((p) => _isConfidentNameMatch(searchText, p));
@@ -1075,12 +1083,14 @@ function _classifyLocalText(text) {
 function _classifyPlaceQuery(rawQuery) {
   const query = _normalizeQuery(rawQuery);
   if (!query || query.length > 80) return null;
+  const wantsOpenNow = /\bopen(?:\s+now)?\b/i.test(query);
 
   const whereMatch = WHERE_IS_RE.exec(query) || WHERE_PLAIN_RE.exec(query);
 
   if (whereMatch) {
     // Strip the "where is" prefix (and a leading article) before searching.
     let text = query.slice(whereMatch[0].length).replace(LEADING_ARTICLE_RE, "").trim();
+    text = _cleanSearchText(text);
     if (text.length < 3) return null;
     if (URL_OR_CODE_RE.test(text)) return null;
 
@@ -1096,16 +1106,21 @@ function _classifyPlaceQuery(rawQuery) {
       KNOWN_CHAIN_RE.test(lower) ||
       _hasCityOrZipHint(lower)
     ) {
-      return { mode: "local", confidence: "any", text };
+      return { mode: "local", confidence: "any", text, wantsOpenNow };
     }
 
     // Otherwise it's a proper place/landmark name -> resolve globally.
-    return { mode: "global", confidence: "name", text };
+    return { mode: "global", confidence: "name", text, wantsOpenNow };
   }
 
   const local = _classifyLocalText(query);
-  if (local === "strong") return { mode: "local", confidence: "any", text: query };
-  if (local === "name") return { mode: "local", confidence: "name", text: query };
+  const cleaned = _cleanSearchText(query);
+  if (local === "strong") {
+    return { mode: "local", confidence: "any", text: cleaned || query, wantsOpenNow };
+  }
+  if (local === "name") {
+    return { mode: "local", confidence: "name", text: cleaned || query, wantsOpenNow };
+  }
   return null;
 }
 
@@ -1135,6 +1150,22 @@ function _looksLikeNameQuery(query) {
   }
 
   return true;
+}
+
+function _cleanSearchText(text) {
+  return String(text || "")
+    .replace(/\bopen\s+now\b/gi, " ")
+    .replace(/\bopen\b/gi, " ")
+    .replace(/\bnear\s+me\b/gi, " ")
+    .replace(/\bnearby\b/gi, " ")
+    .replace(/\bclosest\b/gi, " ")
+    .replace(/\bnearest\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function _filterOpenNow(places) {
+  return (places || []).filter((p) => p?.hours?.openNow === true);
 }
 
 function _looksProbablyPlaceQuery(rawQuery) {
