@@ -1169,25 +1169,52 @@ body {
 
 .lg-pager-center {
     display: grid;
-    gap: 0.2rem;
     justify-items: center;
     min-width: 0;
 }
 
 .lg-pager-wordmark {
-    display: flex;
+    --lg-pager-page-size: 1.4rem;
+    display: grid;
+    grid-template-columns: auto auto auto;
+    grid-template-rows: auto auto;
     align-items: baseline;
     justify-content: center;
+    column-gap: 0;
+    row-gap: 0.05rem;
     font-size: clamp(2rem, 5.5vw, 2.75rem);
     font-weight: 500;
-    letter-spacing: -0.08em;
+    letter-spacing: 0;
     line-height: 1;
     white-space: nowrap;
     user-select: none;
 }
 
+.lg-pager-prefix,
+.lg-pager-suffix {
+    display: flex;
+    grid-row: 1;
+}
+
+.lg-pager-prefix {
+    grid-column: 1;
+}
+
+.lg-pager-suffix {
+    grid-column: 3;
+}
+
+.lg-pager-o-track {
+    display: grid;
+    grid-column: 2;
+    grid-row: 1;
+    grid-template-columns: repeat(var(--lg-pager-page-count, 10), var(--lg-pager-page-size));
+    justify-items: center;
+}
+
 .lg-pager-letter {
     display: inline-block;
+    line-height: 1;
 }
 
 .lg-pager-blue {
@@ -1241,11 +1268,14 @@ body {
 }
 
 .lg-pager-pages {
-    display: flex;
+    display: grid;
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-columns: repeat(var(--lg-pager-page-count, 10), var(--lg-pager-page-size));
     align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
+    justify-items: center;
     min-height: 1.5rem;
+    width: 100%;
 }
 
 .lg-pager-page,
@@ -1263,7 +1293,11 @@ body {
 }
 
 .lg-pager-page {
-    min-width: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    width: 100%;
     padding: 0.25rem 0;
     text-align: center;
 }
@@ -1331,8 +1365,12 @@ body {
         gap: 0.45rem;
     }
 
+    .lg-pager-wordmark {
+        --lg-pager-page-size: 1.18rem;
+        font-size: 2rem;
+    }
+
     .lg-pager-pages {
-        gap: 0.5rem;
         overflow-x: auto;
         max-width: 100%;
         scrollbar-width: none;
@@ -1782,6 +1820,14 @@ body {
    .mp2-body instead, keeping the bar as a plain flex-shrink-0 header. */
 #media-preview-panel {
     overflow-y: hidden;
+}
+
+#media-preview-panel:not(.open) {
+    display: none;
+}
+
+#media-preview-panel.open {
+    display: flex;
 }
 
 /* Sticky preview sits below our sticky header (50px bar + 0.75rem pad × 2).

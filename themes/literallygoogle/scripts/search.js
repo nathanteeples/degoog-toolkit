@@ -145,22 +145,33 @@
         center.className = "lg-pager-center";
 
         var wordmark = document.createElement("div");
+        var oTrack = document.createElement("div");
+        var prefix = document.createElement("div");
+        var suffix = document.createElement("div");
+        var oColors = [
+            "lg-pager-blue",
+            "lg-pager-green",
+            "lg-pager-red",
+            "lg-pager-yellow",
+        ];
+
         wordmark.className = "lg-pager-wordmark";
+        wordmark.style.setProperty("--lg-pager-page-count", String(controls.pages.length));
+        prefix.className = "lg-pager-prefix";
+        oTrack.className = "lg-pager-o-track";
+        suffix.className = "lg-pager-suffix";
+
         [
             ["d", "lg-pager-blue"],
             ["e", "lg-pager-red"],
             ["g", "lg-pager-yellow"],
-            ["o", "lg-pager-blue"],
-            ["o", "lg-pager-green"],
-            ["o", "lg-pager-red"],
-            ["o", "lg-pager-yellow"],
-            ["o", "lg-pager-blue"],
-            ["o", "lg-pager-green"],
-            ["o", "lg-pager-red"],
-            ["g", "lg-pager-blue"],
         ].forEach(function (part) {
-            wordmark.appendChild(makeLetter(part[0], part[1]));
+            prefix.appendChild(makeLetter(part[0], part[1]));
         });
+        controls.pages.forEach(function (_item, index) {
+            oTrack.appendChild(makeLetter("o", oColors[index % oColors.length]));
+        });
+        suffix.appendChild(makeLetter("g", "lg-pager-blue"));
 
         var numberRow = document.createElement("div");
         numberRow.className = "lg-pager-pages";
@@ -172,8 +183,11 @@
             numberRow.appendChild(node);
         });
 
+        wordmark.appendChild(prefix);
+        wordmark.appendChild(oTrack);
+        wordmark.appendChild(suffix);
+        wordmark.appendChild(numberRow);
         center.appendChild(wordmark);
-        center.appendChild(numberRow);
 
         var nextWrap = document.createElement("div");
         nextWrap.className = "lg-pager-side lg-pager-side--next";
