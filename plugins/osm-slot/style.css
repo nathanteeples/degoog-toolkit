@@ -284,20 +284,15 @@
   text-decoration: none;
 }
 
-/* Call button styling */
-.places-circle-btn.places-action-call {
-  color: #137333;
-}
-.places-circle-btn.places-action-call:hover:not(.places-disabled) {
-  background: rgba(19, 115, 51, 0.06);
-  border-color: #137333;
-}
-
-/* Directions button styling */
+/* Action buttons (Call / Website / Directions) — unified Google blue */
+.places-circle-btn.places-action-call,
+.places-circle-btn.places-action-website,
 .places-circle-btn.places-action-directions {
   color: #1a73e8;
   border-color: #1a73e8;
 }
+.places-circle-btn.places-action-call:hover:not(.places-disabled),
+.places-circle-btn.places-action-website:hover:not(.places-disabled),
 .places-circle-btn.places-action-directions:hover:not(.places-disabled) {
   background: rgba(26, 115, 232, 0.1);
   border-color: #1557b0;

@@ -1,7 +1,8 @@
-// Places slot plugin — local place recognition with Foursquare v2, Overpass, Photon, and Nominatim.
+// Places slot plugin — local place recognition powered by the HERE Search API
+// (hybrid of /browse with verified category codes and /discover free-text).
 
 const PLUGIN_NAME = "Places - alpha";
-const PLUGIN_VERSION = "3.1.0";
+const PLUGIN_VERSION = "4.1.0";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -9,15 +10,39 @@ let _settings = {};
 let _fetch = (...args) => fetch(...args);
 let _cache = null;
 
-const DEFAULT_PHOTON_URL = "https://photon.komoot.io";
-const FOURSQUARE_BASE = "https://places-api.foursquare.com/places/search";
-const YELP_BASE = "https://api.yelp.com/v3/businesses/search";
-const NOMINATIM_BASE = "https://nominatim.openstreetmap.org/search";
+const HERE_BROWSE = "https://browse.search.hereapi.com/v1/browse";
+const HERE_DISCOVER = "https://discover.search.hereapi.com/v1/discover";
+
+// Verified HERE category-id map (keyword -> id). Anything not matched here
+// falls through to /discover free-text search.
+const HERE_CATEGORY_MAP = [
+  { re: /\b(doctors?|physicians?|clinics?)\b/i, codes: "800-8000-0155,800-8000-0158" },
+  { re: /\b(dentists?|dental)\b/i, codes: "800-8000-0154" },
+  { re: /\b(hospitals?)\b/i, codes: "800-8000-0159" },
+  { re: /\b(pharmac(?:y|ies)|drug ?stores?)\b/i, codes: "600-6400-0000" },
+  { re: /\b(vets?|veterinar(?:y|ian|ians))\b/i, codes: "800-8000-0162" },
+  { re: /\b(restaurants?|diners?)\b/i, codes: "100-1000-0000" },
+  { re: /\b(coffee|cafe?s?|caf\u00e9s?)\b/i, codes: "100-1100-0010" },
+  { re: /\b(bars?|pubs?)\b/i, codes: "200-2000-0011" },
+  { re: /\b(baker(?:y|ies))\b/i, codes: "600-6300-0244" },
+  { re: /\b(breweries|brewery)\b/i, codes: "300-3000-0350" },
+  { re: /\b(gas ?stations?|fuel|petrol)\b/i, codes: "700-7600-0000" },
+  { re: /\b(banks?)\b/i, codes: "700-7000-0107" },
+  { re: /\b(hotels?|motels?)\b/i, codes: "500-5000-0053" },
+  { re: /\b(gyms?|fitness)\b/i, codes: "800-8600-0191" },
+  { re: /\b(librar(?:y|ies))\b/i, codes: "800-8300-0175" },
+];
+
+function _matchCategory(query) {
+  for (const entry of HERE_CATEGORY_MAP) {
+    if (entry.re.test(query)) return entry.codes;
+  }
+  return null;
+}
 
 function _configure(s) {
   _settings = {
-    foursquareClientId: s?.foursquareClientId || "",
-    foursquareClientSecret: s?.foursquareClientSecret || "",
+    hereApiKey: s?.hereApiKey || "",
     defaultLat: s?.defaultLat || "",
     defaultLon: s?.defaultLon || "",
     defaultLocationLabel: s?.defaultLocationLabel || "Home",
@@ -25,7 +50,6 @@ function _configure(s) {
     defaultRadius: s?.defaultRadius || "25",
     resultsCount: s?.resultsCount || "5",
     distanceUnit: s?.distanceUnit || "miles",
-    photonBaseUrl: s?.photonBaseUrl || DEFAULT_PHOTON_URL,
     customTileUrl: s?.customTileUrl || "",
   };
 }
@@ -40,20 +64,13 @@ export const slot = {
 
   settingsSchema: [
     {
-      key: "foursquareClientId",
-      label: "Foursquare Client ID",
+      key: "hereApiKey",
+      label: "HERE API key",
       type: "password",
+      required: true,
       secret: true,
       description:
-        "Optional. Provides rich business data (ratings, hours, phone). Get one at foursquare.com/developers.",
-    },
-    {
-      key: "foursquareClientSecret",
-      label: "Foursquare Client Secret",
-      type: "password",
-      secret: true,
-      description:
-        "Optional. Use with Foursquare Client ID.",
+        "Required. Powers all place lookups via the HERE Search API. Get a free key at developer.here.com.",
     },
     {
       key: "defaultLat",
@@ -117,15 +134,6 @@ export const slot = {
       description:
         "Optional raster tile template for the map. Supports {z}, {x}, and {y}. Leave blank to use the default CartoDB Voyager map tiles.",
     },
-    {
-      key: "photonBaseUrl",
-      label: "Photon base URL",
-      type: "url",
-      placeholder: DEFAULT_PHOTON_URL,
-      default: DEFAULT_PHOTON_URL,
-      description:
-        "Open-data fallback geocoder. Default is Komoot's public instance.",
-    },
   ],
 
   init(ctx) {
@@ -146,7 +154,8 @@ export const slot = {
       Number.isFinite(lat) &&
       Number.isFinite(lon) &&
       Math.abs(lat) <= 90 &&
-      Math.abs(lon) <= 180
+      Math.abs(lon) <= 180 &&
+      !!_settings.hereApiKey
     );
   },
 
@@ -156,7 +165,8 @@ export const slot = {
 
   async execute(query, context) {
     // Defense-in-depth. Never trust trigger alone.
-    if (!_looksProbablyPlaceQuery(query)) {
+    const queryClass = _classifyPlaceQuery(query);
+    if (!queryClass) {
       return { html: "" };
     }
 
@@ -168,85 +178,41 @@ export const slot = {
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
         return { html: "" };
       }
+      if (!_settings.hereApiKey) {
+        return { html: "" };
+      }
 
       const radiusMiles = parseInt(_settings.defaultRadius || "25", 10);
       const radiusMeters = radiusMiles * 1609.34;
       const limit = parseInt(_settings.resultsCount || "5", 10);
       const doFetch = typeof context?.fetch === "function" ? context.fetch : _fetch;
 
-      const wrapFetch = (url, init = {}, timeoutMs = 15000) => {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeoutMs);
-        const mergedInit = { ...init };
-        if (!mergedInit.signal) {
-          mergedInit.signal = controller.signal;
-        }
-        const startFetch = Date.now();
-        console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch starting: ${url} (Timeout: ${timeoutMs}ms)`);
-        return doFetch(url, mergedInit)
-          .then((res) => {
-            clearTimeout(id);
-            console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch completed: ${url} in ${Date.now() - startFetch}ms (Status: ${res.status})`);
-            return res;
-          })
-          .catch((err) => {
-            clearTimeout(id);
-            if (err.name === "AbortError") {
-              console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch timed out: ${url} (gave up after ${timeoutMs / 1000} seconds)`);
-            } else {
-              console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch failed: ${url} in ${Date.now() - startFetch}ms:`, err);
-            }
-            throw err;
-          });
-      };
+      const wrapFetch = _makeWrapFetch(doFetch, "");
 
       const apiStatus = {
-        foursquareV2: { configured: !!(_settings.foursquareClientId && _settings.foursquareClientSecret), status: "unused", error: null, count: 0 },
-        overpassSearch: { status: "unused", error: null, count: 0 },
-        photon: { status: "unused", error: null, count: 0 },
-        nominatim: { status: "unused", error: null, count: 0 }
+        here: { configured: !!_settings.hereApiKey, status: "unused", error: null, count: 0 },
       };
 
       console.log(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" at lat=${lat}, lon=${lon}`);
-      console.log(`[Places Server v${PLUGIN_VERSION}] Configured APIs: FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
 
-      const places = await _searchAllProviders(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus);
+      const places = await _searchHere(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus);
 
       if (places.length === 0) {
-        console.log(`[Places Server v${PLUGIN_VERSION}] No places found from any provider.`);
+        console.log(`[Places Server v${PLUGIN_VERSION}] No places found from HERE.`);
         return { html: "" };
       }
 
-      const top = _processPlaces(q, places, limit, {
-        enforceDistanceGate: true,
-        enforceConfidenceGate: true,
-      });
+      let top = _processHerePlaces(places, radiusMeters, limit);
+
+      // Optimistic name/brand queries (no category/local-intent/chain/zip signal)
+      // only render when HERE returns a confident name/brand match. This keeps
+      // false positives on informational/tech queries near zero.
+      if (queryClass === "name") {
+        top = top.filter((p) => _isConfidentNameMatch(q, p));
+      }
 
       if (top.length === 0) {
         return { html: "" };
-      }
-
-      // Centralized fallback details fetch for top displayed results
-      const fallbackPromises = [];
-      let fallbackCount = 0;
-      for (const place of top) {
-        if (fallbackCount < 2 && (!place.phone || !place.website) && place.lat != null && place.lon != null) {
-          fallbackCount++;
-          fallbackPromises.push((async () => {
-            const fallback = await _getVenueDetailsFromOverpass(place.name, place.lat, place.lon, (url, init) => wrapFetch(url, init, 5000));
-            if (fallback) {
-              place.phone = place.phone || fallback.phone;
-              place.website = place.website || fallback.website;
-              if (fallback.openingHours && !place.hours?.display) {
-                place.hours = place.hours || { openNow: null, display: null, status: null };
-                place.hours.display = fallback.openingHours;
-              }
-            }
-          })());
-        }
-      }
-      if (fallbackPromises.length > 0) {
-        await Promise.allSettled(fallbackPromises);
       }
 
       console.log(`[Places Server v${PLUGIN_VERSION}] Final ${top.length} processed places:`);
@@ -293,84 +259,37 @@ export const routes = [
         if (!Number.isFinite(latNum) || !Number.isFinite(lonNum)) {
           return _jsonResponse({ error: "Invalid coordinates" }, 400);
         }
+        if (!_settings.hereApiKey) {
+          return _jsonResponse({ html: "" });
+        }
 
         const radiusMiles = parseInt(_settings.defaultRadius || "25", 10);
         const radiusMeters = radiusMiles * 1609.34;
         const limit = parseInt(_settings.resultsCount || "5", 10);
 
         console.log(`[Places Server] Refresh Query: "${query || ""}" at lat=${latNum}, lon=${lonNum}`);
-        console.log(`[Places Server] Configured APIs (refresh): FoursquareV2=${!!(_settings.foursquareClientId && _settings.foursquareClientSecret)}`);
 
         const apiStatus = {
-          foursquareV2: { configured: !!(_settings.foursquareClientId && _settings.foursquareClientSecret), status: "unused", error: null, count: 0 },
-          overpassSearch: { status: "unused", error: null, count: 0 },
-          photon: { status: "unused", error: null, count: 0 },
-          nominatim: { status: "unused", error: null, count: 0 }
+          here: { configured: !!_settings.hereApiKey, status: "unused", error: null, count: 0 },
         };
 
-        const wrapFetch = (url, init = {}, timeoutMs = 15000) => {
-          const controller = new AbortController();
-          const id = setTimeout(() => controller.abort(), timeoutMs);
-          const mergedInit = { ...init };
-          if (!mergedInit.signal) {
-            mergedInit.signal = controller.signal;
-          }
-          const startFetch = Date.now();
-          console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch starting (refresh): ${url} (Timeout: ${timeoutMs}ms)`);
-          return _fetch(url, mergedInit)
-            .then((res) => {
-              clearTimeout(id);
-              console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch completed (refresh): ${url} in ${Date.now() - startFetch}ms (Status: ${res.status})`);
-              return res;
-            })
-            .catch((err) => {
-              clearTimeout(id);
-              if (err.name === "AbortError") {
-                console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch timed out (refresh): ${url} (gave up after ${timeoutMs / 1000} seconds)`);
-              } else {
-                console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch failed (refresh): ${url} in ${Date.now() - startFetch}ms:`, err);
-              }
-              throw err;
-            });
-        };
+        const wrapFetch = _makeWrapFetch(_fetch, " (refresh)");
 
-        const places = await _searchAllProviders(query || "", latNum, lonNum, radiusMeters, limit * 2, wrapFetch, apiStatus);
+        const places = await _searchHere(query || "", latNum, lonNum, radiusMeters, limit * 2, wrapFetch, apiStatus);
 
         if (places.length === 0) {
           console.log(`[Places Server] No places found for refresh query.`);
           return _jsonResponse({ html: "" });
         }
 
-        const top = _processPlaces(query || "", places, limit, {
-          enforceDistanceGate: false,
-          enforceConfidenceGate: false,
-        });
+        let top = _processHerePlaces(places, radiusMeters, limit);
+
+        if (_classifyPlaceQuery(query || "") === "name") {
+          top = top.filter((p) => _isConfidentNameMatch(query || "", p));
+        }
 
         if (top.length === 0) {
           return _jsonResponse({ html: "" });
-        }
-
-        // Centralized fallback details fetch for top displayed results
-        const fallbackPromises = [];
-        let fallbackCount = 0;
-        for (const place of top) {
-          if (fallbackCount < 2 && (!place.phone || !place.website) && place.lat != null && place.lon != null) {
-            fallbackCount++;
-            fallbackPromises.push((async () => {
-              const fallback = await _getVenueDetailsFromOverpass(place.name, place.lat, place.lon, (url, init) => wrapFetch(url, init, 5000));
-              if (fallback) {
-                place.phone = place.phone || fallback.phone;
-                place.website = place.website || fallback.website;
-                if (fallback.openingHours && !place.hours?.display) {
-                  place.hours = place.hours || { openNow: null, display: null, status: null };
-                  place.hours.display = fallback.openingHours;
-                }
-              }
-            })());
-          }
-        }
-        if (fallbackPromises.length > 0) {
-          await Promise.allSettled(fallbackPromises);
         }
 
         console.log(`[Places Server] Final ${top.length} processed places (refresh):`);
@@ -394,526 +313,216 @@ function _jsonResponse(obj, status = 200) {
   });
 }
 
-/* ------------------------------------------------------------------ */
-/* Provider orchestration                                              */
-/* ------------------------------------------------------------------ */
-
-async function _searchAllProviders(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
-  const out = [];
-  const startAll = Date.now();
-
-  const providerCalls = [];
-
-  // Foursquare v2 (if configured)
-  if (_settings.foursquareClientId && _settings.foursquareClientSecret) {
-    const fqStart = Date.now();
-    providerCalls.push(
-      _searchFoursquare(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 10000), apiStatus).then((res) => {
-        console.log(`[Places Performance v${PLUGIN_VERSION}] Foursquare search completed in ${Date.now() - fqStart}ms (found ${res.length} places)`);
+function _makeWrapFetch(doFetch, tag) {
+  return (url, init = {}, timeoutMs = 15000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    const mergedInit = { ...init };
+    if (!mergedInit.signal) {
+      mergedInit.signal = controller.signal;
+    }
+    const startFetch = Date.now();
+    console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch starting${tag}: ${url} (Timeout: ${timeoutMs}ms)`);
+    return doFetch(url, mergedInit)
+      .then((res) => {
+        clearTimeout(id);
+        console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch completed${tag}: ${url} in ${Date.now() - startFetch}ms (Status: ${res.status})`);
         return res;
-      }).catch(err => {
-        console.error(`[Places Performance v${PLUGIN_VERSION}] Foursquare search failed:`, err);
-        return [];
       })
-    );
-  }
-
-  // Overpass
-  const ovStart = Date.now();
-  providerCalls.push(
-    _searchOverpass(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 5000), apiStatus).then((res) => {
-      console.log(`[Places Performance v${PLUGIN_VERSION}] Overpass search completed in ${Date.now() - ovStart}ms (found ${res.length} places)`);
-      return res;
-    }).catch(err => {
-      console.error(`[Places Performance v${PLUGIN_VERSION}] Overpass search failed:`, err);
-      return [];
-    })
-  );
-
-  // Photon
-  const phStart = Date.now();
-  providerCalls.push(
-    _searchPhoton(query, lat, lon, radiusM, limit, (url, init) => doFetch(url, init, 4000), apiStatus).then((res) => {
-      console.log(`[Places Performance v${PLUGIN_VERSION}] Photon search completed in ${Date.now() - phStart}ms (found ${res.length} places)`);
-      return res;
-    }).catch(() => [])
-  );
-
-  // Nominatim
-  const nomStart = Date.now();
-  providerCalls.push(
-    _searchNominatim(query, lat, lon, limit, (url, init) => doFetch(url, init, 4000), apiStatus).then((res) => {
-      console.log(`[Places Performance v${PLUGIN_VERSION}] Nominatim search completed in ${Date.now() - nomStart}ms (found ${res.length} places)`);
-      return res;
-    }).catch(() => [])
-  );
-
-  const settled = await Promise.allSettled(providerCalls);
-  for (const result of settled) {
-    if (result.status === "fulfilled" && Array.isArray(result.value)) {
-      out.push(...result.value);
-    } else if (result.status === "rejected") {
-      console.error(`[Places Performance v${PLUGIN_VERSION}] Provider promise rejected:`, result.reason);
-    }
-  }
-
-  console.log(`[Places Performance v${PLUGIN_VERSION}] Total _searchAllProviders execution time: ${Date.now() - startAll}ms`);
-  return out;
+      .catch((err) => {
+        clearTimeout(id);
+        if (err.name === "AbortError") {
+          console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch timed out${tag}: ${url} (gave up after ${timeoutMs / 1000} seconds)`);
+        } else {
+          console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch failed${tag}: ${url} in ${Date.now() - startFetch}ms:`, err);
+        }
+        throw err;
+      });
+  };
 }
 
 /* ------------------------------------------------------------------ */
-/* Individual providers                                                */
+/* HERE Search                                                         */
 /* ------------------------------------------------------------------ */
 
-async function _searchFoursquare(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
-  const cacheKey = `fq:${query}:${lat}:${lon}:${Math.round(radiusM)}:${limit}`;
+async function _searchHere(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
+  const apiKey = _settings.hereApiKey;
+  if (!apiKey) {
+    if (apiStatus?.here) {
+      apiStatus.here.status = "error";
+      apiStatus.here.error = "Missing HERE API key";
+    }
+    return [];
+  }
+
+  const radius = Math.max(1, Math.round(radiusM));
+  const cappedLimit = Math.min(Math.max(parseInt(limit, 10) || 5, 1), 100);
+  const codes = _matchCategory(query);
+  const mode = codes ? "browse" : "discover";
+
+  const cacheKey = `here:${mode}:${query}:${lat}:${lon}:${radius}:${cappedLimit}`;
   const cached = _cache?.get(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    if (apiStatus?.here) {
+      apiStatus.here.status = "success";
+      apiStatus.here.count = cached.length;
+    }
+    return cached;
+  }
 
-  let out = [];
+  let url;
+  if (codes) {
+    // /browse accepts at + in=circle + categories together.
+    url =
+      `${HERE_BROWSE}?at=${encodeURIComponent(`${lat},${lon}`)}` +
+      `&in=${encodeURIComponent(`circle:${lat},${lon};r=${radius}`)}` +
+      `&categories=${encodeURIComponent(codes)}` +
+      `&limit=${cappedLimit}` +
+      `&apiKey=${encodeURIComponent(apiKey)}`;
+  } else {
+    // /discover 400s if both at + in=circle are passed; use in=circle alone.
+    url =
+      `${HERE_DISCOVER}?q=${encodeURIComponent(query)}` +
+      `&in=${encodeURIComponent(`circle:${lat},${lon};r=${radius}`)}` +
+      `&limit=${cappedLimit}` +
+      `&apiKey=${encodeURIComponent(apiKey)}`;
+  }
 
-  if (_settings.foursquareClientId && _settings.foursquareClientSecret) {
-    try {
-      const url = `https://api.foursquare.com/v2/venues/search` +
-        `?ll=${encodeURIComponent(`${lat},${lon}`)}` +
-        `&query=${encodeURIComponent(query)}` +
-        `&client_id=${encodeURIComponent(_settings.foursquareClientId)}` +
-        `&client_secret=${encodeURIComponent(_settings.foursquareClientSecret)}` +
-        `&v=20210324` +
-        `&limit=${limit}`;
-
-      const res = await doFetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        const venues = data.response?.venues;
-        if (Array.isArray(venues)) {
-          const v2Promises = [];
-          for (const v of venues) {
-            const plat = v.location?.lat;
-            const plon = v.location?.lng;
-            if (plat == null || plon == null) continue;
-
-            const place = {
-              name: v.name,
-              address: _fmtFsqAddress(v.location),
-              lat: plat,
-              lon: plon,
-              distanceMeters: typeof v.location.distance === "number" ? v.location.distance : _haversine(lat, lon, plat, plon),
-              phone: v.contact?.formattedPhone || v.contact?.phone || null,
-              website: v.url || null,
-              email: v.contact?.email || null,
-              socialMedia: null,
-              description: null,
-              chains: [],
-              price: null,
-              categories: (v.categories || []).map((c) => c.shortName || c.name).filter(Boolean),
-              hours: null,
-              rating: null,
-              reviewCount: null,
-              source: "Foursquare",
-              sourceUrl: `https://foursquare.com/v/${v.id}`,
-            };
-            out.push(place);
-
-            // Fetch details and fallback concurrently
-            if (out.length <= limit) {
-              v2Promises.push((async () => {
-                try {
-                  const detailUrl = `https://api.foursquare.com/v2/venues/${v.id}` +
-                    `?client_id=${encodeURIComponent(_settings.foursquareClientId)}` +
-                    `?client_secret=${encodeURIComponent(_settings.foursquareClientSecret)}` +
-                    `&v=20210324`;
-                  const detailRes = await doFetch(detailUrl);
-                  if (detailRes.ok) {
-                    const detailData = await detailRes.json();
-                    const dv = detailData.response?.venue;
-                    if (dv) {
-                      if (dv.contact) {
-                        place.phone = dv.contact.formattedPhone || dv.contact.phone || place.phone;
-                        place.email = dv.contact.email || place.email;
-                      }
-                      place.website = dv.url || dv.canonicalUrl || place.website;
-                      if (typeof dv.rating === "number") {
-                        place.rating = dv.rating / 2;
-                      }
-                      place.reviewCount = dv.ratingSignals || null;
-                      if (dv.hours) {
-                        place.hours = {
-                          openNow: dv.hours.isOpen === true,
-                          display: null,
-                          status: dv.hours.status || null,
-                        };
-                      }
-                      if (dv.description) {
-                        place.description = dv.description;
-                      }
-                      if (dv.price) {
-                        place.price = dv.price.tier || null;
-                      }
-                    }
-                  } else {
-                    const errText = await detailRes.text();
-                    console.error(`[places] Foursquare v2 API details returned error status ${detailRes.status} for ${v.id}: ${errText}`);
-                  }
-                } catch (detailErr) {
-                  console.warn(`[places] Foursquare v2 detail fetch failed for ${v.id}:`, detailErr);
-                }
-              })());
-            }
-          }
-          if (v2Promises.length > 0) {
-            await Promise.allSettled(v2Promises);
-          }
-        }
-        if (apiStatus && apiStatus.foursquareV2) {
-          apiStatus.foursquareV2.status = "success";
-          apiStatus.foursquareV2.count = out.length;
-        }
-      } else {
-        const errText = await res.text();
-        const msg = `HTTP status ${res.status}: ${errText}`;
-        console.error(`[places] Foursquare v2 API search returned error: ${msg}`);
-        if (apiStatus && apiStatus.foursquareV2) {
-          apiStatus.foursquareV2.status = "error";
-          apiStatus.foursquareV2.error = msg;
-        }
-      }
-    } catch (err) {
-      console.error("[places] Foursquare v2 query failed:", err);
-      if (apiStatus && apiStatus.foursquareV2) {
-        apiStatus.foursquareV2.status = "error";
-        apiStatus.foursquareV2.error = err.message;
+  try {
+    const res = await doFetch(url, {}, 10000);
+    if (!res.ok) {
+      const errText = await res.text();
+      const msg = `HTTP status ${res.status}: ${errText}`;
+      console.error(`[places] HERE ${mode} returned error: ${msg}`);
+      if (apiStatus?.here) {
+        apiStatus.here.status = "error";
+        apiStatus.here.error = msg;
       }
       return [];
     }
-  }
+    const data = await res.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    const out = items.map((item) => _mapHereItem(item, lat, lon)).filter(Boolean);
 
-  _cache?.set(cacheKey, out);
-  return out;
-}
+    if (apiStatus?.here) {
+      apiStatus.here.status = "success";
+      apiStatus.here.count = out.length;
+    }
 
-async function _searchOverpass(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
-  const cacheKey = `ov:${query}:${lat}:${lon}:${Math.round(radiusM)}:${limit}`;
-  const cached = _cache?.get(cacheKey);
-  if (cached) return cached;
-
-  const escaped = query.replace(/"/g, '\\"').replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const q = `[out:json][timeout:15];
-(
-  node["name"~"${escaped}",i](around:${Math.round(radiusM)},${lat},${lon});
-  way["name"~"${escaped}",i](around:${Math.round(radiusM)},${lat},${lon});
-  relation["name"~"${escaped}",i](around:${Math.round(radiusM)},${lat},${lon});
-);
-out center ${Math.max(limit * 2, 10)};
-`.trim();
-
-  const res = await doFetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": `degoog-places-slot/${PLUGIN_VERSION} (https://github.com/SoPat712/degoog-toolkit)`
-    },
-    body: `data=${encodeURIComponent(q)}`,
-  });
-  if (!res.ok) {
-    const errText = await res.text();
-    const msg = `HTTP status ${res.status}: ${errText}`;
-    console.error(`[places] Overpass API search returned error: ${msg}`);
-    if (apiStatus && apiStatus.overpassSearch) {
-      apiStatus.overpassSearch.status = "error";
-      apiStatus.overpassSearch.error = msg;
+    _cache?.set(cacheKey, out);
+    return out;
+  } catch (err) {
+    console.error("[places] HERE search failed:", err);
+    if (apiStatus?.here) {
+      apiStatus.here.status = "error";
+      apiStatus.here.error = err.message;
     }
     return [];
   }
-  const data = await res.json();
-  if (!Array.isArray(data.elements)) return [];
-
-  const out = data.elements
-    .map((el) => {
-      const tags = el.tags || {};
-      const plat = el.lat ?? el.center?.lat;
-      const plon = el.lon ?? el.center?.lon;
-      if (plat == null || plon == null) return null;
-
-      const categories = [];
-      if (tags.amenity) categories.push(tags.amenity.replace(/_/g, " "));
-      if (tags.shop) categories.push(tags.shop.replace(/_/g, " "));
-      if (tags.tourism) categories.push(tags.tourism.replace(/_/g, " "));
-      if (tags.leisure) categories.push(tags.leisure.replace(/_/g, " "));
-      if (tags.office) categories.push(tags.office.replace(/_/g, " "));
-      if (tags.craft) categories.push(tags.craft.replace(/_/g, " "));
-      if (tags.healthcare) categories.push(tags.healthcare.replace(/_/g, " "));
-      if (tags.cuisine) categories.push(tags.cuisine.replace(/;/g, ", "));
-      const hasPhone = tags.phone || tags["contact:phone"] || tags["contact:mobile"];
-      const hasWebsite = tags.website || tags["contact:website"] || tags.url;
-      if (categories.length === 0 && !hasPhone && !hasWebsite && !tags.opening_hours) return null;
-
-      return {
-        name: tags.name || query,
-        address: _fmtOverpassAddress(tags),
-        lat: plat,
-        lon: plon,
-        distanceMeters: _haversine(lat, lon, plat, plon),
-        phone: hasPhone || null,
-        website: hasWebsite || null,
-        categories,
-        hours: tags.opening_hours
-          ? { openNow: null, display: _formatOsmHours(tags.opening_hours), status: null }
-          : null,
-        rating: null,
-        reviewCount: null,
-        source: "OpenStreetMap",
-        sourceUrl: `https://www.openstreetmap.org/${el.type}/${el.id}`,
-      };
-    })
-    .filter(Boolean);
-
-  if (apiStatus && apiStatus.overpassSearch) {
-    apiStatus.overpassSearch.status = "success";
-    apiStatus.overpassSearch.count = out.length;
-  }
-
-  _cache?.set(cacheKey, out);
-  return out;
 }
 
-async function _searchPhoton(query, lat, lon, radiusM, limit, doFetch, apiStatus) {
-  const cacheKey = `ph:${query}:${lat}:${lon}:${Math.round(radiusM)}:${limit}`;
-  const cached = _cache?.get(cacheKey);
-  if (cached) return cached;
+function _mapHereItem(item, lat, lon) {
+  if (!item || !item.position) return null;
+  const plat = item.position.lat;
+  const plon = item.position.lng;
+  if (plat == null || plon == null) return null;
 
-  const base = (_settings.photonBaseUrl || DEFAULT_PHOTON_URL).replace(/\/$/, "");
-  const url =
-    `${base}/api/?q=${encodeURIComponent(query)}` +
-    `&lat=${lat}&lon=${lon}&limit=${limit}`;
+  const contact = Array.isArray(item.contacts) ? item.contacts[0] : null;
+  const phone = contact?.phone?.[0]?.value || null;
+  const website = contact?.www?.[0]?.value || null;
 
-  const res = await doFetch(url);
-  if (!res.ok) {
-    const errText = await res.text();
-    const msg = `HTTP status ${res.status}: ${errText}`;
-    console.error(`[places] Photon API search returned error: ${msg}`);
-    if (apiStatus && apiStatus.photon) {
-      apiStatus.photon.status = "error";
-      apiStatus.photon.error = msg;
+  const categories = [];
+  if (Array.isArray(item.categories)) {
+    for (const c of item.categories) {
+      if (c && c.primary && c.name) categories.push(c.name);
     }
-    return [];
   }
-  const data = await res.json();
-  if (!Array.isArray(data.features)) return [];
+  const chainName = item.chains?.[0]?.name || null;
+  if (chainName && !categories.includes(chainName)) categories.push(chainName);
+  // Brand signals used by the optimistic name-query confidence gate.
+  const ontologyId = item.chains?.[0]?.id || item.ontologyId || null;
 
-  const out = data.features
-    .map((f) => {
-      const coords = f.geometry?.coordinates;
-      if (!Array.isArray(coords) || coords.length < 2) return null;
-      const plon = coords[0];
-      const plat = coords[1];
-      const p = f.properties || {};
-      return {
-        name: p.name || p.street || query,
-        address: _fmtPhotonAddress(p),
-        lat: plat,
-        lon: plon,
-        distanceMeters: _haversine(lat, lon, plat, plon),
-        phone: null,
-        website: null,
-        categories: p.osm_value ? [p.osm_value.replace(/_/g, " ")] : [],
-        hours: null,
-        rating: null,
-        reviewCount: null,
-        source: "OpenStreetMap",
-        sourceUrl: p.osm_type && p.osm_id
-          ? `https://www.openstreetmap.org/${p.osm_type}/${p.osm_id}`
-          : `https://www.openstreetmap.org/?mlat=${plat}&mlon=${plon}`,
-      };
-    })
-    .filter(Boolean);
-
-  if (apiStatus && apiStatus.photon) {
-    apiStatus.photon.status = "success";
-    apiStatus.photon.count = out.length;
+  let hours = null;
+  const oh = Array.isArray(item.openingHours) ? item.openingHours[0] : null;
+  if (oh) {
+    hours = {
+      openNow: typeof oh.isOpen === "boolean" ? oh.isOpen : null,
+      display: Array.isArray(oh.text) ? oh.text.join(", ") : null,
+      status: null,
+    };
   }
 
-  _cache?.set(cacheKey, out);
-  return out;
-}
+  const distanceMeters =
+    typeof item.distance === "number" ? item.distance : _haversine(lat, lon, plat, plon);
 
-async function _searchNominatim(query, lat, lon, limit, doFetch, apiStatus) {
-  const cacheKey = `nm:${query}:${lat}:${lon}:${limit}`;
-  const cached = _cache?.get(cacheKey);
-  if (cached) return cached;
-
-  const url =
-    `${NOMINATIM_BASE}?q=${encodeURIComponent(query)}` +
-    `&format=json&limit=${limit}&addressdetails=1` +
-    `&lat=${lat}&lon=${lon}`;
-
-  const res = await doFetch(url, {
-    headers: {
-      "User-Agent": `degoog-places-slot/${PLUGIN_VERSION}`,
-      "Accept-Language": "en",
-    },
-  });
-  if (!res.ok) {
-    const errText = await res.text();
-    const msg = `HTTP status ${res.status}: ${errText}`;
-    console.error(`[places] Nominatim API search returned error: ${msg}`);
-    if (apiStatus && apiStatus.nominatim) {
-      apiStatus.nominatim.status = "error";
-      apiStatus.nominatim.error = msg;
-    }
-    return [];
-  }
-  const data = await res.json();
-  if (!Array.isArray(data)) return [];
-
-  const out = data
-    .map((r) => {
-      const plat = parseFloat(r.lat);
-      const plon = parseFloat(r.lon);
-      if (!Number.isFinite(plat) || !Number.isFinite(plon)) return null;
-      return {
-        name: r.name || r.display_name?.split(",")[0]?.trim() || query,
-        address: _fmtNominatimAddress(r),
-        lat: plat,
-        lon: plon,
-        distanceMeters: _haversine(lat, lon, plat, plon),
-        phone: null,
-        website: null,
-        categories: r.type ? [r.type.replace(/_/g, " ")] : [],
-        hours: null,
-        rating: null,
-        reviewCount: null,
-        source: "OpenStreetMap",
-        sourceUrl: `https://www.openstreetmap.org/?mlat=${plat}&mlon=${plon}`,
-      };
-    })
-    .filter(Boolean);
-
-  if (apiStatus && apiStatus.nominatim) {
-    apiStatus.nominatim.status = "success";
-    apiStatus.nominatim.count = out.length;
-  }
-
-  _cache?.set(cacheKey, out);
-  return out;
+  return {
+    id: item.id || null,
+    name: item.title || "",
+    address: item.address?.label || "",
+    lat: plat,
+    lon: plon,
+    distanceMeters,
+    phone,
+    website,
+    categories,
+    hours,
+    rating: null,
+    reviewCount: null,
+    price: null,
+    description: null,
+    brandName: chainName,
+    ontologyId,
+    source: "HERE",
+    sourceUrl: `https://wego.here.com/?map=${plat},${plon},16,normal`,
+  };
 }
 
 /* ------------------------------------------------------------------ */
-/* Normalization & dedupe                                              */
+/* Processing                                                          */
 /* ------------------------------------------------------------------ */
 
-function _dedupeAndMergePlaces(places) {
+function _processHerePlaces(rawPlaces, radiusM, limit) {
+  const maxDist = radiusM * 1.1;
   const out = [];
-  for (const p of places) {
-    const norm = _normalizeName(p.name);
-    let existing = null;
+  const seenIds = new Set();
+
+  for (const p of rawPlaces) {
+    if (!p) continue;
+    // Drop anything well beyond the configured radius.
+    if (Number.isFinite(p.distanceMeters) && p.distanceMeters > maxDist) continue;
+
+    // Dedupe by HERE id.
+    if (p.id) {
+      if (seenIds.has(p.id)) continue;
+    }
+
+    // Dedupe by name + proximity (same business returned twice).
+    const norm = String(p.name || "").toLowerCase().trim();
+    let isDuplicate = false;
     for (const e of out) {
-      const dist = _haversine(p.lat, p.lon, e.lat, e.lon);
-      const eNorm = _normalizeName(e.name);
-      const nameSimilar =
-        norm === eNorm ||
-        (norm.length > 4 && eNorm.includes(norm)) ||
-        (eNorm.length > 4 && norm.includes(eNorm));
-      const samePhone = p.phone && e.phone && p.phone === e.phone;
-      const sameWebsite = p.website && e.website && p.website === e.website;
-      if (dist < 75 && (nameSimilar || samePhone || sameWebsite)) {
-        existing = e;
+      const eNorm = String(e.name || "").toLowerCase().trim();
+      if (
+        norm &&
+        norm === eNorm &&
+        Number.isFinite(p.lat) &&
+        Number.isFinite(p.lon) &&
+        Number.isFinite(e.lat) &&
+        Number.isFinite(e.lon) &&
+        _haversine(p.lat, p.lon, e.lat, e.lon) < 100
+      ) {
+        isDuplicate = true;
         break;
       }
     }
-    if (existing) {
-      if (!existing.phone && p.phone) existing.phone = p.phone;
-      if (!existing.website && p.website) existing.website = p.website;
-      if (!existing.email && p.email) existing.email = p.email;
-      if (!existing.description && p.description) existing.description = p.description;
-      if (!existing.price && p.price) existing.price = p.price;
-      if (existing.rating == null && p.rating != null) {
-        existing.rating = p.rating;
-        existing.reviewCount = p.reviewCount;
-      }
-      if (p.categories && p.categories.length) {
-        const cats = new Set([...existing.categories, ...p.categories]);
-        existing.categories = Array.from(cats);
-      }
-      if (!existing.hours && p.hours) existing.hours = p.hours;
-      else if (existing.hours && p.hours) {
-        if (existing.hours.openNow == null && p.hours.openNow != null)
-          existing.hours.openNow = p.hours.openNow;
-        if (!existing.hours.display && p.hours.display)
-          existing.hours.display = p.hours.display;
-        if (!existing.hours.status && p.hours.status)
-          existing.hours.status = p.hours.status;
-      }
-    } else {
-      out.push({ ...p });
-    }
+    if (isDuplicate) continue;
+
+    if (p.id) seenIds.add(p.id);
+    out.push(p);
+    // Keep HERE's relevance order; stop once we have enough.
+    if (out.length >= limit) break;
   }
+
   return out;
-}
-
-function _processPlaces(query, rawPlaces, limit, options = {}) {
-  const deduped = _dedupeAndMergePlaces(rawPlaces);
-  const q = _normalizeName(query);
-  const words = _wordCount(query);
-
-  const closestDistance = Math.min(
-    ...deduped
-      .map((p) => p.distanceMeters ?? Infinity)
-      .filter((d) => isFinite(d))
-  );
-
-  if (options.enforceDistanceGate && words === 1 && closestDistance > 35 * 1609.34) {
-    return [];
-  }
-
-  const scored = deduped.map((place) => {
-    const name = _normalizeName(place.name);
-    const score = _tokenOverlapScore(q, name);
-
-    let distanceConfidence = 1;
-    const distKm = (place.distanceMeters ?? Infinity) / 1000;
-
-    if (distKm > 50) {
-      distanceConfidence = score > 0.9 ? 1 : 0.3;
-    } else if (distKm > 25) {
-      distanceConfidence = 0.7 + (0.3 * Math.max(0, 1 - (distKm - 25) / 50));
-    } else if (distKm > 10) {
-      distanceConfidence = 0.85 + (0.15 * Math.max(0, 1 - (distKm - 10) / 15));
-    } else {
-      distanceConfidence = 1;
-    }
-
-    return {
-      ...place,
-      _matchScore: score,
-      _distanceConfidence: distanceConfidence,
-      _compositeScore: score * distanceConfidence,
-    };
-  });
-
-  const filtered = scored.filter((place) => {
-    // Filter out places that are too far (e.g. > 100 miles) as they are not local.
-    if (place.distanceMeters > 100 * 1609.34) {
-      return false;
-    }
-
-    if (options.enforceConfidenceGate) {
-      if (place._matchScore < 0.55) return false;
-      if (closestDistance > 40 * 1000 && place._matchScore < 0.75) return false;
-
-      const hasLocation = place.address || (place.lat && place.lon);
-      const hasBusinessData = place.categories?.length || place.phone || place.website;
-
-      if (!hasLocation || !hasBusinessData) return false;
-    }
-    return true;
-  });
-
-  filtered.sort((a, b) => {
-    return (a.distanceMeters ?? Infinity) - (b.distanceMeters ?? Infinity);
-  });
-
-  return filtered.slice(0, limit);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1148,77 +757,131 @@ function _hasCityOrZipHint(query) {
   return /\b\d{5}(?:-\d{4})?\b/.test(query) || /\b[A-Z]{2}\b/.test(query);
 }
 
-function _looksProbablyPlaceQuery(rawQuery) {
+// Words that, on their own, are too generic/non-commercial to optimistically
+// treat as a brand/business name. Keeps the name-query relaxation honest.
+const GENERIC_NAME_STOPWORDS = new Set([
+  "the", "and", "for", "you", "your", "are", "was", "what", "when", "where",
+  "why", "how", "who", "yes", "no", "ok", "okay", "hello", "hi", "hey",
+  "good", "bad", "new", "old", "free", "love", "life", "time", "day", "today",
+  "tomorrow", "yesterday", "now", "here", "there", "this", "that", "them",
+  "thanks", "please", "help", "info", "about", "home", "work", "name",
+]);
+
+// Classifies a query for Places triggering.
+//   "strong" -> category / local-intent / known-chain / city-zip signal; render any nearby result (legacy behavior).
+//   "name"   -> short, plausible brand/business name; render ONLY on a confident HERE match.
+//   null     -> do not trigger.
+function _classifyPlaceQuery(rawQuery) {
   const query = _normalizeQuery(rawQuery);
   const lower = query.toLowerCase();
 
-  if (!query || query.length < 3) return false;
-  if (query.length > 80) return false;
-  if (URL_OR_CODE_RE.test(query)) return false;
+  if (!query || query.length < 3) return null;
+  if (query.length > 80) return null;
+  if (URL_OR_CODE_RE.test(query)) return null;
 
-  // Obvious informational/software/scientific/tech searches should not trigger.
+  // Obvious informational/software/scientific/tech searches must never trigger.
   if (NON_PLACE_RE.test(lower) || GENERAL_INFO_RE.test(lower) || TECH_SCIENCE_RE.test(lower)) {
-    return false;
+    return null;
   }
 
-  // To trigger, the query MUST have a local intent, a place category, a known chain, or a city/state/zip hint.
+  // Strong signals: local intent, place category, a known chain, or a city/state/zip hint.
   const hasLocalIntent = LOCAL_INTENT_RE.test(lower);
   const hasCategory = PLACE_CATEGORY_RE.test(lower);
   const hasChain = KNOWN_CHAIN_RE.test(lower);
   const hasLocationHint = _hasCityOrZipHint(lower);
+  if (hasLocalIntent || hasCategory || hasChain || hasLocationHint) return "strong";
 
-  return hasLocalIntent || hasCategory || hasChain || hasLocationHint;
+  // Optimistic brand/business-name admission: a short alphabetic name that
+  // survives the reject lists above. The widget still only renders if HERE
+  // returns a confident match (see _isConfidentNameMatch), so an unmatched
+  // word produces no output.
+  if (_looksLikeNameQuery(query)) return "name";
+
+  return null;
 }
 
-function _normalizeName(value) {
+function _looksLikeNameQuery(query) {
+  const tokens = _normalizeQuery(query).split(/\s+/).filter(Boolean);
+  if (tokens.length < 1 || tokens.length > 3) return false;
+
+  for (const token of tokens) {
+    // Each token must read like a name word: starts with a letter, only
+    // letters plus internal apostrophes/hyphens/ampersands/dots. No digits.
+    if (!/^[a-z][a-z'’&.-]*$/i.test(token)) return false;
+  }
+
+  const compact = tokens.join("");
+  if (compact.length < 3) return false;
+
+  // A lone generic stopword (e.g. "the", "good") is not a business name.
+  if (tokens.length === 1 && GENERIC_NAME_STOPWORDS.has(tokens[0].toLowerCase())) {
+    return false;
+  }
+
+  return true;
+}
+
+function _looksProbablyPlaceQuery(rawQuery) {
+  return _classifyPlaceQuery(rawQuery) !== null;
+}
+
+function _normalizeMatchText(value) {
   return String(value || "")
     .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/\+/g, "and")
-    .replace(/[^a-z0-9 ]+/g, "")
+    .replace(/&/g, " and ")
+    .replace(/['’.]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function _tokenSet(value) {
-  return new Set(_normalizeName(value).split(" ").filter(Boolean));
-}
+// 0..1 similarity between a query and a place name, combining substring
+// containment with token overlap so "tim hortons" matches "Tim Hortons" and
+// "starbucks" matches "STARBUCKS" but random words do not.
+function _nameMatchScore(query, name) {
+  const q = _normalizeMatchText(query);
+  const n = _normalizeMatchText(name);
+  if (!q || !n) return 0;
+  if (q === n) return 1;
 
-function _tokensMatch(t1, t2) {
-  if (t1 === t2) return true;
-  if (t1 === t2 + "s" || t2 === t1 + "s") return true;
-  // Handle pizzeria / pizza / pizzas equivalence
-  if ((t1.includes("pizz") && t2.includes("pizz")) || (t1.startsWith("pizzer") && t2.startsWith("pizz"))) {
-    return true;
+  const qTokens = q.split(" ").filter(Boolean);
+  const nTokens = new Set(n.split(" ").filter(Boolean));
+  if (qTokens.length === 0 || nTokens.size === 0) return 0;
+
+  // Full containment of the query phrase within the name (or vice versa).
+  if (n.includes(q) || q.includes(n)) {
+    return Math.min(q.length, n.length) >= 3 ? 0.95 : 0;
   }
-  // Substring matching for longer tokens (prefix matching)
-  if (t1.length > 4 && t2.length > 4) {
-    if (t1.startsWith(t2.substring(0, 4)) || t2.startsWith(t1.substring(0, 4))) {
-      return true;
-    }
-  }
-  return false;
-}
 
-function _tokenOverlapScore(a, b) {
-  const aa = _tokenSet(a);
-  const bb = _tokenSet(b);
-  if (!aa.size || !bb.size) return 0;
-
-  let overlap = 0;
-  for (const t1 of aa) {
-    for (const t2 of bb) {
-      if (_tokensMatch(t1, t2)) {
-        overlap++;
-        break;
+  let matched = 0;
+  for (const t of qTokens) {
+    if (nTokens.has(t)) {
+      matched += 1;
+    } else if (t.length >= 5) {
+      // Allow a near-token match for longer words (minor spelling drift).
+      for (const nt of nTokens) {
+        if (nt.length >= 5 && (nt.startsWith(t.slice(0, 5)) || t.startsWith(nt.slice(0, 5)))) {
+          matched += 0.8;
+          break;
+        }
       }
     }
   }
-
-  return overlap / Math.min(aa.size, bb.size);
+  return matched / qTokens.length;
 }
 
-// Scored, filtered, and sorted by composite scoring in _processPlaces.
+// A place is a confident match for an optimistic name query when its name (or
+// brand) closely matches the query. A HERE chain/ontology brand signal lowers
+// the bar slightly. Radius is already enforced by _processHerePlaces.
+function _isConfidentNameMatch(query, place) {
+  if (!place) return false;
+  const nameScore = _nameMatchScore(query, place.name);
+  const brandScore = place.brandName ? _nameMatchScore(query, place.brandName) : 0;
+  const score = Math.max(nameScore, brandScore);
+  if (score >= 0.7) return true;
+  if (score >= 0.5 && (place.brandName || place.ontologyId)) return true;
+  return false;
+}
 
 function _shortAddress(address) {
   if (typeof address !== "string") return "";
@@ -1293,224 +956,4 @@ function _esc(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
-}
-
-function _fmtFsqAddress(loc) {
-  if (!loc) return "";
-  const parts = [
-    loc.address,
-    loc.locality || loc.city,
-    loc.region || loc.state,
-    loc.postcode || loc.postalCode,
-    loc.country,
-  ].filter(Boolean);
-  return parts.join(", ");
-}
-
-async function _getVenueDetailsFromOverpass(name, lat, lon, doFetch) {
-  if (!name) return null;
-  const start = Date.now();
-  console.log(`[Places Performance v${PLUGIN_VERSION}] Starting targeted Overpass details fallback for "${name}" at lat=${lat}, lon=${lon}...`);
-  
-  // Query all named elements within 300 meters
-  const q = `[out:json][timeout:5];
-(
-  node["name"](around:300,${lat},${lon});
-  way["name"](around:300,${lat},${lon});
-  relation["name"](around:300,${lat},${lon});
-);
-out center 20;`.trim();
-
-  const controller = new AbortController();
-  const timeoutMs = 5000;
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await doFetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": `degoog-places-slot/${PLUGIN_VERSION} (https://github.com/SoPat712/degoog-toolkit)`
-      },
-      body: `data=${encodeURIComponent(q)}`,
-      signal: controller.signal,
-    });
-    clearTimeout(id);
-    if (!res.ok) {
-      console.log(`[Places Performance] Targeted Overpass fallback details request for "${name}" failed in ${Date.now() - start}ms`);
-      return null;
-    }
-    const data = await res.json();
-    if (!Array.isArray(data.elements) || data.elements.length === 0) {
-      console.log(`[Places Performance] Targeted Overpass fallback details for "${name}" returned 0 elements in ${Date.now() - start}ms`);
-      return null;
-    }
-
-    const scoredElements = data.elements
-      .map((el) => {
-        const elName = el.tags?.name || "";
-        const score = _tokenOverlapScore(name, elName);
-        return { el, score };
-      })
-      .filter((item) => item.score >= 0.4);
-
-    scoredElements.sort((a, b) => b.score - a.score);
-
-    if (scoredElements.length > 0) {
-      const best = scoredElements[0].el;
-      const tags = best.tags || {};
-      const phone = tags.phone || tags["contact:phone"] || tags["contact:mobile"] || null;
-      const website = tags.website || tags["contact:website"] || tags.url || null;
-      const openingHours = _formatOsmHours(tags.opening_hours);
-      console.log(`[Places Performance] Targeted Overpass fallback details for "${name}" matched "${tags.name}" (score: ${scoredElements[0].score.toFixed(2)}) in ${Date.now() - start}ms (Website: ${!!website}, Phone: ${!!phone}, Hours: ${!!openingHours})`);
-      if (phone || website || openingHours) {
-        return { phone, website, openingHours };
-      }
-    } else {
-      console.log(`[Places Performance] Targeted Overpass fallback details for "${name}" found no fuzzy match in ${data.elements.length} elements in ${Date.now() - start}ms`);
-    }
-  } catch (err) {
-    clearTimeout(id);
-    if (err.name === "AbortError") {
-      console.warn(`[Places Performance] Targeted Overpass details request for "${name}" timed out: gave up after ${timeoutMs / 1000} seconds.`);
-    } else {
-      console.warn(`[places] Overpass details fetch failed for ${name} in ${Date.now() - start}ms:`, err);
-    }
-  }
-  return null;
-}
-
-function _fmtOverpassAddress(tags) {
-  const parts = [
-    tags["addr:housenumber"] ? `${tags["addr:housenumber"]} ${tags["addr:street"] || ""}` : tags["addr:street"],
-    tags["addr:city"],
-    tags["addr:state"],
-    tags["addr:postcode"],
-    tags["addr:country"],
-  ].filter(Boolean);
-  return parts.join(", ");
-}
-
-function _fmtPhotonAddress(p) {
-  const parts = [
-    p.name && p.name !== p.street ? p.name : null,
-    p.housenumber ? `${p.housenumber} ${p.street || ""}` : p.street,
-    p.district || p.borough,
-    p.city || p.town || p.village || p.municipality,
-    p.state,
-    p.postcode,
-    p.country,
-  ].filter(Boolean);
-  return parts.join(", ");
-}
-
-function _fmtNominatimAddress(r) {
-  const a = r.address;
-  if (a && typeof a === "object") {
-    const parts = [
-      [a.house_number, a.house_name].filter(Boolean).join(" ") || null,
-      a.road || a.pedestrian || null,
-      a.suburb || a.neighbourhood || null,
-      a.city || a.town || a.village || a.hamlet || null,
-      a.state || a.region || null,
-      a.postcode || null,
-      a.country || null,
-    ].filter(Boolean);
-    if (parts.length) return parts.join(", ");
-  }
-  return r.display_name || "";
-}
-
-function _formatOsmHours(openingHours) {
-  if (!openingHours) return null;
-  if (openingHours.toLowerCase() === "24/7") {
-    return "Open 24/7";
-  }
-  
-  const daysMap = {
-    "Mo": "Mon",
-    "Tu": "Tue",
-    "We": "Wed",
-    "Th": "Thu",
-    "Fr": "Fri",
-    "Sa": "Sat",
-    "Su": "Sun"
-  };
-
-  const to12Hr = (t) => {
-    const parts = t.split(":");
-    if (parts.length !== 2) return t;
-    let h = parseInt(parts[0], 10);
-    const m = parts[1];
-    if (isNaN(h)) return t;
-    const ampm = h >= 12 ? "PM" : "AM";
-    h = h % 12;
-    if (h === 0) h = 12;
-    return `${h}:${m} ${ampm}`;
-  };
-
-  const segments = openingHours.split(";").map(s => s.trim()).filter(Boolean);
-  const formattedSegments = [];
-
-  for (const seg of segments) {
-    if (seg.toLowerCase() === "24/7") {
-      formattedSegments.push("Open 24/7");
-      continue;
-    }
-    if (seg.toLowerCase() === "off" || seg.toLowerCase().endsWith("off")) {
-      let dayPart = seg.replace(/off/i, "").trim();
-      if (dayPart) {
-        for (const [k, v] of Object.entries(daysMap)) {
-          dayPart = dayPart.replace(new RegExp(k, "g"), v);
-        }
-        dayPart = dayPart.replace(/-/g, "–");
-        formattedSegments.push(`${dayPart}: Closed`);
-      } else {
-        formattedSegments.push("Closed");
-      }
-      continue;
-    }
-
-    const timeMatch = seg.match(/\d{2}:\d{2}/);
-    if (!timeMatch) {
-      let cleanSeg = seg;
-      for (const [k, v] of Object.entries(daysMap)) {
-        cleanSeg = cleanSeg.replace(new RegExp(k, "g"), v);
-      }
-      cleanSeg = cleanSeg.replace(/-/g, "–");
-      formattedSegments.push(cleanSeg);
-      continue;
-    }
-
-    const timeIndex = timeMatch.index;
-    let daysPart = seg.substring(0, timeIndex).trim();
-    let timesPart = seg.substring(timeIndex).trim();
-
-    for (const [k, v] of Object.entries(daysMap)) {
-      daysPart = daysPart.replace(new RegExp(k, "g"), v);
-    }
-    daysPart = daysPart.replace(/-/g, "–");
-
-    const timeRanges = timesPart.split(",").map(t => t.trim()).filter(Boolean);
-    const formattedRanges = timeRanges.map(range => {
-      const parts = range.split("-").map(p => p.trim());
-      if (parts.length === 2) {
-        return `${to12Hr(parts[0])}–${to12Hr(parts[1])}`;
-      }
-      return range;
-    });
-
-    const timesJoined = formattedRanges.join(", ");
-    if (daysPart) {
-      if (daysPart.endsWith(":")) {
-        formattedSegments.push(`${daysPart} ${timesJoined}`);
-      } else {
-        formattedSegments.push(`${daysPart}: ${timesJoined}`);
-      }
-    } else {
-      formattedSegments.push(timesJoined);
-    }
-  }
-
-  return formattedSegments.join(", ");
 }
