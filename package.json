@@ -35,8 +35,8 @@
     {
       "path": "plugins/speedtest",
       "name": "Speedtest",
-      "description": "Internet speed test with selectable servers, latency, and a circular gauge. Supports !speed, !speedtest, !speed-test, !networkspeed, !internetspeed, and natural phrases like 'speed test' or 'how fast is internet'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.5.16",
+      "description": "Internet speed test with selectable servers, latency, and a circular gauge. Supports !speedtest, !speed, !speed-test, !networkspeed, !internetspeed, and natural phrases like 'run a speedtest' or 'how fast is internet'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
+      "version": "1.5.17",
       "type": "command"
     },
     {

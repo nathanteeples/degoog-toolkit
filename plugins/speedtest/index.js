@@ -2,7 +2,7 @@ let templateHtml = "";
 let debugMode = false;
 
 const PLUGIN_NAME = "Speedtest";
-const PLUGIN_VERSION = "1.5.15";
+const PLUGIN_VERSION = "1.5.17";
 const PLUGIN_DESCRIPTION =
   "Minimal internet speed test with selectable servers, latency, download-first flow, and a circular gauge.";
 
@@ -57,12 +57,9 @@ function renderCardHtml() {
 // keeps Settings to one row.
 //
 // Trigger choice:
-// degoog core owns the built-in `speedtest` trigger. If this Store item
-// also uses `speedtest` as its primary trigger, the command loader drops
-// the whole plugin as a duplicate before it can appear in Settings. Use
-// `speed` as the collision-free primary trigger and keep `speedtest` as an
-// alias for deployments where the core built-in is disabled or aliases can
-// coexist with the built-in trigger.
+// This Store item owns `speedtest`. degoog core also ships a built-in command
+// with that trigger, so operators should disable the core built-in when using
+// this plugin. `speed` stays as the guaranteed fallback alias.
 //
 // Natural language:
 //   • `naturalLanguagePhrases` below drives CLIENT-SIDE prefix matching
@@ -81,16 +78,15 @@ function renderCardHtml() {
 //   index.js does not inject server data into the template; the client
 //   uses its built-in list directly.
 //
-// IMPORTANT — schema export wiring (see AGENTS.md): spell out every
-// field on a named `export const command = { ... }` and re-export as
-// `default`. Do NOT refactor into a spread or anonymous default — the
-// Configure row has already regressed once because of that.
-export const command = {
+// Keep this as a single concrete default command export. degoog 0.19 tightened
+// extension recognition, and exporting both a named command and the same object
+// as default can keep this plugin from registering on updated deployments.
+const command = {
   name: PLUGIN_NAME,
   description: PLUGIN_DESCRIPTION,
   isClientExposed: true,
-  trigger: "speed",
-  aliases: ["speedtest", "speed-test", "networkspeed", "internetspeed"],
+  trigger: "speedtest",
+  aliases: ["speed", "speed-test", "networkspeed", "internetspeed"],
   naturalLanguagePhrases: [
     "speedtest",
     "speed test",
@@ -137,6 +133,4 @@ export const command = {
   },
 };
 
-// Default export must be a single concrete capability so degoog
-// registers it correctly.
 export default command;
