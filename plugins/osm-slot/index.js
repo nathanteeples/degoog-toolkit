@@ -2,7 +2,7 @@
 // (hybrid of /browse with verified category codes and /discover free-text).
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.3.6";
+const PLUGIN_VERSION = "4.3.7";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -1034,8 +1034,12 @@ const GENERIC_NAME_STOPWORDS = new Set([
   "hill", "ridge", "valley", "river", "lake", "road", "street", "avenue",
   // Game/animal terms that often collide with utility plugins and should not
   // trigger Places as optimistic single-word business-name searches.
-  "snake", "minesweeper", "tictactoe", "tic", "toe",
+  "snake", "minesweeper", "tictactoe", "tic", "tac", "toe",
 ]);
+
+// Queries that should never trigger Places (handled by game plugins instead).
+const GAME_QUERY_RE =
+  /\b(tic[\s-]?tac[\s-]?toe|tictactoe|tic-tac-toe|minesweeper|play\s+snake|snake\s+game|play\s+tic|play\s+tictactoe|play\s+tic[\s-]?tac[\s-]?toe)\b/i;
 
 // Leading "where is / where's / where can i find ..." phrasing. Stripped before
 // searching; if the remainder is a proper place/landmark name (not a local
@@ -1083,6 +1087,7 @@ function _classifyLocalText(text) {
 function _classifyPlaceQuery(rawQuery) {
   const query = _normalizeQuery(rawQuery);
   if (!query || query.length > 80) return null;
+  if (GAME_QUERY_RE.test(query)) return null;
   const wantsOpenNow = /\bopen(?:\s+now)?\b/i.test(query);
 
   const whereMatch = WHERE_IS_RE.exec(query) || WHERE_PLAIN_RE.exec(query);
