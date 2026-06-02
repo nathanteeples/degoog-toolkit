@@ -468,6 +468,9 @@ const slotDef = {
       const wxRes = await doFetch(url);
       if (!wxRes.ok) return { html: "" };
       const wx = await wxRes.json();
+      const utcOffsetSeconds = Number.isFinite(wx.utc_offset_seconds)
+        ? wx.utc_offset_seconds
+        : 0;
 
       const cur = wx.current || {};
       const daily = wx.daily || {};
@@ -505,10 +508,12 @@ const slotDef = {
 
       // Sunrise/sunset for today
       const now = new Date();
-      const sunrise = _safeDate(daily.sunrise?.[0]);
-      const sunset = _safeDate(daily.sunset?.[0]);
-      const sunriseStr = sunrise ? _timeFmt(sunrise) : "—";
-      const sunsetStr = sunset ? _timeFmt(sunset) : "—";
+      const sunrise = _safeApiDate(daily.sunrise?.[0], utcOffsetSeconds);
+      const sunset = _safeApiDate(daily.sunset?.[0], utcOffsetSeconds);
+      const sunriseStr = sunrise
+        ? _timeFmtAt(sunrise, utcOffsetSeconds)
+        : "—";
+      const sunsetStr = sunset ? _timeFmtAt(sunset, utcOffsetSeconds) : "—";
 
       let sunPct = 0;
       if (sunrise && sunset) {
@@ -525,7 +530,8 @@ const slotDef = {
       if (Array.isArray(hourly.time)) {
         let smallest = Infinity;
         for (let i = 0; i < hourly.time.length; i++) {
-          const diff = Math.abs(new Date(hourly.time[i]) - now);
+          const ht = _safeApiDate(hourly.time[i], utcOffsetSeconds);
+          const diff = ht ? Math.abs(ht - now) : Infinity;
           if (diff < smallest) {
             smallest = diff;
             nowIdx = i;
@@ -550,9 +556,11 @@ const slotDef = {
 
       // Build per-day data, including full hourly arrays for charts
       const daysData = (daily.time || []).map((t, i) => {
-        const d = new Date(t + "T12:00:00");
-        const name = i === 0 ? "Today" : dayShort[d.getDay()];
-        const longName = i === 0 ? "Today" : dayNames[d.getDay()];
+        const d = _safeApiDate(`${t}T12:00:00`, utcOffsetSeconds) || new Date();
+        const weekday = _weekdayAt(d, utcOffsetSeconds);
+        const name = i === 0 ? "Today" : dayShort[weekday];
+        const longName = i === 0 ? "Today" : dayNames[weekday];
+        const dayDateLabel = _dateFmtAt(d, utcOffsetSeconds);
         const hi = Math.round(daily.temperature_2m_max[i]);
         const lo = Math.round(daily.temperature_2m_min[i]);
         const feelsHi = Math.round(daily.apparent_temperature_max?.[i] ?? hi);
@@ -573,10 +581,14 @@ const slotDef = {
         const daylight = _fmtDuration(daily.daylight_duration?.[i]);
 
         // Per-day sun info
-        const sr = _safeDate(daily.sunrise?.[i]);
-        const ss = _safeDate(daily.sunset?.[i]);
-        const srStr = sr ? _timeFmt(sr) : "—";
-        const ssStr = ss ? _timeFmt(ss) : "—";
+        const sr = _safeApiDate(daily.sunrise?.[i], utcOffsetSeconds);
+        const ss = _safeApiDate(daily.sunset?.[i], utcOffsetSeconds);
+        const nextSr = _safeApiDate(
+          daily.sunrise?.[i + 1],
+          utcOffsetSeconds,
+        );
+        const srStr = sr ? _timeFmtAt(sr, utcOffsetSeconds) : "—";
+        const ssStr = ss ? _timeFmtAt(ss, utcOffsetSeconds) : "—";
 
         let pct = 50;
         if (sr && ss) {
@@ -584,6 +596,19 @@ const slotDef = {
           const el = i === 0 ? Math.max(0, now - sr) : dl * 0.5;
           pct = Math.min(100, Math.max(0, Math.round((el / dl) * 100)));
         }
+
+        const dayStart = _localDayStart(t, utcOffsetSeconds);
+        const moon = _moonDayData({
+          dayStart,
+          lat,
+          lon,
+          utcOffsetSeconds,
+          now,
+          sunrise: sr,
+          sunset: ss,
+          nextSunrise: nextSr,
+          dayIndex: i,
+        });
 
         // Hourly slice for this day (24 entries, padded if missing)
         const start = i * 24;
@@ -605,9 +630,9 @@ const slotDef = {
         for (let h = start; h < end; h++) {
           const raw = hourly.time?.[h];
           if (!raw) continue;
-          const ht = new Date(raw);
+          const ht = _safeApiDate(raw, utcOffsetSeconds);
           hourly24.time.push(raw);
-          hourly24.labels.push(_timeFmt(ht, true));
+          hourly24.labels.push(_timeFmtAt(ht, utcOffsetSeconds, true));
           hourly24.temp.push(_safeNum(hourly.temperature_2m?.[h]));
           hourly24.feels.push(_safeNum(hourly.apparent_temperature?.[h]));
           hourly24.precipProb.push(
@@ -626,6 +651,7 @@ const slotDef = {
         return {
           name,
           longName,
+          dateLabel: dayDateLabel,
           hi,
           lo,
           feelsHi,
@@ -642,16 +668,14 @@ const slotDef = {
           sunPct: pct,
           srStr,
           ssStr,
+          moon,
           hourly: hourly24,
         };
       });
 
-      const nowLabel = _timeFmt(now);
-      const dateLabel = now.toLocaleDateString([], {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      });
+      const nowLabel = _timeFmtAt(now, utcOffsetSeconds);
+      const dateLabel = _dateFmtAt(now, utcOffsetSeconds);
+      const moonToday = daysData[0]?.moon || _emptyMoonData(false);
 
       const payload = {
         tempUnit: tempSign,
@@ -686,6 +710,7 @@ const slotDef = {
           sunset: sunsetStr,
           pct: sunPct,
         },
+        moon: moonToday,
         location: displayName,
         days: daysData,
       };
@@ -725,6 +750,16 @@ const slotDef = {
         .replaceAll("{{sunrise}}", _esc(sunriseStr))
         .replaceAll("{{sunset}}", _esc(sunsetStr))
         .replaceAll("{{sun_pct}}", String(sunPct))
+        .replaceAll(
+          "{{moon_row_class}}",
+          moonToday.show ? "" : "wxs-moon-row-hidden",
+        )
+        .replaceAll("{{moon_phase}}", _esc(moonToday.phaseLabel))
+        .replaceAll("{{moon_illum}}", _esc(moonToday.illuminationLabel))
+        .replaceAll("{{moonrise}}", _esc(moonToday.riseStr))
+        .replaceAll("{{moonset}}", _esc(moonToday.setStr))
+        .replaceAll("{{moon_apex}}", _esc(moonToday.apexStr))
+        .replaceAll("{{moon_pct}}", String(moonToday.apexPct))
         .replaceAll("{{icon_type}}", iconType)
         .replaceAll("{{is_day}}", isDay ? "1" : "0")
         .replaceAll("{{payload}}", payloadJson);
@@ -808,11 +843,37 @@ function _safeDate(s) {
   return isNaN(d.getTime()) ? null : d;
 }
 
+function _safeApiDate(s, utcOffsetSeconds = 0) {
+  if (!s || typeof s !== "string") return null;
+  const m = s.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?/,
+  );
+  if (!m) return _safeDate(s);
+  const y = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  const d = Number(m[3]);
+  const h = Number(m[4] || 0);
+  const min = Number(m[5] || 0);
+  const sec = Number(m[6] || 0);
+  const ms = Date.UTC(y, mo, d, h, min, sec) - utcOffsetSeconds * 1000;
+  const out = new Date(ms);
+  return isNaN(out.getTime()) ? null : out;
+}
+
+function _localDayStart(dateString, utcOffsetSeconds = 0) {
+  return _safeApiDate(`${dateString}T00:00:00`, utcOffsetSeconds) || new Date();
+}
+
 function _timeFmt(d, shortHour = false) {
+  return _timeFmtAt(d, null, shortHour);
+}
+
+function _timeFmtAt(d, utcOffsetSeconds = null, shortHour = false) {
   if (!d) return "—";
   const opts = shortHour
     ? { hour: "numeric" }
     : { hour: "2-digit", minute: "2-digit" };
+  if (Number.isFinite(utcOffsetSeconds)) opts.timeZone = "UTC";
 
   if (settings.timeFormat === "24h") {
     opts.hour12 = false;
@@ -825,10 +886,31 @@ function _timeFmt(d, shortHour = false) {
   }
 
   try {
-    return d.toLocaleTimeString([], opts);
+    const displayDate = Number.isFinite(utcOffsetSeconds)
+      ? new Date(d.getTime() + utcOffsetSeconds * 1000)
+      : d;
+    return displayDate.toLocaleTimeString([], opts);
   } catch {
     return d.toISOString().slice(11, 16);
   }
+}
+
+function _dateFmtAt(d, utcOffsetSeconds = null) {
+  const opts = { weekday: "long", month: "long", day: "numeric" };
+  if (Number.isFinite(utcOffsetSeconds)) opts.timeZone = "UTC";
+  const displayDate = Number.isFinite(utcOffsetSeconds)
+    ? new Date(d.getTime() + utcOffsetSeconds * 1000)
+    : d;
+  try {
+    return displayDate.toLocaleDateString([], opts);
+  } catch {
+    return displayDate.toISOString().slice(0, 10);
+  }
+}
+
+function _weekdayAt(d, utcOffsetSeconds = 0) {
+  const shifted = new Date(d.getTime() + utcOffsetSeconds * 1000);
+  return shifted.getUTCDay();
 }
 
 function _windDir(deg) {
@@ -843,6 +925,343 @@ function _uvLevel(uv) {
   if (uv < 8) return "High";
   if (uv < 11) return "Very high";
   return "Extreme";
+}
+
+// Compact SunCalc-style astronomy formulas for no-key moon data.
+const ASTRO_RAD = Math.PI / 180;
+const ASTRO_DAY_MS = 86400000;
+const ASTRO_J1970 = 2440588;
+const ASTRO_J2000 = 2451545;
+const ASTRO_E = ASTRO_RAD * 23.4397;
+const ASTRO_HOUR_MS = 3600000;
+
+function _toJulian(date) {
+  return date.valueOf() / ASTRO_DAY_MS - 0.5 + ASTRO_J1970;
+}
+
+function _toDays(date) {
+  return _toJulian(date) - ASTRO_J2000;
+}
+
+function _rightAscension(l, b) {
+  return Math.atan2(
+    Math.sin(l) * Math.cos(ASTRO_E) - Math.tan(b) * Math.sin(ASTRO_E),
+    Math.cos(l),
+  );
+}
+
+function _declination(l, b) {
+  return Math.asin(
+    Math.sin(b) * Math.cos(ASTRO_E) +
+      Math.cos(b) * Math.sin(ASTRO_E) * Math.sin(l),
+  );
+}
+
+function _azimuth(H, phi, dec) {
+  return Math.atan2(
+    Math.sin(H),
+    Math.cos(H) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi),
+  );
+}
+
+function _altitude(H, phi, dec) {
+  return Math.asin(
+    Math.sin(phi) * Math.sin(dec) +
+      Math.cos(phi) * Math.cos(dec) * Math.cos(H),
+  );
+}
+
+function _siderealTime(d, lw) {
+  return ASTRO_RAD * (280.16 + 360.9856235 * d) - lw;
+}
+
+function _astroRefraction(h) {
+  if (h < 0) h = 0;
+  return 0.0002967 / Math.tan(h + 0.00312536 / (h + 0.08901179));
+}
+
+function _solarMeanAnomaly(d) {
+  return ASTRO_RAD * (357.5291 + 0.98560028 * d);
+}
+
+function _eclipticLongitude(M) {
+  const C =
+    ASTRO_RAD *
+    (1.9148 * Math.sin(M) +
+      0.02 * Math.sin(2 * M) +
+      0.0003 * Math.sin(3 * M));
+  const P = ASTRO_RAD * 102.9372;
+  return M + C + P + Math.PI;
+}
+
+function _sunCoords(d) {
+  const M = _solarMeanAnomaly(d);
+  const L = _eclipticLongitude(M);
+  return {
+    dec: _declination(L, 0),
+    ra: _rightAscension(L, 0),
+  };
+}
+
+function _moonCoords(d) {
+  const L = ASTRO_RAD * (218.316 + 13.176396 * d);
+  const M = ASTRO_RAD * (134.963 + 13.064993 * d);
+  const F = ASTRO_RAD * (93.272 + 13.22935 * d);
+  const l = L + ASTRO_RAD * 6.289 * Math.sin(M);
+  const b = ASTRO_RAD * 5.128 * Math.sin(F);
+  const dist = 385001 - 20905 * Math.cos(M);
+  return {
+    ra: _rightAscension(l, b),
+    dec: _declination(l, b),
+    dist,
+  };
+}
+
+function _moonPosition(date, lat, lon) {
+  const lw = ASTRO_RAD * -lon;
+  const phi = ASTRO_RAD * lat;
+  const d = _toDays(date);
+  const c = _moonCoords(d);
+  const H = _siderealTime(d, lw) - c.ra;
+  let h = _altitude(H, phi, c.dec);
+  h += _astroRefraction(h);
+  return {
+    altitude: h,
+    azimuth: _azimuth(H, phi, c.dec),
+    distance: c.dist,
+  };
+}
+
+function _moonIllumination(date) {
+  const d = _toDays(date);
+  const s = _sunCoords(d);
+  const m = _moonCoords(d);
+  const sdist = 149598000;
+  const phi = Math.acos(
+    Math.sin(s.dec) * Math.sin(m.dec) +
+      Math.cos(s.dec) * Math.cos(m.dec) * Math.cos(s.ra - m.ra),
+  );
+  const inc = Math.atan2(
+    sdist * Math.sin(phi),
+    m.dist - sdist * Math.cos(phi),
+  );
+  const angle = Math.atan2(
+    Math.cos(s.dec) * Math.sin(s.ra - m.ra),
+    Math.sin(s.dec) * Math.cos(m.dec) -
+      Math.cos(s.dec) * Math.sin(m.dec) * Math.cos(s.ra - m.ra),
+  );
+  return {
+    fraction: (1 + Math.cos(inc)) / 2,
+    phase: 0.5 + (0.5 * inc * (angle < 0 ? -1 : 1)) / Math.PI,
+  };
+}
+
+function _moonTimes(dayStart, lat, lon) {
+  const hc = 0.133 * ASTRO_RAD;
+  let h0 = _moonPosition(dayStart, lat, lon).altitude - hc;
+  let rise = null;
+  let set = null;
+  let ye = 0;
+
+  for (let i = 1; i <= 24; i += 2) {
+    const h1 =
+      _moonPosition(new Date(dayStart.getTime() + i * ASTRO_HOUR_MS), lat, lon)
+        .altitude - hc;
+    const h2 =
+      _moonPosition(
+        new Date(dayStart.getTime() + (i + 1) * ASTRO_HOUR_MS),
+        lat,
+        lon,
+      ).altitude - hc;
+    const a = (h0 + h2) / 2 - h1;
+    const b = (h2 - h0) / 2;
+    if (!Number.isFinite(a) || Math.abs(a) < 1e-12) {
+      h0 = h2;
+      continue;
+    }
+    const xe = -b / (2 * a);
+    ye = (a * xe + b) * xe + h1;
+    const d = b * b - 4 * a * h1;
+    let roots = 0;
+    let x1 = 0;
+    let x2 = 0;
+
+    if (d >= 0) {
+      const dx = Math.sqrt(d) / (Math.abs(a) * 2);
+      x1 = xe - dx;
+      x2 = xe + dx;
+      if (Math.abs(x1) <= 1) roots++;
+      if (Math.abs(x2) <= 1) roots++;
+      if (x1 < -1) x1 = x2;
+    }
+
+    if (roots === 1) {
+      if (h0 < 0) {
+        rise = new Date(dayStart.getTime() + (i + x1) * ASTRO_HOUR_MS);
+      } else {
+        set = new Date(dayStart.getTime() + (i + x1) * ASTRO_HOUR_MS);
+      }
+    } else if (roots === 2) {
+      rise = new Date(
+        dayStart.getTime() + (i + (ye < 0 ? x2 : x1)) * ASTRO_HOUR_MS,
+      );
+      set = new Date(
+        dayStart.getTime() + (i + (ye < 0 ? x1 : x2)) * ASTRO_HOUR_MS,
+      );
+    }
+
+    if (rise && set) break;
+    h0 = h2;
+  }
+
+  const out = { rise, set };
+  if (!rise && !set) {
+    if (ye > 0) out.alwaysUp = true;
+    else out.alwaysDown = true;
+  }
+  return out;
+}
+
+function _moonApex(start, end, lat, lon) {
+  if (!start || !end || end <= start) return null;
+  const span = end - start;
+  const steps = Math.max(12, Math.min(72, Math.ceil(span / (30 * 60000))));
+  let best = start;
+  let bestAlt = -Infinity;
+
+  for (let i = 0; i <= steps; i++) {
+    const d = new Date(start.getTime() + (span * i) / steps);
+    const alt = _moonPosition(d, lat, lon).altitude;
+    if (alt > bestAlt) {
+      bestAlt = alt;
+      best = d;
+    }
+  }
+
+  let lo = new Date(Math.max(start.getTime(), best.getTime() - ASTRO_HOUR_MS));
+  let hi = new Date(Math.min(end.getTime(), best.getTime() + ASTRO_HOUR_MS));
+  for (let i = 0; i < 18; i++) {
+    const m1 = new Date(lo.getTime() + (hi - lo) / 3);
+    const m2 = new Date(hi.getTime() - (hi - lo) / 3);
+    if (_moonPosition(m1, lat, lon).altitude < _moonPosition(m2, lat, lon).altitude) {
+      lo = m1;
+    } else {
+      hi = m2;
+    }
+  }
+
+  const time = new Date((lo.getTime() + hi.getTime()) / 2);
+  return {
+    time,
+    altitude: _moonPosition(time, lat, lon).altitude,
+  };
+}
+
+function _moonPhaseLabel(phase) {
+  if (!Number.isFinite(phase)) return "Moon";
+  if (phase < 0.03 || phase >= 0.97) return "New moon";
+  if (phase < 0.22) return "Waxing crescent";
+  if (phase < 0.28) return "First quarter";
+  if (phase < 0.47) return "Waxing gibbous";
+  if (phase < 0.53) return "Full moon";
+  if (phase < 0.72) return "Waning gibbous";
+  if (phase < 0.78) return "Last quarter";
+  return "Waning crescent";
+}
+
+function _emptyMoonData(show) {
+  return {
+    show: Boolean(show),
+    phaseLabel: "Moon",
+    illuminationLabel: "—",
+    riseStr: "—",
+    setStr: "—",
+    apexStr: "—",
+    apexPct: 50,
+  };
+}
+
+function _pickMoonEvent(events, type, start, end, preferAfter = null) {
+  const candidates = events
+    .filter((e) => e.type === type && e.time >= start && e.time <= end)
+    .sort((a, b) => a.time - b.time);
+  if (!candidates.length) return null;
+  if (preferAfter) {
+    return candidates.find((e) => e.time >= preferAfter) || candidates[0];
+  }
+  return candidates[0];
+}
+
+function _moonDayData({
+  dayStart,
+  lat,
+  lon,
+  utcOffsetSeconds,
+  now,
+  sunrise,
+  sunset,
+  nextSunrise,
+  dayIndex,
+}) {
+  if (!dayStart || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return _emptyMoonData(false);
+  }
+
+  const prevStart = new Date(dayStart.getTime() - ASTRO_DAY_MS);
+  const nextStart = new Date(dayStart.getTime() + ASTRO_DAY_MS);
+  const ranges = [prevStart, dayStart, nextStart].map((start) =>
+    _moonTimes(start, lat, lon),
+  );
+  const events = [];
+  ranges.forEach((times) => {
+    if (times.rise) events.push({ type: "rise", time: times.rise });
+    if (times.set) events.push({ type: "set", time: times.set });
+  });
+
+  const localDayEnd = new Date(dayStart.getTime() + ASTRO_DAY_MS);
+  const isCurrentNight =
+    dayIndex === 0 && sunrise && sunset && (now < sunrise || now >= sunset);
+  const show = dayIndex > 0 || isCurrentNight;
+  const nightStart =
+    dayIndex === 0 && sunrise && now < sunrise
+      ? dayStart
+      : sunset || dayStart;
+  const nightEnd =
+    dayIndex === 0 && sunrise && now < sunrise
+      ? sunrise
+      : nextSunrise || new Date(localDayEnd.getTime() + 6 * ASTRO_HOUR_MS);
+  const searchStart = new Date(nightStart.getTime() - 12 * ASTRO_HOUR_MS);
+  const searchEnd = new Date(nightEnd.getTime() + 12 * ASTRO_HOUR_MS);
+  const rise = _pickMoonEvent(events, "rise", searchStart, searchEnd);
+  const set = _pickMoonEvent(
+    events,
+    "set",
+    searchStart,
+    searchEnd,
+    rise?.time || nightStart,
+  );
+  const illum = _moonIllumination(
+    new Date(dayStart.getTime() + 12 * ASTRO_HOUR_MS),
+  );
+  const apex = _moonApex(nightStart, nightEnd, lat, lon);
+
+  let apexPct = 50;
+  if (rise?.time && set?.time && apex?.time && set.time > rise.time) {
+    apexPct = Math.round(((apex.time - rise.time) / (set.time - rise.time)) * 100);
+  } else if (apex?.time && nightEnd > nightStart) {
+    apexPct = Math.round(((apex.time - nightStart) / (nightEnd - nightStart)) * 100);
+  }
+  apexPct = Math.max(0, Math.min(100, apexPct));
+
+  return {
+    show,
+    phaseLabel: _moonPhaseLabel(illum.phase),
+    illuminationLabel: `${Math.round(illum.fraction * 100)}% illuminated`,
+    riseStr: rise?.time ? _timeFmtAt(rise.time, utcOffsetSeconds) : "—",
+    setStr: set?.time ? _timeFmtAt(set.time, utcOffsetSeconds) : "—",
+    apexStr: apex?.time ? _timeFmtAt(apex.time, utcOffsetSeconds) : "—",
+    apexPct,
+  };
 }
 
 function _esc(s) {

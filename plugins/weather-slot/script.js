@@ -832,6 +832,13 @@
     const sunriseEl = wrap.querySelector("[data-wxs-sunrise]");
     const sunsetEl = wrap.querySelector("[data-wxs-sunset]");
     const sunDotEl = wrap.querySelector("[data-wxs-sun-dot]");
+    const moonRowEl = wrap.querySelector("[data-wxs-moon-row]");
+    const moonPhaseEl = wrap.querySelector("[data-wxs-moon-phase]");
+    const moonIllumEl = wrap.querySelector("[data-wxs-moon-illum]");
+    const moonriseEl = wrap.querySelector("[data-wxs-moonrise]");
+    const moonsetEl = wrap.querySelector("[data-wxs-moonset]");
+    const moonApexEl = wrap.querySelector("[data-wxs-moon-apex]");
+    const moonDotEl = wrap.querySelector("[data-wxs-moon-dot]");
     const hiEl = wrap.querySelector("[data-wxs-hi]");
     const loEl = wrap.querySelector("[data-wxs-lo]");
     const dayLabelEl = wrap.querySelector("[data-wxs-day-label]");
@@ -924,20 +931,7 @@
         if (isToday) {
           dayLabelEl.textContent = cur.nowLabel;
         } else {
-          // Build a "Monday, November 26" style label for future days
-          const futureDate = new Date();
-          futureDate.setDate(futureDate.getDate() + i);
-          let formatted;
-          try {
-            formatted = futureDate.toLocaleDateString([], {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            });
-          } catch (e) {
-            formatted = d.longName;
-          }
-          dayLabelEl.textContent = formatted;
+          dayLabelEl.textContent = d.dateLabel || d.longName;
         }
       }
 
@@ -998,6 +992,8 @@
         sunDotEl.style.top = topPct + "%";
       }
 
+      updateMoon(d);
+
       // Hero icon: for today use current iconType, otherwise day's icon
       if (heroIconSlot) {
         const iconType = isToday ? wrap.dataset.wxsIcon || d.icon : d.icon;
@@ -1018,6 +1014,31 @@
       const y = (1 - t) * (1 - t) * 54 + 2 * (1 - t) * t * -18 + t * t * 54;
       // Convert to percentage of 60 (track height)
       return Math.max(0, Math.min(100, (y / 60) * 100));
+    }
+
+    function moonArcTop(pct) {
+      // Match template path: M 0 48 Q 100 -12 200 48 in a 200x54 viewBox.
+      const t = pct / 100;
+      const y = (1 - t) * (1 - t) * 48 + 2 * (1 - t) * t * -12 + t * t * 48;
+      return Math.max(0, Math.min(100, (y / 54) * 100));
+    }
+
+    function updateMoon(day) {
+      const moon = day.moon || payload.moon || {};
+      if (moonRowEl) {
+        moonRowEl.classList.toggle("wxs-moon-row-hidden", moon.show !== true);
+      }
+      if (moonPhaseEl) moonPhaseEl.textContent = moon.phaseLabel || "Moon";
+      if (moonIllumEl)
+        moonIllumEl.textContent = moon.illuminationLabel || "—";
+      if (moonriseEl) moonriseEl.textContent = moon.riseStr || "—";
+      if (moonsetEl) moonsetEl.textContent = moon.setStr || "—";
+      if (moonApexEl) moonApexEl.textContent = moon.apexStr || "—";
+      if (moonDotEl) {
+        const pct = isFinite(moon.apexPct) ? moon.apexPct : 50;
+        moonDotEl.style.left = pct + "%";
+        moonDotEl.style.top = moonArcTop(pct) + "%";
+      }
     }
 
     function avgArr(arr) {

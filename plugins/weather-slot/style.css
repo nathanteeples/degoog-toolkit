@@ -670,6 +670,149 @@
     pointer-events: none;
 }
 
+/* ── Moon row ────────────────────────────────── */
+
+.wxs-moon-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.32fr) minmax(260px, 1fr);
+    gap: 18px;
+    align-items: center;
+    border: 1px solid color-mix(in srgb, var(--border-light) 78%, #93c5fd);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    background:
+        linear-gradient(135deg, color-mix(in srgb, #0f172a 18%, transparent), transparent 54%),
+        var(--bg-light, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.wxs-moon-row-hidden {
+    display: none;
+}
+
+.wxs-moon-summary {
+    min-width: 0;
+}
+
+.wxs-moon-kicker,
+.wxs-moon-time-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.wxs-moon-phase {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 5px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 650;
+    line-height: 1.2;
+}
+
+.wxs-moon-glyph {
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    color: #dbeafe;
+    background: color-mix(in srgb, #60a5fa 16%, transparent);
+    box-shadow:
+        inset -5px 0 0 color-mix(in srgb, #111827 32%, transparent),
+        0 4px 16px color-mix(in srgb, #60a5fa 18%, transparent);
+    font-size: 1.1rem;
+}
+
+.wxs-moon-illum {
+    margin-top: 5px;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.wxs-moon-main {
+    min-width: 0;
+}
+
+.wxs-moon-times {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.wxs-moon-time {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.wxs-moon-time-apex {
+    text-align: center;
+}
+
+.wxs-moon-time-right {
+    text-align: right;
+}
+
+.wxs-moon-time strong {
+    color: var(--text-primary);
+    font-size: 0.98rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+}
+
+.wxs-moon-track {
+    position: relative;
+    height: 48px;
+    min-width: 0;
+}
+
+.wxs-moon-arc {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.wxs-moon-arc-bg {
+    stroke: color-mix(in srgb, var(--border) 76%, #bfdbfe);
+    opacity: 0.46;
+    stroke-linecap: round;
+}
+
+.wxs-moon-arc-fill {
+    stroke: color-mix(in srgb, #dbeafe 72%, var(--wxs-accent));
+    opacity: 0.78;
+    stroke-linecap: round;
+    filter: drop-shadow(0 1px 4px color-mix(in srgb, #60a5fa 18%, transparent));
+}
+
+.wxs-moon-dot {
+    position: absolute;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #dbeafe;
+    border: 2px solid var(--bg-light, var(--bg));
+    box-shadow:
+        0 0 0 2px color-mix(in srgb, #dbeafe 22%, transparent),
+        0 4px 16px color-mix(in srgb, #60a5fa 30%, transparent);
+    transform: translate(-50%, -50%);
+    transition:
+        left 0.6s ease,
+        top 0.6s ease;
+    pointer-events: none;
+}
+
 /* ── Footer ──────────────────────────────────── */
 
 .wxs-footer {
@@ -857,5 +1000,14 @@
 
     .wxs-sun-track {
         height: 54px;
+    }
+
+    .wxs-moon-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .wxs-moon-times {
+        gap: 8px;
     }
 }

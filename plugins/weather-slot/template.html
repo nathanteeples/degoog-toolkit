@@ -183,6 +183,61 @@
         </div>
     </div>
 
+    <div class="wxs-moon-row {{moon_row_class}}" data-wxs-moon-row>
+        <div class="wxs-moon-summary">
+            <div class="wxs-moon-kicker">Night sky</div>
+            <div class="wxs-moon-phase">
+                <span class="wxs-moon-glyph" aria-hidden="true">☾</span>
+                <span data-wxs-moon-phase>{{moon_phase}}</span>
+            </div>
+            <div class="wxs-moon-illum" data-wxs-moon-illum>
+                {{moon_illum}}
+            </div>
+        </div>
+        <div class="wxs-moon-main">
+            <div class="wxs-moon-times">
+                <div class="wxs-moon-time">
+                    <span class="wxs-moon-time-label">Moonrise</span>
+                    <strong data-wxs-moonrise>{{moonrise}}</strong>
+                </div>
+                <div class="wxs-moon-time wxs-moon-time-apex">
+                    <span class="wxs-moon-time-label">Apex</span>
+                    <strong data-wxs-moon-apex>{{moon_apex}}</strong>
+                </div>
+                <div class="wxs-moon-time wxs-moon-time-right">
+                    <span class="wxs-moon-time-label">Moonset</span>
+                    <strong data-wxs-moonset>{{moonset}}</strong>
+                </div>
+            </div>
+            <div class="wxs-moon-track">
+                <svg
+                    class="wxs-moon-arc"
+                    viewBox="0 0 200 54"
+                    preserveAspectRatio="none"
+                    aria-hidden="true"
+                >
+                    <path
+                        class="wxs-moon-arc-bg"
+                        d="M 0 48 Q 100 -12 200 48"
+                        fill="none"
+                        stroke-width="2"
+                    />
+                    <path
+                        class="wxs-moon-arc-fill"
+                        d="M 0 48 Q 100 -12 200 48"
+                        fill="none"
+                        stroke-width="2.5"
+                    />
+                </svg>
+                <div
+                    class="wxs-moon-dot"
+                    data-wxs-moon-dot
+                    style="left:{{moon_pct}}%"
+                ></div>
+            </div>
+        </div>
+    </div>
+
     <div class="wxs-footer">
         <span
             >Weather data:
