@@ -2,7 +2,7 @@
 // (hybrid of /browse with verified category codes and /discover free-text).
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.3.7";
+const PLUGIN_VERSION = "4.3.9";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -141,7 +141,7 @@ export const slot = {
       _fetch = (...args) => ctx.fetch(...args);
     }
     if (typeof ctx?.createCache === "function") {
-      _cache = ctx.createCache(5 * 60 * 1000); // 5 minutes
+      _cache = ctx.createCache(30 * 60 * 1000); // 30 minutes — repeat queries are free
     }
   },
 
@@ -160,7 +160,7 @@ export const slot = {
   },
 
   trigger(query) {
-    return _looksProbablyPlaceQuery(query);
+    return _classifyPlaceQuery(query) !== null;
   },
 
   async execute(query, context) {
@@ -475,7 +475,7 @@ async function _searchHere(query, lat, lon, radiusM, limit, doFetch, apiStatus, 
 
   // Quota behaviour: every novel (query, location, mode) costs at most one HERE
   // request. Results — INCLUDING empty arrays (negative results) — are cached for
-  // 5 min, so repeated identical/missed queries are free and don't burn the
+  // 30 min, so repeated identical/missed queries are free and don't burn the
   // 5,000/month Discover allowance. Only transient network/4xx errors skip the cache.
   const cacheKey = `here:${mode}:${query}:${lat}:${lon}:${radius}:${cappedLimit}`;
   const cached = _cache?.get(cacheKey);
@@ -483,6 +483,7 @@ async function _searchHere(query, lat, lon, radiusM, limit, doFetch, apiStatus, 
     if (apiStatus?.here) {
       apiStatus.here.status = "success";
       apiStatus.here.count = cached.length;
+      apiStatus.here.cached = true;
     }
     return cached;
   }
@@ -516,6 +517,9 @@ async function _searchHere(query, lat, lon, radiusM, limit, doFetch, apiStatus, 
   }
 
   try {
+    console.log(
+      `[Places Performance v${PLUGIN_VERSION}] HERE API request (${mode}) for "${query}"`
+    );
     const res = await doFetch(url, {}, 10000);
     if (!res.ok) {
       const errText = await res.text();
@@ -989,8 +993,20 @@ const NON_PLACE_RE =
 const GENERAL_INFO_RE =
   /\b(tutorial|course|book|pdf|lyrics|chords|movie|show|cast|actor|actress|season|episode|news|wiki|wikipedia|definition|meaning|synonym|antonym|pronunciation|translate|translation|weather|forecast|stock|chart|price|convert|converter|calculator|calculate|history|biography|photo|image|picture|wallpaper|video|youtube|song|album|lyrics|map|maps|recipe|ingredients|cooking)\b/i;
 
+// Shopping / product wording — not a place lookup (saves Discover quota on "where to buy …").
+const CONSUMER_PRODUCT_RE =
+  /\b(ketchup|mustard|mayo|mayonnaise|sauce|soda|cola|pepsi|coke|coca[\s-]?cola|amazon|ebay|walmart|target|costco|buy|order|shipping|coupon|deal|deals|cheap|price|prices|iphone|android|laptop|tablet|gpu|cpu|ram|ssd|shirt|shoes|sneakers|hoodie|dress|pants|jeans)\b/i;
+
+// Landmarks / POI types that justify a global (at-only) discover lookup.
+const LANDMARK_HINT_RE =
+  /\b(castle|palace|museum|monument|memorial|park|national park|bridge|tower|stadium|arena|airport|beach|mountain|volcano|lake|river|falls|waterfall|cathedral|basilica|temple|mosque|synagogue|zoo|aquarium|university|college|capitol|parliament|pyramid|ruins|fort|fortress|lighthouse|observatory|planetarium|amusement park|theme park|boardwalk|pier|harbor|harbour|plaza|square)\b/i;
+
 const TECH_SCIENCE_RE =
   /\b(react|angular|vue|svelte|node|npm|pip|python|javascript|typescript|golang|rust|java|c\+\+|c#|php|html|css|sql|git|docker|kubernetes|aws|azure|gcp|api|json|xml|csv|yaml|markdown|github|gitlab|bitbucket|stackoverflow|mdn|w3schools|npm|package|library|framework|module|class|function|object|array|string|number|boolean|null|undefined|regexp|regex|compiler|interpreter|theory|theorem|equation|formula|chemical|molecule|atom|cell|organism|species|evolution|math|physics|chemistry|biology)\b/i;
+
+// Medical / pharmacology / biochemistry — not local place lookups.
+const SCIENCE_MEDICAL_RE =
+  /\b(channel|blocker|blockers|receptor|receptors|agonist|antagonist|inhibitor|inhibitors|enzyme|enzymes|protein|proteins|peptide|peptides|neuron|neurons|neural|pharmacology|pharmacokinetic|pharmacokinetics|dosage|clinical|syndrome|pathology|antibody|antibodies|antigen|genome|chromosome|mutation|pathway|metabolite|hormone|cytokine|kinase|transcript|mrna|electrolyte|anesthesia|analgesic|antibiotic|antiviral|vaccine|steroid|opioid|benzodiazepine|ssri|nsaid|toxicity|diagnosis|symptom|symptoms|treatment|therapeutic|medication|medications|prescription|anatomy|physiology|histology|immunology|oncology|cardiology|neurology|psychiatry|epidemiology|biochemistry|biophysics)\b/i;
 
 const URL_OR_CODE_RE =
   /https?:\/\/|www\.|[{}[\]<>]|=>|==|!=|\/etc\/|\.js\b|\.ts\b|\.py\b|\.sh\b|@[a-z0-9_-]+/i;
@@ -1023,7 +1039,7 @@ const GENERIC_NAME_STOPWORDS = new Set([
   "address", "location", "locations", "directions", "phone", "website",
   "news", "wiki", "wikipedia", "video", "videos", "image", "images", "photo",
   "photos", "map", "maps", "weather", "forecast", "translate", "calculator",
-  "converter", "stock", "stocks", "crypto", "bitcoin",
+  "converter", "stock", "stocks", "crypto", "bitcoin", "play", "game", "games",
   // Broad topic words that should not trigger Places.
   "music", "movie", "movies", "show", "shows", "book", "books", "recipe",
   "recipes", "game", "games", "school", "college", "university", "hospitality",
@@ -1039,7 +1055,7 @@ const GENERIC_NAME_STOPWORDS = new Set([
 
 // Queries that should never trigger Places (handled by game plugins instead).
 const GAME_QUERY_RE =
-  /\b(tic[\s-]?tac[\s-]?toe|tictactoe|tic-tac-toe|minesweeper|play\s+snake|snake\s+game|play\s+tic|play\s+tictactoe|play\s+tic[\s-]?tac[\s-]?toe)\b/i;
+  /\b(tic[\s-]?tac[\s-]?toe|tictactoe|tic-tac-toe|minesweeper|play\s+snake|snake\s+game|play\s+tic|play\s+tictactoe|play\s+tic[\s-]?tac[\s-]?toe|solitaire|sudoku|wordle|chess|checkers|pong|pacman)\b/i;
 
 // Leading "where is / where's / where can i find ..." phrasing. Stripped before
 // searching; if the remainder is a proper place/landmark name (not a local
@@ -1061,7 +1077,12 @@ function _classifyLocalText(text) {
   if (URL_OR_CODE_RE.test(query)) return null;
 
   // Obvious informational/software/scientific/tech searches must never trigger.
-  if (NON_PLACE_RE.test(lower) || GENERAL_INFO_RE.test(lower) || TECH_SCIENCE_RE.test(lower)) {
+  if (
+    NON_PLACE_RE.test(lower) ||
+    GENERAL_INFO_RE.test(lower) ||
+    TECH_SCIENCE_RE.test(lower) ||
+    SCIENCE_MEDICAL_RE.test(lower)
+  ) {
     return null;
   }
 
@@ -1100,7 +1121,13 @@ function _classifyPlaceQuery(rawQuery) {
     if (URL_OR_CODE_RE.test(text)) return null;
 
     const lower = text.toLowerCase();
-    if (NON_PLACE_RE.test(lower) || GENERAL_INFO_RE.test(lower) || TECH_SCIENCE_RE.test(lower)) {
+    if (
+      NON_PLACE_RE.test(lower) ||
+      GENERAL_INFO_RE.test(lower) ||
+      TECH_SCIENCE_RE.test(lower) ||
+      SCIENCE_MEDICAL_RE.test(lower) ||
+      CONSUMER_PRODUCT_RE.test(lower)
+    ) {
       return null;
     }
 
@@ -1114,8 +1141,17 @@ function _classifyPlaceQuery(rawQuery) {
       return { mode: "local", confidence: "any", text, wantsOpenNow };
     }
 
-    // Otherwise it's a proper place/landmark name -> resolve globally.
-    return { mode: "global", confidence: "name", text, wantsOpenNow };
+    // Global discover is quota-expensive — only for landmark-style remainders.
+    if (LANDMARK_HINT_RE.test(lower)) {
+      return { mode: "global", confidence: "name", text, wantsOpenNow };
+    }
+
+    // Business/brand names after "where …" stay local (radius-bound discover).
+    if (_looksLikeNameQuery(text)) {
+      return { mode: "local", confidence: "name", text, wantsOpenNow };
+    }
+
+    return null;
   }
 
   const local = _classifyLocalText(query);
@@ -1132,6 +1168,7 @@ function _classifyPlaceQuery(rawQuery) {
 function _looksLikeNameQuery(query) {
   const tokens = _normalizeQuery(query).split(/\s+/).filter(Boolean);
   if (tokens.length < 1 || tokens.length > 3) return false;
+  if (SCIENCE_MEDICAL_RE.test(_normalizeQuery(query).toLowerCase())) return false;
 
   for (const token of tokens) {
     // Each token must read like a name word: starts with a letter, only
@@ -1145,12 +1182,11 @@ function _looksLikeNameQuery(query) {
   // Filter generic noun/adjective phrases that are unlikely to be business names.
   if (tokens.every((t) => GENERIC_NAME_STOPWORDS.has(t.toLowerCase()))) return false;
 
-  // Allow single-word business names again (e.g. "tacoria", "jazams"), but
-  // keep it conservative for quota safety: require a reasonably long token
-  // and exclude generic stopwords.
+  // Single-word optimistic name matching is expensive (1 Discover call each).
+  // Require a longer token to reduce accidental API usage.
   if (tokens.length === 1) {
     const t = tokens[0].toLowerCase();
-    if (t.length < 5) return false;
+    if (t.length < 6) return false;
     if (GENERIC_NAME_STOPWORDS.has(t)) return false;
   }
 
