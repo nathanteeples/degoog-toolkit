@@ -46,18 +46,11 @@ Before I started this repository, I forked it from https://github.com/SiaoZeng/d
 
 **Speedtest** exposes:
 
-- `!speedtest` as the primary trigger
-- `!speed` alias as a short fallback
+- `!speed` as the primary trigger, avoiding degoog core's built-in `!speedtest` collision
 - Natural-language phrases like `run a speedtest`, `speed test`, `speedtest`, `internet speed test`, `test my internet`, and `how fast is my internet` — Speedtest defaults its per-command **Natural language** toggle on for fresh installs. Trailing-keyword phrases like `"my internet speed test"` do **not** trigger because degoog's natural-language matcher is prefix-anchored; front-load the keyword.
 
 > **Heads up — conflict with degoog's built-in `!speedtest`:**
-> degoog core ships its own `!speedtest` command. Disable the core built-in if you want this Store plugin to own `!speedtest` and its richer UI.
->
-> To use this plugin's Speedtest as `!speedtest`:
->
-> 1. Go to **Settings → Plugins**
-> 2. Find the **built-in** `Speed Test` entry (from degoog core, not this plugin)
-> 3. Toggle it **off**
+> degoog core ships its own `!speedtest` command. This Store plugin uses `!speed` so it can still register while the built-in exists. Natural-language phrases such as `run a speedtest` route to this plugin when this command's Natural language setting is enabled.
 
 ### Color Translator details
 
