@@ -1013,11 +1013,9 @@
     }
 
     function sunArcTop(pct) {
-      // Map 0..100 along quadratic arc that sits roughly between 10% (edges) and 90% (peak)
+      // Match template path: M 0 54 Q 100 -18 200 54 in a 200x60 viewBox.
       const t = pct / 100;
-      // The svg path is: M 10 55 Q 100 -20 190 55. Height = 60 units.
-      // Evaluate quadratic: y = (1-t)^2 * 55 + 2(1-t)t*(-20) + t^2 * 55
-      const y = (1 - t) * (1 - t) * 55 + 2 * (1 - t) * t * -20 + t * t * 55;
+      const y = (1 - t) * (1 - t) * 54 + 2 * (1 - t) * t * -18 + t * t * 54;
       // Convert to percentage of 60 (track height)
       return Math.max(0, Math.min(100, (y / 60) * 100));
     }
