@@ -1,8 +1,8 @@
 // Places slot plugin — local place recognition powered by the HERE Search API
 // (hybrid of /browse with verified category codes and /discover free-text).
 
-const PLUGIN_NAME = "Places - alpha";
-const PLUGIN_VERSION = "4.3.0";
+const PLUGIN_NAME = "Places";
+const PLUGIN_VERSION = "4.3.1";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
