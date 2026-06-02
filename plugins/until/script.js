@@ -75,12 +75,11 @@
     return parts
       .map((part, index) => {
         const level = Math.min(index, DETAIL_UNITS.length - 1);
-        const digits = Math.max(2, formatWhole(part.value).length);
+        const displayValue = formatWhole(part.value);
+        const digits = Math.max(2, displayValue.length);
         return `<span class="until-card__part until-card__part--${level}">
-          <span class="until-card__flap" style="--until-digits:${escapeHtml(String(digits))}" data-until-part data-until-unit="${escapeHtml(part.unit)}" data-until-value="${escapeHtml(String(part.value))}">
-            <span class="until-card__flap-half until-card__flap-half--top">${escapeHtml(formatWhole(part.value))}</span>
-            <span class="until-card__flap-half until-card__flap-half--bottom">${escapeHtml(formatWhole(part.value))}</span>
-            <span class="until-card__flap-value">${escapeHtml(formatWhole(part.value))}</span>
+          <span class="until-card__flap" style="--until-digits:${escapeHtml(String(digits))}" data-until-part data-until-unit="${escapeHtml(part.unit)}" data-until-value="${escapeHtml(String(part.value))}" data-until-display="${escapeHtml(displayValue)}">
+            <span class="until-card__flap-value">${escapeHtml(displayValue)}</span>
           </span>
           <span class="until-card__part-unit">${escapeHtml(plural(part.unit.slice(0, -1), part.value))}</span>
         </span>`;
@@ -93,7 +92,8 @@
     answerEl.querySelectorAll("[data-until-part]").forEach((el) => {
       const unit = el.getAttribute("data-until-unit");
       const value = Number(el.getAttribute("data-until-value"));
-      if (unit && Number.isFinite(value)) previous.set(unit, value);
+      const display = el.getAttribute("data-until-display") || "";
+      if (unit && Number.isFinite(value)) previous.set(unit, { value, display });
     });
 
     answerEl.innerHTML = nextHtml;
@@ -102,11 +102,12 @@
       const unit = el.getAttribute("data-until-unit");
       const next = Number(el.getAttribute("data-until-value"));
       const prev = previous.get(unit);
-      if (!unit || !Number.isFinite(prev) || !Number.isFinite(next) || prev === next) {
+      if (!unit || !prev || !Number.isFinite(prev.value) || !Number.isFinite(next) || prev.value === next) {
         return;
       }
 
-      el.classList.add(next < prev ? "until-card__flap--down" : "until-card__flap--up");
+      el.setAttribute("data-until-prev-display", prev.display);
+      el.classList.add(next < prev.value ? "until-card__flap--down" : "until-card__flap--up");
     });
   }
 
@@ -141,8 +142,7 @@
 
     normalizeDurationCarry(parts);
 
-    const visible = parts.filter((part) => part.value > 0);
-    return visible.length ? visible : parts.slice(0, 1);
+    return parts;
   }
 
   function findAutoStartIndex(absMs) {

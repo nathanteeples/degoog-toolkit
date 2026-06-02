@@ -816,10 +816,9 @@ function renderPrimaryHtml(parts) {
     .map((part, index) => {
       const level = Math.min(index, MAX_TOP_UNITS - 1);
       const digits = Math.max(2, formatWhole(part.value).length);
+      const displayValue = formatWhole(part.value);
       return `<span class="until-card__part until-card__part--${level}">
-        <span class="until-card__flap" style="--until-digits:${_esc(String(digits))}" data-until-part data-until-unit="${_esc(part.unit)}" data-until-value="${_esc(String(part.value))}">
-          <span class="until-card__flap-half until-card__flap-half--top">${_esc(formatWhole(part.value))}</span>
-          <span class="until-card__flap-half until-card__flap-half--bottom">${_esc(formatWhole(part.value))}</span>
+        <span class="until-card__flap" style="--until-digits:${_esc(String(digits))}" data-until-part data-until-unit="${_esc(part.unit)}" data-until-value="${_esc(String(part.value))}" data-until-display="${_esc(displayValue)}">
           <span class="until-card__flap-value">${_esc(formatWhole(part.value))}</span>
         </span>
         <span class="until-card__part-unit">${_esc(plural(part.unit.slice(0, -1), part.value))}</span>
@@ -861,8 +860,7 @@ function decomposeDuration(absMs, requestedUnit, count) {
 
   normalizeDurationCarry(parts);
 
-  const visible = parts.filter((part) => part.value > 0);
-  return visible.length ? visible : parts.slice(0, 1);
+  return parts;
 }
 
 function findAutoStartIndex(absMs) {
