@@ -10,7 +10,7 @@ import {
 import { t } from "./locales.js";
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.16";
+const PLUGIN_VERSION = "4.5.17";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -1212,11 +1212,18 @@ function _mapProviderUrls(lat, lon, name) {
 function _mapProviderIconSvg(provider) {
   if (provider === "google") {
     return `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-      <path fill="#EA4335" d="M12 2C8.13 2 5 5.13 5 9c0 1.19.28 2.32.78 3.32L12 22 6.22 12.32A8.96 8.96 0 0 1 5 9c0-3.87 3.13-7 7-7z"/>
-      <path fill="#FBBC04" d="M19 9c0 1.19-.28 2.32-.78 3.32L12 22l6.78-9.68A8.96 8.96 0 0 0 19 9c0-3.87-3.13-7-7-7 1.37 0 2.67.28 3.86.78L19 9z"/>
-      <path fill="#34A853" d="M12 22V9.5c1.93 0 3.5-1.57 3.5-3.5S13.93 2.5 12 2.5 8.5 4.07 8.5 6 10.07 9.5 12 9.5V22z"/>
-      <path fill="#4285F4" d="M12 2c3.87 0 7 3.13 7 7 0 1.37-.28 2.67-.78 3.86L12 9.5V2z"/>
-      <circle cx="12" cy="9" r="2.35" fill="#fff"/>
+      <defs>
+        <clipPath id="places-gmaps-pin">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+        </clipPath>
+      </defs>
+      <g clip-path="url(#places-gmaps-pin)">
+        <rect x="0" y="0" width="12" height="10" fill="#4285F4"/>
+        <rect x="12" y="0" width="12" height="10" fill="#FBBC04"/>
+        <rect x="0" y="10" width="12" height="14" fill="#EA4335"/>
+        <rect x="12" y="10" width="12" height="14" fill="#34A853"/>
+      </g>
+      <circle cx="12" cy="9" r="2.35" fill="#FFFFFF"/>
     </svg>`;
   }
   if (provider === "osm") {

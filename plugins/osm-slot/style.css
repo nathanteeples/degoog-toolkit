@@ -378,8 +378,12 @@
   text-decoration: none;
 }
 
-.places-map-ext-osm,
-.places-map-ext-google,
+.places-map-ext-btn svg {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
 .places-map-ext-apple {
   color: var(--text-primary);
 }
