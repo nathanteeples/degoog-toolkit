@@ -112,7 +112,7 @@ export const slot = {
       label: "Default location label",
       type: "text",
       default: "Home",
-      description: "Label shown in the card header, e.g. 'Home / Flemington NJ'.",
+      description: "Label shown in the card header, e.g. 'Home/Work/Chicago, IL'.",
     },
     {
       key: "useBrowserGeolocation",
