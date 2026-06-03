@@ -500,6 +500,22 @@ const TriggerGuard = {
   }
 };
 
+let selectedSlotPosition = "at-a-glance";
+
+function configureSlotPosition(settings = {}) {
+  selectedSlotPosition =
+    String(settings.position ?? "at-a-glance").trim() || "at-a-glance";
+}
+
+/** Glance uses POST /api/slots/glance (context.results is always an array). */
+function shouldRenderSlotForContext(context) {
+  const isGlanceRequest = Array.isArray(context?.results);
+  if (selectedSlotPosition === "at-a-glance") {
+    return isGlanceRequest;
+  }
+  return !isGlanceRequest;
+}
+
 // ── Slot export ───────────────────────────────────────────────
 export const slot = {
   id: "unit-slot",
@@ -513,6 +529,8 @@ export const slot = {
   init(ctx) {
     template = ctx.template;
   },
+
+  configure: configureSlotPosition,
 
   trigger(query) {
     const q = query.trim();
@@ -528,6 +546,7 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
+    if (!shouldRenderSlotForContext(context)) return { html: "" };
 
     const parsed = parseQuery(query);
     if (!parsed) return { html: "" };
