@@ -761,7 +761,7 @@ const slotDef = {
         .replaceAll("{{moonrise_relative}}", _esc(moonToday.riseRelative))
         .replaceAll("{{moonset_relative}}", _esc(moonToday.setRelative))
         .replaceAll("{{moon_apex}}", _esc(moonToday.apexStr))
-        .replaceAll("{{moon_pct}}", String(moonToday.apexPct))
+        .replaceAll("{{moon_pct}}", String(moonToday.nowPct))
         .replaceAll("{{icon_type}}", iconType)
         .replaceAll("{{is_day}}", isDay ? "1" : "0")
         .replaceAll("{{payload}}", payloadJson)
@@ -1224,6 +1224,8 @@ function _emptyMoonData(show) {
     setRelative: "—",
     apexStr: "—",
     apexPct: 50,
+    nowPct: 0,
+    isUp: false,
   };
 }
 
@@ -1236,6 +1238,41 @@ function _pickMoonEvent(events, type, start, end, preferAfter = null) {
     return candidates.find((e) => e.time >= preferAfter) || candidates[0];
   }
   return candidates[0];
+}
+
+function _moonTrackNow(now, rise, set, lat, lon) {
+  const hc = 0.133 * ASTRO_RAD;
+  const alt = _moonPosition(now, lat, lon).altitude;
+  const isUp = alt > hc;
+
+  if (!rise?.time || !set?.time) {
+    return { nowPct: isUp ? 50 : 0, isUp };
+  }
+
+  const riseT = rise.time.getTime();
+  const setT = set.time.getTime();
+  const nowT = now.getTime();
+  let nowPct = 0;
+
+  if (setT > riseT) {
+    if (nowT <= riseT) nowPct = 0;
+    else if (nowT >= setT) nowPct = 100;
+    else nowPct = Math.round(((nowT - riseT) / (setT - riseT)) * 100);
+  } else if (nowT > setT && nowT < riseT) {
+    // Below horizon between morning set and evening rise.
+    nowPct = 0;
+  } else if (nowT >= riseT) {
+    const end = setT + ASTRO_DAY_MS;
+    nowPct = Math.round(((nowT - riseT) / (end - riseT)) * 100);
+  } else {
+    const start = riseT - ASTRO_DAY_MS;
+    nowPct = Math.round(((nowT - start) / (setT - start)) * 100);
+  }
+
+  return {
+    nowPct: Math.max(0, Math.min(100, nowPct)),
+    isUp,
+  };
 }
 
 function _moonDayData({
@@ -1283,6 +1320,9 @@ function _moonDayData({
     new Date(dayStart.getTime() + 12 * ASTRO_HOUR_MS),
   );
   const apex = _moonApex(nightStart, nightEnd, lat, lon);
+  const refNow =
+    dayIndex === 0 ? now : new Date(dayStart.getTime() + 12 * ASTRO_HOUR_MS);
+  const track = _moonTrackNow(refNow, rise, set, lat, lon);
 
   let apexPct = 50;
   if (rise?.time && set?.time && apex?.time && set.time > rise.time) {
@@ -1302,6 +1342,8 @@ function _moonDayData({
     setRelative: set?.time ? _fmtRelativeEvent(set.time, now, context) : "—",
     apexStr: apex?.time ? _timeFmtAt(apex.time, utcOffsetSeconds) : "—",
     apexPct,
+    nowPct: track.nowPct,
+    isUp: track.isUp,
   };
 }
 

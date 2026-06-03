@@ -888,6 +888,14 @@
         0 3px 12px color-mix(in srgb, var(--wxs-accent) 32%, transparent);
 }
 
+.wxs-moon-dot--down {
+    opacity: 0.38;
+    background: color-mix(in srgb, #dbeafe 55%, var(--text-secondary));
+    box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--text-secondary) 16%, transparent),
+        0 2px 6px color-mix(in srgb, var(--text-secondary) 20%, transparent);
+}
+
 .wxs-astro-apex {
     position: absolute;
     left: 50%;

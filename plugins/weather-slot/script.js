@@ -1106,9 +1106,10 @@
         moonsetRelativeEl.textContent = moon.setRelative || "—";
       if (moonApexEl) moonApexEl.textContent = moon.apexStr || "—";
       if (moonDotEl) {
-        const pct = isFinite(moon.apexPct) ? moon.apexPct : 50;
+        const pct = isFinite(moon.nowPct) ? moon.nowPct : 0;
         moonDotEl.style.left = pct + "%";
         moonDotEl.style.top = moonArcTop(pct) + "%";
+        moonDotEl.classList.toggle("wxs-moon-dot--down", moon.isUp === false);
       }
     }
 
