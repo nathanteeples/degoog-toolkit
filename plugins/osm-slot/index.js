@@ -9,7 +9,7 @@ import {
 } from "./query-guards.js";
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.4";
+const PLUGIN_VERSION = "4.5.5";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
