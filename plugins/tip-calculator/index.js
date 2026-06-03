@@ -243,7 +243,7 @@ export const slot = {
     "Interactive tip calculator with real-time bill split, custom slider parameters, and animations.",
   isClientExposed: false,
   position: "above-results",
-  slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],
+  slotPositions: ["above-results", "knowledge-panel"],
   settingsSchema,
 
   async init(ctx) {

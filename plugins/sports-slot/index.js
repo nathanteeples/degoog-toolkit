@@ -1,3 +1,8 @@
+import {
+  readSlotPosition,
+  shouldRenderSlotForContext,
+} from "./slot-position.js";
+
 const FOOTBALL_DATA_BASE = "https://api.football-data.org/v4";
 const BALLDONTLIE_BASE = {
   nba: "https://api.balldontlie.io/v1",
@@ -2940,17 +2945,7 @@ function configureSharedSettings(settings = {}) {
     settings.soccerCompetitions,
   );
   debugMode = Boolean(settings.debugMode);
-  selectedSlotPosition =
-    String(settings.position ?? "at-a-glance").trim() || "at-a-glance";
-}
-
-function shouldRenderSlotForContext(context) {
-  const isGlanceRequest = Array.isArray(context?.results);
-  if (selectedSlotPosition === "at-a-glance") {
-    return isGlanceRequest;
-  }
-
-  return !isGlanceRequest;
+  selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
 }
 
 async function executeSportsQuery(query) {
@@ -3129,7 +3124,7 @@ export const slot = {
     return Boolean(parseQuery(query));
   },
   async execute(query, context) {
-    if (!shouldRenderSlotForContext(context)) {
+    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
       return { html: "" };
     }
 

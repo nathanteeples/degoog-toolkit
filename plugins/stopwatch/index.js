@@ -1,3 +1,8 @@
+import {
+  readSlotPosition,
+  shouldRenderSlotForContext,
+} from "./slot-position.js";
+
 let template = "";
 
 const DEFAULT_TIMER_SECONDS = 5 * 60;
@@ -7,6 +12,7 @@ const STOPWATCH_CYCLE_OPTIONS = new Set(["60", "300", "3600"]);
 
 let enabled = true;
 let stopwatchCycleSeconds = DEFAULT_STOPWATCH_CYCLE_SECONDS;
+let selectedSlotPosition = "at-a-glance";
 
 const COMMAND_PREFIX_RX = /^!(?<command>timer|stopwatch|countdown)\b\s*/i;
 const TIMER_KEYWORD_RX = /\b(?:timer|countdown|count\s+down)\b/i;
@@ -150,6 +156,7 @@ function configureSettings(settings) {
   stopwatchCycleSeconds = STOPWATCH_CYCLE_OPTIONS.has(nextCycle)
     ? Number(nextCycle)
     : DEFAULT_STOPWATCH_CYCLE_SECONDS;
+  selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
 }
 
 function renderTemplate(request) {
@@ -188,6 +195,9 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { title: "", html: "" };
+    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
+      return { title: "", html: "" };
+    }
     const request = parseRequest(query);
     if (!request) return { title: "", html: "" };
 

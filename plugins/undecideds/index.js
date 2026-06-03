@@ -1,4 +1,10 @@
+import {
+  readSlotPosition,
+  shouldRenderSlotForContext,
+} from "./slot-position.js";
+
 let template = "";
+let selectedSlotPosition = "at-a-glance";
 
 const YES_MESSAGES = [
   "Absolutely!",
@@ -42,9 +48,22 @@ export const slot = {
   isClientExposed: false,
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  settingsSchema: [
+    {
+      key: "debugMode",
+      label: "Debug mode",
+      type: "toggle",
+      default: false,
+      description: "Log slot position decisions to the server console.",
+    },
+  ],
 
   init(ctx) {
     template = ctx.template || FALLBACK_TEMPLATE;
+  },
+
+  configure(settings) {
+    selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
   },
 
   trigger(query) {
@@ -53,7 +72,10 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
-    
+    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
+      return { html: "" };
+    }
+
     const parsed = parseQuery(query) || { mode: "coin" };
     const activeTab = parsed.mode;
     const dieType = parsed.dieType || "d6";

@@ -1,4 +1,8 @@
 import chronoEn from "./vendor/chrono-node/dist/cjs/locales/en/index.js";
+import {
+  readSlotPosition,
+  shouldRenderSlotForContext,
+} from "./slot-position.js";
 
 let template = "";
 
@@ -182,6 +186,9 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { title: "", html: "" };
+    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
+      return { title: "", html: "" };
+    }
     const isCommand = isCommandQuery(query);
     const parsed = parseUntilQuery(query, { allowTargetOnly: isCommand });
     if (!parsed) {
@@ -240,7 +247,10 @@ function parseUntilQuery(input, options = {}) {
   return null;
 }
 
+let selectedSlotPosition = "at-a-glance";
+
 function configureSettings(saved = {}) {
+  selectedSlotPosition = readSlotPosition(saved, "at-a-glance");
   if (!Object.prototype.hasOwnProperty.call(saved, "topUnits")) return;
 
   const topUnits = Number(saved.topUnits);

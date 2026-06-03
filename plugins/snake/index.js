@@ -82,7 +82,7 @@ export const slot = {
   description: "A snake game plugin with mobile support and full screen mode.",
   isClientExposed: false,
   position: "above-results",
-  slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],
+  slotPositions: ["above-results", "knowledge-panel"],
   settingsSchema,
 
   async init(ctx) {

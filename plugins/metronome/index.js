@@ -1,6 +1,12 @@
+import {
+  readSlotPosition,
+  shouldRenderSlotForContext,
+} from "./slot-position.js";
+
 let template = "";
 let enabled = true;
 let defaultBpmSetting = 120;
+let selectedSlotPosition = "at-a-glance";
 
 const METRONOME_CMD_RX = /^!(?:metronome|bpm|tempo)\b/i;
 const METRONOME_KEYWORDS_RX = /\b(?:metronome|tempo|bpm|tap\s+tempo)\b/i;
@@ -56,6 +62,7 @@ function configureSettings(settings) {
   } else {
     defaultBpmSetting = 120;
   }
+  selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
 }
 
 function renderTemplate(request) {
@@ -91,6 +98,9 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { title: "", html: "" };
+    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
+      return { title: "", html: "" };
+    }
     const request = parseRequest(query);
     if (!request) return { title: "", html: "" };
 

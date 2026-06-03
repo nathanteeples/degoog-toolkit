@@ -369,7 +369,7 @@ export const slot = {
     "Scientific calculator with safe expression parsing and graphing for x expressions.",
   isClientExposed: false,
   position: "above-results",
-  slotPositions: ["above-results", "at-a-glance"],
+  slotPositions: ["above-results"],
   settingsSchema: [
     {
       key: "enabled",

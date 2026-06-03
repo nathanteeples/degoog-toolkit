@@ -1,4 +1,10 @@
+import {
+  readSlotPosition,
+  shouldRenderSlotForContext,
+} from "./slot-position.js";
+
 let template = "";
+let selectedSlotPosition = "at-a-glance";
 let pluginFetch = (...args) => fetch(...args);
 let pluginRouteBase = "";
 let dictionaryCache = null;
@@ -246,6 +252,7 @@ export const slot = {
   },
 
   configure(nextSettings) {
+    selectedSlotPosition = readSlotPosition(nextSettings, "at-a-glance");
     settings.triggerMode =
       nextSettings?.triggerMode === "single-word" ? "single-word" : "keyword";
     settings.maxDefinitions = readBoundedInteger(
@@ -268,6 +275,9 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
+    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
+      return { html: "" };
+    }
 
     const parsed = parseDictionaryQuery(query);
     if (!parsed) return { html: "" };

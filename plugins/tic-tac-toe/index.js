@@ -29,7 +29,7 @@ export const slot = {
     "Tic-Tac-Toe game with AI difficulty settings, local multiplayer, and win-line animation.",
   isClientExposed: false,
   position: "above-results",
-  slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],
+  slotPositions: ["above-results", "knowledge-panel"],
   settingsSchema,
 
   async init(ctx) {

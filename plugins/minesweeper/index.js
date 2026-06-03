@@ -17,7 +17,7 @@ export const slot = {
   description: "Minesweeper game card with board sizes, flags, a mobile flag toggle, and a timer.",
   isClientExposed: false,
   position: "above-results",
-  slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],
+  slotPositions: ["above-results", "knowledge-panel"],
   settingsSchema,
 
   async init(ctx) {

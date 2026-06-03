@@ -5,6 +5,10 @@ import {
   isInformationalQuestion,
   isUnitConversionIn,
 } from "./query-guards.js";
+import {
+  readSlotPosition,
+  shouldRenderSlotForContext,
+} from "./slot-position.js";
 
 // ── Build Alias Map ──────────────────────────────────────────
 const ALIASES = {
@@ -502,18 +506,8 @@ const TriggerGuard = {
 
 let selectedSlotPosition = "at-a-glance";
 
-function configureSlotPosition(settings = {}) {
-  selectedSlotPosition =
-    String(settings.position ?? "at-a-glance").trim() || "at-a-glance";
-}
-
-/** Glance uses POST /api/slots/glance (context.results is always an array). */
-function shouldRenderSlotForContext(context) {
-  const isGlanceRequest = Array.isArray(context?.results);
-  if (selectedSlotPosition === "at-a-glance") {
-    return isGlanceRequest;
-  }
-  return !isGlanceRequest;
+function configureSlotSettings(settings = {}) {
+  selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
 }
 
 // ── Slot export ───────────────────────────────────────────────
@@ -525,12 +519,22 @@ export const slot = {
   isClientExposed: false,
   position: "at-a-glance",
   slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  settingsSchema: [
+    {
+      key: "debugMode",
+      label: "Debug mode",
+      type: "toggle",
+      default: false,
+      description:
+        "Log slot position and parser decisions to the server console.",
+    },
+  ],
 
   init(ctx) {
     template = ctx.template;
   },
 
-  configure: configureSlotPosition,
+  configure: configureSlotSettings,
 
   trigger(query) {
     const q = query.trim();
@@ -546,7 +550,9 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
-    if (!shouldRenderSlotForContext(context)) return { html: "" };
+    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
+      return { html: "" };
+    }
 
     const parsed = parseQuery(query);
     if (!parsed) return { html: "" };
