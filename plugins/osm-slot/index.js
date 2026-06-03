@@ -9,7 +9,7 @@ import {
 } from "./query-guards.js";
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.0";
+const PLUGIN_VERSION = "4.5.1";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -992,7 +992,7 @@ const PLACE_CATEGORY_RE =
 
 // Known chains/brands that are unambiguously physical places (can trigger as single words with local intent nearby).
 const KNOWN_CHAIN_RE =
-  /\b(costco|target|walmart|starbucks|mcdonald'?s|burger\s*king|wendy'?s|taco\s*bell|chipotle|domino'?s|pizza\s*hut|papa\s*john'?s|subway|dunkin'?|dunkin\s*donuts|kfc|five\s*guys|shake\s*shack|in-n-out|chick-fil-a|panera|olive\s*garden|red\s*lobster|longhorn|texas\s*roadhouse|cracker\s*barrel|ihop|denny'?s|applebee'?s|chili'?s|outback|buffalo\s*wild\s*wings|home\s*depot|lowe'?s|menards|best\s*buy|staples|office\s*depot|petco|petsmart|whole\s*foods|trader\s*joe'?s|kroger|safeway|albertsons|publix|wegmans|cvs|walgreens|rite\s*aid|sheetz|wawa|buc-ee'?s|flying\s*j|love'?s|pilot|speedway|shell|bp|exxon|mobil|sunoco|citgo|marathon|7-eleven|circle\s*k|royal\s*farms)\b/i;
+  /\b(costco|target|walmart|starbucks|mcdonald'?s|burger\s*king|wendy'?s|taco\s*bell|chipotle|domino'?s|pizza\s*hut|papa\s*john'?s|subway|dunkin'?|dunkin\s*donuts|kfc|five\s*guys|shake\s*shack|in-n-out|chick-fil-a|panera|olive\s*garden|red\s*lobster|longhorn|texas\s*roadhouse|cracker\s*barrel|ihop|denny'?s|applebee'?s|chili'?s|outback|buffalo\s*wild\s*wings|home\s*depot|lowe'?s|menards|best\s*buy|staples|office\s*depot|petco|petsmart|whole\s*foods|trader\s*joe'?s|kroger|safeway|albertsons|publix|wegmans|cvs|walgreens|rite\s*aid|sheetz|wawa|buc-ee'?s|flying\s*j|love'?s|pilot|speedway|shell|bp|exxon|mobil|sunoco|citgo|marathon|7-eleven|circle\s*k|royal\s*farms|kung\s*fu\s*tea|gong\s*cha|sharetea|boba\s*guys|panda\s*express|jack\s*in\s*the\s*box|raising\s*cane'?s?|auntie\s*anne'?s?|cinnabon|jamba\s*juice|smoothie\s*king)\b/i;
 
 const NON_PLACE_RE =
   /\b(how to|how many|how much|what is|why|when|who|reddit|github|docs|documentation|install|download|error|fix|linux|macos|windows|npm|pip|python|javascript|typescript|docker|nginx|proxmox|ai|llm|model|qwen|claude|gpt|gemini|ollama|benchmark|review|vs|price)\b/i;
@@ -1211,6 +1211,16 @@ function _tokenLooksNameLike(token) {
   return false;
 }
 
+/** Multi-word brands with all short tokens ("kung fu tea", "gong cha"). */
+function _looksLikeCompactBrandName(tokens) {
+  const meaningful = tokens.filter((t) => !GENERIC_NAME_STOPWORDS.has(t.toLowerCase()));
+  if (meaningful.length < 2) return false;
+  if (!meaningful.every((t) => t.length >= 2 && /^[a-z0-9][a-z0-9'’&.-]*$/i.test(t))) {
+    return false;
+  }
+  return meaningful.join("").length >= 7;
+}
+
 function _looksLikeNameQuery(query) {
   const normalized = _normalizeQuery(query);
   if (isUtilityPluginQuery(normalized)) return false;
@@ -1240,7 +1250,8 @@ function _looksLikeNameQuery(query) {
     (t) => !PLACE_CATEGORY_RE.test(t) || KNOWN_CHAIN_RE.test(t),
   );
   if (nonCategoryTokens.length === 0) return false;
-  return nonCategoryTokens.some((t) => _tokenLooksNameLike(t));
+  if (nonCategoryTokens.some((t) => _tokenLooksNameLike(t))) return true;
+  return _looksLikeCompactBrandName(nonCategoryTokens);
 }
 
 function _cleanSearchText(text) {
