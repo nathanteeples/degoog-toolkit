@@ -36,6 +36,12 @@
   var audioCtx = null;
   var lastTime = 0;
 
+  var BOARD_LAYOUTS = {
+    small: { cols: 9, rows: 10 },
+    standard: { cols: 15, rows: 17 },
+    large: { cols: 21, rows: 24 },
+  };
+
   var state = {
     playing: false,
     paused: false,
@@ -175,6 +181,39 @@
     return currentWidget ? currentWidget.querySelector(selector) : null;
   }
 
+  function cellPxForBoard(cols, rows) {
+    return Math.max(
+      12,
+      Math.min(22, Math.floor(360 / cols), Math.floor(400 / rows)),
+    );
+  }
+
+  function updateBoardSizeButtons(w) {
+    if (!w) return;
+    var active = w.getAttribute("data-board-preset") || "standard";
+    var locked = state.playing && !state.gameOver;
+    var buttons = w.querySelectorAll(".snake-board-size-btn");
+    for (var i = 0; i < buttons.length; i++) {
+      var btn = buttons[i];
+      var preset = btn.getAttribute("data-board-preset");
+      var isActive = preset === active;
+      btn.classList.toggle("snake-board-size-btn--active", isActive);
+      btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+      btn.disabled = locked;
+    }
+  }
+
+  function applyBoardPreset(w, preset) {
+    var layout = BOARD_LAYOUTS[preset] || BOARD_LAYOUTS.standard;
+    var cellPx = cellPxForBoard(layout.cols, layout.rows);
+    w.setAttribute("data-board-preset", preset);
+    w.setAttribute("data-grid-cols", String(layout.cols));
+    w.setAttribute("data-grid-rows", String(layout.rows));
+    w.setAttribute("data-cell-px", String(cellPx));
+    applyBoardFromWidget(w);
+    updateBoardSizeButtons(w);
+  }
+
   function applyBoardFromWidget(w) {
     var cols = parseInt(w.getAttribute("data-grid-cols"), 10);
     var rows = parseInt(w.getAttribute("data-grid-rows"), 10);
@@ -192,10 +231,10 @@
       canvas.height = boardH;
     }
     if (container) {
-      container.style.width = boardW + "px";
       container.style.setProperty("--snake-cols", String(state.gridCols));
       container.style.setProperty("--snake-rows", String(state.gridRows));
       container.style.setProperty("--snake-board-w", boardW + "px");
+      container.style.setProperty("--snake-board-h", boardH + "px");
     }
   }
 
@@ -204,6 +243,7 @@
     var speedAttr = parseInt(w.getAttribute("data-initial-speed"), 10);
     state.speedMs = isNaN(speedAttr) ? 100 : speedAttr;
     applyBoardFromWidget(w);
+    updateBoardSizeButtons(w);
 
     // Load high score
     try {
@@ -689,6 +729,8 @@
         }
       }
     }
+
+    updateBoardSizeButtons(currentWidget);
   }
 
   function handleKeyDown(event) {
@@ -803,6 +845,21 @@
       state.soundEnabled = !state.soundEnabled;
       primeAudio();
       updateUI();
+      return;
+    }
+
+    var boardBtn = event.target.closest(".snake-board-size-btn");
+    if (boardBtn && !boardBtn.disabled) {
+      var preset = boardBtn.getAttribute("data-board-preset");
+      if (preset && preset !== w.getAttribute("data-board-preset")) {
+        applyBoardPreset(w, preset);
+        resetGame();
+        state.prevSnake = state.snake.map(function (s) {
+          return { x: s.x, y: s.y };
+        });
+        drawGame();
+        updateUI();
+      }
       return;
     }
 

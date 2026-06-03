@@ -43,6 +43,12 @@ function resolveBoardPreset(label) {
   return BOARD_PRESETS.Standard;
 }
 
+function boardPresetKey(label) {
+  if (label === "Small (9×10)" || label === "Small") return "small";
+  if (label === "Large (21×24)" || label === "Large") return "large";
+  return "standard";
+}
+
 function boardCellPx(cols, rows) {
   return Math.max(
     12,
@@ -85,6 +91,8 @@ function renderSnakeCard(context) {
     .replaceAll("{{board_height_px}}", String(boardH))
     .replaceAll("{{canvas_width}}", String(boardW))
     .replaceAll("{{canvas_height}}", String(boardH))
+    .replaceAll("{{board_preset}}", boardPresetKey(boardSize))
+    .replaceAll("{{t_board_size}}", t("boardSize", context))
     .replaceAll("{{t_snake}}", t("snake", context))
     .replaceAll("{{t_score}}", t("score", context))
     .replaceAll("{{t_high}}", t("high", context))
@@ -110,6 +118,8 @@ export const command = {
   description: "A snake game plugin with mobile support and full screen mode.",
   isClientExposed: false,
   trigger: "snake",
+  settingsId: "plugin-snake",
+  settingsSchema,
 
   async init(ctx) {
     template = ctx?.template || "";
@@ -141,7 +151,7 @@ export const slot = {
   isClientExposed: false,
   position: "above-results",
   slotPositions: ["above-results", "knowledge-panel"],
-  settingsSchema,
+  settingsId: "plugin-snake",
 
   async init(ctx) {
     template = ctx?.template || "";

@@ -16,6 +16,10 @@
     0 1px 2px color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
+.snake-card.slot-full-width {
+  max-width: none;
+}
+
 .snake-card *,
 .snake-card *::before,
 .snake-card *::after {
@@ -41,59 +45,72 @@
 
 .results-slot-panel:has(> .results-slot-panel-body > .snake-card) .snake-card {
   width: 100%;
-  max-width: min(100%, 520px);
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
-/* LiterallyGoogle: one outer panel frame; snake-card is layout-only inside it. */
+#results-page.degoog-fullwidth-slot-shell
+  #slot-above-results
+  > .results-slot-panel:has(.snake-card.slot-full-width) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
 #results-page.degoog-fullwidth-slot-shell
   #slot-above-results
   > .results-slot-panel:has(.snake-card.slot-full-width)
-  .snake-card {
-  border: none;
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
-  overflow: visible;
+  > .results-slot-panel-body {
+  padding: 0;
 }
 
 #results-page.degoog-fullwidth-slot-shell
-  .snake-card.slot-full-width
-  .snake-header {
-  border-bottom-color: var(--slot-inset-border, var(--border-light, #dadce0));
+  .snake-card.slot-full-width {
+  border-radius: 16px;
 }
 
-/* Header & Scoreboard */
-.snake-header {
+/* Shell: toolbar + playfield */
+.snake-shell {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  min-width: 0;
+}
+
+.snake-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-light, #dadce0);
   background: color-mix(in srgb, var(--text-primary) 3%, transparent);
 }
 
-.snake-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-width: 0;
+.snake-toolbar__brand {
+  flex: 0 0 auto;
 }
 
 .snake-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-weight: 600;
   font-size: 1.05rem;
   color: var(--text-primary);
 }
 
-.snake-scoreboard {
+.snake-toolbar__scores {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.snake-toolbar__size {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  min-width: min(100%, 220px);
+}
+
+.snake-toolbar__actions {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .snake-score-box {
@@ -123,30 +140,112 @@
   line-height: 1.2;
 }
 
-/* Body & Game Area */
-.snake-body {
-  padding: 12px 14px 14px;
+.snake-board-size {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 10px;
+}
+
+.snake-board-size-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary, #5f6368);
+}
+
+.snake-board-size-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.snake-board-size-btn {
+  border: 1px solid var(--border-light, #dadce0);
+  background: var(--bg, #fff);
+  color: var(--text-primary, #202124);
+  border-radius: 100px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.snake-board-size-btn:hover:not(:disabled) {
+  background: var(--bg-hover, #f1f3f4);
+  border-color: color-mix(in srgb, var(--primary, #1a73e8) 35%, var(--border-light, #dadce0));
+}
+
+.snake-board-size-btn--active {
+  background: color-mix(in srgb, var(--primary, #1a73e8) 12%, var(--bg, #fff));
+  border-color: var(--primary, #1a73e8);
+  color: var(--primary, #1a73e8);
+}
+
+.snake-board-size-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Playfield: board grows into horizontal space; dpad beside on touch */
+.snake-playfield {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px 16px 16px;
   min-width: 0;
-  flex-shrink: 0;
   background: color-mix(in srgb, var(--text-primary) 2%, transparent);
 }
 
-/* Fixed pixel width from template; aspect-ratio keeps board from stretching. */
+.snake-game-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
 .snake-game-container {
   position: relative;
+  width: min(100%, var(--snake-board-w, 270px));
   max-width: 100%;
   height: auto;
   aspect-ratio: var(--snake-cols, 15) / var(--snake-rows, 17);
   flex-shrink: 0;
-  flex-grow: 0;
-  align-self: center;
-  background: transparent;
   border-radius: 12px;
   overflow: hidden;
+}
+
+@container (min-width: 520px) {
+  .snake-game-container {
+    width: min(
+      100%,
+      max(var(--snake-board-w, 270px), min(72cqw, 520px))
+    );
+  }
+}
+
+@container (min-width: 720px) {
+  .snake-game-container {
+    width: min(
+      100%,
+      max(var(--snake-board-w, 270px), min(58cqw, 640px))
+    );
+  }
+}
+
+@container (min-width: 960px) {
+  .snake-game-container {
+    width: min(
+      100%,
+      max(var(--snake-board-w, 270px), min(50cqw, 720px))
+    );
+  }
 }
 
 .snake-game-container::after {
@@ -173,7 +272,39 @@
   border-radius: inherit;
 }
 
-/* In-board overlays — content sits on the board, no floating light card */
+/* Wide toolbar: single row */
+@container (min-width: 640px) {
+  .snake-toolbar {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    column-gap: 16px;
+  }
+
+  .snake-toolbar__size {
+    justify-self: center;
+    justify-content: center;
+  }
+
+  .snake-toolbar__actions {
+    margin-left: 0;
+  }
+}
+
+/* Narrow: stack toolbar groups */
+@container (max-width: 480px) {
+  .snake-toolbar__actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
+  .snake-toolbar__size {
+    width: 100%;
+  }
+}
+
+/* In-board overlays */
 .snake-overlay {
   position: absolute;
   inset: 0;
@@ -321,15 +452,6 @@
   background: #6ee7b7;
 }
 
-.snake-btn-primary {
-  background: var(--text-link, #1a73e8);
-  color: #ffffff;
-}
-
-.snake-btn-primary:hover {
-  background: var(--primary, #1557b0);
-}
-
 .snake-btn-secondary {
   background: var(--bg, #fff);
   color: var(--text-primary);
@@ -364,7 +486,6 @@
   display: none !important;
 }
 
-/* Header Action buttons layout */
 .snake-header-actions {
   display: flex;
   align-items: center;
@@ -393,20 +514,21 @@
   display: block;
 }
 
-/* D-Pad mobile controls: only visible on touchscreen devices */
 .snake-dpad {
   display: none;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  margin-top: 0;
-  width: 100%;
-  max-width: min(100%, 400px);
 }
 
 @media (pointer: coarse) {
   .snake-dpad {
     display: flex;
+  }
+
+  .snake-playfield {
+    justify-content: center;
   }
 }
 
@@ -466,9 +588,14 @@
     min-width: 54px;
     padding-inline: 8px;
   }
+
+  .snake-playfield {
+    flex-direction: column;
+    align-items: center;
+  }
 }
 
-/* Fullscreen styling for Snake game console */
+/* Fullscreen */
 .snake-card:fullscreen {
   background: radial-gradient(circle, #1e293b 0%, #090d16 100%) !important;
   display: flex;
@@ -480,14 +607,14 @@
   color: #f8fafc;
   border: none;
   box-shadow: none;
+  max-width: none;
 }
 
-.snake-card:fullscreen .snake-header {
+.snake-card:fullscreen .snake-toolbar {
   width: 100%;
-  max-width: 480px;
+  max-width: 900px;
   border-bottom: 1px solid #334155;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin-bottom: 12px;
   background: transparent;
 }
 
@@ -495,13 +622,9 @@
   color: #f8fafc;
 }
 
-.snake-card:fullscreen .snake-body {
+.snake-card:fullscreen .snake-playfield {
   width: 100%;
-  max-width: 480px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0;
+  max-width: 900px;
   background: transparent;
 }
 
@@ -539,10 +662,20 @@
   color: #f8fafc;
 }
 
+.snake-card:fullscreen .snake-board-size-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+.snake-card:fullscreen .snake-board-size-btn--active {
+  background: rgba(52, 211, 153, 0.18);
+  border-color: #34d399;
+  color: #6ee7b7;
+}
+
 .snake-card:fullscreen .snake-game-container {
-  width: min(var(--snake-board-w, 100%), min(90vmin, 520px)) !important;
-  max-width: min(90vmin, 520px);
-  flex-shrink: 0;
+  width: min(100%, max(var(--snake-board-w, 270px), min(80vw, 720px))) !important;
 }
 
 .snake-card:fullscreen .snake-game-container::after {

@@ -2,6 +2,7 @@
 export const translations = {
   "en": {
     "snake": "Snake",
+    "boardSize": "Board size",
     "score": "Score",
     "high": "High",
     "highScore": "High Score",
@@ -23,6 +24,7 @@ export const translations = {
   },
   "es": {
     "snake": "Serpiente",
+    "boardSize": "Tamaño del tablero",
     "score": "Puntuación",
     "high": "Máx",
     "highScore": "Puntuación máxima",
@@ -44,6 +46,7 @@ export const translations = {
   },
   "fr": {
     "snake": "Serpent",
+    "boardSize": "Taille du plateau",
     "score": "Score",
     "high": "Record",
     "highScore": "Record",
