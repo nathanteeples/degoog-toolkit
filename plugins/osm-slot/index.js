@@ -9,7 +9,7 @@ import {
 } from "./query-guards.js";
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.3";
+const PLUGIN_VERSION = "4.5.4";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -21,15 +21,20 @@ const HERE_BROWSE = "https://browse.search.hereapi.com/v1/browse";
 const HERE_DISCOVER = "https://discover.search.hereapi.com/v1/discover";
 const HERE_GEOCODE = "https://geocode.search.hereapi.com/v1/geocode";
 
-// Prefer city/town-level hits when geocoding trailing "near …" hints.
+// HERE /geocode `types` filter (v7) — NOT the same strings as item.resultType in responses.
+const HERE_GEO_TYPES_CITY = "city,area,postalCode";
+const HERE_GEO_TYPES_PLACE = "place,address,street,houseNumber";
+
+// Prefer broader area hits when picking among geocode response items.
 const HERE_GEO_RESULT_PRIORITY = [
   "locality",
   "administrativeArea",
+  "city",
+  "place",
+  "postalCodePoint",
   "district",
-  "postalCode",
   "street",
   "houseNumber",
-  "place",
 ];
 
 // Verified HERE category-id map (keyword -> id). Anything not matched here
@@ -321,6 +326,9 @@ export const routes = [
             console.log(
               `[Places Server] Refresh geocoded "${plan.placeHint}" via ${geo.source}: ${latNum},${lonNum}`,
             );
+          } else {
+            console.warn(`[Places Server] Refresh could not geocode "${plan.placeHint}"`);
+            return _jsonResponse({ html: "" });
           }
         }
 
@@ -545,6 +553,37 @@ function _pickHereGeocodeItem(items) {
   return items.find((item) => item?.position) || null;
 }
 
+async function _fetchHereGeocodeItems(hint, doFetch, types) {
+  const apiKey = _settings.hereApiKey;
+  if (!apiKey) return null;
+
+  const biasLat = parseFloat(_settings.defaultLat);
+  const biasLon = parseFloat(_settings.defaultLon);
+  let url =
+    `${HERE_GEOCODE}?q=${encodeURIComponent(hint)}` +
+    `&limit=5` +
+    `&lang=en-US` +
+    `&apiKey=${encodeURIComponent(apiKey)}`;
+  if (types) {
+    url += `&types=${encodeURIComponent(types)}`;
+  }
+  if (Number.isFinite(biasLat) && Number.isFinite(biasLon)) {
+    url += `&at=${encodeURIComponent(`${biasLat},${biasLon}`)}`;
+  }
+
+  const res = await doFetch(url, {}, 8000);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    const err = new Error(`HTTP status ${res.status}${errText ? `: ${errText}` : ""}`);
+    err.status = res.status;
+    err.body = errText;
+    throw err;
+  }
+
+  const data = await res.json();
+  return Array.isArray(data.items) ? data.items : [];
+}
+
 async function _geocodeHere(hint, doFetch, apiStatus) {
   const apiKey = _settings.hereApiKey;
   if (!apiKey) {
@@ -567,63 +606,53 @@ async function _geocodeHere(hint, doFetch, apiStatus) {
     return cached;
   }
 
-  const biasLat = parseFloat(_settings.defaultLat);
-  const biasLon = parseFloat(_settings.defaultLon);
-  let url =
-    `${HERE_GEOCODE}?q=${encodeURIComponent(hint)}` +
-    `&limit=5` +
-    `&lang=en-US` +
-    `&types=locality,administrativeArea,district,postalCode,place` +
-    `&apiKey=${encodeURIComponent(apiKey)}`;
-  if (Number.isFinite(biasLat) && Number.isFinite(biasLon)) {
-    url += `&at=${encodeURIComponent(`${biasLat},${biasLon}`)}`;
-  }
+  const attempts = [
+    { types: HERE_GEO_TYPES_CITY, mode: "city/area" },
+    { types: HERE_GEO_TYPES_PLACE, mode: "place/address" },
+    { types: null, mode: "open" },
+  ];
 
-  console.log(`[Places Server v${PLUGIN_VERSION}] HERE geocode for "${hint}"`);
-  const res = await doFetch(url, {}, 8000);
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    const msg = `HTTP status ${res.status}${errText ? `: ${errText}` : ""}`;
-    if (apiStatus) {
-      apiStatus.status = "error";
-      apiStatus.error = msg;
+  let lastError = null;
+  for (const attempt of attempts) {
+    try {
+      console.log(
+        `[Places Server v${PLUGIN_VERSION}] HERE geocode (${attempt.mode}) for "${hint}"`,
+      );
+      const items = await _fetchHereGeocodeItems(hint, doFetch, attempt.types);
+      const item = _pickHereGeocodeItem(items);
+      if (!item?.position) continue;
+
+      const lat = parseFloat(item.position.lat);
+      const lon = parseFloat(item.position.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+
+      const out = {
+        lat,
+        lon,
+        label: _hereGeocodeLabel(item, hint),
+        source: "here-geocode",
+      };
+      _cache?.set(cacheKey, out);
+      if (apiStatus) {
+        apiStatus.status = "success";
+        apiStatus.source = out.source;
+        apiStatus.label = out.label;
+        apiStatus.mode = attempt.mode;
+      }
+      return out;
+    } catch (err) {
+      lastError = err;
+      // Invalid parameter on a typed request — skip to the next strategy.
+      if (err.status === 400 && attempt.types) continue;
+      console.warn(`[Places] HERE geocode (${attempt.mode}) failed for "${hint}":`, err);
     }
-    return null;
   }
 
-  const data = await res.json();
-  const item = _pickHereGeocodeItem(data.items);
-  if (!item?.position) {
-    if (apiStatus) {
-      apiStatus.status = "error";
-      apiStatus.error = "No geocode results";
-    }
-    return null;
-  }
-
-  const lat = parseFloat(item.position.lat);
-  const lon = parseFloat(item.position.lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    if (apiStatus) {
-      apiStatus.status = "error";
-      apiStatus.error = "Invalid geocode coordinates";
-    }
-    return null;
-  }
-
-  const out = {
-    lat,
-    lon,
-    label: _hereGeocodeLabel(item, hint),
-    source: "here-geocode",
-  };
-  _cache?.set(cacheKey, out);
   if (apiStatus) {
-    apiStatus.status = "success";
-    apiStatus.source = out.source;
-    apiStatus.label = out.label;
+    apiStatus.status = "error";
+    apiStatus.error = lastError?.message || "No geocode results";
   }
-  return out;
+  return null;
 }
 
 /** Forward-geocode a trailing "near …" hint via HERE Geocoding & Search API v7. */
@@ -658,7 +687,8 @@ async function _resolveSearchLocation(plan, doFetch, apiStatus) {
       lon = geo.lon;
       locationLabel = geo.label || plan.placeHint;
     } else {
-      console.warn(`[Places] Could not geocode "${plan.placeHint}", using default location`);
+      console.warn(`[Places] Could not geocode "${plan.placeHint}" — not searching at default location`);
+      return null;
     }
   }
 
