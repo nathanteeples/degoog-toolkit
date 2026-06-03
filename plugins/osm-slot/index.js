@@ -9,7 +9,7 @@ import {
 } from "./query-guards.js";
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.1";
+const PLUGIN_VERSION = "4.5.3";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -19,6 +19,18 @@ let _cache = null;
 
 const HERE_BROWSE = "https://browse.search.hereapi.com/v1/browse";
 const HERE_DISCOVER = "https://discover.search.hereapi.com/v1/discover";
+const HERE_GEOCODE = "https://geocode.search.hereapi.com/v1/geocode";
+
+// Prefer city/town-level hits when geocoding trailing "near …" hints.
+const HERE_GEO_RESULT_PRIORITY = [
+  "locality",
+  "administrativeArea",
+  "district",
+  "postalCode",
+  "street",
+  "houseNumber",
+  "place",
+];
 
 // Verified HERE category-id map (keyword -> id). Anything not matched here
 // falls through to /discover free-text search.
@@ -77,7 +89,7 @@ export const slot = {
       required: true,
       secret: true,
       description:
-        "Required. Powers all place lookups via the HERE Search API. Get a free key at developer.here.com.",
+        "Required. Powers place search (/discover, /browse) and city geocoding for queries like 'near Princeton' (/geocode). Free tier includes generous monthly Geocoding & Search requests — get a key at developer.here.com.",
     },
     {
       key: "defaultLat",
@@ -178,14 +190,7 @@ export const slot = {
     }
 
     try {
-      const q = plan.text; // where-is prefix already stripped
       const isGlobal = plan.mode === "global";
-
-      const lat = parseFloat(_settings.defaultLat);
-      const lon = parseFloat(_settings.defaultLon);
-      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-        return { html: "" };
-      }
       if (!_settings.hereApiKey) {
         return { html: "" };
       }
@@ -199,9 +204,17 @@ export const slot = {
 
       const apiStatus = {
         here: { configured: !!_settings.hereApiKey, status: "unused", error: null, count: 0 },
+        geocode: { configured: !!_settings.hereApiKey, status: "unused", error: null, source: null, label: null },
       };
 
-      console.log(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" (${plan.mode}/${plan.confidence}) at lat=${lat}, lon=${lon}`);
+      const resolved = await _resolveSearchLocation(plan, wrapFetch, apiStatus);
+      if (!resolved) {
+        return { html: "" };
+      }
+      const { lat, lon, locationLabel } = resolved;
+      const q = plan.text;
+
+      console.log(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" (${plan.mode}/${plan.confidence}) at lat=${lat}, lon=${lon}${plan.placeHint ? ` [near ${plan.placeHint}]` : ""}`);
 
       const places = await _searchHere(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus, { global: isGlobal });
 
@@ -235,7 +248,7 @@ export const slot = {
       const html = _renderCard(
         top,
         q,
-        _settings.defaultLocationLabel || "Home",
+        locationLabel,
         _settings.useBrowserGeolocation,
         apiStatus
       );
@@ -272,14 +285,44 @@ export const routes = [
         const query = body.query || "";
         const wrapFetch = _makeWrapFetch(_fetch, " (refresh)");
 
+        const plan = _classifyPlaceQuery(query);
+        const searchText = plan ? plan.text : query;
+        const isGlobal = plan ? plan.mode === "global" : false;
+
+        const radiusMiles = parseInt(_settings.defaultRadius || "25", 10);
+        const radiusMeters = radiusMiles * 1609.34;
+        const limit = parseInt(_settings.resultsCount || "5", 10);
+
         // Coordinate resolution, in priority order:
-        //   1. Precise browser coords sent by the client (best).
-        //   2. Server-side IP geolocation (no CORS; for self-hosted instances the
-        //      server's egress IP == the user's network). Honours x-forwarded-for.
-        //   3. The configured default location.
+        //   1. Precise browser coords from "Use my location".
+        //   2. Explicit "near Princeton" (etc.) geocoded via HERE Geocoding API.
+        //   3. Server-side IP geolocation.
+        //   4. Configured default location.
         let latNum = parseFloat(body.lat);
         let lonNum = parseFloat(body.lon);
         let locationLabel = "your location";
+        const hasBrowserCoords = Number.isFinite(latNum) && Number.isFinite(lonNum);
+
+        if (hasBrowserCoords) {
+          locationLabel = "your location";
+        } else if (plan?.placeHint) {
+          const geoStatus = {
+            configured: !!_settings.hereApiKey,
+            status: "unused",
+            error: null,
+            source: null,
+            label: null,
+          };
+          const geo = await _geocodePlaceHint(plan.placeHint, wrapFetch, geoStatus);
+          if (geo) {
+            latNum = geo.lat;
+            lonNum = geo.lon;
+            locationLabel = geo.label || plan.placeHint;
+            console.log(
+              `[Places Server] Refresh geocoded "${plan.placeHint}" via ${geo.source}: ${latNum},${lonNum}`,
+            );
+          }
+        }
 
         if (!Number.isFinite(latNum) || !Number.isFinite(lonNum)) {
           const clientIp = _clientIpFromRequest(request);
@@ -302,19 +345,6 @@ export const routes = [
             }
           }
         }
-
-        const radiusMiles = parseInt(_settings.defaultRadius || "25", 10);
-        const radiusMeters = radiusMiles * 1609.34;
-        const limit = parseInt(_settings.resultsCount || "5", 10);
-
-        // Planner gives us the stripped search text + local/global routing. The
-        // refresh is user-initiated from an already-shown widget, so it stays
-        // PERMISSIVE: we only keep the confident-match gate for global landmark
-        // lookups (where it is what makes the right place win) and otherwise render
-        // whatever HERE returns within radius.
-        const plan = _classifyPlaceQuery(query);
-        const searchText = plan ? plan.text : query;
-        const isGlobal = plan ? plan.mode === "global" : false;
 
         console.log(`[Places Server] Refresh Query: "${searchText}" (${plan ? plan.mode : "raw"}) at lat=${latNum}, lon=${lonNum}`);
 
@@ -457,6 +487,183 @@ async function _ipGeolocate(doFetch, clientIp) {
     }
   }
   return null;
+}
+
+/* ------------------------------------------------------------------ */
+/* "near …" place hint parsing + HERE forward geocoding                */
+/* ------------------------------------------------------------------ */
+
+// Trailing "near Princeton" / "near Princeton, NJ" — not "near me".
+const NEAR_PLACE_RE =
+  /\bnear\s+(?!me\b|by\b|here\b|my(?:\s+location)?\b)([a-z0-9][a-z0-9 .,''-]{1,80})\s*$/i;
+
+function _splitNearPlace(query) {
+  const normalized = _normalizeQuery(query);
+  const match = NEAR_PLACE_RE.exec(normalized);
+  if (!match) {
+    return { searchText: normalized, placeHint: null };
+  }
+  const placeHint = match[1].trim().replace(/[,.]$/, "");
+  const searchText = normalized.slice(0, match.index).replace(/\s+/g, " ").trim();
+  if (!placeHint || placeHint.length < 2) {
+    return { searchText: normalized, placeHint: null };
+  }
+  return { searchText, placeHint };
+}
+
+function _attachPlaceHint(plan, rawQuery) {
+  if (!plan) return null;
+  const split = _splitNearPlace(plan.text || _normalizeQuery(rawQuery));
+  const text = _cleanSearchText(split.searchText) || split.searchText;
+  return { ...plan, text, placeHint: split.placeHint };
+}
+
+function _hereGeocodeLabel(item, fallback) {
+  const addr = item?.address || {};
+  if (typeof addr.label === "string" && addr.label.trim()) return addr.label.trim();
+  if (typeof item?.title === "string" && item.title.trim()) return item.title.trim();
+  const parts = [addr.city, addr.state, addr.county, addr.countryName]
+    .map((s) => String(s || "").trim())
+    .filter(Boolean);
+  const seen = new Set();
+  const deduped = [];
+  for (const part of parts) {
+    const key = part.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(part);
+  }
+  return deduped.join(", ") || fallback;
+}
+
+function _pickHereGeocodeItem(items) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  for (const type of HERE_GEO_RESULT_PRIORITY) {
+    const hit = items.find((item) => item?.resultType === type && item?.position);
+    if (hit) return hit;
+  }
+  return items.find((item) => item?.position) || null;
+}
+
+async function _geocodeHere(hint, doFetch, apiStatus) {
+  const apiKey = _settings.hereApiKey;
+  if (!apiKey) {
+    if (apiStatus) {
+      apiStatus.status = "error";
+      apiStatus.error = "Missing HERE API key";
+    }
+    return null;
+  }
+
+  const cacheKey = `geo:here:${hint.toLowerCase()}`;
+  const cached = _cache?.get(cacheKey);
+  if (cached) {
+    if (apiStatus) {
+      apiStatus.status = "success";
+      apiStatus.source = cached.source;
+      apiStatus.label = cached.label;
+      apiStatus.cached = true;
+    }
+    return cached;
+  }
+
+  const biasLat = parseFloat(_settings.defaultLat);
+  const biasLon = parseFloat(_settings.defaultLon);
+  let url =
+    `${HERE_GEOCODE}?q=${encodeURIComponent(hint)}` +
+    `&limit=5` +
+    `&lang=en-US` +
+    `&types=locality,administrativeArea,district,postalCode,place` +
+    `&apiKey=${encodeURIComponent(apiKey)}`;
+  if (Number.isFinite(biasLat) && Number.isFinite(biasLon)) {
+    url += `&at=${encodeURIComponent(`${biasLat},${biasLon}`)}`;
+  }
+
+  console.log(`[Places Server v${PLUGIN_VERSION}] HERE geocode for "${hint}"`);
+  const res = await doFetch(url, {}, 8000);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    const msg = `HTTP status ${res.status}${errText ? `: ${errText}` : ""}`;
+    if (apiStatus) {
+      apiStatus.status = "error";
+      apiStatus.error = msg;
+    }
+    return null;
+  }
+
+  const data = await res.json();
+  const item = _pickHereGeocodeItem(data.items);
+  if (!item?.position) {
+    if (apiStatus) {
+      apiStatus.status = "error";
+      apiStatus.error = "No geocode results";
+    }
+    return null;
+  }
+
+  const lat = parseFloat(item.position.lat);
+  const lon = parseFloat(item.position.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    if (apiStatus) {
+      apiStatus.status = "error";
+      apiStatus.error = "Invalid geocode coordinates";
+    }
+    return null;
+  }
+
+  const out = {
+    lat,
+    lon,
+    label: _hereGeocodeLabel(item, hint),
+    source: "here-geocode",
+  };
+  _cache?.set(cacheKey, out);
+  if (apiStatus) {
+    apiStatus.status = "success";
+    apiStatus.source = out.source;
+    apiStatus.label = out.label;
+  }
+  return out;
+}
+
+/** Forward-geocode a trailing "near …" hint via HERE Geocoding & Search API v7. */
+async function _geocodePlaceHint(hint, doFetch, apiStatus) {
+  const trimmed = String(hint || "").trim();
+  if (!trimmed) return null;
+
+  try {
+    const here = await _geocodeHere(trimmed, doFetch, apiStatus);
+    if (here) return here;
+  } catch (err) {
+    console.warn(`[Places] HERE geocode failed for "${trimmed}":`, err);
+    if (apiStatus && apiStatus.status === "unused") {
+      apiStatus.status = "error";
+      apiStatus.error = err.message;
+    }
+  }
+
+  return null;
+}
+
+async function _resolveSearchLocation(plan, doFetch, apiStatus) {
+  let lat = parseFloat(_settings.defaultLat);
+  let lon = parseFloat(_settings.defaultLon);
+  let locationLabel = _settings.defaultLocationLabel || "Home";
+
+  if (plan?.placeHint) {
+    const geoStatus = apiStatus?.geocode || null;
+    const geo = await _geocodePlaceHint(plan.placeHint, doFetch, geoStatus);
+    if (geo) {
+      lat = geo.lat;
+      lon = geo.lon;
+      locationLabel = geo.label || plan.placeHint;
+    } else {
+      console.warn(`[Places] Could not geocode "${plan.placeHint}", using default location`);
+    }
+  }
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { lat, lon, locationLabel };
 }
 
 /* ------------------------------------------------------------------ */
@@ -1170,17 +1377,17 @@ function _classifyPlaceQuery(rawQuery) {
 
     // Local category/intent/chain/zip remainder -> stay local (e.g. "nearest pharmacy").
     if (_hasStrongPlaceIntent(lower)) {
-      return { mode: "local", confidence: "any", text, wantsOpenNow };
+      return _attachPlaceHint({ mode: "local", confidence: "any", text, wantsOpenNow }, query);
     }
 
     // Global discover is quota-expensive — only for landmark-style remainders.
     if (LANDMARK_HINT_RE.test(lower)) {
-      return { mode: "global", confidence: "name", text, wantsOpenNow };
+      return _attachPlaceHint({ mode: "global", confidence: "name", text, wantsOpenNow }, query);
     }
 
     // Business/brand names after "where …" stay local (radius-bound discover).
     if (_looksLikeNameQuery(text)) {
-      return { mode: "local", confidence: "name", text, wantsOpenNow };
+      return _attachPlaceHint({ mode: "local", confidence: "name", text, wantsOpenNow }, query);
     }
 
     return null;
@@ -1191,10 +1398,16 @@ function _classifyPlaceQuery(rawQuery) {
   const local = _classifyLocalText(query);
   const cleaned = _cleanSearchText(query);
   if (local === "strong") {
-    return { mode: "local", confidence: "any", text: cleaned || query, wantsOpenNow };
+    return _attachPlaceHint(
+      { mode: "local", confidence: "any", text: cleaned || query, wantsOpenNow },
+      query,
+    );
   }
   if (local === "name") {
-    return { mode: "local", confidence: "name", text: cleaned || query, wantsOpenNow };
+    return _attachPlaceHint(
+      { mode: "local", confidence: "name", text: cleaned || query, wantsOpenNow },
+      query,
+    );
   }
   return null;
 }
