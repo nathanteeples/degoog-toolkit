@@ -218,6 +218,7 @@
 }
 
 .metro-play-btn {
+  position: relative;
   width: 60px;
   height: 60px;
   border: none;
@@ -231,6 +232,14 @@
   outline: none;
   transition: background-color 150ms, transform 100ms;
   box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+.metro-play-btn svg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .metro-play-btn:hover {

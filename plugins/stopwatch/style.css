@@ -197,6 +197,10 @@
   cursor: pointer;
 }
 
+.timer-action-btn svg {
+  pointer-events: none;
+}
+
 .timer-action-btn:hover {
   background: var(--bg);
 }
