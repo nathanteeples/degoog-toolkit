@@ -1038,33 +1038,38 @@ body {
     margin-bottom: 1rem;
 }
 
-/* Flatten outer slot chrome for each full-width panel, even when several
-   above-results plugins are stacked. DOM order remains untouched. */
-#slot-above-results
-    > .results-slot-panel:has(.slot-full-width):not(
-        :has(.uxs-wrap)
-    ) {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    margin: 0;
-    padding: 0;
-    gap: 0;
-    overflow: visible;
+/* Each stacked full-width above-results plugin gets its own visible panel frame
+   (e.g. Places + Stocks on the same query). Plugins that supply their own outer
+   card flatten the degoog shell in plugin CSS (color-translator, until). */
+#slot-above-results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-#slot-above-results
-    > .results-slot-panel:has(.slot-full-width):not(:has(.uxs-wrap))
-    .results-slot-panel-body {
-    padding: 0;
-}
-
-/* Unit slot: one visible frame — outer app panel, inner sections only. */
-#slot-above-results .results-slot-panel:has(.uxs-wrap) {
+#slot-above-results > .results-slot-panel:has(.slot-full-width),
+#slot-above-results > .results-slot-panel:has(.uxs-wrap) {
     background: var(--bg-light);
     border: 1px solid var(--border-light);
+    border-radius: 16px;
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent),
+        0 1px 2px color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
+#slot-above-results
+    > .results-slot-panel:has(.slot-full-width)
+    > .results-slot-panel-body,
+#slot-above-results
+    > .results-slot-panel:has(.uxs-wrap)
+    > .results-slot-panel-body {
+    padding: 16px;
+}
+
+/* Unit slot: outer panel is the frame; drop inner card border. */
 #slot-above-results .results-slot-panel:has(.uxs-wrap) .uxs-main {
     border: none;
     background: transparent;
@@ -1073,6 +1078,18 @@ body {
 }
 
 #slot-above-results .results-slot-panel-body:has(.uxs-wrap) {
+    padding: 0;
+}
+
+/* Tip calculator adds its own full-width card chrome — avoid double frames. */
+#results-page.degoog-fullwidth-slot-shell
+    #slot-above-results
+    > .results-slot-panel:has(.tipcalc-card)
+    .tipcalc-card {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    margin: 0;
     padding: 0;
 }
 

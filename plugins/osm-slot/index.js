@@ -10,7 +10,7 @@ import {
 import { t } from "./locales.js";
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.17";
+const PLUGIN_VERSION = "4.5.18";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -1359,20 +1359,18 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus, contex
 
   return `
 <div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}" data-places-apis="${_esc(JSON.stringify(apiStatus || {}))}">
-  <div class="places-shell">
-    <div class="places-header">
-      <span class="places-label">${_esc(t("places", context))}</span>
-      <span class="places-subhead">${_esc(t("nearPlace", context).replace("{place}", locationLabel))}</span>
-      ${geoBtn}
-    </div>
-    <div class="places-layout">
-      <div class="places-list-col">
-        <div class="places-grid">
-          ${cards}
-        </div>
+  <div class="places-header">
+    <span class="places-label">${_esc(t("places", context))}</span>
+    <span class="places-subhead">${_esc(t("nearPlace", context).replace("{place}", locationLabel))}</span>
+    ${geoBtn}
+  </div>
+  <div class="places-layout">
+    <div class="places-list-col">
+      <div class="places-grid">
+        ${cards}
       </div>
-      ${mapHtml}
     </div>
+    ${mapHtml}
   </div>
   <div class="places-modal" data-places-modal hidden>
     <div class="places-modal-backdrop" data-modal-close></div>
