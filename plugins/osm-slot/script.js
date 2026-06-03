@@ -239,20 +239,19 @@
     var tileMap = panel.querySelector(".places-tile-map");
     if (tileMap) {
       var state = _getMapState(tileMap);
+      var targetZoom = Math.max(16, Number(state.zoomFloat) || 15);
       // Recenter on the selected place; keep all pins, just mark this one active.
       state.lat = lat;
       state.lon = lon;
-      // Clicking a marker/card should zoom to a place-focused level so the
-      // selected location is clearly visible.
-      state.zoom = Math.max(16, Number(state.zoom) || 15);
       state.offsetX = 0;
       state.offsetY = 0;
+      state.lastRenderKey = null;
       if (Number.isFinite(idx)) state.activeIndex = idx;
       tileMap.dataset.lat = String(lat);
       tileMap.dataset.lon = String(lon);
-      tileMap.dataset.zoom = String(state.zoom);
       tileMap.setAttribute("aria-label", "Map for " + name);
-      _renderTiles(tileMap, state);
+      card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      _animateZoom(tileMap, state, targetZoom, tileMap.clientWidth / 2, tileMap.clientHeight / 2, 260);
     }
   }
 
@@ -277,6 +276,9 @@
         lat: Number(mapEl.dataset.lat),
         lon: Number(mapEl.dataset.lon),
         zoom: Number(mapEl.dataset.zoom || 15),
+        zoomFloat: Number(mapEl.dataset.zoom || 15),
+        lastRenderKey: null,
+        zoomAnimFrame: null,
         activeIndex: 0,
         fitDone: mapEl.dataset.fitBounds !== "1",
         dragging: false,
@@ -287,6 +289,122 @@
       };
     }
     return mapEl._mapState;
+  }
+
+  function _clampZoomFloat(value) {
+    return Math.max(2, Math.min(19, value));
+  }
+
+  function _cancelZoomAnim(state) {
+    if (state.zoomAnimFrame) {
+      cancelAnimationFrame(state.zoomAnimFrame);
+      state.zoomAnimFrame = null;
+    }
+  }
+
+  function _getZoomParts(state) {
+    var tileZoom = Math.floor(state.zoomFloat);
+    return {
+      tileZoom: tileZoom,
+      scale: Math.pow(2, state.zoomFloat - tileZoom),
+    };
+  }
+
+  function _clientToLatLon(state, mapEl, anchorX, anchorY) {
+    var parts = _getZoomParts(state);
+    var width = mapEl.clientWidth;
+    var height = mapEl.clientHeight;
+    var viewCenterX = width / 2 + state.offsetX;
+    var viewCenterY = height / 2 + state.offsetY;
+    var center = _latLonToTile(state.lat, state.lon, parts.tileZoom);
+    var centerPxX = center.x * TILE_SIZE;
+    var centerPxY = center.y * TILE_SIZE;
+    var worldX = centerPxX + (anchorX - viewCenterX) / parts.scale;
+    var worldY = centerPxY + (anchorY - viewCenterY) / parts.scale;
+    return _tileToLatLon(worldX / TILE_SIZE, worldY / TILE_SIZE, parts.tileZoom);
+  }
+
+  function _setCenterForLatLonAtScreen(state, mapEl, lat, lon, screenX, screenY) {
+    var parts = _getZoomParts(state);
+    var width = mapEl.clientWidth;
+    var height = mapEl.clientHeight;
+    var viewCenterX = width / 2 + state.offsetX;
+    var viewCenterY = height / 2 + state.offsetY;
+    var point = _latLonToTile(lat, lon, parts.tileZoom);
+    var pointPxX = point.x * TILE_SIZE;
+    var pointPxY = point.y * TILE_SIZE;
+    var centerPxX = pointPxX - (screenX - viewCenterX) / parts.scale;
+    var centerPxY = pointPxY - (screenY - viewCenterY) / parts.scale;
+    var next = _tileToLatLon(centerPxX / TILE_SIZE, centerPxY / TILE_SIZE, parts.tileZoom);
+    state.lat = next.lat;
+    state.lon = next.lon;
+  }
+
+  function _applyZoomTransform(mapEl, state, scale) {
+    var width = mapEl.clientWidth;
+    var height = mapEl.clientHeight;
+    var originX = width / 2 + state.offsetX;
+    var originY = height / 2 + state.offsetY;
+    var origin = originX + "px " + originY + "px";
+    var transform = "scale(" + scale + ")";
+    var tileLayer = mapEl.querySelector(".places-tile-layer");
+    var pinLayer = mapEl.querySelector(".places-pin-layer");
+    if (tileLayer) {
+      tileLayer.style.transformOrigin = origin;
+      tileLayer.style.transform = transform;
+    }
+    if (pinLayer) {
+      pinLayer.style.transformOrigin = origin;
+      pinLayer.style.transform = transform;
+    }
+  }
+
+  function _syncMapDataset(mapEl, state) {
+    mapEl.dataset.lat = String(state.lat);
+    mapEl.dataset.lon = String(state.lon);
+    mapEl.dataset.zoom = String(Math.round(state.zoomFloat));
+  }
+
+  function _updateMapLinksFromState(mapEl, state) {
+    var panel = mapEl.closest("[data-map-panel]");
+    if (!panel) return;
+    panel.dataset.lat = String(state.lat);
+    panel.dataset.lon = String(state.lon);
+    _updateMapExtLinks(panel, state.lat, state.lon, panel.dataset.placeName || "");
+  }
+
+  function _animateZoom(mapEl, state, targetZoomFloat, anchorX, anchorY, durationMs) {
+    _cancelZoomAnim(state);
+    var startZoom = state.zoomFloat;
+    var anchor = _clientToLatLon(state, mapEl, anchorX, anchorY);
+    var startTime = performance.now();
+
+    function frame(now) {
+      var t = Math.min(1, (now - startTime) / durationMs);
+      var eased = 1 - Math.pow(1 - t, 3);
+      state.zoomFloat = _clampZoomFloat(startZoom + (targetZoomFloat - startZoom) * eased);
+      _setCenterForLatLonAtScreen(state, mapEl, anchor.lat, anchor.lon, anchorX, anchorY);
+      _syncMapDataset(mapEl, state);
+      _renderTiles(mapEl, state);
+      if (t < 1) {
+        state.zoomAnimFrame = requestAnimationFrame(frame);
+      } else {
+        state.zoomAnimFrame = null;
+        state.zoomFloat = _clampZoomFloat(targetZoomFloat);
+        state.zoom = Math.floor(state.zoomFloat);
+        _updateMapLinksFromState(mapEl, state);
+      }
+    }
+
+    state.zoomAnimFrame = requestAnimationFrame(frame);
+  }
+
+  function _smoothZoomBy(mapEl, state, delta) {
+    var target = _clampZoomFloat(Math.round(state.zoomFloat) + delta);
+    if (target === state.zoomFloat) return;
+    var anchorX = mapEl.clientWidth / 2;
+    var anchorY = mapEl.clientHeight / 2;
+    _animateZoom(mapEl, state, target, anchorX, anchorY, 220);
   }
 
   // Largest integer zoom (clamped 2..18) where all pins fit in the container,
@@ -333,6 +451,7 @@
       // Mouse drag helpers
       function onMouseMove(e) {
         if (!state.dragging) return;
+        _cancelZoomAnim(state);
         state.offsetX = e.clientX - state.startX;
         state.offsetY = e.clientY - state.startY;
         _renderTiles(mapEl, state);
@@ -343,7 +462,13 @@
         state.dragging = false;
         mapEl.style.cursor = "grab";
 
-        var newCenter = _pixelOffsetToLatLon(state.offsetX, state.offsetY, state.lat, state.lon, state.zoom);
+        var newCenter = _pixelOffsetToLatLon(
+          state.offsetX,
+          state.offsetY,
+          state.lat,
+          state.lon,
+          Math.floor(state.zoomFloat)
+        );
         state.lat = newCenter.lat;
         state.lon = newCenter.lon;
         state.offsetX = 0;
@@ -367,6 +492,7 @@
 
       mapEl.addEventListener("mousedown", function (e) {
         if (e.target.closest("button, a")) return;
+        _cancelZoomAnim(state);
         state.dragging = true;
         state.startX = e.clientX;
         state.startY = e.clientY;
@@ -381,6 +507,7 @@
       function onTouchMove(e) {
         if (!state.dragging || e.touches.length !== 1) return;
         e.preventDefault();
+        _cancelZoomAnim(state);
         state.offsetX = e.touches[0].clientX - state.startX;
         state.offsetY = e.touches[0].clientY - state.startY;
         _renderTiles(mapEl, state);
@@ -390,7 +517,13 @@
         if (!state.dragging) return;
         state.dragging = false;
 
-        var newCenter = _pixelOffsetToLatLon(state.offsetX, state.offsetY, state.lat, state.lon, state.zoom);
+        var newCenter = _pixelOffsetToLatLon(
+          state.offsetX,
+          state.offsetY,
+          state.lat,
+          state.lon,
+          Math.floor(state.zoomFloat)
+        );
         state.lat = newCenter.lat;
         state.lon = newCenter.lon;
         state.offsetX = 0;
@@ -415,6 +548,7 @@
 
       mapEl.addEventListener("touchstart", function (e) {
         if (e.touches.length !== 1) return;
+        _cancelZoomAnim(state);
         state.dragging = true;
         state.startX = e.touches[0].clientX;
         state.startY = e.touches[0].clientY;
@@ -424,13 +558,36 @@
         document.addEventListener("touchcancel", onTouchEnd);
       }, { passive: true });
 
-      // Scroll zoom
+      // Continuous wheel zoom — fractional levels with cursor anchoring
+      var wheelPending = false;
+
       mapEl.addEventListener("wheel", function (e) {
         e.preventDefault();
-        if (e.deltaY < 0) state.zoom = Math.min(19, state.zoom + 1);
-        else state.zoom = Math.max(2, state.zoom - 1);
-        mapEl.dataset.zoom = String(state.zoom);
-        _renderTiles(mapEl, state);
+        _cancelZoomAnim(state);
+
+        var delta = e.deltaY;
+        if (e.deltaMode === 1) delta *= 16;
+        else if (e.deltaMode === 2) delta *= mapEl.clientHeight;
+
+        var rect = mapEl.getBoundingClientRect();
+        var anchorX = e.clientX - rect.left;
+        var anchorY = e.clientY - rect.top;
+        var anchor = _clientToLatLon(state, mapEl, anchorX, anchorY);
+        var nextZoom = _clampZoomFloat(state.zoomFloat - delta * 0.0025);
+        if (nextZoom === state.zoomFloat) return;
+
+        state.zoomFloat = nextZoom;
+        _setCenterForLatLonAtScreen(state, mapEl, anchor.lat, anchor.lon, anchorX, anchorY);
+        _syncMapDataset(mapEl, state);
+
+        if (!wheelPending) {
+          wheelPending = true;
+          requestAnimationFrame(function () {
+            wheelPending = false;
+            _renderTiles(mapEl, state);
+            _updateMapLinksFromState(mapEl, state);
+          });
+        }
       }, { passive: false });
 
       // Zoom buttons
@@ -440,18 +597,14 @@
       if (zoomIn) {
         zoomIn.addEventListener("click", function (e) {
           e.stopPropagation();
-          state.zoom = Math.min(19, state.zoom + 1);
-          mapEl.dataset.zoom = String(state.zoom);
-          _renderTiles(mapEl, state);
+          _smoothZoomBy(mapEl, state, 1);
         });
       }
 
       if (zoomOut) {
         zoomOut.addEventListener("click", function (e) {
           e.stopPropagation();
-          state.zoom = Math.max(2, state.zoom - 1);
-          mapEl.dataset.zoom = String(state.zoom);
-          _renderTiles(mapEl, state);
+          _smoothZoomBy(mapEl, state, -1);
         });
       }
 
@@ -478,18 +631,51 @@
     var width = Math.max(mapEl.clientWidth, TILE_SIZE);
     var height = Math.max(mapEl.clientHeight, TILE_SIZE);
 
-    if (!template || !Number.isFinite(state.lat) || !Number.isFinite(state.lon) || !Number.isFinite(state.zoom)) {
+    if (
+      !template ||
+      !Number.isFinite(state.lat) ||
+      !Number.isFinite(state.lon) ||
+      !Number.isFinite(state.zoomFloat)
+    ) {
       return;
     }
 
     // Fit all pins on the first render once the container has a real size.
     if (!state.fitDone && mapEl.clientWidth > 0 && state.points && state.points.length > 1) {
       state.zoom = _fitZoom(state.points, width, height, Number(mapEl.dataset.zoom || 15));
+      state.zoomFloat = state.zoom;
       mapEl.dataset.zoom = String(state.zoom);
       state.fitDone = true;
+      state.lastRenderKey = null;
     }
 
-    var center = _latLonToTile(state.lat, state.lon, state.zoom);
+    var parts = _getZoomParts(state);
+    state.zoom = parts.tileZoom;
+
+    var renderKey =
+      parts.tileZoom +
+      "|" +
+      state.lat +
+      "|" +
+      state.lon +
+      "|" +
+      state.offsetX +
+      "|" +
+      state.offsetY +
+      "|" +
+      width +
+      "x" +
+      height;
+
+    if (state.lastRenderKey === renderKey) {
+      _applyZoomTransform(mapEl, state, parts.scale);
+      return;
+    }
+
+    state.lastRenderKey = renderKey;
+    state.lastTileZoom = parts.tileZoom;
+
+    var center = _latLonToTile(state.lat, state.lon, parts.tileZoom);
     var centerPxX = center.x * TILE_SIZE;
     var centerPxY = center.y * TILE_SIZE;
 
@@ -500,7 +686,7 @@
     var endX = Math.floor((centerPxX - viewCenterX + width) / TILE_SIZE);
     var startY = Math.floor((centerPxY - viewCenterY) / TILE_SIZE);
     var endY = Math.floor((centerPxY - viewCenterY + height) / TILE_SIZE);
-    var maxTile = Math.pow(2, state.zoom);
+    var maxTile = Math.pow(2, parts.tileZoom);
 
     var html = "";
     for (var x = startX; x <= endX; x += 1) {
@@ -510,7 +696,7 @@
         var wrappedX = ((x % maxTile) + maxTile) % maxTile;
         var left = Math.round(x * TILE_SIZE - centerPxX + viewCenterX);
         var top = Math.round(y * TILE_SIZE - centerPxY + viewCenterY);
-        var src = _tileUrl(template, state.zoom, wrappedX, y);
+        var src = _tileUrl(template, parts.tileZoom, wrappedX, y);
 
         html +=
           '<img class="places-tile" alt="" draggable="false" src="' +
@@ -526,11 +712,14 @@
     layer.innerHTML = html;
 
     _renderPins(mapEl, state, {
+      tileZoom: parts.tileZoom,
       centerPxX: centerPxX,
       centerPxY: centerPxY,
       viewCenterX: viewCenterX,
       viewCenterY: viewCenterY,
     });
+
+    _applyZoomTransform(mapEl, state, parts.scale);
   }
 
   function _renderPins(mapEl, state, geom) {
@@ -545,7 +734,7 @@
 
     var html = "";
     points.forEach(function (pt) {
-      var tile = _latLonToTile(pt.lat, pt.lon, state.zoom);
+      var tile = _latLonToTile(pt.lat, pt.lon, geom.tileZoom);
       var left = Math.round(tile.x * TILE_SIZE - geom.centerPxX + geom.viewCenterX);
       var top = Math.round(tile.y * TILE_SIZE - geom.centerPxY + geom.viewCenterY);
       var active = pt.index === state.activeIndex ? " places-pin-active" : "";

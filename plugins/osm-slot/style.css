@@ -80,6 +80,9 @@
   max-height: 520px;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
   padding-right: 2px;
 }
@@ -352,6 +355,14 @@
   transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
 }
 
+.places-map-extlinks a.places-map-ext-btn,
+.places-map-extlinks a.places-map-ext-btn:visited,
+.places-map-extlinks a.places-map-ext-btn:hover,
+.places-map-extlinks a.places-map-ext-btn:focus-visible {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
 .places-map-ext-btn:hover {
   background: var(--bg-hover);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--text-primary) 16%, transparent);
@@ -365,13 +376,18 @@
   overflow: visible;
 }
 
-.places-map-ext-apple {
-  color: var(--text-primary);
+.places-map-ext-apple svg path {
+  fill: #1d1d1f;
+}
+
+[data-theme="dark"] .places-map-ext-apple svg path {
+  fill: #f5f5f7;
 }
 
 .places-tile-layer {
   position: absolute;
   inset: 0;
+  will-change: transform;
 }
 
 .places-tile {
@@ -387,6 +403,7 @@
   inset: 0;
   z-index: 2;
   pointer-events: none;
+  will-change: transform;
 }
 
 .places-pin {
