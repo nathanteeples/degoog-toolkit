@@ -10,7 +10,7 @@ import {
 import { t } from "./locales.js";
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.21";
+const PLUGIN_VERSION = "4.5.23";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -177,10 +177,7 @@ export const slot = {
       ctx
         .readFile("icons/osm-provider.svg")
         .then((svg) => {
-          _osmProviderIconSvg = String(svg || "")
-            .replace(/<\?xml[^?]*\?>\s*/i, "")
-            .replace(/\swidth="[^"]*"/i, ' width="18"')
-            .replace(/\sheight="[^"]*"/i, ' height="18"');
+          _osmProviderIconSvg = _normalizeMapExtIconSvg(svg, "32 32 192 192");
         })
         .catch(() => {});
     }
@@ -1221,9 +1218,18 @@ function _mapProviderUrls(lat, lon, name) {
   };
 }
 
+function _normalizeMapExtIconSvg(svg, viewBox = "0 0 24 24") {
+  return String(svg || "")
+    .replace(/<\?xml[^?]*\?>\s*/i, "")
+    .replace(/<svg\b[^>]*>/i, `<svg class="places-map-ext-icon" viewBox="${viewBox}" width="18" height="18" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">`);
+}
+
 function _mapProviderIconSvg(provider) {
+  const iconAttrs =
+    'class="places-map-ext-icon" width="18" height="18" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"';
+
   if (provider === "google") {
-    return `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    return `<svg ${iconAttrs} viewBox="1 0 22 24">
       <defs>
         <clipPath id="places-gmaps-pin">
           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
@@ -1240,7 +1246,7 @@ function _mapProviderIconSvg(provider) {
   }
   if (provider === "osm") {
     if (_osmProviderIconSvg) return _osmProviderIconSvg;
-    return `<svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    return `<svg ${iconAttrs} viewBox="32 32 192 192">
       <rect width="256" height="256" rx="44" fill="#7EBC6F"/>
       <path fill="#CEEEAB" d="M9 12.25s7.5 13 11.75 27.75S27 65.5 27 65.5s-5.5 12.75-8.25 24.75-5.75 23-5.75 23 5.75 16 9.25 30S26 167.5 26 167.5s-4 10.25-7.5 24.25-5 30.75-5 30.75 9.25-2 28.5 1.25 32.25 6 32.25 6 12.75-2.75 24-6.25 16.25-6.5 16.25-6.5 5.5.5 22.5 6.25 29.25 8.5 29.25 8.5 13-2.75 26-5.75 26.5-8 26.5-8-.75-5 4.25-24.5 8.75-28 8.75-28-.5-4.5-3.75-19.75S218 116 218 116s1.75-10.5 6.75-23.75S235 65.5 235 65.5s-4.75-15.25-7.5-29.75S219.25 10 219.25 10 195 19 187.5 20.5s-21 5.25-21 5.25-9.75-4.25-22-8.5-29.75-5.5-29.75-5.5-3.25 3.5-22 8-27.5 5.75-27.5 5.75-18.5-9-31.5-11.5-24-2-24.75-1.75z"/>
       <path fill="#AAC3E7" d="M158.53 75.344c-4.76-.015-9.03.968-11.53 3.156-8 7-35 .75-48.5 7s-13.25 38-14.75 44.5-17.5 20.75-20 23.5-13.25 7.25-19.5 8.5-12.75 7.25-15.5 11-2.021 2.76-7.406 6.45-10.125 8.22 4.98-1.61 11.18-8.18 16.625-13.63 6.25-6.25 20-7.75 27.75-11.5S76.75 138.5 89 134.5s21.25 11.75 24.25 18.5 1.75 12.75 3.75 17 11 11.75 11.5 13.5-5 6.5-6.25 8.5-10.5 7-11.75 8.75 2.94-8.5 2-2 11.25-4.5 12.5-8.5 7-6.5 2.75 4 16 14c8.83 6.67 12.76 15.53 14.41 20.72-1.22-4.32-4.84-16.24-8.94-20.75-5-5.5-18.5-10.75-22.75-22S108 144.25 115 138.25s16.5-4 28.5 7.5 46.25 5.75 57.75 3.75c9.95-1.73 20.83 14.88 23.91 26.03-1.74-1.92-3.69-4.62-5.31-8.28-3.75-8.5-12-13.25-12-13.25s8.75-5 14.75-7.75 1.62-.74 3.01-1.68 4.19-2.66-4.77 5.56-19.24 9.62-21.66 10.94-2.75 1.5-18.25 3-35.75 4.5s-26.75-7.5-34.25-14.75-13-36-3-38 20 13.75 30 17 21.5-15.75 19.75-27c-1.2-7.734-14-12.625-24.47-12.656z"/>
@@ -1249,7 +1255,7 @@ function _mapProviderIconSvg(provider) {
       <path fill="#2D3335" d="M186 153 228 195l-12 12-42-42z"/>
     </svg>`;
   }
-  return `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  return `<svg ${iconAttrs} viewBox="4 3 16 12">
       <path fill="#1d1d1f" d="M16.13 12.9c-.02-2.03 1.66-3 1.68-3.01-1.02-1.48-2.6-1.68-3.16-1.7-1.34-.14-2.62.79-3.3.79-.68 0-1.74-.77-2.86-.75-1.47.02-2.83.86-3.59 2.18-1.53 2.65-.39 6.57 1.1 8.72.73 1.05 1.6 2.23 2.74 2.19 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.12.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.32-3.5zM14.67 4.2c.61-.74 1.03-1.77.92-2.8-.89.04-1.96.59-2.6 1.32-.57.66-1.07 1.72-.94 2.74 1 .08 2.02-.51 2.62-1.26z"/>
     </svg>`;
 }
@@ -1569,7 +1575,7 @@ const NON_PLACE_RE =
   /\b(how to|how many|how much|what is|why|when|who|reddit|github|docs|documentation|install|download|error|fix|linux|macos|windows|npm|pip|python|javascript|typescript|docker|nginx|proxmox|ai|llm|model|qwen|claude|gpt|gemini|ollama|benchmark|review|vs|price)\b/i;
 
 const GENERAL_INFO_RE =
-  /\b(tutorial|course|book|pdf|lyrics|chords|movie|show|cast|actor|actress|season|episode|news|wiki|wikipedia|definition|meaning|synonym|antonym|pronunciation|translate|translation|weather|forecast|stock|chart|price|convert|converter|calculator|calculate|history|biography|photo|image|picture|wallpaper|video|youtube|song|album|lyrics|map|maps|recipe|ingredients|cooking)\b/i;
+  /\b(tutorial|course|book|pdf|lyrics|chords|movie|show|cast|actor|actress|season|episode|news|wiki|wikipedia|definition|meaning|synonym|antonym|pronunciation|translate|translation|weathers?|weather\w{0,2}|forecasts?|forecast\w{0,2}|stock|chart|price|convert|converter|calculator|calculate|history|biography|photo|image|picture|wallpaper|video|youtube|song|album|lyrics|map|maps|recipe|ingredients|cooking)\b/i;
 
 // Shopping / product wording — not a place lookup (saves Discover quota on "where to buy …").
 const CONSUMER_PRODUCT_RE =

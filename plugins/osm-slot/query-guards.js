@@ -44,6 +44,52 @@ const UTILITY_SINGLE_WORDS = new Set([
   "videos", "sunrise", "sunset", "moon", "translate",
 ]);
 
+/** Levenshtein distance for short typo checks against utility keywords. */
+function _levenshtein(a, b) {
+  if (a === b) return 0;
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  let prev = new Array(n + 1);
+  let curr = new Array(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n];
+}
+
+/**
+ * Single-token typos of companion-plugin keywords ("weathert", "forcast") should
+ * not fall through to optimistic Places name matching.
+ */
+function isLikelyUtilityKeywordTypo(token) {
+  const lower = String(token || "").toLowerCase();
+  if (!lower) return false;
+
+  for (const word of UTILITY_SINGLE_WORDS) {
+    if (word.length < 5) continue;
+
+    // Prefix slip: weathert, forecastt
+    if (lower.startsWith(word) && lower.length <= word.length + 2) return true;
+
+    // Near miss: weater, forcast, translat
+    if (Math.abs(lower.length - word.length) <= 2 && _levenshtein(lower, word) <= 2) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 const ENGLISH_IN_STOPWORDS = new Set([
   "the", "a", "an", "this", "that", "these", "those", "them", "it",
   "my", "your", "his", "her", "our", "their", "each", "every", "some", "any", "all",
@@ -103,7 +149,10 @@ export function isUtilityPluginQuery(query) {
   if (TIMEZONE_QUERY_RE.test(lower) && /\bin\b/i.test(lower)) return true;
 
   const tokens = lower.split(/\s+/).filter(Boolean);
-  if (tokens.length === 1 && UTILITY_SINGLE_WORDS.has(tokens[0])) return true;
+  if (tokens.length === 1) {
+    if (UTILITY_SINGLE_WORDS.has(tokens[0])) return true;
+    if (isLikelyUtilityKeywordTypo(tokens[0])) return true;
+  }
 
   // Unit-style "100 miles in km" — the token after "in" is not a place name.
   if (/\d/.test(lower) && /\bin\b/i.test(lower)) {

@@ -153,7 +153,7 @@ for (const [name, hex] of Object.entries(NAMED_COLORS)) {
   HEX_TO_NAME[hex.toLowerCase()] = name;
 }
 
-const FALLBACK_TEMPLATE = `<div class="clrtr-card" data-color-translator-card>
+const FALLBACK_TEMPLATE = `<div class="clrtr-card slot-full-width" data-color-translator-card>
   <div class="clrtr-panel">
     <div class="clrtr-preview-container">
       <div class="clrtr-preview-box" style="background-color: {{color_css}}">

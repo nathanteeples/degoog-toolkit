@@ -370,10 +370,15 @@
   text-decoration: none;
 }
 
+.places-map-ext-btn svg.places-map-ext-icon,
 .places-map-ext-btn svg {
+  width: 18px;
+  height: 18px;
+  max-width: 18px;
+  max-height: 18px;
   display: block;
   flex-shrink: 0;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .places-map-ext-apple svg path {

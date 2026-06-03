@@ -3,19 +3,40 @@
     color: var(--text-primary, CanvasText);
     font-family: var(--font-sans, sans-serif);
     margin-bottom: 12px;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
     --clrtr-surface: var(--bg-light, color-mix(in srgb, var(--bg, Canvas) 92%, var(--text-primary, CanvasText) 8%));
     --clrtr-field-bg: var(--bg, Canvas);
     --clrtr-border: var(--border-light, var(--border, rgba(128, 128, 128, 0.28)));
     --clrtr-muted: var(--text-secondary, color-mix(in srgb, var(--text-primary, CanvasText) 68%, transparent));
 }
 
+.results-slot-panel:has(> .results-slot-panel-body > .clrtr-card.slot-full-width) {
+    max-width: none;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+
+.results-slot-panel:has(> .results-slot-panel-body > .clrtr-card.slot-full-width)
+    > .results-slot-panel-body {
+    padding: 0;
+    max-width: none;
+    width: 100%;
+}
+
 .clrtr-panel {
     display: grid;
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
     gap: 20px;
     align-items: flex-start;
-    background: var(--bg-secondary, var(--clrtr-surface));
-    border: 1px solid var(--clrtr-border);
+    width: 100%;
+    min-width: 0;
+    background: var(--slot-inset-bg, var(--bg-secondary, var(--clrtr-surface)));
+    border: 1px solid var(--slot-inset-border, var(--clrtr-border));
     border-radius: 12px;
     padding: 20px;
     box-sizing: border-box;
@@ -352,16 +373,29 @@
     }
 }
 
-/* LiterallyGoogle presents controls as rounded pills; mirror that in this slot. */
-#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.clrtr-card) {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    margin: 0;
-    padding: 0;
+/* Wide two-column translations when the theme spans the full results grid. */
+@container (min-width: 900px) {
+    #results-page.degoog-fullwidth-slot-shell
+        .clrtr-card.slot-full-width
+        .clrtr-panel {
+        grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+        gap: 24px;
+        padding: 24px;
+    }
 }
 
+@container (min-width: 1100px) {
+    #results-page.degoog-fullwidth-slot-shell
+        .clrtr-card.slot-full-width
+        .clrtr-translations {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 12px;
+        align-content: start;
+    }
+}
+
+/* LiterallyGoogle presents controls as rounded pills; mirror that in this slot. */
 #results-page.degoog-fullwidth-slot-shell .clrtr-panel {
     border-radius: 24px;
 }

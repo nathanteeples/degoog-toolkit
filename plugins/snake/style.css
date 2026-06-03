@@ -4,13 +4,16 @@
   max-width: 600px;
   margin: 0 auto;
   color: var(--text-primary, #202124);
-  background: transparent;
-  border: none;
-  border-radius: 0;
+  background: var(--slot-inset-bg, var(--bg-light, #f8f9fa));
+  border: 1px solid var(--slot-inset-border, var(--border-light, #dadce0));
+  border-radius: 16px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  overflow: visible;
+  overflow: hidden;
   user-select: none;
   container-type: inline-size;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent),
+    0 1px 2px color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .snake-card *,
@@ -19,9 +22,8 @@
   box-sizing: border-box;
 }
 
-/* Hide degoog panel default border if inside card wrapper */
 .results-slot-panel:has(.snake-card) {
-  overflow: visible;
+  overflow: hidden;
 }
 
 .results-slot-panel:has(.snake-card) .results-slot-panel-body {
@@ -36,10 +38,6 @@
   width: 100%;
   max-width: 100%;
   margin: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
 }
 
 /* Header & Scoreboard */
@@ -49,6 +47,7 @@
   gap: 10px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-light, #dadce0);
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
 }
 
 .snake-header-row {
@@ -68,10 +67,6 @@
   color: var(--text-primary);
 }
 
-.snake-logo-icon {
-  color: var(--text-link, #1a73e8);
-}
-
 .snake-scoreboard {
   display: flex;
   gap: 8px;
@@ -82,22 +77,23 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: var(--bg-light, #f1f3f4);
-  border-radius: 6px;
-  padding: 4px 10px;
-  min-width: 60px;
+  background: var(--bg, #fff);
+  border: 1px solid var(--border-light, #dadce0);
+  border-radius: 100px;
+  padding: 4px 12px;
+  min-width: 64px;
 }
 
 .snake-score-label {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
   color: var(--text-secondary, #5f6368);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .snake-score-val {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -106,12 +102,13 @@
 
 /* Body & Game Area */
 .snake-body {
-  padding: 10px 14px 14px;
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
   min-width: 0;
+  background: color-mix(in srgb, var(--text-primary) 2%, transparent);
 }
 
 .snake-game-container {
@@ -121,8 +118,7 @@
   background: #0f172a;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), inset 0 0 15px rgba(0, 0, 0, 0.6);
-  border: 4px solid var(--border-light, #dadce0);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 0 24px rgba(0, 0, 0, 0.45);
   flex-shrink: 1;
 }
 
@@ -133,12 +129,12 @@
   background: transparent;
 }
 
-/* Overlays */
+/* In-board overlays — content sits on the board, no floating light card */
 .snake-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.82);
-  backdrop-filter: blur(6px);
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -146,7 +142,7 @@
   transition: opacity 220ms ease;
   z-index: 10;
   text-align: center;
-  padding: 16px;
+  padding: 20px 16px;
 }
 
 .snake-overlay.snake-hidden {
@@ -155,78 +151,68 @@
   z-index: -1;
 }
 
-.snake-end-card {
+.snake-overlay-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  width: min(100%, 280px);
-  padding: 22px 20px 18px;
-  border-radius: 20px;
-  border: 1px solid var(--border-light, #dadce0);
-  background: var(--bg-light, #ffffff);
-  color: var(--text-primary, #202124);
-  box-shadow:
-    0 10px 32px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  width: min(100%, 240px);
+  padding: 0;
+  color: #e2e8f0;
 }
 
-.snake-end-badge {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+.snake-overlay-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.15rem;
-  font-weight: 700;
-  line-height: 1;
   margin-bottom: 2px;
 }
 
-.snake-end-badge--start {
-  background: color-mix(in srgb, #34d399 18%, var(--bg-light, #fff));
-  color: #047857;
+.snake-overlay-icon--start {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.28);
 }
 
-.snake-end-badge--lose {
-  background: color-mix(in srgb, #ef4444 14%, var(--bg-light, #fff));
-  color: #b91c1c;
-  font-size: 1.35rem;
+.snake-overlay-icon--lose {
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.24);
 }
 
-.snake-end-badge--win {
-  background: color-mix(in srgb, #fbbf24 22%, var(--bg-light, #fff));
-  color: #b45309;
+.snake-overlay-icon--win {
+  color: #fde047;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.24);
 }
 
-.snake-end-badge--pause {
-  background: color-mix(in srgb, var(--text-link, #1a73e8) 14%, var(--bg-light, #fff));
-  color: var(--text-link, #1a73e8);
+.snake-overlay-icon--pause {
+  color: #93c5fd;
+  background: rgba(147, 197, 253, 0.12);
+  border: 1px solid rgba(147, 197, 253, 0.24);
 }
 
-.snake-end-title {
+.snake-overlay-title {
   margin: 0;
   font-size: 1.35rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   line-height: 1.15;
+  color: #f8fafc;
 }
 
-.snake-end-card--lose .snake-end-title {
-  color: #b91c1c;
+.snake-overlay-panel--lose .snake-overlay-title {
+  color: #fecaca;
 }
 
-.snake-end-card--win .snake-end-title {
-  color: #15803d;
+.snake-overlay-panel--win .snake-overlay-title {
+  color: #bbf7d0;
 }
 
-.snake-end-card--start .snake-end-title,
-.snake-end-card--pause .snake-end-title {
-  color: var(--text-primary, #202124);
-}
-
-.snake-end-scoreline {
+.snake-overlay-scoreline {
   display: flex;
   align-items: baseline;
   justify-content: center;
@@ -234,30 +220,30 @@
   margin: 2px 0 0;
 }
 
-.snake-end-score {
+.snake-overlay-score {
   font-size: 2rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: var(--text-primary, #202124);
+  color: #f8fafc;
 }
 
-.snake-end-score-label {
+.snake-overlay-score-label {
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text-secondary, #5f6368);
+  color: #94a3b8;
   text-transform: lowercase;
 }
 
-.snake-end-meta {
+.snake-overlay-meta {
   margin: 0;
   font-size: 0.84rem;
   line-height: 1.45;
-  color: var(--text-secondary, #5f6368);
+  color: #94a3b8;
   max-width: 24ch;
 }
 
-.snake-end-card .snake-btn-primary {
+.snake-overlay-panel .snake-btn-play {
   margin-top: 8px;
 }
 
@@ -272,13 +258,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 150ms ease, transform 100ms ease;
+  transition: background 150ms ease, transform 100ms ease, box-shadow 150ms ease;
   outline: none;
   white-space: nowrap;
 }
 
 .snake-btn:active {
   transform: scale(0.97);
+}
+
+.snake-btn-play {
+  background: #34d399;
+  color: #052e1c;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+.snake-btn-play:hover {
+  background: #6ee7b7;
 }
 
 .snake-btn-primary {
@@ -291,7 +287,7 @@
 }
 
 .snake-btn-secondary {
-  background: var(--bg-light, #f1f3f4);
+  background: var(--bg, #fff);
   color: var(--text-primary);
   border: 1px solid var(--border-light, #dadce0);
 }
@@ -306,7 +302,7 @@
 }
 
 .snake-btn-icon {
-  background: transparent;
+  background: var(--bg, #fff);
   color: var(--text-secondary, #5f6368);
   border: 1px solid var(--border-light, #dadce0);
   width: 38px;
@@ -316,7 +312,7 @@
 }
 
 .snake-btn-icon:hover {
-  background: var(--bg-light, #f1f3f4);
+  background: var(--bg-hover, #e8eaed);
   color: var(--text-primary);
 }
 
@@ -388,7 +384,7 @@
   height: 50px;
   border-radius: 50%;
   border: 1px solid var(--border-light, #dadce0);
-  background: var(--bg-light, #f1f3f4);
+  background: var(--bg, #fff);
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -416,7 +412,6 @@
   pointer-events: none;
 }
 
-/* Responsive Theme Adjustments */
 @container (max-width: 420px) {
   .snake-header-actions .snake-btn-secondary {
     padding-inline: 10px;
@@ -439,11 +434,8 @@
   padding: 24px;
   overflow-y: auto;
   color: #f8fafc;
-}
-
-.snake-card:fullscreen .snake-game-container {
-  border: 4px solid #334155 !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.75);
+  border: none;
+  box-shadow: none;
 }
 
 .snake-card:fullscreen .snake-header {
@@ -452,6 +444,7 @@
   border-bottom: 1px solid #334155;
   margin-bottom: 16px;
   padding-bottom: 12px;
+  background: transparent;
 }
 
 .snake-card:fullscreen .snake-title {
@@ -465,6 +458,7 @@
   flex-direction: column;
   align-items: center;
   padding: 0;
+  background: transparent;
 }
 
 .snake-card:fullscreen .snake-score-label {
@@ -477,6 +471,7 @@
 
 .snake-card:fullscreen .snake-score-box {
   background: #1e293b;
+  border-color: #334155;
 }
 
 .snake-card:fullscreen .snake-btn-secondary {
@@ -490,11 +485,16 @@
 }
 
 .snake-card:fullscreen .snake-btn-icon {
+  background: #1e293b;
   border-color: #334155;
   color: #94a3b8;
 }
 
 .snake-card:fullscreen .snake-btn-icon:hover {
-  background: #1e293b;
+  background: #334155;
   color: #f8fafc;
+}
+
+.snake-card:fullscreen .snake-game-container {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 24px rgba(0, 0, 0, 0.55);
 }
