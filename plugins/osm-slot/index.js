@@ -10,7 +10,7 @@ import {
 import { t } from "./locales.js";
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.15";
+const PLUGIN_VERSION = "4.5.16";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -1209,18 +1209,41 @@ function _mapProviderUrls(lat, lon, name) {
   };
 }
 
+function _mapProviderIconSvg(provider) {
+  if (provider === "google") {
+    return `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#EA4335" d="M12 2C8.13 2 5 5.13 5 9c0 1.19.28 2.32.78 3.32L12 22 6.22 12.32A8.96 8.96 0 0 1 5 9c0-3.87 3.13-7 7-7z"/>
+      <path fill="#FBBC04" d="M19 9c0 1.19-.28 2.32-.78 3.32L12 22l6.78-9.68A8.96 8.96 0 0 0 19 9c0-3.87-3.13-7-7-7 1.37 0 2.67.28 3.86.78L19 9z"/>
+      <path fill="#34A853" d="M12 22V9.5c1.93 0 3.5-1.57 3.5-3.5S13.93 2.5 12 2.5 8.5 4.07 8.5 6 10.07 9.5 12 9.5V22z"/>
+      <path fill="#4285F4" d="M12 2c3.87 0 7 3.13 7 7 0 1.37-.28 2.67-.78 3.86L12 9.5V2z"/>
+      <circle cx="12" cy="9" r="2.35" fill="#fff"/>
+    </svg>`;
+  }
+  if (provider === "osm") {
+    return `<svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <rect width="256" height="256" rx="44" fill="#7EBC6F"/>
+      <path fill="#fff" d="M128 56c-39.8 0-72 32.2-72 72s32.2 72 72 72 72-32.2 72-72-32.2-72-72-72zm0 20c28.7 0 52 23.3 52 52s-23.3 52-52 52-52-23.3-52-52 23.3-52 52-52z"/>
+      <rect x="120" y="96" width="16" height="64" rx="4" fill="#7EBC6F"/>
+      <rect x="96" y="120" width="64" height="16" rx="4" fill="#7EBC6F"/>
+    </svg>`;
+  }
+  return `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <path fill="currentColor" d="M16.13 12.9c-.02-2.03 1.66-3 1.68-3.01-1.02-1.48-2.6-1.68-3.16-1.7-1.34-.14-2.62.79-3.3.79-.68 0-1.74-.77-2.86-.75-1.47.02-2.83.86-3.59 2.18-1.53 2.65-.39 6.57 1.1 8.72.73 1.05 1.6 2.23 2.74 2.19 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.12.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.32-3.5zM14.67 4.2c.61-.74 1.03-1.77.92-2.8-.89.04-1.96.59-2.6 1.32-.57.66-1.07 1.72-.94 2.74 1 .08 2.02-.51 2.62-1.26z"/>
+    </svg>`;
+}
+
 function _renderMapExtLinks(lat, lon, name, context) {
   const urls = _mapProviderUrls(lat, lon, name);
   return `
         <div class="places-map-extlinks" data-map-extlinks>
           <a class="places-map-ext-btn places-map-ext-osm" data-map-ext="osm" href="${_esc(urls.osm)}" target="_blank" rel="noopener noreferrer" aria-label="${_esc(t("openInOsm", context))}" title="${_esc(t("openInOsm", context))}">
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+            ${_mapProviderIconSvg("osm")}
           </a>
           <a class="places-map-ext-btn places-map-ext-google" data-map-ext="google" href="${_esc(urls.google)}" target="_blank" rel="noopener noreferrer" aria-label="${_esc(t("openInGoogle", context))}" title="${_esc(t("openInGoogle", context))}">
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/><circle cx="12" cy="9" r="2.3" fill="#fff"/></svg>
+            ${_mapProviderIconSvg("google")}
           </a>
           <a class="places-map-ext-btn places-map-ext-apple" data-map-ext="apple" href="${_esc(urls.apple)}" target="_blank" rel="noopener noreferrer" aria-label="${_esc(t("openInApple", context))}" title="${_esc(t("openInApple", context))}">
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16.13 12.9c-.02-2.03 1.66-3 1.68-3.01-1.02-1.48-2.6-1.68-3.16-1.7-1.34-.14-2.62.79-3.3.79-.68 0-1.74-.77-2.86-.75-1.47.02-2.83.86-3.59 2.18-1.53 2.65-.39 6.57 1.1 8.72.73 1.05 1.6 2.23 2.74 2.19 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.12.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.32-3.5zM14.67 4.2c.61-.74 1.03-1.77.92-2.8-.89.04-1.96.59-2.6 1.32-.57.66-1.07 1.72-.94 2.74 1 .08 2.02-.51 2.62-1.26z"/></svg>
+            ${_mapProviderIconSvg("apple")}
           </a>
         </div>`;
 }
@@ -1329,18 +1352,20 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus, contex
 
   return `
 <div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}" data-places-apis="${_esc(JSON.stringify(apiStatus || {}))}">
-  <div class="places-header">
-    <span class="places-label">${_esc(t("places", context))}</span>
-    <span class="places-subhead">${_esc(t("nearPlace", context).replace("{place}", locationLabel))}</span>
-    ${geoBtn}
-  </div>
-  <div class="places-layout">
-    <div class="places-list-col">
-      <div class="places-grid">
-        ${cards}
-      </div>
+  <div class="places-shell">
+    <div class="places-header">
+      <span class="places-label">${_esc(t("places", context))}</span>
+      <span class="places-subhead">${_esc(t("nearPlace", context).replace("{place}", locationLabel))}</span>
+      ${geoBtn}
     </div>
-    ${mapHtml}
+    <div class="places-layout">
+      <div class="places-list-col">
+        <div class="places-grid">
+          ${cards}
+        </div>
+      </div>
+      ${mapHtml}
+    </div>
   </div>
   <div class="places-modal" data-places-modal hidden>
     <div class="places-modal-backdrop" data-modal-close></div>
