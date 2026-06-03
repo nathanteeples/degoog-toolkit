@@ -41,8 +41,8 @@
 
 .results-slot-panel:has(> .results-slot-panel-body > .snake-card) .snake-card {
   width: 100%;
-  max-width: none;
-  margin: 0;
+  max-width: min(100%, 520px);
+  margin: 0 auto;
 }
 
 /* LiterallyGoogle: one outer panel frame; snake-card is layout-only inside it. */
@@ -135,13 +135,12 @@
   background: color-mix(in srgb, var(--text-primary) 2%, transparent);
 }
 
-/* Padding-bottom square: survives degoog flex + overflow:hidden on slot panels. */
+/* Fixed pixel width from template; aspect-ratio keeps board from stretching. */
 .snake-game-container {
   position: relative;
-  width: min(100%, 400px);
   max-width: 100%;
-  height: 0;
-  padding-bottom: 100%;
+  height: auto;
+  aspect-ratio: var(--snake-cols, 15) / var(--snake-rows, 17);
   flex-shrink: 0;
   flex-grow: 0;
   align-self: center;
@@ -161,18 +160,6 @@
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     inset 0 0 24px rgba(0, 0, 0, 0.45);
   pointer-events: none;
-}
-
-@container (min-width: 480px) {
-  .snake-game-container {
-    width: min(100%, 440px);
-  }
-}
-
-#results-page.degoog-fullwidth-slot-shell
-  .snake-card.slot-full-width
-  .snake-game-container {
-  width: min(100%, 480px);
 }
 
 #snake-canvas {
@@ -553,7 +540,8 @@
 }
 
 .snake-card:fullscreen .snake-game-container {
-  width: min(100%, min(90vmin, 520px));
+  width: min(var(--snake-board-w, 100%), min(90vmin, 520px)) !important;
+  max-width: min(90vmin, 520px);
   flex-shrink: 0;
 }
 

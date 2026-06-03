@@ -1,7 +1,15 @@
 let template = "";
 let enabled = true;
 let initialSpeed = "Normal";
+let boardSize = "Standard";
 import { t } from "./locales.js";
+
+/** Classic Google-style board dimensions (cols × rows). */
+const BOARD_PRESETS = {
+  Small: { cols: 9, rows: 10 },
+  Standard: { cols: 15, rows: 17 },
+  Large: { cols: 21, rows: 24 },
+};
 
 const settingsSchema = [
   {
@@ -12,24 +20,44 @@ const settingsSchema = [
     description: "Show the Snake game card for matching queries.",
   },
   {
+    key: "boardSize",
+    label: "Board size",
+    type: "select",
+    options: ["Small (9×10)", "Standard (15×17)", "Large (21×24)"],
+    default: "Standard (15×17)",
+    description: "Playfield size (columns × rows), matching common Snake variants.",
+  },
+  {
     key: "initialSpeed",
     label: "Initial Speed",
     type: "select",
     options: ["Easy", "Normal", "Hard"],
     default: "Normal",
     description: "The starting speed of the snake.",
-  }
+  },
 ];
 
+function resolveBoardPreset(label) {
+  if (label === "Small (9×10)" || label === "Small") return BOARD_PRESETS.Small;
+  if (label === "Large (21×24)" || label === "Large") return BOARD_PRESETS.Large;
+  return BOARD_PRESETS.Standard;
+}
+
+function boardCellPx(cols, rows) {
+  return Math.max(
+    12,
+    Math.min(22, Math.floor(360 / cols), Math.floor(400 / rows)),
+  );
+}
+
 function configureSettings(settings) {
-  enabled = settings?.enabled !== false && settings?.enabled !== "true" && settings?.enabled !== "false";
-  // Handled appropriately since it can be boolean or string
   if (settings?.enabled === false || settings?.enabled === "false") {
     enabled = false;
   } else {
     enabled = true;
   }
   initialSpeed = settings?.initialSpeed || "Normal";
+  boardSize = settings?.boardSize || "Standard (15×17)";
 }
 
 function parseSnakeQuery(query) {
@@ -43,9 +71,20 @@ function renderSnakeCard(context) {
   // Slightly slower defaults for better control, especially on touch devices.
   const speedMsMap = { "Easy": 185, "Normal": 130, "Hard": 95 };
   const initialSpeedMs = speedMsMap[initialSpeed] || 130;
+  const board = resolveBoardPreset(boardSize);
+  const cellPx = boardCellPx(board.cols, board.rows);
+  const boardW = board.cols * cellPx;
+  const boardH = board.rows * cellPx;
 
   return (template || "")
     .replaceAll("{{initial_speed_ms}}", String(initialSpeedMs))
+    .replaceAll("{{grid_cols}}", String(board.cols))
+    .replaceAll("{{grid_rows}}", String(board.rows))
+    .replaceAll("{{cell_px}}", String(cellPx))
+    .replaceAll("{{board_width_px}}", String(boardW))
+    .replaceAll("{{board_height_px}}", String(boardH))
+    .replaceAll("{{canvas_width}}", String(boardW))
+    .replaceAll("{{canvas_height}}", String(boardH))
     .replaceAll("{{t_snake}}", t("snake", context))
     .replaceAll("{{t_score}}", t("score", context))
     .replaceAll("{{t_high}}", t("high", context))

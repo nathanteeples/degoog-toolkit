@@ -1,4 +1,4 @@
-<div class="snake-card slot-full-width" data-snake-widget data-initial-speed="{{initial_speed_ms}}">
+<div class="snake-card slot-full-width" data-snake-widget data-initial-speed="{{initial_speed_ms}}" data-grid-cols="{{grid_cols}}" data-grid-rows="{{grid_rows}}" data-cell-px="{{cell_px}}">
   <div class="snake-header">
     <div class="snake-header-row">
       <div class="snake-title">
@@ -30,8 +30,8 @@
   </div>
 
   <div class="snake-body">
-    <div class="snake-game-container">
-      <canvas id="snake-canvas" width="400" height="400"></canvas>
+    <div class="snake-game-container" style="--snake-cols: {{grid_cols}}; --snake-rows: {{grid_rows}}; width: {{board_width_px}}px; max-width: 100%;">
+      <canvas id="snake-canvas" width="{{canvas_width}}" height="{{canvas_height}}"></canvas>
 
       <div id="snake-overlay-start" class="snake-overlay">
         <div class="snake-overlay-panel snake-overlay-panel--start">

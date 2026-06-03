@@ -47,9 +47,10 @@
     highScore: 0,
     rafId: 0,
     
-    // Grid configuration
-    gridSize: 20, // 20x20 cells
-    cellSize: 20, // 400px / 20
+    // Grid configuration (cols × rows from plugin settings)
+    gridCols: 15,
+    gridRows: 17,
+    cellSize: 18,
 
     // Game state objects
     snake: [],
@@ -174,11 +175,36 @@
     return currentWidget ? currentWidget.querySelector(selector) : null;
   }
 
+  function applyBoardFromWidget(w) {
+    var cols = parseInt(w.getAttribute("data-grid-cols"), 10);
+    var rows = parseInt(w.getAttribute("data-grid-rows"), 10);
+    var cellPx = parseInt(w.getAttribute("data-cell-px"), 10);
+    state.gridCols = !isNaN(cols) && cols > 0 ? cols : 15;
+    state.gridRows = !isNaN(rows) && rows > 0 ? rows : 17;
+    state.cellSize = !isNaN(cellPx) && cellPx > 0 ? cellPx : 18;
+
+    var canvas = w.querySelector("#snake-canvas");
+    var container = w.querySelector(".snake-game-container");
+    var boardW = state.gridCols * state.cellSize;
+    var boardH = state.gridRows * state.cellSize;
+    if (canvas) {
+      canvas.width = boardW;
+      canvas.height = boardH;
+    }
+    if (container) {
+      container.style.width = boardW + "px";
+      container.style.setProperty("--snake-cols", String(state.gridCols));
+      container.style.setProperty("--snake-rows", String(state.gridRows));
+      container.style.setProperty("--snake-board-w", boardW + "px");
+    }
+  }
+
   function initFromWidget(w) {
     currentWidget = w;
     var speedAttr = parseInt(w.getAttribute("data-initial-speed"), 10);
     state.speedMs = isNaN(speedAttr) ? 100 : speedAttr;
-    
+    applyBoardFromWidget(w);
+
     // Load high score
     try {
       var saved = localStorage.getItem("degoog-snake-highscore");
@@ -201,11 +227,12 @@
     state.won = false;
     state.score = 0;
     
-    // Center snake
+    var cx = Math.floor(state.gridCols / 2);
+    var cy = Math.floor(state.gridRows / 2);
     state.snake = [
-      { x: 10, y: 10 },
-      { x: 9, y: 10 },
-      { x: 8, y: 10 }
+      { x: cx, y: cy },
+      { x: cx - 1, y: cy },
+      { x: cx - 2, y: cy },
     ];
     state.direction = { x: 1, y: 0 };
     state.nextDirection = { x: 1, y: 0 };
@@ -223,8 +250,8 @@
     var attempts = 0;
     while (!valid && attempts < 100) {
       attempts++;
-      var rx = Math.floor(Math.random() * state.gridSize);
-      var ry = Math.floor(Math.random() * state.gridSize);
+      var rx = Math.floor(Math.random() * state.gridCols);
+      var ry = Math.floor(Math.random() * state.gridRows);
       
       // Check if coordinate is on snake
       var conflict = false;
@@ -432,9 +459,9 @@
     // a just-in-time input like Nintendo-style leniency.
     var collision =
       nextHead.x < 0 ||
-      nextHead.x >= state.gridSize ||
+      nextHead.x >= state.gridCols ||
       nextHead.y < 0 ||
-      nextHead.y >= state.gridSize;
+      nextHead.y >= state.gridRows;
     if (!collision) {
       for (var i = 0; i < state.snake.length; i++) {
         if (state.snake[i].x === nextHead.x && state.snake[i].y === nextHead.y) {
@@ -465,7 +492,7 @@
       state.score += 10;
       playEatSound();
       spawnParticles(state.apple.x, state.apple.y);
-      if (state.snake.length >= state.gridSize * state.gridSize) {
+      if (state.snake.length >= state.gridCols * state.gridRows) {
         triggerGameWin();
         return;
       }
@@ -509,8 +536,8 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Draw alternating checkerboard squares (Google-style but retro dark)
-    for (var col = 0; col < state.gridSize; col++) {
-      for (var row = 0; row < state.gridSize; row++) {
+    for (var col = 0; col < state.gridCols; col++) {
+      for (var row = 0; row < state.gridRows; row++) {
         if ((col + row) % 2 === 0) {
           ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
         } else {
@@ -523,14 +550,14 @@
     // Draw background grid lines
     ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
     ctx.lineWidth = 1;
-    for (var col = 0; col <= state.gridSize; col++) {
+    for (var col = 0; col <= state.gridCols; col++) {
       var x = col * state.cellSize;
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, canvas.height);
       ctx.stroke();
     }
-    for (var row = 0; row <= state.gridSize; row++) {
+    for (var row = 0; row <= state.gridRows; row++) {
       var y = row * state.cellSize;
       ctx.beginPath();
       ctx.moveTo(0, y);
