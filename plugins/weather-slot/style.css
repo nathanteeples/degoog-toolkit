@@ -61,7 +61,7 @@
     align-items: start;
     padding: 16px 18px;
     margin-bottom: 12px;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--slot-inset-border, var(--border-light));
     border-radius: 16px;
     background:
         linear-gradient(
@@ -69,7 +69,7 @@
             color-mix(in srgb, var(--text-primary) 4%, transparent),
             transparent 55%
         ),
-        var(--bg-light, transparent);
+        var(--slot-inset-bg, var(--bg-light, transparent));
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
@@ -86,7 +86,7 @@
             color-mix(in srgb, var(--text-primary) 4%, transparent),
             transparent 55%
         ),
-        var(--bg-light, transparent);
+        var(--slot-inset-bg, var(--bg-light, transparent));
 }
 
 .wxs-wrap[data-wxs-is-day="0"] .wxs-hero {
@@ -101,7 +101,7 @@
             color-mix(in srgb, var(--text-primary) 5%, transparent),
             transparent 55%
         ),
-        var(--bg-light, transparent);
+        var(--slot-inset-bg, var(--bg-light, transparent));
 }
 
 .wxs-hero-left {
@@ -273,7 +273,7 @@
 /* ── Chart ────────────────────────────────────── */
 
 .wxs-chart-wrap {
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--slot-inset-border, var(--border-light));
     border-radius: 16px;
     padding: 12px 14px 10px;
     margin-bottom: 12px;
@@ -283,7 +283,7 @@
             color-mix(in srgb, var(--text-primary) 4%, transparent),
             transparent 55%
         ),
-        var(--bg-light, transparent);
+        var(--slot-inset-bg, var(--bg-light, transparent));
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
@@ -520,7 +520,7 @@
             color-mix(in srgb, var(--text-primary) 3%, transparent),
             transparent 60%
         ),
-        var(--bg-light, transparent);
+        var(--slot-inset-bg, var(--bg-light, transparent));
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 5%, transparent);
     transition:
         border-color 160ms ease,
@@ -623,7 +623,7 @@
             color-mix(in srgb, var(--text-primary) 3%, transparent),
             transparent 60%
         ),
-        var(--bg-light, transparent);
+        var(--slot-inset-bg, var(--bg-light, transparent));
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 5%, transparent);
     transition: border-color 160ms ease;
 }
@@ -659,7 +659,7 @@
 .wxs-astro {
     margin-bottom: 10px;
     padding: 5px;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--slot-inset-border, var(--border-light));
     border-radius: 16px;
     background:
         linear-gradient(
@@ -667,7 +667,7 @@
             color-mix(in srgb, var(--text-primary) 4%, transparent),
             transparent 55%
         ),
-        var(--bg-light, transparent);
+        var(--slot-inset-bg, var(--bg-light, transparent));
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 

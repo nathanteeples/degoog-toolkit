@@ -112,10 +112,10 @@
 /* -- Result cards (Google local-pack inspired) ------------------- */
 
 .places-card {
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--slot-inset-border, var(--border-light));
   border-radius: 16px;
   padding: 12px 14px;
-  background: var(--bg-light);
+  background: var(--slot-inset-bg, var(--bg-light));
   cursor: pointer;
   transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
@@ -305,9 +305,9 @@
 
 .places-map {
   min-height: 280px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--slot-inset-border, var(--border));
   border-radius: 16px;
-  background: var(--bg-light);
+  background: var(--slot-inset-bg, var(--bg-light));
   overflow: hidden;
   display: flex;
   flex-direction: column;

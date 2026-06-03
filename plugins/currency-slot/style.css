@@ -24,11 +24,11 @@
 }
 
 .cxs-main {
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--slot-inset-border, var(--border-light));
     border-radius: 12px;
     overflow: hidden;
     margin-bottom: 12px;
-    background: var(--bg-light, #2f3033);
+    background: var(--slot-inset-bg, var(--bg-light, #2f3033));
 }
 
 .cxs-row {
@@ -628,9 +628,10 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--slot-inset-border, var(--border-light));
     border-radius: 12px;
     padding: 16px;
+    background: var(--slot-inset-bg, var(--bg-light, transparent));
 }
 
 @container (max-width: 600px) {

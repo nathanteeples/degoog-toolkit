@@ -1047,8 +1047,7 @@ body {
     gap: 12px;
 }
 
-#slot-above-results > .results-slot-panel:has(.slot-full-width),
-#slot-above-results > .results-slot-panel:has(.uxs-wrap) {
+#slot-above-results > .results-slot-panel:has(.slot-full-width) {
     background: var(--bg-light);
     border: 1px solid var(--border-light);
     border-radius: 16px;
@@ -1062,23 +1061,14 @@ body {
 
 #slot-above-results
     > .results-slot-panel:has(.slot-full-width)
-    > .results-slot-panel-body,
-#slot-above-results
-    > .results-slot-panel:has(.uxs-wrap)
     > .results-slot-panel-body {
     padding: 16px;
-}
-
-/* Unit slot: outer panel is the frame; drop inner card border. */
-#slot-above-results .results-slot-panel:has(.uxs-wrap) .uxs-main {
-    border: none;
-    background: transparent;
-    border-radius: 0;
-    overflow: visible;
-}
-
-#slot-above-results .results-slot-panel-body:has(.uxs-wrap) {
-    padding: 0;
+    --slot-inset-bg: var(--bg);
+    --slot-inset-border: color-mix(
+        in srgb,
+        var(--border-light) 70%,
+        var(--text-primary) 16%
+    );
 }
 
 /* Tip calculator adds its own full-width card chrome — avoid double frames. */

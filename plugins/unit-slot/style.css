@@ -4,17 +4,20 @@
     container-type: inline-size;
     position: relative;
     color: var(--text-primary, inherit);
+    width: 100%;
+    max-width: none;
 }
 
-/* Card (inner frame; outer results-slot-panel may provide chrome in some themes) */
+.results-slot-panel:has(> .results-slot-panel-body > .uxs-wrap.slot-full-width) {
+    overflow: visible;
+    max-width: none;
+}
+
+/* Card (inner frame; outer results-slot-panel provides chrome in full-width themes) */
 .uxs-main {
     position: relative;
-    background: var(--bg-light, var(--bg, Canvas));
-    border: 1px solid
-        var(
-            --border-light,
-            var(--border, color-mix(in srgb, currentColor 20%, transparent))
-        );
+    background: var(--slot-inset-bg, var(--bg-light, var(--bg, Canvas)));
+    border: 1px solid var(--slot-inset-border, var(--border-light, var(--border, color-mix(in srgb, currentColor 20%, transparent))));
     border-radius: 12px;
     overflow: hidden;
 }
@@ -22,8 +25,8 @@
 /* ── Category bar ──────────────────────────────────────────────── */
 
 .uxs-top-bar {
-    border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
-    background: var(--bg-hover, rgba(128, 128, 128, 0.08));
+    border-bottom: 1px solid var(--border-light, color-mix(in srgb, currentColor 15%, transparent));
+    background: color-mix(in srgb, var(--text-primary, currentColor) 5%, var(--slot-inset-bg, var(--bg-light, rgba(128, 128, 128, 0.08))));
 }
 
 .uxs-category-select {
@@ -69,6 +72,7 @@
     padding: 18px 18px;
     gap: 16px;
     transition: background-color 0.15s ease;
+    background: var(--bg-light, transparent);
 }
 
 .uxs-row:hover {
@@ -338,13 +342,14 @@
     align-items: center;
     justify-content: center;
     padding: 10px 18px;
-    border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+    border-top: 1px solid var(--border-light, color-mix(in srgb, currentColor 15%, transparent));
     font-size: 0.82rem;
     color: var(
         --text-secondary,
         color-mix(in srgb, currentColor 60%, transparent)
     );
     letter-spacing: 0;
+    background: color-mix(in srgb, var(--text-primary, currentColor) 4%, var(--slot-inset-bg, var(--bg, transparent)));
 }
 
 /* At-a-glance already supplies the outer panel. Flatten the plugin's own card
