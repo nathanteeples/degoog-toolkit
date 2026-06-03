@@ -7,9 +7,10 @@ import {
   isUtilityPluginQuery,
   PLACE_TOPIC_INFO_RE,
 } from "./query-guards.js";
+import { t } from "./locales.js";
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.14";
+const PLUGIN_VERSION = "4.5.15";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -261,7 +262,8 @@ export const slot = {
         q,
         locationLabel,
         _settings.useBrowserGeolocation,
-        apiStatus
+        apiStatus,
+        context
       );
       return { html };
     } catch (err) {
@@ -409,7 +411,7 @@ export const routes = [
           console.log(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source} - Hours: ${p.hours ? JSON.stringify(p.hours) : "None"}`);
         });
 
-        const html = _renderCard(top, searchText, locationLabel, false, apiStatus);
+        const html = _renderCard(top, searchText, locationLabel, false, apiStatus, null);
         return _jsonResponse({ html });
       } catch (err) {
         console.error("[places] refresh failed:", err);
@@ -1175,7 +1177,55 @@ function _processHerePlaces(rawPlaces, radiusM, limit, opts = {}) {
 /* Rendering                                                           */
 /* ------------------------------------------------------------------ */
 
-function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus) {
+function _pickPrimaryCategoryLabel(place) {
+  const food = (place.foodTypes || [])[0];
+  if (food) return String(food).trim();
+  for (const raw of place.categories || []) {
+    const label = String(raw || "").trim();
+    if (!label) continue;
+    if (label.length <= 36) return label;
+  }
+  const first = String((place.categories || [])[0] || "").trim();
+  if (!first) return null;
+  return first.length > 36 ? `${first.slice(0, 33)}…` : first;
+}
+
+function _mapProviderUrls(lat, lon, name) {
+  const latStr = String(lat);
+  const lonStr = String(lon);
+  const label = String(name || "Location").trim();
+  return {
+    osm:
+      "https://www.openstreetmap.org/" +
+      `?mlat=${encodeURIComponent(latStr)}` +
+      `&mlon=${encodeURIComponent(lonStr)}` +
+      `#map=15/${encodeURIComponent(latStr)}/${encodeURIComponent(lonStr)}`,
+    google: "https://www.google.com/maps?q=" + encodeURIComponent(`${latStr},${lonStr}`),
+    apple:
+      "https://maps.apple.com/?ll=" +
+      encodeURIComponent(`${latStr},${lonStr}`) +
+      "&q=" +
+      encodeURIComponent(label || `${latStr},${lonStr}`),
+  };
+}
+
+function _renderMapExtLinks(lat, lon, name, context) {
+  const urls = _mapProviderUrls(lat, lon, name);
+  return `
+        <div class="places-map-extlinks" data-map-extlinks>
+          <a class="places-map-ext-btn places-map-ext-osm" data-map-ext="osm" href="${_esc(urls.osm)}" target="_blank" rel="noopener noreferrer" aria-label="${_esc(t("openInOsm", context))}" title="${_esc(t("openInOsm", context))}">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+          </a>
+          <a class="places-map-ext-btn places-map-ext-google" data-map-ext="google" href="${_esc(urls.google)}" target="_blank" rel="noopener noreferrer" aria-label="${_esc(t("openInGoogle", context))}" title="${_esc(t("openInGoogle", context))}">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/><circle cx="12" cy="9" r="2.3" fill="#fff"/></svg>
+          </a>
+          <a class="places-map-ext-btn places-map-ext-apple" data-map-ext="apple" href="${_esc(urls.apple)}" target="_blank" rel="noopener noreferrer" aria-label="${_esc(t("openInApple", context))}" title="${_esc(t("openInApple", context))}">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16.13 12.9c-.02-2.03 1.66-3 1.68-3.01-1.02-1.48-2.6-1.68-3.16-1.7-1.34-.14-2.62.79-3.3.79-.68 0-1.74-.77-2.86-.75-1.47.02-2.83.86-3.59 2.18-1.53 2.65-.39 6.57 1.1 8.72.73 1.05 1.6 2.23 2.74 2.19 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.12.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.3-.88-2.32-3.5zM14.67 4.2c.61-.74 1.03-1.77.92-2.8-.89.04-1.96.59-2.6 1.32-.57.66-1.07 1.72-.94 2.74 1 .08 2.02-.51 2.62-1.26z"/></svg>
+          </a>
+        </div>`;
+}
+
+function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus, context) {
   const unit = _settings.distanceUnit || "miles";
   const unitAbbr = unit === "km" ? "km" : "mi";
 
@@ -1184,58 +1234,45 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus) {
       const distVal = unit === "km" ? p.distanceMeters / 1000 : p.distanceMeters / 1609.34;
       const dist = distVal < 0.1 ? "<0.1" : distVal.toFixed(1);
       const displayAddress = _shortAddress(p.address);
-
-      // Primary info line: Open/Closed badge + today's hours summary.
+      const categoryLabel = _pickPrimaryCategoryLabel(p);
       const weekText = p.hours && Array.isArray(p.hours.text) && p.hours.text.length ? p.hours.text : null;
-      let primaryHtml = "";
+
+      const metaParts = [];
+      if (categoryLabel) {
+        metaParts.push(`<span class="places-meta-type">${_esc(categoryLabel)}</span>`);
+      }
       if (p.hours) {
         const openNow = p.hours.openNow;
-        const badge = openNow === true
-          ? `<span class="places-hours places-hours-open">Open</span>`
-          : openNow === false
-            ? `<span class="places-hours places-hours-closed">Closed</span>`
-            : "";
-
+        if (openNow === true) {
+          metaParts.push(`<span class="places-hours places-hours-open">${_esc(t("open", context))}</span>`);
+        } else if (openNow === false) {
+          metaParts.push(`<span class="places-hours places-hours-closed">${_esc(t("closed", context))}</span>`);
+        }
         const today = _todayHoursSummary(p.hours);
         let summary = "";
         if (today) {
-          if (today.allDay) summary = "Open 24 hours";
-          else if (openNow === true && today.close) summary = `Closes ${today.close}`;
-          else if (openNow === false && today.open) summary = `Opens ${today.open}`;
+          if (today.allDay) summary = t("open24h", context);
+          else if (openNow === true && today.close) summary = t("closesTime", context).replace("{time}", today.close);
+          else if (openNow === false && today.open) summary = t("opensTime", context).replace("{time}", today.open);
           else if (today.open && today.close) summary = `${today.open} – ${today.close}`;
-          else if (today.closed) summary = "Closed today";
+          else if (today.closed) summary = t("closedToday", context);
         }
-        const summaryHtml = summary
-          ? `<span class="places-today-hours">${_esc(summary)}</span>`
-          : "";
-        if (badge || summaryHtml) {
-          primaryHtml = `<div class="places-primary">${badge}${summaryHtml}</div>`;
+        if (summary) {
+          metaParts.push(`<span class="places-today-hours">${_esc(summary)}</span>`);
         }
       }
-
-      // Tags on their OWN line: cuisine (foodTypes) first, then categories.
-      const tagList = [];
-      const seenTags = new Set();
-      const pushTag = (t) => {
-        const key = String(t || "").toLowerCase().trim();
-        if (key && !seenTags.has(key)) {
-          seenTags.add(key);
-          tagList.push(t);
-        }
-      };
-      (p.foodTypes || []).forEach(pushTag);
-      (p.categories || []).forEach(pushTag);
-      const tagsHtml = tagList.length
-        ? `<div class="places-tags">${tagList
-            .slice(0, 4)
-            .map((c) => `<span class="places-category">${_esc(c)}</span>`)
-            .join("")}</div>`
+      const metaHtml = metaParts.length
+        ? `<p class="places-meta">${metaParts.join('<span class="places-meta-sep" aria-hidden="true"> · </span>')}</p>`
         : "";
 
       const weekHtml = weekText
-        ? `<div class="places-week">${weekText
-            .map((t) => `<div class="places-week-row">${_esc(_formatHoursLineDisplay(t))}</div>`)
+        ? `<div class="places-week" data-week-hours hidden>${weekText
+            .map((line) => `<div class="places-week-row">${_esc(_formatHoursLineDisplay(line))}</div>`)
             .join("")}</div>`
+        : "";
+
+      const hoursToggleHtml = weekText
+        ? `<button type="button" class="places-hours-toggle" data-hours-toggle aria-expanded="false">${_esc(t("seeHours", context))}</button>`
         : "";
 
       return `
@@ -1250,61 +1287,58 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus) {
   role="button"
   aria-label="Show ${_esc(p.name)} on the map"
 >
-  <div class="places-card-header">
-    <h3 class="places-name">${_esc(p.name)}</h3>
-    <span class="places-distance">${dist} ${unitAbbr}</span>
+  <div class="places-card-main">
+    <div class="places-card-copy">
+      <div class="places-card-title-row">
+        <h3 class="places-name">${_esc(p.name)}</h3>
+        <span class="places-distance">${dist} ${unitAbbr}</span>
+      </div>
+      ${metaHtml}
+      <p class="places-address" title="${_esc(p.address)}">${_esc(displayAddress)}</p>
+      ${hoursToggleHtml}
+      ${weekHtml}
+    </div>
   </div>
-  ${primaryHtml}
-  ${weekHtml}
-  ${tagsHtml}
-  <p class="places-address" title="${_esc(p.address)}">${_esc(displayAddress)}</p>
   <div class="places-actions">
-    <div class="places-action-item">
-      <a class="places-circle-btn places-action-call${p.phone ? "" : " places-disabled"}" ${p.phone ? `href="tel:${_esc(p.phone)}"` : ""} title="Call" aria-label="Call">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-        </svg>
-      </a>
-      <span class="places-action-text">Call</span>
-    </div>
-    <div class="places-action-item">
-      <a class="places-circle-btn places-action-website${p.website ? "" : " places-disabled"}" ${p.website ? `href="${_esc(p.website)}" target="_blank" rel="noopener noreferrer"` : ""} title="Website" aria-label="Website">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="2" y1="12" x2="22" y2="12"></line>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-        </svg>
-      </a>
-      <span class="places-action-text">Website</span>
-    </div>
-    <div class="places-action-item">
-      <button class="places-circle-btn places-action-directions${(p.lat && p.lon) ? "" : " places-disabled"}" ${(p.lat && p.lon) ? `data-directions-btn data-place-name="${_esc(p.name)}" data-lat="${p.lat}" data-lon="${p.lon}" data-address="${_esc(p.address)}"` : ""} type="button" title="Directions" aria-label="Directions">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-        </svg>
-      </button>
-      <span class="places-action-text">Directions</span>
-    </div>
+    <a class="places-action-btn places-action-call${p.phone ? "" : " places-disabled"}" ${p.phone ? `href="tel:${_esc(p.phone)}"` : ""} title="${_esc(t("call", context))}" aria-label="${_esc(t("call", context))}">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+      </svg>
+    </a>
+    <a class="places-action-btn places-action-website${p.website ? "" : " places-disabled"}" ${p.website ? `href="${_esc(p.website)}" target="_blank" rel="noopener noreferrer"` : ""} title="${_esc(t("website", context))}" aria-label="${_esc(t("website", context))}">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+      </svg>
+    </a>
+    <button class="places-action-btn places-action-directions${(p.lat && p.lon) ? "" : " places-disabled"}" ${(p.lat && p.lon) ? `data-directions-btn data-place-name="${_esc(p.name)}" data-lat="${p.lat}" data-lon="${p.lon}" data-address="${_esc(p.address)}"` : ""} type="button" title="${_esc(t("directions", context))}" aria-label="${_esc(t("directions", context))}">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+      </svg>
+    </button>
   </div>
 </div>`;
     })
     .join("");
 
   const geoBtn = showGeoBtn
-    ? `<button type="button" class="places-geo-btn" data-query="${_esc(query)}">Use my location</button>`
+    ? `<button type="button" class="places-geo-btn" data-query="${_esc(query)}">${_esc(t("useMyLocation", context))}</button>`
     : "";
-  const mapHtml = _renderMap(places);
+  const mapHtml = _renderMap(places, context);
 
   return `
 <div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}" data-places-apis="${_esc(JSON.stringify(apiStatus || {}))}">
   <div class="places-header">
-    <span class="places-label">Places</span>
-    <span class="places-subhead">near ${_esc(locationLabel)}</span>
+    <span class="places-label">${_esc(t("places", context))}</span>
+    <span class="places-subhead">${_esc(t("nearPlace", context).replace("{place}", locationLabel))}</span>
     ${geoBtn}
   </div>
   <div class="places-layout">
-    <div class="places-grid">
-      ${cards}
+    <div class="places-list-col">
+      <div class="places-grid">
+        ${cards}
+      </div>
     </div>
     ${mapHtml}
   </div>
@@ -1312,7 +1346,7 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus) {
     <div class="places-modal-backdrop" data-modal-close></div>
     <div class="places-modal-content">
       <div class="places-modal-header">
-        <span class="places-modal-title">Get directions</span>
+        <span class="places-modal-title">${_esc(t("getDirections", context))}</span>
         <button class="places-modal-close-btn" data-modal-close type="button">&times;</button>
       </div>
       <div class="places-modal-body">
@@ -1325,7 +1359,7 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus) {
 </div>`;
 }
 
-function _renderMap(places) {
+function _renderMap(places, context) {
   const located = places.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
   if (located.length === 0) return "";
 
@@ -1345,17 +1379,13 @@ function _renderMap(places) {
   const centerLon = (parseFloat(bounds.minLon) + parseFloat(bounds.maxLon)) / 2;
   const firstName = points[0]?.name || "";
 
-  const viewUrl =
-    "https://www.openstreetmap.org/" +
-    `?mlat=${encodeURIComponent(centerLat)}` +
-    `&mlon=${encodeURIComponent(centerLon)}` +
-    `#map=13/${encodeURIComponent(centerLat)}/${encodeURIComponent(centerLon)}`;
-
   return `
     <aside
       class="places-map"
       data-map-panel
       data-place-name="${_esc(firstName)}"
+      data-lat="${_esc(String(centerLat))}"
+      data-lon="${_esc(String(centerLon))}"
       aria-label="Map of ${points.length} result${points.length === 1 ? "" : "s"}"
     >
       <div
@@ -1369,6 +1399,7 @@ function _renderMap(places) {
         role="img"
         aria-label="Map of nearby results"
       >
+        ${_renderMapExtLinks(centerLat, centerLon, firstName, context)}
         <div class="places-tile-layer"></div>
         <div class="places-pin-layer"></div>
         <div class="places-zoom-controls">
@@ -1376,7 +1407,6 @@ function _renderMap(places) {
           <button class="places-zoom-btn" data-zoom-out type="button" aria-label="Zoom out">−</button>
         </div>
       </div>
-      <a class="places-map-link" data-map-link href="${_esc(viewUrl)}" target="_blank" rel="noopener noreferrer">View larger map</a>
     </aside>`;
 }
 

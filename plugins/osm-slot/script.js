@@ -231,11 +231,10 @@
 
     panel.dataset.placeName = name;
     panel.setAttribute("aria-label", "Map centered on " + name);
+    panel.dataset.lat = String(lat);
+    panel.dataset.lon = String(lon);
 
-    var link = panel.querySelector("[data-map-link]");
-    if (link) {
-      link.href = _osmViewUrl(lat, lon);
-    }
+    _updateMapExtLinks(panel, lat, lon, name);
 
     var tileMap = panel.querySelector(".places-tile-map");
     if (tileMap) {
@@ -357,8 +356,7 @@
         if (panel) {
           panel.dataset.lat = String(state.lat);
           panel.dataset.lon = String(state.lon);
-          var link = panel.querySelector("[data-map-link]");
-          if (link) link.href = _osmViewUrl(state.lat, state.lon);
+          _updateMapExtLinks(panel, state.lat, state.lon, panel.dataset.placeName || "");
         }
 
         _renderTiles(mapEl, state);
@@ -405,8 +403,7 @@
         if (panel) {
           panel.dataset.lat = String(state.lat);
           panel.dataset.lon = String(state.lon);
-          var link = panel.querySelector("[data-map-link]");
-          if (link) link.href = _osmViewUrl(state.lat, state.lon);
+          _updateMapExtLinks(panel, state.lat, state.lon, panel.dataset.placeName || "");
         }
 
         _renderTiles(mapEl, state);
@@ -594,17 +591,38 @@
       .replace(/\{y\}/g, String(y));
   }
 
-  function _osmViewUrl(lat, lon) {
-    return (
-      "https://www.openstreetmap.org/?mlat=" +
-      encodeURIComponent(lat) +
-      "&mlon=" +
-      encodeURIComponent(lon) +
-      "#map=15/" +
-      encodeURIComponent(lat) +
-      "/" +
-      encodeURIComponent(lon)
-    );
+  function _mapProviderUrls(lat, lon, name) {
+    var latStr = String(lat);
+    var lonStr = String(lon);
+    var label = String(name || "Location").trim();
+    return {
+      osm:
+        "https://www.openstreetmap.org/?mlat=" +
+        encodeURIComponent(latStr) +
+        "&mlon=" +
+        encodeURIComponent(lonStr) +
+        "#map=15/" +
+        encodeURIComponent(latStr) +
+        "/" +
+        encodeURIComponent(lonStr),
+      google: "https://www.google.com/maps?q=" + encodeURIComponent(latStr + "," + lonStr),
+      apple:
+        "https://maps.apple.com/?ll=" +
+        encodeURIComponent(latStr + "," + lonStr) +
+        "&q=" +
+        encodeURIComponent(label || latStr + "," + lonStr),
+    };
+  }
+
+  function _updateMapExtLinks(panel, lat, lon, name) {
+    if (!panel || !Number.isFinite(Number(lat)) || !Number.isFinite(Number(lon))) return;
+    var urls = _mapProviderUrls(lat, lon, name);
+    var osm = panel.querySelector('[data-map-ext="osm"]');
+    var google = panel.querySelector('[data-map-ext="google"]');
+    var apple = panel.querySelector('[data-map-ext="apple"]');
+    if (osm) osm.href = urls.osm;
+    if (google) google.href = urls.google;
+    if (apple) apple.href = urls.apple;
   }
 
   function _escapeAttr(value) {

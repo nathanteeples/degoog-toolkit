@@ -59,118 +59,134 @@
   cursor: default;
 }
 
-.places-grid {
-  display: grid;
-  gap: 10px;
-  max-height: 520px;
-  overflow-y: auto;
-  padding-right: 6px;
-}
-
-.places-grid::-webkit-scrollbar {
-  width: 6px;
-}
-
-.places-grid::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.places-grid::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
-}
-
-.places-grid::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-}
-
 .places-layout {
   display: grid;
   gap: 12px;
 }
 
 #results-page.degoog-fullwidth-slot-shell .places-layout {
-  grid-template-columns: minmax(320px, 0.85fr) minmax(420px, 1.15fr);
+  grid-template-columns: minmax(300px, 0.85fr) minmax(420px, 1.15fr);
   align-items: stretch;
 }
 
-.places-card {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  background: var(--bg-light);
-  cursor: pointer;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-  position: relative;
+/* Scroll lives on the list column — scrollbar sits on the outer edge, not over cards */
+.places-list-col {
+  min-height: 0;
+  max-height: 520px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  padding-right: 2px;
 }
 
-.places-card::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 12px;
-  bottom: 12px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
+.places-list-col::-webkit-scrollbar {
+  width: 8px;
+}
+
+.places-list-col::-webkit-scrollbar-track {
   background: transparent;
-  transition: background 0.2s ease;
+}
+
+.places-list-col::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 100px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.places-list-col::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+  background-clip: padding-box;
+}
+
+.places-grid {
+  display: grid;
+  gap: 8px;
+}
+
+/* -- Result cards (Google local-pack inspired) ------------------- */
+
+.places-card {
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: var(--bg-light);
+  cursor: pointer;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .places-card:hover,
 .places-card:focus-visible {
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border-color: var(--primary);
+  border-color: rgba(26, 115, 232, 0.35);
+  box-shadow: 0 1px 6px rgba(60, 64, 67, 0.12);
   outline: none;
 }
 
 .places-card-selected {
-  border-color: var(--primary);
-  background: rgba(26, 115, 232, 0.045);
-  box-shadow: 0 2px 12px rgba(26, 115, 232, 0.12);
+  border-color: rgba(26, 115, 232, 0.55);
+  background: rgba(26, 115, 232, 0.04);
+  box-shadow: 0 2px 10px rgba(26, 115, 232, 0.12);
 }
 
-.places-card-selected::before {
-  background: var(--primary);
+.places-card-main {
+  margin-bottom: 10px;
 }
 
-.places-card-header {
+.places-card-title-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 10px;
+  margin-bottom: 2px;
 }
 
 .places-name {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-link, #1a73e8);
   margin: 0;
-  line-height: 1.3;
+  line-height: 1.35;
   word-break: break-word;
 }
 
 .places-distance {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
   margin-top: 2px;
 }
 
-/* Primary info line: Open/Closed badge + today's hours */
-.places-primary {
+/* Inline meta: "Category · Open · Closes 9 PM" */
+.places-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
-  margin-bottom: 2px;
-  min-height: 0;
+  gap: 0;
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow: hidden;
+}
+
+.places-meta-type {
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.places-meta-sep {
+  color: var(--text-secondary);
+  opacity: 0.65;
+  padding: 0 0.35em;
 }
 
 .places-hours {
-  font-size: 0.78rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .places-hours-open {
@@ -182,24 +198,6 @@
 }
 
 .places-today-hours {
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-}
-
-/* Tags on their own dedicated line (cuisine + categories) — fixes hours cut-off */
-.places-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.places-category {
-  font-size: 0.7rem;
-  padding: 2px 10px;
-  border-radius: 100px;
-  background: var(--border-light);
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -207,20 +205,45 @@
 .places-address {
   font-size: 0.82rem;
   color: var(--text-secondary);
-  margin: 0 0 4px;
+  margin: 0;
   line-height: 1.4;
   word-break: break-word;
 }
 
-/* Full-week hours (always visible) */
+.places-hours-toggle {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-link, #1a73e8);
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+
+.places-hours-toggle:hover {
+  text-decoration: underline;
+}
+
+.places-hours-toggle::after {
+  content: " ▾";
+  font-size: 0.7em;
+}
+
+.places-hours-toggle.places-hours-toggle-open::after {
+  content: " ▴";
+}
+
 .places-week {
-  margin-top: 0;
-  margin-bottom: 6px;
-  padding-top: 0;
-  border-top: 0;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .places-week-row {
@@ -229,79 +252,44 @@
   line-height: 1.45;
 }
 
+/* Compact icon action row */
 .places-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 6px;
-}
-
-.places-action-item {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light);
 }
 
-.places-circle-btn {
+.places-action-btn {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 100px;
   border: 1px solid var(--border);
-  background: var(--bg-light);
-  color: var(--primary);
-  display: flex;
+  background: var(--bg);
+  color: #1a73e8;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
   text-decoration: none;
   padding: 0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.places-circle-btn:hover:not(.places-disabled) {
-  background: rgba(26, 115, 232, 0.06);
-  border-color: var(--primary);
-  color: var(--primary);
+.places-action-btn:hover:not(.places-disabled) {
+  background: rgba(26, 115, 232, 0.08);
+  border-color: rgba(26, 115, 232, 0.45);
   text-decoration: none;
+  transform: translateY(-1px);
 }
 
-/* Action buttons (Call / Website / Directions) — unified Google blue */
-.places-circle-btn.places-action-call,
-.places-circle-btn.places-action-website,
-.places-circle-btn.places-action-directions {
-  color: #1a73e8;
-  border-color: #1a73e8;
-}
-.places-circle-btn.places-action-call:hover:not(.places-disabled),
-.places-circle-btn.places-action-website:hover:not(.places-disabled),
-.places-circle-btn.places-action-directions:hover:not(.places-disabled) {
-  background: rgba(26, 115, 232, 0.1);
-  border-color: #1557b0;
-  color: #1557b0;
-}
-
-/* Disabled styling */
-.places-circle-btn.places-disabled {
+.places-action-btn.places-disabled {
   color: var(--text-secondary);
   border-color: var(--border-light);
-  opacity: 0.4;
+  opacity: 0.38;
   cursor: not-allowed;
-  background: var(--bg);
-  box-shadow: none;
-}
-
-.places-action-text {
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-.places-action-item:focus-within .places-action-text,
-.places-action-item:hover:not(:has(.places-disabled)) .places-action-text {
-  color: var(--text-primary);
+  pointer-events: none;
 }
 
 /* -- Map -------------------------------------------------------- */
@@ -309,7 +297,7 @@
 .places-map {
   min-height: 280px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--bg-light);
   overflow: hidden;
   display: flex;
@@ -318,7 +306,7 @@
 
 .places-tile-map {
   position: relative;
-  min-height: 260px;
+  min-height: 280px;
   flex: 1;
   overflow: hidden;
   background: var(--bg);
@@ -328,6 +316,50 @@
 
 .places-tile-map:active {
   cursor: grabbing;
+}
+
+.places-map-extlinks {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.places-map-ext-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 100px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.94);
+  color: #3c4043;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(60, 64, 67, 0.18);
+  text-decoration: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+
+.places-map-ext-btn:hover {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(60, 64, 67, 0.22);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.places-map-ext-osm {
+  color: #7ebc6f;
+}
+
+.places-map-ext-google {
+  color: #4285f4;
+}
+
+.places-map-ext-apple {
+  color: #111;
 }
 
 .places-tile-layer {
@@ -342,8 +374,6 @@
   user-select: none;
   pointer-events: none;
 }
-
-/* -- Pins (one per result, fit-to-bounds) ----------------------- */
 
 .places-pin-layer {
   position: absolute;
@@ -398,12 +428,10 @@
   font-size: 0.74rem;
 }
 
-/* -- Zoom controls ---------------------------------------------- */
-
 .places-zoom-controls {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  bottom: 12px;
+  right: 12px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -415,7 +443,7 @@
   height: 32px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg-light);
+  background: rgba(255, 255, 255, 0.94);
   color: var(--text-primary);
   font-size: 1.1rem;
   font-weight: 600;
@@ -426,30 +454,16 @@
   transition: background 0.15s ease, border-color 0.15s ease;
   line-height: 1;
   padding: 0;
+  box-shadow: 0 1px 4px rgba(60, 64, 67, 0.15);
 }
 
 .places-zoom-btn:hover {
-  background: var(--bg-hover);
+  background: #fff;
   border-color: var(--primary);
 }
 
 .places-zoom-btn:active {
   background: var(--border-light);
-}
-
-.places-map-link {
-  display: block;
-  padding: 8px 12px;
-  border-top: 1px solid var(--border-light);
-  color: var(--primary);
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-decoration: none;
-  background: var(--bg-light);
-}
-
-.places-map-link:hover {
-  text-decoration: underline;
 }
 
 /* -- Directions modal ------------------------------------------- */
@@ -561,10 +575,10 @@
 
 @media (max-width: 520px) {
   .places-card {
-    padding: 12px 14px;
+    padding: 11px 12px;
   }
 
-  .places-card-header {
+  .places-card-title-row {
     flex-direction: column;
     gap: 2px;
   }
@@ -573,9 +587,24 @@
     align-self: flex-start;
   }
 
+  .places-list-col {
+    max-height: 420px;
+  }
+
   .places-map,
   .places-tile-map {
     min-height: 220px;
+  }
+
+  .places-map-extlinks {
+    top: 8px;
+    right: 8px;
+    gap: 4px;
+  }
+
+  .places-map-ext-btn {
+    width: 32px;
+    height: 32px;
   }
 
   .places-modal-content {
