@@ -389,7 +389,7 @@ const slotDef = {
         {
           headers: {
             "User-Agent": "degoog-weather-slot/1.1",
-            "Accept-Language": "en",
+            "Accept-Language": context?.lang || "en",
           },
         },
       );
