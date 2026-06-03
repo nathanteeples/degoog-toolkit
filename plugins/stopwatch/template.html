@@ -30,7 +30,7 @@
           <path d="M12 9v4l3 2" />
           <path d="M9 2h6" />
         </svg>
-        <span>Timer</span>
+        <span>{{t_timer}}</span>
       </button>
       <button
         class="timer-tab"
@@ -55,7 +55,7 @@
           <path d="M9 2h6" />
           <path d="M15 5l2-2" />
         </svg>
-        <span>Stopwatch</span>
+        <span>{{t_stopwatch}}</span>
       </button>
     </div>
 
@@ -63,9 +63,9 @@
       class="timer-icon-btn"
       type="button"
       data-timer-action="toggle-sound"
-      aria-label="Sound off"
+      aria-label="{{t_sound_off}}"
       aria-pressed="false"
-      title="Sound off"
+      title="{{t_sound_off}}"
     >
       <svg
         width="17"
@@ -118,7 +118,7 @@
       class="timer-action-btn"
       type="button"
       data-timer-action="toggle-play"
-      aria-label="Start"
+      aria-label="{{t_start}}"
     >
       <svg
         width="22"
@@ -134,7 +134,7 @@
       class="timer-action-btn"
       type="button"
       data-timer-action="reset"
-      aria-label="Reset"
+      aria-label="{{t_reset}}"
     >
       <svg
         width="21"

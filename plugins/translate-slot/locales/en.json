@@ -1,0 +1,12 @@
+{
+  "plugin-translate-slot": {
+    "name": "Translate",
+    "description": "Translate text with no-key server-side providers and natural language query matching.",
+    "settings": {
+      "defaultTarget": {
+        "label": "Default Target Language",
+        "description": "Target language to translate into if not specified."
+      }
+    }
+  }
+}

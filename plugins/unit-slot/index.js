@@ -1,4 +1,5 @@
 let template = "";
+import { t } from "./locales.js";
 import convert from "./convert-units.cjs.js";
 import {
   hasNumericConversionPattern,
@@ -576,6 +577,8 @@ export const slot = {
           : _fmt(result, 6);
 
     const html = template
+      .split("{{t_unit_converter}}")
+      .join(t("unitConverter", context))
       .split("{{from_code}}")
       .join(from)
       .split("{{from_name}}")

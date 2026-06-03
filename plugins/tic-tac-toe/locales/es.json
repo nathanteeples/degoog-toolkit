@@ -1,0 +1,16 @@
+{
+  "plugin-tic-tac-toe": {
+    "name": "Tres en Raya",
+    "description": "Juego de Tres en Raya con configuraciones de dificultad de IA, multijugador local y animación de línea ganadora.",
+    "settings": {
+      "defaultDifficulty": {
+        "label": "Dificultad predeterminada",
+        "description": "La dificultad predeterminada para la IA de Tres en Raya."
+      },
+      "defaultSymbol": {
+        "label": "Símbolo predeterminado",
+        "description": "El símbolo predeterminado con el que juegas."
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "plugin-calculator": {
+    "name": "Calculatrice",
+    "description": "Calculatrice interactive qui évalue les expressions mathématiques et trace les formules.",
+    "settings": {
+      "calcEnabled": {
+        "label": "Activé",
+        "description": "Afficher la carte de la calculatrice pour les requêtes mathématiques."
+      }
+    }
+  }
+}

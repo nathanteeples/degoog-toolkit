@@ -1,0 +1,16 @@
+{
+  "plugin-tip-calculator": {
+    "name": "Calculateur de pourboire",
+    "description": "Calculateur de pourboire interactif avec partage de facture en temps réel, curseurs personnalisés et animations.",
+    "settings": {
+      "enabled": {
+        "label": "Activé",
+        "description": "Afficher la carte du calculateur de pourboire pour les requêtes correspondantes."
+      },
+      "defaultTipPercent": {
+        "label": "Pourcentage de pourboire par défaut",
+        "description": "Pourcentage de pourboire par défaut à utiliser si non spécifié dans la requête."
+      }
+    }
+  }
+}

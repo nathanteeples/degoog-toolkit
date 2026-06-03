@@ -1,0 +1,12 @@
+{
+  "plugin-currency-slot": {
+    "name": "Currency",
+    "description": "Currency converter with live rates. Supports !currency, or natural queries like '100 usd to eur'.",
+    "settings": {
+      "defaultTo": {
+        "label": "Default target currency",
+        "description": "Currency to convert to when not specified in the query."
+      }
+    }
+  }
+}

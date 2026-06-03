@@ -1,0 +1,12 @@
+{
+  "plugin-calculator": {
+    "name": "Calculadora",
+    "description": "Calculadora interactiva que evalúa expresiones matemáticas y grafica fórmulas.",
+    "settings": {
+      "calcEnabled": {
+        "label": "Habilitado",
+        "description": "Mostrar la tarjeta de la calculadora para consultas matemáticas."
+      }
+    }
+  }
+}

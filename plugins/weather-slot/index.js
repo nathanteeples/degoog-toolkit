@@ -1,6 +1,7 @@
 let template = "";
 let externalFetch = (...args) => fetch(...args);
 import { isInformationalQuestion } from "./query-guards.js";
+import { t } from "./locales.js";
 
 const settings = {
   // Default to imperial units for brand-new installs. Existing saved
@@ -486,16 +487,16 @@ const slotDef = {
       const temp = Math.round(cur.temperature_2m);
       const feels = Math.round(cur.apparent_temperature);
       const code = cur.weather_code;
-      const desc = WMO_DESC[code] ?? "—";
+      const desc = t(`wmo_${code}`, context) !== `wmo_${code}` ? t(`wmo_${code}`, context) : (WMO_DESC[code] ?? "—");
       const iconType = WMO_ICON[code] ?? "cloud";
       const humidity = Math.round(cur.relative_humidity_2m);
       const wind = _fmtSmall(cur.wind_speed_10m);
       const gusts = _fmtSmall(cur.wind_gusts_10m);
-      const windDir = _windDir(cur.wind_direction_10m);
+      const windDir = _windDir(cur.wind_direction_10m, context);
       const uv = Number.isFinite(cur.uv_index)
         ? Number(cur.uv_index).toFixed(1)
         : "—";
-      const uvLevel = _uvLevel(cur.uv_index);
+      const uvLevel = _uvLevel(cur.uv_index, context);
       const clouds = Math.round(cur.cloud_cover);
       const dewPoint = Math.round(cur.dew_point_2m);
       const precipNow = _fmtSmall(cur.precipitation);
@@ -547,38 +548,28 @@ const slotDef = {
         : "—";
 
       // Day names
-      const dayNames = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-      ];
-      const dayShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
       // Build per-day data, including full hourly arrays for charts
-      const daysData = (daily.time || []).map((t, i) => {
-        const d = _safeApiDate(`${t}T12:00:00`, utcOffsetSeconds) || new Date();
+      const daysData = (daily.time || []).map((tCode, i) => {
+        const d = _safeApiDate(`${tCode}T12:00:00`, utcOffsetSeconds) || new Date();
         const weekday = _weekdayAt(d, utcOffsetSeconds);
-        const name = i === 0 ? "Today" : dayShort[weekday];
-        const longName = i === 0 ? "Today" : dayNames[weekday];
-        const dayDateLabel = _dateFmtAt(d, utcOffsetSeconds);
+        const lang = context?.lang || "en-US";
+        const name = i === 0 ? t("today", context) : d.toLocaleDateString(lang, { weekday: "short" });
+        const longName = i === 0 ? t("today", context) : d.toLocaleDateString(lang, { weekday: "long" });
+        const dayDateLabel = _dateFmtAt(d, utcOffsetSeconds, context);
         const hi = Math.round(daily.temperature_2m_max[i]);
         const lo = Math.round(daily.temperature_2m_min[i]);
         const feelsHi = Math.round(daily.apparent_temperature_max?.[i] ?? hi);
         const feelsLo = Math.round(daily.apparent_temperature_min?.[i] ?? lo);
         const dCode = daily.weather_code[i];
         const icon = WMO_ICON[dCode] ?? "cloud";
-        const desc2 = WMO_DESC[dCode] ?? "—";
+        const desc2 = t(`wmo_${dCode}`, context) !== `wmo_${dCode}` ? t(`wmo_${dCode}`, context) : (WMO_DESC[dCode] ?? "—");
         const precipProb = Math.round(
           daily.precipitation_probability_max?.[i] ?? 0,
         );
         const precipSum = _fmtSmall(daily.precipitation_sum?.[i] ?? 0);
         const windMax = _fmtSmall(daily.wind_speed_10m_max?.[i] ?? 0);
         const gustsMax = _fmtSmall(daily.wind_gusts_10m_max?.[i] ?? 0);
-        const windDirDom = _windDir(daily.wind_direction_10m_dominant?.[i]);
+        const windDirDom = _windDir(daily.wind_direction_10m_dominant?.[i], context);
         const uvMax = Number.isFinite(daily.uv_index_max?.[i])
           ? Number(daily.uv_index_max[i]).toFixed(1)
           : "—";
@@ -593,8 +584,8 @@ const slotDef = {
         );
         const srStr = sr ? _timeFmtAt(sr, utcOffsetSeconds) : "—";
         const ssStr = ss ? _timeFmtAt(ss, utcOffsetSeconds) : "—";
-        const srRelative = _fmtRelativeEvent(sr, now);
-        const ssRelative = _fmtRelativeEvent(ss, now);
+        const srRelative = _fmtRelativeEvent(sr, now, context);
+        const ssRelative = _fmtRelativeEvent(ss, now, context);
 
         let pct = 50;
         if (sr && ss) {
@@ -603,7 +594,7 @@ const slotDef = {
           pct = Math.min(100, Math.max(0, Math.round((el / dl) * 100)));
         }
 
-        const dayStart = _localDayStart(t, utcOffsetSeconds);
+        const dayStart = _localDayStart(tCode, utcOffsetSeconds);
         const moon = _moonDayData({
           dayStart,
           lat,
@@ -614,6 +605,7 @@ const slotDef = {
           sunset: ss,
           nextSunrise: nextSr,
           dayIndex: i,
+          context,
         });
 
         // Hourly slice for this day (24 entries, padded if missing)
@@ -682,7 +674,7 @@ const slotDef = {
       });
 
       const nowLabel = _timeFmtAt(now, utcOffsetSeconds);
-      const dateLabel = _dateFmtAt(now, utcOffsetSeconds);
+      const dateLabel = _dateFmtAt(now, utcOffsetSeconds, context);
       const moonToday = daysData[0]?.moon || _emptyMoonData(false);
 
       const payload = {
@@ -772,7 +764,33 @@ const slotDef = {
         .replaceAll("{{moon_pct}}", String(moonToday.apexPct))
         .replaceAll("{{icon_type}}", iconType)
         .replaceAll("{{is_day}}", isDay ? "1" : "0")
-        .replaceAll("{{payload}}", payloadJson);
+        .replaceAll("{{payload}}", payloadJson)
+        .replaceAll("{{t_results_for}}", _esc(t("resultsFor", context)))
+        .replaceAll("{{t_feels_like}}", _esc(t("feelsLike", context)))
+        .replaceAll("{{t_precipitation}}", _esc(t("precipitation", context)))
+        .replaceAll("{{t_humidity}}", _esc(t("humidity", context)))
+        .replaceAll("{{t_wind}}", _esc(t("wind", context)))
+        .replaceAll("{{t_weather}}", _esc(t("weather", context)))
+        .replaceAll("{{t_temperature}}", _esc(t("temperature", context)))
+        .replaceAll("{{t_hourly_forecast}}", _esc(t("hourlyForecast", context)))
+        .replaceAll("{{t_weekly_forecast}}", _esc(t("weeklyForecast", context)))
+        .replaceAll("{{t_weekly_hint}}", _esc(t("weeklyHint", context)))
+        .replaceAll("{{t_current_conditions}}", _esc(t("currentConditions", context)))
+        .replaceAll("{{t_wind_gusts}}", _esc(t("windGusts", context)))
+        .replaceAll("{{t_pressure}}", _esc(t("pressure", context)))
+        .replaceAll("{{t_uv_index}}", _esc(t("uvIndex", context)))
+        .replaceAll("{{t_visibility}}", _esc(t("visibility", context)))
+        .replaceAll("{{t_dew_point}}", _esc(t("dewPoint", context)))
+        .replaceAll("{{t_cloud_cover}}", _esc(t("cloudCover", context)))
+        .replaceAll("{{t_sun}}", _esc(t("sun", context)))
+        .replaceAll("{{t_sunrise}}", _esc(t("sunrise", context)))
+        .replaceAll("{{t_sunset}}", _esc(t("sunset", context)))
+        .replaceAll("{{t_moon}}", _esc(t("moon", context)))
+        .replaceAll("{{t_moonrise}}", _esc(t("moonrise", context)))
+        .replaceAll("{{t_moonset}}", _esc(t("moonset", context)))
+        .replaceAll("{{t_apex}}", _esc(t("apex", context)))
+        .replaceAll("{{t_weather_data}}", _esc(t("weatherData", context)))
+        .replaceAll("{{t_location_label}}", _esc(t("locationLabel", context)));
 
       return { html };
     } catch (e) {
@@ -836,7 +854,7 @@ function _fmtDuration(seconds) {
   return `${h}h ${m}m`;
 }
 
-function _fmtRelativeEvent(date, now = new Date()) {
+function _fmtRelativeEvent(date, now = new Date(), context = null) {
   if (!date || !(date instanceof Date) || !Number.isFinite(date.getTime())) {
     return "—";
   }
@@ -845,7 +863,9 @@ function _fmtRelativeEvent(date, now = new Date()) {
   const hours = Math.floor(absMinutes / 60);
   const minutes = absMinutes % 60;
   const label = `${hours}h ${String(minutes).padStart(2, "0")}m`;
-  return diffMs >= 0 ? `in ${label}` : `${label} ago`;
+  return diffMs >= 0 
+    ? t("inTime", context).replace("{time}", label)
+    : t("agoTime", context).replace("{time}", label);
 }
 
 function _fmtSmall(n) {
@@ -917,14 +937,14 @@ function _timeFmtAt(d, utcOffsetSeconds = null, shortHour = false) {
   }
 }
 
-function _dateFmtAt(d, utcOffsetSeconds = null) {
+function _dateFmtAt(d, utcOffsetSeconds = null, context = null) {
   const opts = { weekday: "long", month: "long", day: "numeric" };
   if (Number.isFinite(utcOffsetSeconds)) opts.timeZone = "UTC";
   const displayDate = Number.isFinite(utcOffsetSeconds)
     ? new Date(d.getTime() + utcOffsetSeconds * 1000)
     : d;
   try {
-    return displayDate.toLocaleDateString([], opts);
+    return displayDate.toLocaleDateString(context?.lang || [], opts);
   } catch {
     return displayDate.toISOString().slice(0, 10);
   }
@@ -935,18 +955,20 @@ function _weekdayAt(d, utcOffsetSeconds = 0) {
   return shifted.getUTCDay();
 }
 
-function _windDir(deg) {
+function _windDir(deg, context = null) {
   if (!Number.isFinite(deg)) return "";
-  return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(deg / 45) % 8];
+  const index = Math.round(deg / 45) % 8;
+  const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  return t(`dir_${dirs[index]}`, context);
 }
 
-function _uvLevel(uv) {
+function _uvLevel(uv, context = null) {
   if (!Number.isFinite(uv)) return "—";
-  if (uv < 3) return "Low";
-  if (uv < 6) return "Moderate";
-  if (uv < 8) return "High";
-  if (uv < 11) return "Very high";
-  return "Extreme";
+  if (uv < 3) return t("uvLow", context);
+  if (uv < 6) return t("uvModerate", context);
+  if (uv < 8) return t("uvHigh", context);
+  if (uv < 11) return t("uvVeryHigh", context);
+  return t("uvExtreme", context);
 }
 
 // Compact SunCalc-style astronomy formulas for no-key moon data.
@@ -1179,16 +1201,16 @@ function _moonApex(start, end, lat, lon) {
   };
 }
 
-function _moonPhaseLabel(phase) {
-  if (!Number.isFinite(phase)) return "Moon";
-  if (phase < 0.03 || phase >= 0.97) return "New moon";
-  if (phase < 0.22) return "Waxing crescent";
-  if (phase < 0.28) return "First quarter";
-  if (phase < 0.47) return "Waxing gibbous";
-  if (phase < 0.53) return "Full moon";
-  if (phase < 0.72) return "Waning gibbous";
-  if (phase < 0.78) return "Last quarter";
-  return "Waning crescent";
+function _moonPhaseLabel(phase, context = null) {
+  if (!Number.isFinite(phase)) return t("moon", context);
+  if (phase < 0.03 || phase >= 0.97) return t("moonNew", context);
+  if (phase < 0.22) return t("moonWaxingCrescent", context);
+  if (phase < 0.28) return t("moonFirstQuarter", context);
+  if (phase < 0.47) return t("moonWaxingGibbous", context);
+  if (phase < 0.53) return t("moonFull", context);
+  if (phase < 0.72) return t("moonWaningGibbous", context);
+  if (phase < 0.78) return t("moonLastQuarter", context);
+  return t("moonWaningCrescent", context);
 }
 
 function _emptyMoonData(show) {
@@ -1226,6 +1248,7 @@ function _moonDayData({
   sunset,
   nextSunrise,
   dayIndex,
+  context,
 }) {
   if (!dayStart || !Number.isFinite(lat) || !Number.isFinite(lon)) {
     return _emptyMoonData(false);
@@ -1271,12 +1294,12 @@ function _moonDayData({
 
   return {
     show: true,
-    phaseLabel: _moonPhaseLabel(illum.phase),
-    illuminationLabel: `${Math.round(illum.fraction * 100)}% illuminated`,
+    phaseLabel: _moonPhaseLabel(illum.phase, context),
+    illuminationLabel: `${Math.round(illum.fraction * 100)}% ${t("illuminated", context)}`,
     riseStr: rise?.time ? _timeFmtAt(rise.time, utcOffsetSeconds) : "—",
-    riseRelative: rise?.time ? _fmtRelativeEvent(rise.time, now) : "—",
+    riseRelative: rise?.time ? _fmtRelativeEvent(rise.time, now, context) : "—",
     setStr: set?.time ? _timeFmtAt(set.time, utcOffsetSeconds) : "—",
-    setRelative: set?.time ? _fmtRelativeEvent(set.time, now) : "—",
+    setRelative: set?.time ? _fmtRelativeEvent(set.time, now, context) : "—",
     apexStr: apex?.time ? _timeFmtAt(apex.time, utcOffsetSeconds) : "—",
     apexPct,
   };

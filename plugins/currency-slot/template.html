@@ -4,7 +4,7 @@
             <div class="cxs-row" id="cxs-from-row">
                 <div class="cxs-flag" id="cxs-from-flag">{{from_flag}}</div>
                 <div class="cxs-input-wrap cxs-input-wrap--editable">
-                    <div class="cxs-label">Amount</div>
+                    <div class="cxs-label">{{t_amount}}</div>
                     <input
                         class="cxs-amount"
                         id="cxs-amount"
@@ -62,15 +62,15 @@
             <div class="cxs-row">
                 <div class="cxs-flag" id="cxs-to-flag">{{to_flag}}</div>
                 <div class="cxs-input-wrap cxs-input-wrap--result">
-                    <div class="cxs-label">Result</div>
+                    <div class="cxs-label">{{t_result}}</div>
                     <div class="cxs-result-line">
                         <div class="cxs-result" id="cxs-result">{{result}}</div>
                         <button
                             class="cxs-copy"
                             id="cxs-copy-result"
                             type="button"
-                            aria-label="Copy result"
-                            title="Copy result"
+                            aria-label="{{t_copy_result}}"
+                            title="{{t_copy_result}}"
                         >
                             <svg class="cxs-copy-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -116,7 +116,7 @@
                 >
                 <span class="cxs-updated">
                     <span class="cxs-pulse"></span>
-                    Live rate
+                    {{t_live_rate}}
                 </span>
             </div>
         </div>
@@ -127,21 +127,21 @@
                     {{from_code}} / {{to_code}}
                 </div>
                 <div class="cxs-chart-periods">
-                    <button class="cxs-period" data-days="1">1D</button>
-                    <button class="cxs-period" data-days="5">5D</button>
+                    <button class="cxs-period" data-days="1">{{t_days_1}}</button>
+                    <button class="cxs-period" data-days="5">{{t_days_5}}</button>
                     <button
                         class="cxs-period cxs-period--active"
                         data-days="30"
                     >
-                        1M
+                        {{t_days_30}}
                     </button>
-                    <button class="cxs-period" data-days="365">1Y</button>
-                    <button class="cxs-period" data-days="1825">5Y</button>
-                    <button class="cxs-period" data-days="max">Max</button>
+                    <button class="cxs-period" data-days="365">{{t_days_365}}</button>
+                    <button class="cxs-period" data-days="1825">{{t_days_1825}}</button>
+                    <button class="cxs-period" data-days="max">{{t_days_max}}</button>
                 </div>
             </div>
             <div class="cxs-chart-body" id="cxs-chart-body">
-                <div class="cxs-chart-loading">Loading chart&#x2026;</div>
+                <div class="cxs-chart-loading">{{t_loading_chart}}</div>
             </div>
             <div class="cxs-chart-stats" id="cxs-chart-stats"></div>
         </div>
@@ -160,7 +160,7 @@
         <button class="cxs-q" data-v="10000">10,000</button>
     </div>
 
-    <div class="cxs-pairs-label">Popular pairs</div>
+    <div class="cxs-pairs-label">{{t_popular_pairs}}</div>
     <div class="cxs-pairs" id="cxs-pairs">{{pairs_html}}</div>
 
     <!-- Currency picker dropdown -->
@@ -169,7 +169,7 @@
             <input
                 class="cxs-picker-search"
                 id="cxs-picker-search"
-                placeholder="Search currency..."
+                placeholder="{{t_search_currency}}"
                 autocomplete="off"
             />
             <button class="cxs-picker-close" id="cxs-picker-close">

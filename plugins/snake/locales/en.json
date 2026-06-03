@@ -1,0 +1,16 @@
+{
+  "plugin-snake": {
+    "name": "Snake Game",
+    "description": "A snake game plugin with mobile support and full screen mode.",
+    "settings": {
+      "enabled": {
+        "label": "Enabled",
+        "description": "Show the Snake game card for matching queries."
+      },
+      "initialSpeed": {
+        "label": "Initial Speed",
+        "description": "The starting speed of the snake."
+      }
+    }
+  }
+}

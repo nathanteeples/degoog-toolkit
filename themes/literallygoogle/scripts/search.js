@@ -5,6 +5,54 @@
  * so it stays valid across client-side DOM updates.
  */
 
+var LG_LANG_DICT = {
+    en: {
+        settings: "Settings",
+        prev: "Previous",
+        prevImage: "Previous image",
+        next: "Next",
+        nextImage: "Next image",
+        moreOptions: "More options",
+        download: "Download",
+        copyLink: "Copy link",
+        close: "Close",
+        imageCopied: "Image link copied!",
+        linkCopied: "Link copied!"
+    },
+    es: {
+        settings: "Ajustes",
+        prev: "Anterior",
+        prevImage: "Imagen anterior",
+        next: "Siguiente",
+        nextImage: "Siguiente imagen",
+        moreOptions: "Más opciones",
+        download: "Descargar",
+        copyLink: "Copiar enlace",
+        close: "Cerrar",
+        imageCopied: "¡Enlace de imagen copiado!",
+        linkCopied: "¡Enlace copiado!"
+    },
+    fr: {
+        settings: "Paramètres",
+        prev: "Précédent",
+        prevImage: "Image précédente",
+        next: "Suivant",
+        nextImage: "Image suivante",
+        moreOptions: "Plus d'options",
+        download: "Télécharger",
+        copyLink: "Copier le lien",
+        close: "Fermer",
+        imageCopied: "Lien de l'image copié !",
+        linkCopied: "Lien copié !"
+    }
+};
+
+function getLgTranslation(key) {
+    var lang = (document.documentElement.lang || navigator.language || "en").split("-")[0].toLowerCase();
+    var dict = LG_LANG_DICT[lang] || LG_LANG_DICT["en"];
+    return dict[key] || LG_LANG_DICT["en"][key] || key;
+}
+
 /* ── 1. Sticky header scroll shadow ─────────────────────────────────────── */
 (function () {
     var header = document.getElementById("results-header");
@@ -187,9 +235,9 @@
         lettersCore.appendChild(prefix);
         lettersCore.appendChild(oTrack);
         lettersCore.appendChild(suffix);
-        lettersLine.appendChild(decorateControl(controls.prev, "prev", "Previous"));
+        lettersLine.appendChild(decorateControl(controls.prev, "prev", getLgTranslation("prev")));
         lettersLine.appendChild(lettersCore);
-        lettersLine.appendChild(decorateControl(controls.next, "next", "Next"));
+        lettersLine.appendChild(decorateControl(controls.next, "next", getLgTranslation("next")));
         wordmark.appendChild(lettersLine);
         wordmark.appendChild(numberRow);
         root.appendChild(wordmark);
@@ -421,6 +469,38 @@
         var dlBtn = panel.querySelector("#mp2-download");
         var shareBtn = panel.querySelector("#mp2-share");
 
+        var prevBtn = panel.querySelector("#media-preview-prev");
+        if (prevBtn) {
+            prevBtn.setAttribute("aria-label", getLgTranslation("prevImage"));
+            prevBtn.setAttribute("title", getLgTranslation("prev"));
+        }
+        var nextBtn = panel.querySelector("#media-preview-next");
+        if (nextBtn) {
+            nextBtn.setAttribute("aria-label", getLgTranslation("nextImage"));
+            nextBtn.setAttribute("title", getLgTranslation("next"));
+        }
+        if (menuBtn) {
+            menuBtn.setAttribute("aria-label", getLgTranslation("moreOptions"));
+            menuBtn.setAttribute("title", getLgTranslation("moreOptions"));
+        }
+        var closeBtn = panel.querySelector("#media-preview-close");
+        if (closeBtn) {
+            closeBtn.setAttribute("aria-label", getLgTranslation("close"));
+            closeBtn.setAttribute("title", getLgTranslation("close"));
+        }
+        if (dlBtn) {
+            var dlSvg = dlBtn.querySelector("svg");
+            dlBtn.innerHTML = "";
+            if (dlSvg) dlBtn.appendChild(dlSvg);
+            dlBtn.appendChild(document.createTextNode(" " + getLgTranslation("download")));
+        }
+        if (shareBtn) {
+            var shareSvg = shareBtn.querySelector("svg");
+            shareBtn.innerHTML = "";
+            if (shareSvg) shareBtn.appendChild(shareSvg);
+            shareBtn.appendChild(document.createTextNode(" " + getLgTranslation("copyLink")));
+        }
+
         syncMp2DownloadVisibility(panel);
         new MutationObserver(function () {
             syncMp2DownloadVisibility(panel);
@@ -474,7 +554,7 @@
                 var imgEl = panel.querySelector("#media-preview-img");
                 var visit = info && info.querySelector(".media-preview-visit");
                 var href = "";
-                var toastMsg = "Link copied!";
+                 var toastMsg = getLgTranslation("linkCopied");
                 if (isVideosTabActive()) {
                     href = (visit && visit.href) || "";
                     if (!href) {
@@ -491,7 +571,7 @@
                     var src = imgEl.currentSrc || imgEl.src || "";
                     if (src && !/^about:blank$/i.test(src)) {
                         href = src;
-                        toastMsg = "Image link copied!";
+                        toastMsg = getLgTranslation("imageCopied");
                     }
                 }
                 if (!href && visit && visit.href) href = visit.href;
@@ -534,3 +614,19 @@
 
     tryBind();
 })();
+
+/* ── 6. Translate settings gear title ───────────────────────────────────── */
+(function () {
+    function translateSettingsGear() {
+        var settingsEl = document.getElementById("nav-settings-results");
+        if (settingsEl) {
+            settingsEl.setAttribute("title", getLgTranslation("settings"));
+        }
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", translateSettingsGear);
+    } else {
+        translateSettingsGear();
+    }
+})();
+

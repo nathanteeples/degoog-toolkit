@@ -1,0 +1,12 @@
+{
+  "plugin-until": {
+    "name": "Countdown board",
+    "description": "Displays a live countdown board for dates, holidays, or time differences.",
+    "settings": {
+      "topUnits": {
+        "label": "Main answer units",
+        "description": "How many decomposed units to show in the main answer."
+      }
+    }
+  }
+}

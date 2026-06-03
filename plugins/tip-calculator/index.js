@@ -229,11 +229,19 @@ function configureSettings(settings) {
   }
 }
 
-function renderTemplate(billVal, tipPercentVal, splitVal) {
+import { t } from "./locales.js";
+function renderTemplate(billVal, tipPercentVal, splitVal, context) {
   return (template || "")
     .replaceAll("{{bill}}", String(billVal))
     .replaceAll("{{tip_percent}}", String(tipPercentVal))
-    .replaceAll("{{split}}", String(splitVal));
+    .replaceAll("{{split}}", String(splitVal))
+    .replaceAll("{{t_tip_calculator}}", t("tipCalculator", context))
+    .replaceAll("{{t_bill}}", t("bill", context))
+    .replaceAll("{{t_tip}}", t("tip", context))
+    .replaceAll("{{t_tip_amount}}", t("tipAmount", context))
+    .replaceAll("{{t_total}}", t("total", context))
+    .replaceAll("{{t_split}}", t("split", context))
+    .replaceAll("{{t_per_person}}", t("perPerson", context));
 }
 
 export const slot = {
@@ -273,7 +281,7 @@ export const slot = {
 
     return {
       title: "",
-      html: renderTemplate(billVal, tipVal, splitVal),
+      html: renderTemplate(billVal, tipVal, splitVal, context),
     };
   },
 };

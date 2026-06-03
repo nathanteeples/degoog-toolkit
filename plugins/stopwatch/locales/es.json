@@ -1,0 +1,16 @@
+{
+  "plugin-stopwatch": {
+    "name": "Temporizador / Cronómetro",
+    "description": "Temporizador y cronómetro compactos con progreso circular suave, duración de temporizador editable y sonido opcional.",
+    "settings": {
+      "enabled": {
+        "label": "Habilitado",
+        "description": "Mostrar la tarjeta de temporizador y cronómetro para consultas coincidentes."
+      },
+      "stopwatchCycle": {
+        "label": "Ciclo del anillo del cronómetro",
+        "description": "Segundos representados por un anillo de progreso del cronómetro completo."
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "plugin-until": {
+    "name": "Tableau de compte à rebours",
+    "description": "Affiche un tableau de compte à rebours en direct pour les dates, les jours fériés ou les différences horaires.",
+    "settings": {
+      "topUnits": {
+        "label": "Unités de réponse principales",
+        "description": "Combien d'unités décomposées afficher dans la réponse principale."
+      }
+    }
+  }
+}

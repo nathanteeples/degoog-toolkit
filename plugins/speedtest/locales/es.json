@@ -1,0 +1,16 @@
+{
+  "plugin-speedtest": {
+    "name": "Prueba de velocidad",
+    "description": "Prueba de velocidad de Internet mínima con servidores seleccionables, latencia, flujo de descarga primero y un indicador circular.",
+    "settings": {
+      "debugMode": {
+        "label": "Modo de depuración",
+        "description": "Muestra detalles de depuración de la prueba de velocidad para solucionar problemas de comportamiento del servidor y salida de mediciones."
+      },
+      "naturalLanguage": {
+        "label": "Lenguaje natural",
+        "description": "Permitir que este comando se ejecute cuando su consulta coincida con una de sus frases."
+      }
+    }
+  }
+}

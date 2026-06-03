@@ -1,0 +1,16 @@
+{
+  "plugin-speedtest": {
+    "name": "Speedtest",
+    "description": "Minimal internet speed test with selectable servers, latency, download-first flow, and a circular gauge.",
+    "settings": {
+      "debugMode": {
+        "label": "Debug mode",
+        "description": "Show Speedtest debug details for troubleshooting server behavior and measurement output."
+      },
+      "naturalLanguage": {
+        "label": "Natural language",
+        "description": "Allow this command to run when your query matches one of its phrases."
+      }
+    }
+  }
+}

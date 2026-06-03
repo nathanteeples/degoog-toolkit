@@ -1,0 +1,20 @@
+{
+  "plugin-tmdb": {
+    "name": "Base de données de films (TMDB / Jellyfin)",
+    "description": "Enrichit les résultats de recherche de films/séries avec des détails, des notes, la liste des acteurs et des options de visionnage.",
+    "settings": {
+      "tmdbApiKey": {
+        "label": "Clé API TMDB",
+        "description": "Utilisée pour récupérer des détails sur themoviedb.org."
+      },
+      "omdbApiKey": {
+        "label": "Clé API OMDB",
+        "description": "Utilisée pour récupérer les notes IMDb/Rotten Tomatoes."
+      },
+      "jellyfinUrl": {
+        "label": "URL du serveur Jellyfin",
+        "description": "Recherchez dans votre bibliothèque Jellyfin pour obtenir des liens de visionnage."
+      }
+    }
+  }
+}

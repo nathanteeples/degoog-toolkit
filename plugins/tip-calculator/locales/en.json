@@ -1,0 +1,16 @@
+{
+  "plugin-tip-calculator": {
+    "name": "Tip Calculator",
+    "description": "Interactive tip calculator with real-time bill split, custom slider parameters, and animations.",
+    "settings": {
+      "enabled": {
+        "label": "Enabled",
+        "description": "Show the tip calculator card for matching queries."
+      },
+      "defaultTipPercent": {
+        "label": "Default Tip Percentage",
+        "description": "Default tip percentage to use if not specified in search query."
+      }
+    }
+  }
+}

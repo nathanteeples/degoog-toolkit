@@ -2370,7 +2370,8 @@ function buildStandingsModel(competitionName, standings, highlightTeamName) {
   };
 }
 
-async function handleSoccerQuery(parsed) {
+import { t } from "./locales.js";
+async function handleSoccerQuery(parsed, context) {
   if (!footballDataApiKey) {
     return renderSetupCard(
       "soccer",
@@ -2624,7 +2625,7 @@ async function handleSoccerQuery(parsed) {
   );
 }
 
-async function handleBalldontlieTeamOrLeagueQuery(parsed, sport) {
+async function handleBalldontlieTeamOrLeagueQuery(parsed, sport, context) {
   if (!balldontlieApiKey) {
     return renderSetupCard(
       "balldontlie",
@@ -2948,21 +2949,21 @@ function configureSharedSettings(settings = {}) {
   selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
 }
 
-async function executeSportsQuery(query) {
+async function executeSportsQuery(query, context) {
   const parsed = parseQuery(query);
   if (!parsed) return { html: "" };
 
   if (parsed.sport === "soccer") {
     return {
       title: PLUGIN_NAME,
-      html: await handleSoccerQuery(parsed),
+      html: await handleSoccerQuery(parsed, context),
     };
   }
 
   if (isBalldontlieSport(parsed.sport)) {
     return {
       title: PLUGIN_NAME,
-      html: await handleBalldontlieTeamOrLeagueQuery(parsed, parsed.sport),
+      html: await handleBalldontlieTeamOrLeagueQuery(parsed, parsed.sport, context),
     };
   }
 
@@ -3005,7 +3006,7 @@ async function handleRefreshRoute(request) {
   }
 
   try {
-    const result = await executeSportsQuery(query);
+    const result = await executeSportsQuery(query, req.context);
     const html = result.html || "";
     refreshCache.set(key, {
       html,
@@ -3129,7 +3130,7 @@ export const slot = {
     }
 
     try {
-      return await executeSportsQuery(query);
+      return await executeSportsQuery(query, context);
     } catch (error) {
       const parsed = parseQuery(query);
       const message =

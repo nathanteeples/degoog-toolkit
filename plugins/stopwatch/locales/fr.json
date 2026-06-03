@@ -1,0 +1,16 @@
+{
+  "plugin-stopwatch": {
+    "name": "Minuteur / Chronomètre",
+    "description": "Minuteur et chronomètre compacts avec progression circulaire fluide, durée de minuteur modifiable et son facultatif.",
+    "settings": {
+      "enabled": {
+        "label": "Activé",
+        "description": "Afficher la carte du minuteur et du chronomètre pour les requêtes correspondantes."
+      },
+      "stopwatchCycle": {
+        "label": "Cycle de l'anneau du chronomètre",
+        "description": "Secondes représentées par un anneau de progression du chronomètre complet."
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "plugin-tic-tac-toe": {
+    "name": "Morpion",
+    "description": "Jeu de morpion avec paramètres de difficulté de l'IA, multijoueur local et animation de ligne gagnante.",
+    "settings": {
+      "defaultDifficulty": {
+        "label": "Difficulté par défaut",
+        "description": "La difficulté par défaut pour l'IA du Morpion."
+      },
+      "defaultSymbol": {
+        "label": "Symbole par défaut",
+        "description": "Le symbole par défaut avec lequel vous jouez."
+      }
+    }
+  }
+}

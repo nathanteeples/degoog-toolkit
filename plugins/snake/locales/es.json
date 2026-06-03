@@ -1,0 +1,16 @@
+{
+  "plugin-snake": {
+    "name": "Juego de la Serpiente",
+    "description": "Un complemento del juego de la serpiente con soporte móvil y modo de pantalla completa.",
+    "settings": {
+      "enabled": {
+        "label": "Habilitado",
+        "description": "Mostrar la tarjeta del juego de la serpiente para las consultas coincidentes."
+      },
+      "initialSpeed": {
+        "label": "Velocidad inicial",
+        "description": "La velocidad inicial de la serpiente."
+      }
+    }
+  }
+}

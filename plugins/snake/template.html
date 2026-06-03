@@ -1,11 +1,11 @@
 <div class="snake-card" data-snake-widget data-initial-speed="{{initial_speed_ms}}">
   <div class="snake-header">
     <div class="snake-title">
-      <span>Retro Snake</span>
+      <span>{{t_snake}}</span>
     </div>
     <div class="snake-header-actions">
-      <button id="snake-fullscreen-btn" class="snake-btn snake-btn-secondary" title="Toggle Fullscreen">Full Screen</button>
-      <button id="snake-pause-btn" class="snake-btn snake-btn-secondary" disabled>Pause</button>
+      <button id="snake-fullscreen-btn" class="snake-btn snake-btn-secondary" title="{{t_toggle_fs}}">{{t_full_screen}}</button>
+      <button id="snake-pause-btn" class="snake-btn snake-btn-secondary" disabled>{{t_pause}}</button>
       <button id="snake-sound-btn" class="snake-btn snake-btn-icon" title="Toggle Sound">
         <!-- Sound On Icon -->
         <svg class="snake-sound-on" viewBox="0 0 24 24" width="24" height="24">
@@ -19,11 +19,11 @@
     </div>
     <div class="snake-scoreboard">
       <div class="snake-score-box">
-        <span class="snake-score-label">Score</span>
+        <span class="snake-score-label">{{t_score}}</span>
         <span id="snake-current-score" class="snake-score-val">0</span>
       </div>
       <div class="snake-score-box">
-        <span class="snake-score-label">High</span>
+        <span class="snake-score-label">{{t_high}}</span>
         <span id="snake-high-score" class="snake-score-val">0</span>
       </div>
     </div>
@@ -36,28 +36,28 @@
       <!-- Start Overlay -->
       <div id="snake-overlay-start" class="snake-overlay">
         <div class="snake-overlay-content">
-          <h2 class="snake-overlay-title">SNAKE</h2>
-          <p class="snake-overlay-desc">Press Spacebar or tap Start to begin</p>
-          <button id="snake-start-btn" class="snake-btn snake-btn-primary">Start Game</button>
+          <h2 class="snake-overlay-title">{{t_snake}}</h2>
+          <p class="snake-overlay-desc">{{t_press_start}}</p>
+          <button id="snake-start-btn" class="snake-btn snake-btn-primary">{{t_start_game}}</button>
         </div>
       </div>
 
       <!-- Game Over Overlay -->
       <div id="snake-overlay-gameover" class="snake-overlay snake-hidden">
         <div class="snake-overlay-content">
-          <h2 class="snake-overlay-title snake-gameover-title">GAME OVER</h2>
-          <p class="snake-overlay-desc">You scored <span id="snake-final-score">0</span> points.</p>
+          <h2 class="snake-overlay-title snake-gameover-title">{{t_game_over}}</h2>
+          <p class="snake-overlay-desc">{{t_scored_prefix}} <span id="snake-final-score">0</span> {{t_scored_suffix}}</p>
           <p id="snake-gameover-extra" class="snake-overlay-desc snake-overlay-extra">Best: 0</p>
-          <button id="snake-restart-btn" class="snake-btn snake-btn-primary">Play Again</button>
+          <button id="snake-restart-btn" class="snake-btn snake-btn-primary">{{t_play_again}}</button>
         </div>
       </div>
 
       <!-- Paused Overlay -->
       <div id="snake-overlay-paused" class="snake-overlay snake-hidden">
         <div class="snake-overlay-content">
-          <h2 class="snake-overlay-title">PAUSED</h2>
-          <p class="snake-overlay-desc">Press Spacebar or tap Resume to continue</p>
-          <button id="snake-resume-btn" class="snake-btn snake-btn-primary">Resume</button>
+          <h2 class="snake-overlay-title">{{t_paused}}</h2>
+          <p class="snake-overlay-desc">{{t_press_resume}}</p>
+          <button id="snake-resume-btn" class="snake-btn snake-btn-primary">{{t_resume}}</button>
         </div>
       </div>
     </div>

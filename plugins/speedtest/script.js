@@ -1,6 +1,124 @@
 (() => {
   const CARD_SELECTOR = ".speedtest-card[data-speedtest-card]";
   const CLIENT_PLUGIN_VERSION = "1.5.13";
+
+  const SP_LANG_DICT = {
+    en: {
+      selectingServer: "Selecting server",
+      latency: "Latency",
+      download: "Download",
+      upload: "Upload",
+      complete: "Complete",
+      error: "Error",
+      autoServer: "Automatic (lowest latency)",
+      megabitsPerSec: "Megabits per second",
+      mbpsDownload: "Mbps download",
+      mbpsUpload: "Mbps upload",
+      latencyLabel: "Latency:",
+      serverLabel: "Server:",
+      runAgain: "Run again",
+      cancel: "Cancel",
+      debugDetails: "Debug details",
+      runToCapture: "Run a speed test to capture debug details.",
+      readyToMeasure: "Ready to measure your connection.",
+      running: "Running",
+      selectingServerProgress: "Selecting the lowest-latency server...",
+      preparingServer: "Preparing {server}...",
+      testingDownload: "Testing download speed...",
+      testingUpload: "Testing upload speed...",
+      noServers: "No speed test servers are configured.",
+      serverUnavailable: "The selected speed test server is unavailable.",
+      serverNoPing: "Selected server did not respond to ping ({error}).",
+      cancelled: "Cancelled by user.",
+      extremeFast: "Your Internet connection is extremely fast.",
+      veryFast: "Your Internet connection is very fast.",
+      fast: "Your Internet connection is fast.",
+      normalFast: "Your Internet connection should handle streaming, calls, and gaming comfortably.",
+      averageFast: "Your Internet connection should handle HD streaming and everyday work well.",
+      lightFast: "Your Internet connection is fine for browsing, music, and lighter video calls.",
+      slow: "Your Internet connection may feel slow on heavier downloads or video streams.",
+      errorRestart: "The speed test could not finish with the selected server. Try again or pick another server.",
+      errorStart: "The speed test could not be started."
+    },
+    es: {
+      selectingServer: "Seleccionando servidor",
+      latency: "Latencia",
+      download: "Descarga",
+      upload: "Subida",
+      complete: "Completado",
+      error: "Error",
+      autoServer: "Automático (menor latencia)",
+      megabitsPerSec: "Megabits por segundo",
+      mbpsDownload: "Mbps descarga",
+      mbpsUpload: "Mbps subida",
+      latencyLabel: "Latencia:",
+      serverLabel: "Servidor:",
+      runAgain: "Ejecutar de nuevo",
+      cancel: "Cancelar",
+      debugDetails: "Detalles de depuración",
+      runToCapture: "Ejecute una prueba de velocidad para capturar los detalles de depuración.",
+      readyToMeasure: "Listo para medir tu conexión.",
+      running: "Probando",
+      selectingServerProgress: "Buscando el servidor de menor latencia...",
+      preparingServer: "Preparando {server}...",
+      testingDownload: "Probando velocidad de descarga...",
+      testingUpload: "Probando velocidad de subida...",
+      noServers: "No hay servidores de prueba de velocidad configurados.",
+      serverUnavailable: "El servidor de prueba de velocidad seleccionado no está disponible.",
+      serverNoPing: "El servidor seleccionado no respondió al ping ({error}).",
+      cancelled: "Cancelado por el usuario.",
+      extremeFast: "Tu conexión a Internet es extremadamente rápida.",
+      veryFast: "Tu conexión a Internet es muy rápida.",
+      fast: "Tu conexión a Internet es rápida.",
+      normalFast: "Tu conexión a Internet debería permitir streaming, llamadas y juegos cómodamente.",
+      averageFast: "Tu conexión a Internet debería permitir streaming HD y trabajo diario sin problemas.",
+      lightFast: "Tu conexión a Internet es suficiente para navegación, música y videollamadas ligeras.",
+      slow: "Tu conexión a Internet puede sentirse lenta al realizar descargas pesadas o ver vídeos en streaming.",
+      errorRestart: "La prueba de velocidad no pudo finalizar con el servidor seleccionado. Inténtalo de nuevo o elige otro servidor.",
+      errorStart: "No se pudo iniciar la prueba de velocidad."
+    },
+    fr: {
+      selectingServer: "Sélection du serveur",
+      latency: "Latence",
+      download: "Téléchargement",
+      upload: "Téléversement",
+      complete: "Terminé",
+      error: "Erreur",
+      autoServer: "Automatique (latence la plus faible)",
+      megabitsPerSec: "Mégabits par seconde",
+      mbpsDownload: "Mbps téléchargement",
+      mbpsUpload: "Mbps téléversement",
+      latencyLabel: "Latence :",
+      serverLabel: "Serveur :",
+      runAgain: "Recommencer",
+      cancel: "Annuler",
+      debugDetails: "Détails de débogage",
+      runToCapture: "Lancez un test de vitesse pour capturer les détails de débogage.",
+      readyToMeasure: "Prêt à mesurer votre connexion.",
+      running: "Test en cours",
+      selectingServerProgress: "Recherche du serveur le plus rapide...",
+      preparingServer: "Préparation de {server}...",
+      testingDownload: "Test de la vitesse de téléchargement...",
+      testingUpload: "Test de la vitesse d'envoi...",
+      noServers: "Aucun serveur de test de vitesse n'est configuré.",
+      serverUnavailable: "Le serveur de test de vitesse sélectionné est indisponible.",
+      serverNoPing: "Le serveur sélectionné n'a pas répondu au ping ({error}).",
+      cancelled: "Annulé par l'utilisateur.",
+      extremeFast: "Votre connexion Internet est extrêmement rapide.",
+      veryFast: "Votre connexion Internet est très rapide.",
+      fast: "Votre connexion Internet est rapide.",
+      normalFast: "Votre connexion devrait supporter le streaming, les appels et les jeux confortablement.",
+      averageFast: "Votre connexion devrait supporter le streaming HD et le travail quotidien sans problème.",
+      lightFast: "Votre connexion convient pour la navigation, la musique et les appels vidéo légers.",
+      slow: "Votre connexion Internet peut sembler lente pour les téléchargements lourds ou le streaming vidéo.",
+      errorRestart: "Le test n'a pas pu se terminer avec le serveur sélectionné. Réessayez ou choisissez un autre serveur.",
+      errorStart: "Le test de vitesse n'a pas pu démarrer."
+    }
+  };
+  function getSpTranslation(key) {
+    const lang = (document.documentElement.lang || navigator.language || "en").split("-")[0].toLowerCase();
+    return SP_LANG_DICT[lang]?.[key] || SP_LANG_DICT["en"][key] || key;
+  }
   const AUTO_SERVER_ID = "auto";
 
   const SERVER_SELECTION_PINGS = 2;
@@ -1202,7 +1320,9 @@
     servers.forEach((server) => {
       const option = document.createElement("option");
       option.value = server.id;
-      option.textContent = server.optionLabel || server.label || server.id;
+      option.textContent = server.auto 
+        ? getSpTranslation("autoServer")
+        : (server.optionLabel || server.label || server.id);
       serverSelect.appendChild(option);
     });
 
@@ -1386,7 +1506,16 @@
     );
 
     if (phaseNode) {
-      phaseNode.textContent = PHASE_LABELS[state.phase] || "";
+      const phaseMap = {
+        preflight: "selectingServer",
+        latency: "latency",
+        download: "download",
+        upload: "upload",
+        complete: "complete",
+        error: "error"
+      };
+      const key = phaseMap[state.phase];
+      phaseNode.textContent = key ? getSpTranslation(key) : "";
     }
 
     setDisplayValue(card, state.currentMbps || 0, {

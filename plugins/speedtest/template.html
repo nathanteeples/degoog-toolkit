@@ -43,48 +43,48 @@
     <div class="speedtest-card__center">
       <div class="speedtest-card__phase" data-speedtest-phase></div>
       <div class="speedtest-card__value" data-speedtest-value>0.0</div>
-      <div class="speedtest-card__unit">Megabits per second</div>
+      <div class="speedtest-card__unit">{{t_megabits_per_sec}}</div>
     </div>
   </div>
 
   <div class="speedtest-card__stats">
     <div class="speedtest-card__stat">
       <div class="speedtest-card__stat-value" data-speedtest-download>0.0</div>
-      <div class="speedtest-card__stat-label">Mbps download</div>
+      <div class="speedtest-card__stat-label">{{t_mbps_download}}</div>
     </div>
     <div class="speedtest-card__stat">
       <div class="speedtest-card__stat-value" data-speedtest-upload>0.0</div>
-      <div class="speedtest-card__stat-label">Mbps upload</div>
+      <div class="speedtest-card__stat-label">{{t_mbps_upload}}</div>
     </div>
   </div>
 
   <div class="speedtest-card__details">
     <div class="speedtest-card__detail">
-      <span>Latency:</span>
+      <span>{{t_latency_label}}</span>
       <strong data-speedtest-latency>--</strong>
     </div>
     <div class="speedtest-card__detail">
-      <span>Server:</span>
-      <strong data-speedtest-server>Automatic (lowest latency)</strong>
+      <span>{{t_server_label}}</span>
+      <strong data-speedtest-server>{{t_auto_server}}</strong>
     </div>
   </div>
 
   <div class="speedtest-card__assessment" data-speedtest-assessment>
-    Measures latency first, then download, then upload using the selected server.
+    {{t_measures_latency}}
   </div>
 
   <div class="speedtest-card__status" data-speedtest-status>
-    Ready to measure your connection.
+    {{t_ready_to_measure}}
   </div>
 
   <div class="speedtest-card__controls speedtest-card__controls--footer">
     <label class="speedtest-card__server-picker">
-      <span class="speedtest-card__server-picker-label">Server</span>
+      <span class="speedtest-card__server-picker-label">{{t_server_label}}</span>
       <select class="speedtest-card__server-select" data-speedtest-server-select></select>
     </label>
     <div class="speedtest-card__button-group">
       <button class="speedtest-card__action" type="button" data-speedtest-action>
-        Run again
+        {{t_run_again}}
       </button>
       <button
         class="speedtest-card__action speedtest-card__action--cancel"
@@ -92,15 +92,15 @@
         data-speedtest-cancel
         hidden
       >
-        Cancel
+        {{t_cancel}}
       </button>
     </div>
   </div>
 
   <details class="speedtest-card__debug" __DEBUG_HIDDEN__>
-    <summary class="speedtest-card__debug-summary">Debug details</summary>
+    <summary class="speedtest-card__debug-summary">{{t_debug_details}}</summary>
     <pre class="speedtest-card__debug-output" data-speedtest-debug-output>
-Run a speed test to capture debug details.
+{{t_run_to_capture}}
     </pre>
   </details>
 </div>

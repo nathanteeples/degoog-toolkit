@@ -1,0 +1,24 @@
+{
+  "engine-searxng-videos": {
+    "name": "SearXNG Videos",
+    "description": "Motor de búsqueda de Videos de SearXNG",
+    "settings": {
+      "baseUrl": {
+        "label": "URL de SearXNG",
+        "description": "URL base de su instancia de SearXNG (predeterminado: http://127.0.0.1:8888)"
+      },
+      "categories": {
+        "label": "Categorías",
+        "description": "Categorías separadas por comas a buscar (predeterminado: \"videos\" para este motor)."
+      },
+      "engines": {
+        "label": "Motores",
+        "description": "Nombres de motores separados por comas a usar (ej. \"youtube,peertube\"). Dejar vacío para usar todos los habilitados."
+      },
+      "safesearch": {
+        "label": "Búsqueda segura",
+        "description": "Nivel de búsqueda segura: 0=apagado, 1=moderado, 2=estricto"
+      }
+    }
+  }
+}

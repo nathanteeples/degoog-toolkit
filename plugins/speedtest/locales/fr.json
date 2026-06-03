@@ -1,0 +1,16 @@
+{
+  "plugin-speedtest": {
+    "name": "Test de vitesse",
+    "description": "Test de vitesse Internet minimal avec serveurs sélectionnables, latence, flux de téléchargement en premier et jauge circulaire.",
+    "settings": {
+      "debugMode": {
+        "label": "Mode débogage",
+        "description": "Affiche les détails de débogage du test de vitesse pour résoudre les problèmes de comportement du serveur et la mesure."
+      },
+      "naturalLanguage": {
+        "label": "Langage naturel",
+        "description": "Autoriser cette commande à s'exécuter lorsque votre requête correspond à l'une de ses phrases."
+      }
+    }
+  }
+}

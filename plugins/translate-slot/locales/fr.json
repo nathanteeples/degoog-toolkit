@@ -1,0 +1,12 @@
+{
+  "plugin-translate-slot": {
+    "name": "Traducteur",
+    "description": "Traduisez du texte avec des serveurs sans clé et correspondance de requêtes en langage naturel.",
+    "settings": {
+      "defaultTarget": {
+        "label": "Langue cible par défaut",
+        "description": "Langue cible vers laquelle traduire si non spécifié."
+      }
+    }
+  }
+}

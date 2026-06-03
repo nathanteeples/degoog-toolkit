@@ -1,0 +1,12 @@
+{
+  "plugin-currency-slot": {
+    "name": "Divisas",
+    "description": "Conversor de divisas con tasas en vivo. Admite !currency o consultas en lenguaje natural como '100 usd to eur'.",
+    "settings": {
+      "defaultTo": {
+        "label": "Moneda de destino predeterminada",
+        "description": "Moneda a la que convertir cuando no se especifica en la consulta."
+      }
+    }
+  }
+}

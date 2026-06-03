@@ -208,6 +208,36 @@ function useHighlightedHistory(input, dropdown, event) {
 
 let initialized = false;
 
+const SH_LANG_DICT = {
+  en: {
+    confirmClear: "Are you sure you want to clear your search history?"
+  },
+  es: {
+    confirmClear: "¿Está seguro de que desea borrar su historial de búsqueda?"
+  },
+  fr: {
+    confirmClear: "Êtes-vous sûr de vouloir effacer votre historique de recherche ?"
+  }
+};
+function getShTranslation(key) {
+  const lang = (document.documentElement.lang || navigator.language || "en").split("-")[0].toLowerCase();
+  return SH_LANG_DICT[lang]?.[key] || SH_LANG_DICT["en"][key] || key;
+}
+const SH_LANG_DICT = {
+  en: {
+    confirmClear: "Are you sure you want to clear your search history?"
+  },
+  es: {
+    confirmClear: "¿Está seguro de que desea borrar su historial de búsqueda?"
+  },
+  fr: {
+    confirmClear: "Êtes-vous sûr de vouloir effacer votre historique de recherche ?"
+  }
+};
+function getShTranslation(key) {
+  const lang = (document.documentElement.lang || navigator.language || "en").split("-")[0].toLowerCase();
+  return SH_LANG_DICT[lang]?.[key] || SH_LANG_DICT["en"][key] || key;
+}
 function initSearchHistory() {
   if (initialized) return;
   initialized = true;

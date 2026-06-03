@@ -1,0 +1,12 @@
+{
+  "plugin-translate-slot": {
+    "name": "Traductor",
+    "description": "Traduzca texto con proveedores del lado del servidor sin clave y coincidencia de consultas de lenguaje natural.",
+    "settings": {
+      "defaultTarget": {
+        "label": "Idioma de destino predeterminado",
+        "description": "Idioma de destino al que traducir si no se especifica."
+      }
+    }
+  }
+}

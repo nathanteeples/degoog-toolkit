@@ -1,0 +1,28 @@
+{
+  "plugin-reddit-slot": {
+    "name": "Reddit",
+    "description": "Affiche la publication Reddit principale et les meilleurs commentaires au-dessus des résultats de recherche.",
+    "settings": {
+      "showMode": {
+        "label": "Quand l'afficher",
+        "description": "Toujours : s'affiche pour chaque recherche. Mot-clé : uniquement lorsque la requête contient 'reddit'. Top 10 : uniquement lorsqu'un lien Reddit figure dans les 10 premiers résultats de recherche."
+      },
+      "maxComments": {
+        "label": "Nombre de commentaires",
+        "description": "Combien de meilleurs commentaires afficher côte à côte."
+      },
+      "filterNsfw": {
+        "label": "Masquer les publications pour adultes (NSFW)",
+        "description": "Ignorer les publications marquées comme NSFW."
+      },
+      "minScore": {
+        "label": "Score minimal de la publication",
+        "description": "N'afficher que les publications ayant au moins ce nombre de votes positifs."
+      },
+      "restrictSubreddit": {
+        "label": "Rechercher uniquement dans le subreddit",
+        "description": "Si défini, recherche uniquement au sein de ce subreddit."
+      }
+    }
+  }
+}

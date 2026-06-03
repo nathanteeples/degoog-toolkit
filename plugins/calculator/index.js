@@ -55,7 +55,12 @@ function factorial(value) {
   if (value > 170) return Infinity;
   let result = 1;
   for (let i = 2; i <= value; i += 1) result *= i;
-  return result;
+  return result
+    .replaceAll("{{t_rad}}", t("rad", context))
+    .replaceAll("{{t_deg}}", t("deg", context))
+    .replaceAll("{{t_ans}}", t("ans", context))
+    .replaceAll("{{t_clear}}", t("clear", context))
+    .replaceAll("{{t_enter}}", t("enter", context));
 }
 
 function createParser(angleMode = DEFAULT_ANGLE_MODE) {
@@ -408,7 +413,7 @@ export const slot = {
         display_result: "0",
         ans_value: "0",
         angle_mode: DEFAULT_ANGLE_MODE,
-      });
+      }, context);
 
       return { title: "", html };
     }
@@ -432,7 +437,7 @@ export const slot = {
         display_result: result,
         ans_value: String(ans),
         angle_mode: DEFAULT_ANGLE_MODE,
-      });
+      }, context);
 
       return { title: "", html };
     } catch (error) {
@@ -445,7 +450,7 @@ export const slot = {
           display_result: preview?.result || "0",
           ans_value: String(preview?.ans || 0),
           angle_mode: DEFAULT_ANGLE_MODE,
-        });
+        }, context);
 
         return { title: "", html };
       }

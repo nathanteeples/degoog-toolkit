@@ -1,0 +1,24 @@
+{
+  "engine-searxng-search": {
+    "name": "SearXNG",
+    "description": "Motor de búsqueda SearXNG",
+    "settings": {
+      "baseUrl": {
+        "label": "URL de SearXNG",
+        "description": "URL base de su instancia de SearXNG (predeterminado: http://127.0.0.1:8888)"
+      },
+      "categories": {
+        "label": "Categorías",
+        "description": "Categorías separadas por comas a buscar (predeterminado: \"general\" para este motor)."
+      },
+      "engines": {
+        "label": "Motores",
+        "description": "Nombres de motores separados por comas a usar (ej. \"google,duckduckgo,wikipedia\"). Dejar vacío para usar todos los habilitados."
+      },
+      "safesearch": {
+        "label": "Búsqueda segura",
+        "description": "Nivel de búsqueda segura: 0=apagado, 1=moderado, 2=estricto"
+      }
+    }
+  }
+}

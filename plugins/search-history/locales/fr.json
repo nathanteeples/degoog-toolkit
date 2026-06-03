@@ -1,0 +1,13 @@
+{
+  "plugin-search-history": {
+    "name": "Historique de recherche",
+    "description": "Enregistre l'historique des recherches dans data/history.json avec des horodatages ; !history affiche une liste paginée et supprimable.",
+    "settings": {
+      "maxEntries": {
+        "label": "Entrées max",
+        "placeholder": "1000",
+        "description": "Nombre maximum d'entrées d'historique à conserver (les plus anciennes sont supprimées en cas de dépassement)."
+      }
+    }
+  }
+}

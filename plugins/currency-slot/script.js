@@ -1,5 +1,48 @@
 (function () {
   const HISTORY_PERIODS = [1, 5, 30, 365, 1825, "max"];
+
+  const CUR_LANG_DICT = {
+    en: {
+      low: "Low",
+      high: "High",
+      average: "Average",
+      change: "Change",
+      loading: "Loading chart...",
+      noData: "No chart data available for this pair",
+      copyResult: "Copy result",
+      copied: "Copied!",
+      liveRate: "Live rate",
+      searchPlaceholder: "Search currency..."
+    },
+    es: {
+      low: "Mínimo",
+      high: "Máximo",
+      average: "Promedio",
+      change: "Cambio",
+      loading: "Cargando gráfico...",
+      noData: "Sin datos de gráfico disponibles para este par",
+      copyResult: "Copiar resultado",
+      copied: "¡Copiado!",
+      liveRate: "Tipo de cambio en vivo",
+      searchPlaceholder: "Buscar divisa..."
+    },
+    fr: {
+      low: "Plus bas",
+      high: "Plus haut",
+      average: "Moyenne",
+      change: "Variation",
+      loading: "Chargement du graphique...",
+      noData: "Aucune donnée de graphique disponible pour cette paire",
+      copyResult: "Copier le résultat",
+      copied: "Copié !",
+      liveRate: "Taux en direct",
+      searchPlaceholder: "Rechercher une devise..."
+    }
+  };
+  function getCurTranslation(key) {
+    const lang = (document.documentElement.lang || navigator.language || "en").split("-")[0].toLowerCase();
+    return CUR_LANG_DICT[lang]?.[key] || CUR_LANG_DICT["en"][key] || key;
+  }
   const PLUGIN_API_BASE = `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
   const historyCache = new Map();
   const historyInFlight = new Map();
@@ -630,7 +673,7 @@
     function getChartStatsPlaceholder() {
       var cell =
         '<div class="cxs-stat cxs-stat--placeholder">' +
-        '<span class="cxs-stat-label">Average</span>' +
+        '<span class="cxs-stat-label">' + getCurTranslation('average') + '</span>' +
         '<span class="cxs-stat-value">0.000000</span>' +
         "</div>";
       return cell.repeat(4);
@@ -639,7 +682,7 @@
     function showChartLoading() {
       if (!chartBody) return;
       if (chartTitle) chartTitle.textContent = fromCode + " / " + toCode;
-      chartBody.innerHTML = '<div class="cxs-chart-loading">Loading chart...</div>';
+      chartBody.innerHTML = '<div class="cxs-chart-loading">' + getCurTranslation('loading') + '</div>';
       if (chartStats) chartStats.innerHTML = getChartStatsPlaceholder();
     }
 
@@ -725,7 +768,7 @@
     if (!container) return;
     if (!data || data.length < 2) {
       container.innerHTML =
-        '<div style="padding:1rem;text-align:center;color:var(--text-secondary);font-size:0.85rem;">No chart data available for this pair</div>';
+        '<div style="padding:1rem;text-align:center;color:var(--text-secondary);font-size:0.85rem;">' + getCurTranslation('noData') + '</div>';
       if (statsContainer) statsContainer.innerHTML = "";
       return;
     }
@@ -1061,25 +1104,25 @@
         change >= 0 ? "cxs-stat-value--up" : "cxs-stat-value--down";
       statsContainer.innerHTML =
         '<div class="cxs-stat">' +
-        '<span class="cxs-stat-label">Low</span>' +
+        '<span class="cxs-stat-label">' + getCurTranslation('low') + '</span>' +
         '<span class="cxs-stat-value">' +
         fmtRate(min) +
         "</span>" +
         "</div>" +
         '<div class="cxs-stat">' +
-        '<span class="cxs-stat-label">High</span>' +
+        '<span class="cxs-stat-label">' + getCurTranslation('high') + '</span>' +
         '<span class="cxs-stat-value">' +
         fmtRate(max) +
         "</span>" +
         "</div>" +
         '<div class="cxs-stat">' +
-        '<span class="cxs-stat-label">Average</span>' +
+        '<span class="cxs-stat-label">' + getCurTranslation('average') + '</span>' +
         '<span class="cxs-stat-value">' +
         fmtRate(avg) +
         "</span>" +
         "</div>" +
         '<div class="cxs-stat">' +
-        '<span class="cxs-stat-label">Change</span>' +
+        '<span class="cxs-stat-label">' + getCurTranslation('change') + '</span>' +
         '<span class="cxs-stat-value ' +
         dirClass +
         '">' +

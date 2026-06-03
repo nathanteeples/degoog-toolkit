@@ -1,0 +1,12 @@
+{
+  "plugin-until": {
+    "name": "Tablero de cuenta regresiva",
+    "description": "Muestra un tablero de cuenta regresiva en vivo para fechas, días festivos o diferencias de tiempo.",
+    "settings": {
+      "topUnits": {
+        "label": "Unidades de respuesta principales",
+        "description": "Cuántas unidades descompuestas mostrar en la respuesta principal."
+      }
+    }
+  }
+}

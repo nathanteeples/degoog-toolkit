@@ -1,6 +1,7 @@
 let template = "";
 let externalFetch = (...args) => fetch(...args);
 let cache = null;
+import { t } from "./locales.js";
 
 const PLUGIN_NAME = "Translate";
 const PLUGIN_DESCRIPTION =
@@ -412,7 +413,7 @@ async function renderExecution(parsed, context, options = {}) {
         ? translation.error || "Translation unavailable"
         : translation?.result?.provider?.name || providerMeta(settings.preferredProvider).name,
     providers: translation?.providers || providerData(settings.preferredProvider),
-  });
+  }, context);
 
   return { title: "", html };
 }
@@ -1086,7 +1087,7 @@ function providerLanguage(code, providerId) {
   return code;
 }
 
-function renderCard(view) {
+function renderCard(view, context) {
   const html = template || fallbackTemplate();
   const activeProvider = normaliseProviderId(view.activeProvider) || settings.preferredProvider;
   const providers = Array.isArray(view.providers)
@@ -1104,24 +1105,35 @@ function renderCard(view) {
     translated_text: esc(view.translatedText || ""),
     source_romanized: esc(view.sourceRomanization || ""),
     target_romanized: esc(view.targetRomanization || ""),
-    source_options: renderLanguageOptions(SOURCE_LANGUAGE_CODES, view.source || "auto"),
+    source_options: renderLanguageOptions(SOURCE_LANGUAGE_CODES, view.source || "auto", context),
     target_options: renderLanguageOptions(
       TARGET_LANGUAGE_CODES,
       view.target || settings.defaultTarget,
+      context,
     ),
     provider_options: renderProviderOptions(providers, activeProvider),
     provider_status: esc(status),
     provider_state: esc(statusState),
     active_provider: esc(activeProvider),
     detected_source: esc(view.detectedSource || ""),
+    t_translate: esc(t("translate", context)),
+    t_provider: esc(t("provider", context)),
+    t_from: esc(t("from", context)),
+    t_to: esc(t("to", context)),
+    t_source: esc(t("source", context)),
+    t_translation: esc(t("translation", context)),
+    t_copy_aria: esc(t("copy", context)),
+    t_audio_source: esc(t("audioSource", context)),
+    t_audio_target: esc(t("audioTarget", context)),
+    t_swap: esc(t("swapLanguages", context)),
   });
 }
 
-function renderLanguageOptions(codes, selectedCode) {
+function renderLanguageOptions(codes, selectedCode, context) {
   return codes
     .map((code) => {
       const selected = code === selectedCode ? " selected" : "";
-      const name = code === "auto" ? "Auto-detect" : languageName(code);
+      const name = code === "auto" ? t("autoDetect", context) : languageName(code);
       return `<option value="${esc(code)}"${selected}>${esc(name)}</option>`;
     })
     .join("");
@@ -1152,17 +1164,17 @@ function fillTemplate(html, values) {
 function fallbackTemplate() {
   return `<div class="trc-card command-result" data-trc-card data-detected-source="{{detected_source}}">
     <div class="trc-toolbar">
-      <div class="trc-title">Translate</div>
-      <label class="trc-provider-field"><span class="trc-label">Provider</span><select class="trc-provider-select">{{provider_options}}</select></label>
+      <div class="trc-title">{{t_translate}}</div>
+      <label class="trc-provider-field"><span class="trc-label">{{t_provider}}</span><select class="trc-provider-select">{{provider_options}}</select></label>
     </div>
     <div class="trc-status" data-status="{{provider_state}}">{{provider_status}}</div>
     <div class="trc-language-row">
-      <label class="trc-field"><span class="trc-label">From</span><select class="trc-source-select">{{source_options}}</select></label>
-      <label class="trc-field"><span class="trc-label">To</span><select class="trc-target-select">{{target_options}}</select></label>
+      <label class="trc-field"><span class="trc-label">{{t_from}}</span><select class="trc-source-select">{{source_options}}</select></label>
+      <label class="trc-field"><span class="trc-label">{{t_to}}</span><select class="trc-target-select">{{target_options}}</select></label>
     </div>
     <div class="trc-text-grid">
-      <div class="trc-pane"><span class="trc-label">Source</span><textarea class="trc-source-input">{{source_text}}</textarea><span class="trc-romanization trc-source-romanization">{{source_romanized}}</span><span class="trc-pane-actions"><button class="trc-icon-button trc-audio-button" type="button" data-trc-speak="source" aria-label="Listen to source">Audio</button></span></div>
-      <div class="trc-pane"><span class="trc-label">Translation</span><textarea class="trc-output" readonly>{{translated_text}}</textarea><span class="trc-romanization trc-target-romanization">{{target_romanized}}</span><span class="trc-pane-actions"><button class="trc-icon-button trc-copy-button" type="button" aria-label="Copy translation">Copy</button><button class="trc-icon-button trc-audio-button" type="button" data-trc-speak="target" aria-label="Listen to translation">Audio</button></span></div>
+      <div class="trc-pane"><span class="trc-label">{{t_source}}</span><textarea class="trc-source-input">{{source_text}}</textarea><span class="trc-romanization trc-source-romanization">{{source_romanized}}</span><span class="trc-pane-actions"><button class="trc-icon-button trc-audio-button" type="button" data-trc-speak="source" aria-label="{{t_audio_source}}">Audio</button></span></div>
+      <div class="trc-pane"><span class="trc-label">{{t_translation}}</span><textarea class="trc-output" readonly>{{translated_text}}</textarea><span class="trc-romanization trc-target-romanization">{{target_romanized}}</span><span class="trc-pane-actions"><button class="trc-icon-button trc-copy-button" type="button" aria-label="{{t_copy_aria}}">{{t_copy_aria}}</button><button class="trc-icon-button trc-audio-button" type="button" data-trc-speak="target" aria-label="{{t_audio_target}}">Audio</button></span></div>
     </div>
   </div>`;
 }

@@ -1,0 +1,24 @@
+{
+  "plugin-sports-slot": {
+    "name": "Resultados Deportivos",
+    "description": "Puntuaciones, clasificaciones y calendarios en tiempo real para fútbol, NBA, NFL y MLB.",
+    "settings": {
+      "footballDataApiKey": {
+        "label": "Clave API de football-data.org",
+        "description": "Se usa para clubes de fútbol, partidos y clasificaciones."
+      },
+      "balldontlieApiKey": {
+        "label": "Clave API de BALLDONTLIE",
+        "description": "Se usa para resultados de NFL, NBA y MLB."
+      },
+      "soccerCompetitions": {
+        "label": "Competiciones de fútbol preferidas",
+        "description": "Ligas de fútbol preferidas para priorizar."
+      },
+      "debugMode": {
+        "label": "Modo de depuración",
+        "description": "Mostrar versión del plugin junto al pie de origen de datos."
+      }
+    }
+  }
+}

@@ -1,3 +1,5 @@
+import { t } from "./locales.js";
+
 let template = "";
 
 let defaultDifficulty = "impossible";
@@ -57,12 +59,15 @@ export const slot = {
       q === "play tic tac toe"
     );
   },
-
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { title: "", html: "" };
     const html = (template || "")
       .replaceAll("{{default_difficulty}}", defaultDifficulty)
-      .replaceAll("{{default_symbol}}", defaultSymbol);
+      .replaceAll("{{default_symbol}}", defaultSymbol)
+      .replaceAll("{{t_tictactoe}}", t("ticTacToe", context))
+      .replaceAll("{{t_difficulty}}", t("difficulty", context))
+      .replaceAll("{{t_symbol}}", t("symbol", context))
+      .replaceAll("{{t_restart}}", t("restart", context));
     return {
       title: "",
       html,

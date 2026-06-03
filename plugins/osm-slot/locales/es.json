@@ -1,0 +1,43 @@
+{
+  "plugin-osm-slot": {
+    "name": "Lugares",
+    "description": "Reconocimiento de lugares locales: muestra empresas cercanas y puntos de interés con dirección, horarios, teléfono, indicaciones y un mapa interactivo.",
+    "settings": {
+      "hereApiKey": {
+        "label": "Clave API de HERE",
+        "description": "Requerido. Permite la búsqueda de lugares y la geolocalización de ciudades. Obtenga una clave en developer.here.com."
+      },
+      "defaultLat": {
+        "label": "Latitud predeterminada",
+        "description": "Latitud del centro de búsqueda predeterminado."
+      },
+      "defaultLon": {
+        "label": "Longitud predeterminada",
+        "description": "Longitud del centro de búsqueda predeterminado."
+      },
+      "defaultLocationLabel": {
+        "label": "Etiqueta de ubicación predeterminada",
+        "description": "Etiqueta que se muestra en el encabezado de la tarjeta, por ejemplo, 'Inicio' o 'Chicago, IL'."
+      },
+      "useBrowserGeolocation": {
+        "label": "Solicitar ubicación precisa al navegador",
+        "description": "Muestra un botón que permite al navegador solicitar su ubicación en tiempo real para obtener resultados cercanos más precisos."
+      },
+      "defaultRadius": {
+        "label": "Radio de búsqueda",
+        "description": "Radio de búsqueda en millas."
+      },
+      "resultsCount": {
+        "label": "Cantidad de resultados",
+        "description": "Cuántas tarjetas de lugares mostrar."
+      },
+      "distanceUnit": {
+        "label": "Unidad de distancia"
+      },
+      "customTileUrl": {
+        "label": "URL personalizada de mosaicos de mapa",
+        "description": "Plantilla de mosaico ráster opcional para el mapa."
+      }
+    }
+  }
+}

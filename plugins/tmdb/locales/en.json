@@ -1,0 +1,20 @@
+{
+  "plugin-tmdb": {
+    "name": "Movie Database (TMDB / Jellyfin)",
+    "description": "Enriches movie/show search results with details, ratings, cast lists, and watch options.",
+    "settings": {
+      "tmdbApiKey": {
+        "label": "TMDB API key",
+        "description": "Used to fetch rich details from themoviedb.org."
+      },
+      "omdbApiKey": {
+        "label": "OMDB API key",
+        "description": "Used to fetch IMDb/Rotten Tomatoes ratings."
+      },
+      "jellyfinUrl": {
+        "label": "Jellyfin server URL",
+        "description": "Search your Jellyfin library for watch links."
+      }
+    }
+  }
+}

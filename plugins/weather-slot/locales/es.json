@@ -1,0 +1,20 @@
+{
+  "plugin-weather-slot": {
+    "name": "Pronóstico del Tiempo",
+    "description": "Clima actual detallado y pronósticos de varios días basados en Open-Meteo.",
+    "settings": {
+      "units": {
+        "label": "Unidades de temperatura",
+        "description": "fahrenheit o celsius."
+      },
+      "windUnit": {
+        "label": "Unidades de velocidad del viento",
+        "description": "mph, km/h, m/s, o nudos."
+      },
+      "defaultCity": {
+        "label": "Ciudad predeterminada",
+        "description": "Ubicación de respaldo a consultar si la consulta está vacía."
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "plugin-weather-slot": {
+    "name": "Weather Forecast",
+    "description": "Detailed current weather and multi-day forecasts based on Open-Meteo.",
+    "settings": {
+      "units": {
+        "label": "Temperature units",
+        "description": "fahrenheit or celsius."
+      },
+      "windUnit": {
+        "label": "Wind speed units",
+        "description": "mph, km/h, m/s, or knots."
+      },
+      "defaultCity": {
+        "label": "Default city",
+        "description": "Fallback location to query if search query is empty."
+      }
+    }
+  }
+}

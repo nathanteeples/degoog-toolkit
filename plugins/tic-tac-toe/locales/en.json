@@ -1,0 +1,16 @@
+{
+  "plugin-tic-tac-toe": {
+    "name": "Tic-Tac-Toe",
+    "description": "Tic-Tac-Toe game with AI difficulty settings, local multiplayer, and win-line animation.",
+    "settings": {
+      "defaultDifficulty": {
+        "label": "Default Difficulty",
+        "description": "The default difficulty for Tic-Tac-Toe AI."
+      },
+      "defaultSymbol": {
+        "label": "Default Symbol",
+        "description": "The default symbol you play as."
+      }
+    }
+  }
+}

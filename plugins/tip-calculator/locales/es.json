@@ -1,0 +1,16 @@
+{
+  "plugin-tip-calculator": {
+    "name": "Calculadora de Propinas",
+    "description": "Calculadora de propinas interactiva con división de cuenta en tiempo real, parámetros de control deslizante personalizados y animaciones.",
+    "settings": {
+      "enabled": {
+        "label": "Habilitado",
+        "description": "Mostrar la tarjeta de la calculadora de propinas para consultas coincidentes."
+      },
+      "defaultTipPercent": {
+        "label": "Porcentaje de propina predeterminado",
+        "description": "Porcentaje de propina predeterminado a usar si no se especifica en la consulta de búsqueda."
+      }
+    }
+  }
+}

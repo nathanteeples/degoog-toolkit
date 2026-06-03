@@ -2,6 +2,7 @@ import {
   readSlotPosition,
   shouldRenderSlotForContext,
 } from "./slot-position.js";
+import { t } from "./locales.js";
 
 let template = "";
 
@@ -27,20 +28,31 @@ const UNIT_SECONDS = {
   hrs: 3600,
   hour: 3600,
   hours: 3600,
+  hora: 3600,
+  horas: 3600,
+  heure: 3600,
+  heures: 3600,
   m: 60,
   min: 60,
   mins: 60,
   minute: 60,
   minutes: 60,
+  minuto: 60,
+  minutos: 60,
   s: 1,
   sec: 1,
   secs: 1,
   second: 1,
   seconds: 1,
+  seg: 1,
+  segundo: 1,
+  segundos: 1,
+  seconde: 1,
+  secondes: 1,
 };
 
 const UNIT_TOKEN_RX =
-  /(\d+(?:\.\d+)?)\s*(hours?|hrs?|hr|h|minutes?|mins?|min|m|seconds?|secs?|sec|s)\b/gi;
+  /(\d+(?:\.\d+)?)\s*(hours?|horas?|heures?|hrs?|hr|h|minutes?|minutos?|mins?|min|m|seconds?|segundos?|secondes?|secs?|seg|sec|s)\b/gi;
 const CLOCK_RX = /\b(?:(\d{1,2}):)?(\d{1,2}):(\d{2})\b/;
 const BARE_NUMBER_RX = /\b(\d{1,4})\b/;
 
@@ -159,12 +171,18 @@ function configureSettings(settings) {
   selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
 }
 
-function renderTemplate(request) {
+function renderTemplate(request, context) {
   return (template || "")
     .replaceAll("{{duration_seconds}}", String(request.durationSeconds))
     .replaceAll("{{mode}}", request.mode)
     .replaceAll("{{autostart}}", request.autostart ? "true" : "false")
-    .replaceAll("{{stopwatch_cycle_seconds}}", String(stopwatchCycleSeconds));
+    .replaceAll("{{stopwatch_cycle_seconds}}", String(stopwatchCycleSeconds))
+    .replaceAll("{{t_timer}}", t("timer", context))
+    .replaceAll("{{t_stopwatch}}", t("stopwatch", context))
+    .replaceAll("{{t_sound_off}}", t("soundOff", context))
+    .replaceAll("{{t_edit_timer_duration}}", t("editTimerDuration", context))
+    .replaceAll("{{t_start}}", t("start", context))
+    .replaceAll("{{t_reset}}", t("reset", context));
 }
 
 export const slot = {
@@ -203,7 +221,7 @@ export const slot = {
 
     return {
       title: "",
-      html: renderTemplate(request),
+      html: renderTemplate(request, context),
     };
   },
 };

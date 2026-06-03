@@ -1,0 +1,16 @@
+{
+  "plugin-stopwatch": {
+    "name": "Timer / Stopwatch",
+    "description": "Compact timer and stopwatch with smooth circular progress, editable timer duration, and optional sound.",
+    "settings": {
+      "enabled": {
+        "label": "Enabled",
+        "description": "Show the timer and stopwatch card for matching queries."
+      },
+      "stopwatchCycle": {
+        "label": "Stopwatch ring cycle",
+        "description": "Seconds represented by one full stopwatch progress ring."
+      }
+    }
+  }
+}

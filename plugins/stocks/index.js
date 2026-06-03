@@ -759,7 +759,7 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
       asOf: formatYahooTime(
         firstFinite(snapshot?.regularMarketTime, meta.regularMarketTime),
       ),
-      sourceLabel: "Yahoo Finance",
+      sourceLabel: t("sourceLabel", context),
       sourceUrl: `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}`,
       chartPoints,
       chartLabel: chartPoints.length > 2 ? "1D" : "",
@@ -1117,7 +1117,7 @@ function renderSparkline(points, trend, label) {
     .map((point) => Number(point.price))
     .filter(Number.isFinite);
   if (prices.length < 2) {
-    return '<div class="stocks-sparkline-empty">No chart data</div>';
+    return `<div class="stocks-sparkline-empty">${escapeHtml(t("noChartData", context))}</div>`;
   }
 
   const width = 320;

@@ -4,6 +4,48 @@
   const AUTO_TRANSLATE_DELAY_MS = 450;
   const cardState = new WeakMap();
 
+  const TRANSLATE_LANG_DICT = {
+    en: {
+      copied: "Copied!",
+      copyTranslation: "Copy translation",
+      translating: "Translating",
+      translationUnavailable: "Translation unavailable",
+      translated: "Translated",
+      speechUnavailable: "Speech unavailable"
+    },
+    es: {
+      copied: "¡Copiado!",
+      copyTranslation: "Copiar traducción",
+      translating: "Traduciendo",
+      translationUnavailable: "Traducción no disponible",
+      translated: "Traducido",
+      speechUnavailable: "Voz no disponible"
+    },
+    fr: {
+      copied: "Copié !",
+      copyTranslation: "Copier la traduction",
+      translating: "Traduction en cours",
+      translationUnavailable: "Traduction non disponible",
+      translated: "Traduit",
+      speechUnavailable: "Synthèse vocale indisponible"
+    }
+  };
+
+  function getClientLang() {
+    let lang = document.documentElement.lang;
+    if (lang) lang = lang.split('-')[0].toLowerCase();
+    if (TRANSLATE_LANG_DICT[lang]) return lang;
+    let navLang = navigator.language;
+    if (navLang) navLang = navLang.split('-')[0].toLowerCase();
+    if (TRANSLATE_LANG_DICT[navLang]) return navLang;
+    return 'en';
+  }
+
+  function tc(key) {
+    const lang = getClientLang();
+    return TRANSLATE_LANG_DICT[lang][key] || TRANSLATE_LANG_DICT['en'][key];
+  }
+
   function pluginApiUrl(path) {
     return `${PLUGIN_API_BASE}/${path}`;
   }
@@ -95,7 +137,7 @@
 
     state.controller = new AbortController();
     setLoading(card, true);
-    setStatus(card, "available", "Translating");
+    setStatus(card, "available", tc("translating"));
 
     try {
       const response = await fetch(pluginApiUrl("translate"), {
@@ -120,7 +162,7 @@
         if (output) output.value = "";
         setRomanization(card, ".trc-source-romanization", "");
         setRomanization(card, ".trc-target-romanization", "");
-        setStatus(card, "failed", data.error || "Translation unavailable");
+        setStatus(card, "failed", data.error || tc("translationUnavailable"));
         return;
       }
 
@@ -131,12 +173,12 @@
       setStatus(
         card,
         data.provider?.status || "success",
-        data.provider?.name || "Translated",
+        data.provider?.name || tc("translated"),
       );
     } catch (error) {
       if (state.requestId !== requestId || error?.name === "AbortError") return;
       if (output) output.value = "";
-      setStatus(card, "failed", "Translation unavailable");
+      setStatus(card, "failed", tc("translationUnavailable"));
     } finally {
       if (state.requestId === requestId) {
         state.controller = null;
@@ -152,11 +194,17 @@
 
     navigator.clipboard.writeText(value).then(() => {
       button.dataset.copied = "1";
+      const previousTitle = button.title;
+      const previousAria = button.getAttribute("aria-label");
+      button.title = tc("copied");
+      button.setAttribute("aria-label", tc("copied"));
       const label = button.querySelector("span");
       const previous = label ? label.textContent : "";
-      if (label) label.textContent = "Copied";
+      if (label) label.textContent = tc("copied");
       setTimeout(() => {
         button.dataset.copied = "0";
+        button.title = previousTitle || tc("copyTranslation");
+        button.setAttribute("aria-label", previousAria || tc("copyTranslation"));
         if (label) label.textContent = previous || "Copy";
       }, 1400);
     });
@@ -202,7 +250,7 @@
       if (state.audio === audio) state.audio = null;
       button?.setAttribute("aria-pressed", "false");
       button?.classList.remove("trc-audio-playing");
-      setStatus(card, "failed", "Speech unavailable");
+      setStatus(card, "failed", tc("speechUnavailable"));
     });
     audio.play().catch(() => {
       if (state.audio === audio) state.audio = null;

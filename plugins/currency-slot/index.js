@@ -5,6 +5,7 @@ import {
   isEnglishPrepositionIn,
   isInformationalQuestion,
 } from "./query-guards.js";
+import { t } from "./locales.js";
 
 const FRANKFURTER_BASE = "https://api.frankfurter.dev/v2";
 const COINGECKO_SIMPLE_PRICE =
@@ -987,6 +988,22 @@ export const slot = {
         result: resultStr,
         rate: rateStr,
         pairs_html: pairsHtml,
+        t_currency_converter: t("currencyConverter", context),
+        t_exchange_rate: t("exchangeRate", context),
+        t_as_of: t("asOf", context),
+        t_days_1: t("days1", context),
+        t_days_5: t("days5", context),
+        t_days_30: t("days30", context),
+        t_days_365: t("days365", context),
+        t_days_1825: t("days1825", context),
+        t_days_max: t("daysMax", context),
+        t_amount: t("amount", context),
+        t_result: t("result", context),
+        t_copy_result: t("copyResult", context),
+        t_live_rate: t("liveRate", context),
+        t_loading_chart: t("loadingChart", context),
+        t_popular_pairs: t("popularPairs", context),
+        t_search_currency: t("searchCurrency", context),
       });
 
       return { html };

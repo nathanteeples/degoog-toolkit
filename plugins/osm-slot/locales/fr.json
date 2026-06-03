@@ -1,0 +1,43 @@
+{
+  "plugin-osm-slot": {
+    "name": "Lieux",
+    "description": "Reconnaissance des lieux locaux — affiche les commerces et points d'intérêt à proximité avec adresse, horaires, téléphone, itinéraire et carte interactive.",
+    "settings": {
+      "hereApiKey": {
+        "label": "Clé API HERE",
+        "description": "Requis. Permet la recherche de lieux et le géocodage de villes. Obtenez une clé sur developer.here.com."
+      },
+      "defaultLat": {
+        "label": "Latitude par défaut",
+        "description": "Latitude de votre centre de recherche par défaut."
+      },
+      "defaultLon": {
+        "label": "Longitude par défaut",
+        "description": "Longitude de votre centre de recherche par défaut."
+      },
+      "defaultLocationLabel": {
+        "label": "Libellé de l'emplacement par défaut",
+        "description": "Libellé affiché dans l'en-tête de la carte, par ex. 'Domicile' ou 'Paris, France'."
+      },
+      "useBrowserGeolocation": {
+        "label": "Demander au navigateur la position précise",
+        "description": "Affiche un bouton permettant au navigateur de demander votre position en temps réel pour des résultats à proximité plus précis."
+      },
+      "defaultRadius": {
+        "label": "Rayon de recherche",
+        "description": "Rayon de recherche en milles (miles)."
+      },
+      "resultsCount": {
+        "label": "Nombre de résultats",
+        "description": "Nombre de fiches de lieux à afficher."
+      },
+      "distanceUnit": {
+        "label": "Unité de distance"
+      },
+      "customTileUrl": {
+        "label": "URL personnalisée des tuiles de carte",
+        "description": "Modèle de tuile raster facultatif pour la carte."
+      }
+    }
+  }
+}

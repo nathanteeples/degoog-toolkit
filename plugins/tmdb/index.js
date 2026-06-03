@@ -5,6 +5,7 @@ let jellyfinUrl = "";
 let jellyfinApiKey = "";
 let template = "";
 let pluginRuntimeContext = null;
+import { t } from "./locales.js";
 let pluginRouteBase = "";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -219,7 +220,7 @@ const _formatRuntime = (mins) => {
 };
 
 /** TMDB `YYYY-MM-DD` → e.g. Sep 19, 2016 */
-const _formatMediumDate = (iso) => {
+const _formatMediumDate = (iso, context) => {
   if (!iso || typeof iso !== "string") return "";
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
   if (!m) return "";
@@ -228,7 +229,8 @@ const _formatMediumDate = (iso) => {
   const d = Number(m[3]);
   const dt = new Date(y, mo, d);
   if (Number.isNaN(dt.getTime())) return "";
-  return dt.toLocaleDateString("en-US", {
+  const lang = context?.lang || "en-US";
+  return dt.toLocaleDateString(lang, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -249,11 +251,11 @@ const _seasonFactsLine = (facts) => {
 };
 
 /** Bidi-safe markup: DOM order date → runtime → episodes (same as on-screen order in LTR). */
-const _seasonFactsHtml = (facts) => {
+const _seasonFactsHtml = (facts, context) => {
   if (!facts || typeof facts !== "object") return "";
   const ep =
     facts.episodeCount > 0
-      ? `${facts.episodeCount} episode${facts.episodeCount !== 1 ? "s" : ""}`
+      ? `${facts.episodeCount} ${facts.episodeCount !== 1 ? t("episodes", context) : t("episode", context)}`
       : "";
   const rt =
     typeof facts.runtimeTotal === "string" ? facts.runtimeTotal.trim() : "";
@@ -272,11 +274,11 @@ const _seasonFactsHtml = (facts) => {
   );
 };
 
-const _seasonFactsFromTvSeasonSummary = (season) => {
+const _seasonFactsFromTvSeasonSummary = (season, context) => {
   const episodeCount = Number(season?.episode_count) || 0;
   const air =
     typeof season?.air_date === "string" ? season.air_date.trim() : "";
-  const dateRange = air ? _formatMediumDate(air) : "";
+  const dateRange = air ? _formatMediumDate(air, context) : "";
   return {
     episodeCount,
     dateRange,
@@ -641,9 +643,9 @@ const _buildTrailerLink = (video, movieTitle, ctx) => {
   if (!video || !video.key) return "";
   const key = _youtubeKey(video.key);
   if (!key) return "";
-  const fallbackTitle = String(movieTitle || "Trailer").trim() || "Trailer";
+  const fallbackTitle = String(movieTitle || t("trailer", ctx)).trim() || t("trailer", ctx);
   const clipName =
-    String(video.name || "").trim() || `${fallbackTitle} trailer`;
+    String(video.name || "").trim() || `${fallbackTitle} ${t("trailer", ctx).toLowerCase()}`;
   const safeTitle = _esc(clipName);
   const href = _esc(
     `https://www.youtube.com/watch?v=${encodeURIComponent(key)}`,
@@ -661,7 +663,7 @@ const _buildTrailerLink = (video, movieTitle, ctx) => {
     `target="_blank" rel="noopener noreferrer" title="${safeTitle}" aria-label="Watch ${safeTitle} on YouTube" ` +
     `style="position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text-primary);text-decoration:none;background:var(--bg-light, rgba(255,255,255,0.04));">` +
     thumbHtml +
-    `<span style="position:absolute;inset:auto 0 0 0;padding:0.65rem 0.8rem;background:linear-gradient(180deg, transparent, rgba(0,0,0,0.72));color:white;font-weight:700;">Watch trailer &#8599;</span>` +
+    `<span style="position:absolute;inset:auto 0 0 0;padding:0.65rem 0.8rem;background:linear-gradient(180deg, transparent, rgba(0,0,0,0.72));color:white;font-weight:700;">${_esc(t("watchTrailer", ctx))} &#8599;</span>` +
     `</a>` +
     `</div>`
   );
@@ -765,7 +767,7 @@ const _buildImageCombo = (poster, bd1, bd2) => {
   );
 };
 
-const _formatCastCountLabel = (n) => `${n} ${n === 1 ? "person" : "people"}`;
+const _formatCastCountLabel = (n, context) => `${n} ${n === 1 ? t("person", context) : t("people", context)}`;
 
 const _buildCastStrip = (cast, ctx) => {
   if (!Array.isArray(cast) || cast.length === 0) return "";
@@ -817,7 +819,7 @@ const _buildCastCarousel = (stripHtml) => {
 const _buildCastAccordion = (cast, label, ctx) => {
   const strip = _buildCastStrip(cast, ctx);
   if (!strip) return "";
-  const meta = _formatCastCountLabel(cast.length);
+  const meta = _formatCastCountLabel(cast.length, ctx);
   return (
     `<details class="tmdb-accordion">` +
     `<summary class="tmdb-accordion-summary">${_esc(label)}<span class="tmdb-accordion-meta">${_esc(meta)}</span></summary>` +
@@ -836,7 +838,7 @@ const _renderEpisodes = (seasonData, tvId, ctx) => {
     ? seasonData.episodes
     : [];
   if (episodes.length === 0) {
-    return `<p class="tmdb-episodes-empty">No episodes listed.</p>`;
+    return `<p class="tmdb-episodes-empty">${_esc(t("noEpisodes", ctx))}</p>`;
   }
   const resolvedTvId =
     tvId != null && tvId !== "" ? tvId : seasonData?.show_id || "";
@@ -846,7 +848,7 @@ const _renderEpisodes = (seasonData, tvId, ctx) => {
       const seasonNum =
         ep.season_number != null ? ep.season_number : seasonData?.season_number;
       const name = _esc(
-        ep.name || (num != null ? `Episode ${num}` : "Episode"),
+        ep.name || (num != null ? `${t("episode", ctx)} ${num}` : t("episode", ctx)),
       );
       const air = ep.air_date || "";
       const runtime = ep.runtime ? _formatRuntime(ep.runtime) : "";
@@ -902,7 +904,7 @@ const _renderEpisodes = (seasonData, tvId, ctx) => {
   return `<div class="tmdb-episodes-list">${items}</div>`;
 };
 
-const _buildSeasonsRail = (details) => {
+const _buildSeasonsRail = (details, ctx) => {
   const seasons = details?.seasons;
   if (!Array.isArray(seasons) || seasons.length === 0) return "";
   const relevant = seasons.filter((s) => s.season_number > 0);
@@ -911,7 +913,7 @@ const _buildSeasonsRail = (details) => {
   const tabs = relevant
     .map((season, idx) => {
       const seasonNum = season.season_number;
-      const label = _esc(season.name || `Season ${seasonNum}`);
+      const label = _esc(season.name || `${t("season", ctx)} ${seasonNum}`);
       const epCount = season.episode_count || 0;
       const overviewRaw = String(season.overview || "")
         .replace(/\s+/g, " ")
@@ -935,9 +937,9 @@ const _buildSeasonsRail = (details) => {
       .replace(/\s+/g, " ")
       .trim(),
   );
-  const initialFactsObj = _seasonFactsFromTvSeasonSummary(firstSeason);
+  const initialFactsObj = _seasonFactsFromTvSeasonSummary(firstSeason, ctx);
   const initialFactsLine = _seasonFactsLine(initialFactsObj);
-  const initialFactsHtml = _seasonFactsHtml(initialFactsObj);
+  const initialFactsHtml = _seasonFactsHtml(initialFactsObj, ctx);
   const count = relevant.length;
   return (
     `<div class="tmdb-seasons-rail" data-tmdb-seasons-rail data-tmdb-season-tv="${details.id}">` +
@@ -949,7 +951,7 @@ const _buildSeasonsRail = (details) => {
     `<span class="tmdb-season-nav-icon" aria-hidden="true">\u203A</span>` +
     `</button>` +
     `<div class="tmdb-seasons-scroll">` +
-    `<div class="tmdb-seasons-strip" data-tmdb-seasons-strip role="tablist" aria-label="Seasons and episodes, ${count} season${count !== 1 ? "s" : ""}">` +
+    `<div class="tmdb-seasons-strip" data-tmdb-seasons-strip role="tablist" aria-label="Seasons and episodes, ${count} ${count !== 1 ? t("seasons", ctx) : t("season", ctx)}">` +
     tabs +
     `</div>` +
     `</div>` +
@@ -1047,9 +1049,9 @@ const _renderPerson = (details, images, credits, ctx) => {
     .join("");
 
   const metaGrid = _buildMetaGrid([
-    ["Known For", knownFor],
-    ["Birthday", birthday],
-    ["Birthplace", birthplace],
+    [t("knownFor", ctx), knownFor],
+    [t("birthday", ctx), birthday],
+    [t("birthplace", ctx), birthplace],
   ]);
 
   const bio = typeof details.biography === "string" ? details.biography : "";
@@ -1086,12 +1088,12 @@ const _renderPerson = (details, images, credits, ctx) => {
     );
 
   const filmographyPanel =
-    _buildFilmographySection("Movies", movieCast, ctx) +
-    _buildFilmographySection("TV Shows", tvCast, ctx);
+    _buildFilmographySection(t("movies", ctx), movieCast, ctx) +
+    _buildFilmographySection(t("tvShows", ctx), tvCast, ctx);
 
-  const tabs = [{ label: "Overview", panel: overviewPanel }];
+  const tabs = [{ label: t("overview", ctx), panel: overviewPanel }];
   if (filmographyPanel)
-    tabs.push({ label: "Films & TV", panel: filmographyPanel });
+    tabs.push({ label: t("filmsTv", ctx), panel: filmographyPanel });
 
   const nameHeader =
     `<div class="tmdb-panel-header">` +
@@ -1124,7 +1126,7 @@ const _buildRatingsHtml = (opts, ctx) => {
     const score = parseFloat(voteAverage).toFixed(1);
     const voteTitle =
       typeof voteCount === "number" && voteCount > 0
-        ? ` title="${_esc(`${voteCount.toLocaleString("en-US")} TMDB votes`)}"`
+        ? ` title="${_esc(`${voteCount.toLocaleString(ctx?.lang || "en-US")} ${t("tmdbVotes", ctx)}`)}"`
         : "";
     parts.push(
       `<div class="tmdb-rating-item"${voteTitle}>` +
@@ -1165,7 +1167,7 @@ const _buildRatingsHtml = (opts, ctx) => {
 
   if (letterboxdHref) {
     parts.push(
-      `<a href="${_esc(letterboxdHref)}" target="_blank" rel="noopener" class="tmdb-rating-item tmdb-rating-item--link" title="Letterboxd (community scores are on the site; there is no public rating API)">` +
+      `<a href="${_esc(letterboxdHref)}" target="_blank" rel="noopener" class="tmdb-rating-item tmdb-rating-item--link" title="${_esc(t("letterboxdTooltip", ctx))}">` +
         `<span class="tmdb-rating-badge tmdb-rating-badge--letterboxd">Letterboxd</span>` +
         `<span class="tmdb-rating-external">Open \u2192</span>` +
         `</a>`,
@@ -1220,7 +1222,7 @@ const _renderMovie = (
   const subtitleParts = [
     genres,
     runtime,
-    directors ? `Directed by ${directors}` : "",
+    directors ? `${t("directedBy", ctx)} ${directors}` : "",
   ].filter(Boolean);
   const subtitleHtml = subtitleParts.length
     ? `<div class="tmdb-subtitle">${_esc(subtitleParts.join(" \u00b7 "))}</div>`
@@ -1230,7 +1232,7 @@ const _renderMovie = (
     .map((c) => c.name)
     .join(", ");
   const createdByHtml = createdByNames
-    ? `<div class="tmdb-created-by">${_esc(`Created by ${createdByNames}`)}</div>`
+    ? `<div class="tmdb-created-by">${_esc(`${t("createdBy", ctx)} ${createdByNames}`)}</div>`
     : "";
 
   const ratingsHtml = _buildRatingsHtml(
@@ -1268,10 +1270,10 @@ const _renderMovie = (
 
   const cast = credits?.cast || [];
   const castStrip = _buildCastStrip(cast, ctx);
-  const castCountLabel = _formatCastCountLabel(cast.length);
+  const castCountLabel = _formatCastCountLabel(cast.length, ctx);
   const castSection = castStrip
     ? `<div class="tmdb-section">` +
-      `<div class="tmdb-section-heading">Cast` +
+      `<div class="tmdb-section-heading">${_esc(t("cast", ctx))}` +
       ` <span class="tmdb-section-count">${castCountLabel}</span>` +
       `</div>` +
       _buildCastCarousel(castStrip) +
@@ -1325,12 +1327,14 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, ctx) => 
     .map((c) => c.name)
     .join(", ");
   const createdByHtml = createdByNames
-    ? `<div class="tmdb-created-by">${_esc(`Created by ${createdByNames}`)}</div>`
+    ? `<div class="tmdb-created-by">${_esc(`${t("createdBy", ctx)} ${createdByNames}`)}</div>`
     : "";
   const genres = (details.genres || []).map((g) => g.name).join(", ");
-  const seasons = details.number_of_seasons
-    ? `${details.number_of_seasons} season${details.number_of_seasons !== 1 ? "s" : ""}`
-    : "";
+  let seasons = "";
+  if (details.number_of_seasons) {
+    const label = details.number_of_seasons === 1 ? t("season", ctx) : t("seasons", ctx);
+    seasons = `${details.number_of_seasons} ${label.toLowerCase()}`;
+  }
   const status = details.status || "";
   const subtitleParts = [genres, seasons, status].filter(Boolean);
   const subtitleHtml = subtitleParts.length
@@ -1353,17 +1357,17 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, ctx) => 
 
   const cast = credits?.cast || [];
   const castStrip = _buildCastStrip(cast, ctx);
-  const castCountLabel = _formatCastCountLabel(cast.length);
+  const castCountLabel = _formatCastCountLabel(cast.length, ctx);
   const castSection = castStrip
     ? `<div class="tmdb-section">` +
-      `<div class="tmdb-section-heading">Cast` +
+      `<div class="tmdb-section-heading">${_esc(t("cast", ctx))}` +
       ` <span class="tmdb-section-count">${castCountLabel}</span>` +
       `</div>` +
       _buildCastCarousel(castStrip) +
       `</div>`
     : "";
 
-  const seasonsAccordion = _buildSeasonsRail(details);
+  const seasonsAccordion = _buildSeasonsRail(details, ctx);
   const seasonCount =
     details?.seasons?.filter((s) => s.season_number > 0).length || 0;
   const labelText = `${name}${year ? ` (${year})` : ""}`;

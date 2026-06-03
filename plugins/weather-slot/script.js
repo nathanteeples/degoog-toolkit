@@ -256,20 +256,77 @@
   // Chart rendering
   // ────────────────────────────────────────────────
 
+  const WEATHER_LANG_DICT = {
+    en: {
+      temp: "Temperature",
+      precip: "Precipitation",
+      wind: "Wind",
+      humidity: "Humidity",
+      feelsLike: "Feels like",
+      hourly: "Hourly",
+      hourlyPrecipSub: "Chance of precipitation, hourly",
+      hourlyWindSub: "Wind speed · gusts",
+      gusts: "Gusts",
+      hourlyHumSub: "Relative humidity, hourly",
+      hourlySub: "24-hour forecast"
+    },
+    es: {
+      temp: "Temperatura",
+      precip: "Precipitación",
+      wind: "Viento",
+      humidity: "Humedad",
+      feelsLike: "Sensación térmica",
+      hourly: "Por hora",
+      hourlyPrecipSub: "Probabilidad de precipitación, por hora",
+      hourlyWindSub: "Velocidad del viento · ráfagas",
+      gusts: "Ráfagas",
+      hourlyHumSub: "Humedad relativa, por hora",
+      hourlySub: "Pronóstico de 24 horas"
+    },
+    fr: {
+      temp: "Température",
+      precip: "Précipitations",
+      wind: "Vent",
+      humidity: "Humidité",
+      feelsLike: "Ressenti",
+      hourly: "Par heure",
+      hourlyPrecipSub: "Risque de précipitations, par heure",
+      hourlyWindSub: "Vitesse du vent · rafales",
+      gusts: "Rafales",
+      hourlyHumSub: "Humidité relative, par heure",
+      hourlySub: "Prévisions sur 24h"
+    }
+  };
+
+  function getClientLang() {
+    let lang = document.documentElement.lang;
+    if (lang) lang = lang.split('-')[0].toLowerCase();
+    if (WEATHER_LANG_DICT[lang]) return lang;
+    let navLang = navigator.language;
+    if (navLang) navLang = navLang.split('-')[0].toLowerCase();
+    if (WEATHER_LANG_DICT[navLang]) return navLang;
+    return 'en';
+  }
+
+  function wc(key) {
+    const lang = getClientLang();
+    return WEATHER_LANG_DICT[lang][key] || WEATHER_LANG_DICT['en'][key];
+  }
+
   const CHART_META = {
     temp: {
-      label: "Temperature",
-      sub: "Hourly",
+      get label() { return wc("temp"); },
+      get sub() { return wc("hourly"); },
       kind: "line",
       key: "temp",
       altKey: "feels",
-      altLabel: "Feels like",
+      get altLabel() { return wc("feelsLike"); },
       color: "#f59e0b",
       showAlt: true,
     },
     precip: {
-      label: "Precipitation",
-      sub: "Chance of precipitation, hourly",
+      get label() { return wc("precip"); },
+      get sub() { return wc("hourlyPrecipSub"); },
       kind: "bar",
       key: "precipProb",
       color: "#60a5fa",
@@ -278,18 +335,18 @@
       suffix: "%",
     },
     wind: {
-      label: "Wind",
-      sub: "Wind speed · gusts",
+      get label() { return wc("wind"); },
+      get sub() { return wc("hourlyWindSub"); },
       kind: "line",
       key: "wind",
       altKey: "gusts",
-      altLabel: "Gusts",
+      get altLabel() { return wc("gusts"); },
       color: "#4285f4",
       showAlt: true,
     },
     humidity: {
-      label: "Humidity",
-      sub: "Relative humidity, hourly",
+      get label() { return wc("humidity"); },
+      get sub() { return wc("hourlyHumSub"); },
       kind: "line",
       key: "humidity",
       color: "#34d399",
@@ -799,6 +856,15 @@
 
     const days = payload.days || [];
     if (!days.length) return;
+
+    // Localize tab button labels dynamically
+    wrap.querySelectorAll(".wxs-tab").forEach(btn => {
+      const tab = btn.getAttribute("data-tab");
+      if (tab === "temp") btn.textContent = wc("temp");
+      else if (tab === "precip") btn.textContent = wc("precip");
+      else if (tab === "wind") btn.textContent = wc("wind");
+      else if (tab === "humidity") btn.textContent = wc("humidity");
+    });
 
     const unitsInfo = {
       tempUnit: payload.tempUnit || "°C",

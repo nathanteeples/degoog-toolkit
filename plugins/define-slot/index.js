@@ -1120,9 +1120,9 @@ function renderTerm(term, kind) {
   </span>`;
 }
 
-function renderOrigin(origin) {
+function renderOrigin(origin, context) {
   return `<div class="dslot-origin">
-    <div class="dslot-label">Origin</div>
+    <div class="dslot-label">${esc(t("origin", context))}</div>
     <p>${esc(origin)}</p>
   </div>`;
 }

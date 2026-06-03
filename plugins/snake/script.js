@@ -1,6 +1,37 @@
 (function () {
   "use strict";
 
+  const SN_LANG_DICT = {
+    en: {
+      pause: "Pause",
+      resume: "Resume",
+      newBest: "New best score! Keep it up.",
+      bestTip: "Best: {highScore} · Tip: queue turns a little earlier.",
+      exitFs: "Exit Fullscreen",
+      enterFs: "Full Screen"
+    },
+    es: {
+      pause: "Pausa",
+      resume: "Reanudar",
+      newBest: "¡Nueva mejor puntuación! Sigue así.",
+      bestTip: "Máximo: {highScore} · Consejo: anticipa tus giros un poco antes.",
+      exitFs: "Salir de pantalla completa",
+      enterFs: "Pantalla completa"
+    },
+    fr: {
+      pause: "Pause",
+      resume: "Reprendre",
+      newBest: "Nouveau record ! Continuez comme ça.",
+      bestTip: "Record : {highScore} · Astuce : anticipez vos virages un peu plus tôt.",
+      exitFs: "Quitter le plein écran",
+      enterFs: "Plein écran"
+    }
+  };
+  function getSnTranslation(key) {
+    const lang = (document.documentElement.lang || navigator.language || "en").split("-")[0].toLowerCase();
+    return SN_LANG_DICT[lang]?.[key] || SN_LANG_DICT["en"][key] || key;
+  }
+
   var currentWidget = null;
   var audioCtx = null;
   var lastTime = 0;
@@ -276,7 +307,7 @@
     var pauseBtn = qs("#snake-pause-btn");
     if (pauseBtn) {
       pauseBtn.disabled = false;
-      pauseBtn.textContent = "Pause";
+      pauseBtn.textContent = getSnTranslation("pause");
     }
 
     if (state.rafId) cancelAnimationFrame(state.rafId);
@@ -289,8 +320,12 @@
     state.paused = true;
     qs("#snake-overlay-paused").classList.remove("snake-hidden");
     var pauseBtn = qs("#snake-pause-btn");
-    if (pauseBtn) pauseBtn.textContent = "Resume";
+    if (pauseBtn) toggleOverlayOrText(pauseBtn, "resume");
     updateUI();
+  }
+
+  function toggleOverlayOrText(el, key) {
+    el.textContent = getSnTranslation(key);
   }
 
   function resumeGame() {
@@ -298,7 +333,7 @@
     state.paused = false;
     qs("#snake-overlay-paused").classList.add("snake-hidden");
     var pauseBtn = qs("#snake-pause-btn");
-    if (pauseBtn) pauseBtn.textContent = "Pause";
+    if (pauseBtn) pauseBtn.textContent = getSnTranslation("pause");
     lastTime = performance.now();
     updateUI();
   }
@@ -322,8 +357,8 @@
     if (extra) {
       var newBest = state.score === state.highScore && state.score > 0;
       extra.textContent = newBest
-        ? "New best score! Keep it up."
-        : "Best: " + state.highScore + " \u00b7 Tip: queue turns a little earlier.";
+        ? getSnTranslation("newBest")
+        : getSnTranslation("bestTip").replace("{highScore}", String(state.highScore));
     }
     
     qs("#snake-overlay-gameover").classList.remove("snake-hidden");
@@ -331,7 +366,7 @@
     var pauseBtn = qs("#snake-pause-btn");
     if (pauseBtn) {
       pauseBtn.disabled = true;
-      pauseBtn.textContent = "Pause";
+      pauseBtn.textContent = getSnTranslation("pause");
     }
     updateUI();
   }
@@ -738,7 +773,7 @@
     var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
     var fsBtn = qs("#snake-fullscreen-btn");
     if (fsBtn) {
-      fsBtn.textContent = isFs ? "Exit Fullscreen" : "Full Screen";
+      fsBtn.textContent = isFs ? getSnTranslation("exitFs") : getSnTranslation("enterFs");
     }
   }
 

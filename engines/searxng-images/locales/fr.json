@@ -1,0 +1,24 @@
+{
+  "engine-searxng-images": {
+    "name": "SearXNG Images",
+    "description": "Moteur de recherche de Images de SearXNG",
+    "settings": {
+      "baseUrl": {
+        "label": "URL de SearXNG",
+        "description": "URL de base de votre instance SearXNG (par défaut: http://127.0.0.1:8888)"
+      },
+      "categories": {
+        "label": "Catégories",
+        "description": "Catégories séparées par des virgules à rechercher (par défaut: \"images\" pour ce moteur)."
+      },
+      "engines": {
+        "label": "Moteurs",
+        "description": "Noms des moteurs séparés par des virgules à utiliser (ex. \"google images,qwant images\"). Laissez vide pour activer tous les moteurs."
+      },
+      "safesearch": {
+        "label": "Recherche sécurisée",
+        "description": "Niveau de recherche sécurisée: 0=désactivé, 1=modéré, 2=strict"
+      }
+    }
+  }
+}

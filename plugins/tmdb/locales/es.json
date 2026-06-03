@@ -1,0 +1,20 @@
+{
+  "plugin-tmdb": {
+    "name": "Base de datos de películas (TMDB / Jellyfin)",
+    "description": "Enriquece los resultados de búsqueda de películas y programas con detalles, calificaciones, listas de reparto y opciones de reproducción.",
+    "settings": {
+      "tmdbApiKey": {
+        "label": "Clave API de TMDB",
+        "description": "Se usa para obtener detalles desde themoviedb.org."
+      },
+      "omdbApiKey": {
+        "label": "Clave API de OMDB",
+        "description": "Se usa para obtener calificaciones de IMDb/Rotten Tomatoes."
+      },
+      "jellyfinUrl": {
+        "label": "URL del servidor Jellyfin",
+        "description": "Busque en su biblioteca Jellyfin para obtener enlaces de reproducción."
+      }
+    }
+  }
+}

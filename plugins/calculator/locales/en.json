@@ -1,0 +1,12 @@
+{
+  "plugin-calculator": {
+    "name": "Calculator",
+    "description": "Interactive calculator that evaluates math expressions and graphs formulas.",
+    "settings": {
+      "calcEnabled": {
+        "label": "Enabled",
+        "description": "Show the calculator card for math queries."
+      }
+    }
+  }
+}

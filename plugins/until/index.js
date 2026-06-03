@@ -782,14 +782,18 @@ function makeDate(year, month, day, hour, minute, second, precision, meta = {}) 
   return { date, precision, ...meta };
 }
 
-function renderUntil(parsed, now) {
+import { t, getLanguage } from "./locales.js";
+
+function renderUntil(parsed, now, context) {
   const targetDate = parsed.target.date;
   const diffMs = targetDate.getTime() - now.getTime();
   const absMs = Math.abs(diffMs);
-  const primary = formatPrimary(absMs, parsed.requestedUnit);
-  const targetLabel = formatTargetLabel(targetDate, parsed.target.precision);
+  const primary = formatPrimary(absMs, parsed.requestedUnit, context);
+  const targetLabel = formatTargetLabel(targetDate, parsed.target.precision, context);
   const future = diffMs >= 0;
   const html = (template || FALLBACK_TEMPLATE)
+    .replaceAll("{{t_countdown_board}}", t("countdownBoard", context))
+    .replaceAll("{{t_status_label}}", future ? t("approaching", context) : t("arrived", context))
     .split("{{state_class}}")
     .join(future ? "until-card--future" : "until-card--past")
     .split("{{target_iso}}")
@@ -799,33 +803,41 @@ function renderUntil(parsed, now) {
     .split("{{top_units}}")
     .join(String(settings.topUnits))
     .split("{{eyebrow}}")
-    .join(_esc(future ? `Until ${targetLabel}` : `Since ${targetLabel}`))
+    .join(_esc(future ? `${t("until", context)} ${targetLabel}` : `${t("since", context)} ${targetLabel}`))
     .split("{{status_label}}")
-    .join(_esc(future ? "Approaching" : "Arrived"))
+    .join(_esc(future ? t("approaching", context) : t("arrived", context)))
     .split("{{primary_html}}")
     .join(primary.html)
     .split("{{primary_caption}}")
-    .join(_esc(future ? "from now" : "ago"))
+    .join(_esc(future ? t("fromNow", context) : t("ago", context)))
     .split("{{details_html}}")
-    .join(renderDetails(absMs));
+    .join(renderDetails(absMs, context));
 
   return { title: "", html };
 }
 
-function formatPrimary(absMs, requestedUnit) {
+function formatPrimary(absMs, requestedUnit, context) {
   const parts = decomposeDuration(absMs, requestedUnit, settings.topUnits);
-  return { html: renderPrimaryHtml(parts) };
+  return { html: renderPrimaryHtml(parts, context) };
 }
 
-function renderPrimaryHtml(parts) {
+function getUnitTranslation(unit, value, context) {
+  if (Math.abs(value) === 1) {
+    const singularKey = unit.endsWith("s") ? unit.slice(0, -1) : unit;
+    return t(singularKey, context);
+  }
+  return t(unit, context);
+}
+
+function renderPrimaryHtml(parts, context) {
   if (!parts.length) {
-    return '<span class="until-card__now">right now</span>';
+    return `<span class="until-card__now">${_esc(t("rightNow", context))}</span>`;
   }
 
   return parts
     .map((part, index) => {
       const level = Math.min(index, MAX_TOP_UNITS - 1);
-      const displayValue = formatWhole(part.value);
+      const displayValue = formatWhole(part.value, context);
       const safe = _esc(displayValue);
       return `<span class="until-card__part until-card__part--${level}">
         <span class="until-card__flap" data-until-part data-until-unit="${_esc(part.unit)}" data-until-value="${_esc(String(part.value))}" data-until-display="${safe}">
@@ -835,7 +847,7 @@ function renderPrimaryHtml(parts) {
           <span class="until-card__flap-card until-card__flap-card--flip-upper" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-upper>${safe}</span></span>
           <span class="until-card__flap-card until-card__flap-card--flip-lower" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-lower>${safe}</span></span>
         </span>
-        <span class="until-card__part-unit">${_esc(plural(part.unit.slice(0, -1), part.value))}</span>
+        <span class="until-card__part-unit">${_esc(getUnitTranslation(part.unit, part.value, context))}</span>
       </span>`;
     })
     .join("");
@@ -896,18 +908,21 @@ function normalizeDurationCarry(parts) {
   }
 }
 
-function renderDetails(absMs) {
+function renderDetails(absMs, context) {
   return DETAIL_UNITS.map((unit) => {
     const value = absMs / UNIT_MS[unit];
+    const label = capitalize(t(unit, context));
     return `
       <div class="until-card__detail">
-        <dt>${_esc(capitalize(unit))}</dt>
-        <dd data-until-value="${_esc(unit)}">${_esc(formatDetailNumber(value, unit))}</dd>
+        <dt>${_esc(label)}</dt>
+        <dd data-until-value="${_esc(unit)}">${_esc(formatDetailNumber(value, unit, context))}</dd>
       </div>`;
   }).join("");
 }
 
-function formatTargetLabel(date, precision) {
+function formatTargetLabel(date, precision, context) {
+  const lang = getLanguage(context);
+  const locale = lang === "en" ? "en-US" : (lang === "es" ? "es-ES" : "fr-FR");
   const options =
     precision === "minute" || precision === "second"
       ? {
@@ -925,31 +940,31 @@ function formatTargetLabel(date, precision) {
           day: "numeric",
         };
 
-  return date.toLocaleString("en-US", options);
+  return date.toLocaleString(locale, options);
 }
 
-function formatDetailNumber(value, unit) {
+function formatDetailNumber(value, unit, context) {
   if (unit === "years" || unit === "months" || unit === "weeks") {
-    return formatDecimal(value, value >= 10 ? 1 : 2);
+    return formatDecimal(value, value >= 10 ? 1 : 2, context);
   }
-  return formatWhole(Math.round(value));
+  return formatWhole(Math.round(value), context);
 }
 
-function formatWhole(value) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(
+function formatWhole(value, context) {
+  const lang = getLanguage(context);
+  const locale = lang === "en" ? "en-US" : (lang === "es" ? "es-ES" : "fr-FR");
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(
     value,
   );
 }
 
-function formatDecimal(value, digits) {
-  return new Intl.NumberFormat("en-US", {
+function formatDecimal(value, digits, context) {
+  const lang = getLanguage(context);
+  const locale = lang === "en" ? "en-US" : (lang === "es" ? "es-ES" : "fr-FR");
+  return new Intl.NumberFormat(locale, {
     maximumFractionDigits: digits,
     minimumFractionDigits: value < 10 ? Math.min(1, digits) : 0,
   }).format(value);
-}
-
-function plural(label, value) {
-  return Math.abs(value) === 1 ? label : `${label}s`;
 }
 
 function capitalize(value) {

@@ -1,0 +1,43 @@
+{
+  "plugin-osm-slot": {
+    "name": "Places",
+    "description": "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.",
+    "settings": {
+      "hereApiKey": {
+        "label": "HERE API key",
+        "description": "Required. Powers place search and city geocoding. Get a key at developer.here.com."
+      },
+      "defaultLat": {
+        "label": "Default latitude",
+        "description": "Latitude of your default search center."
+      },
+      "defaultLon": {
+        "label": "Default longitude",
+        "description": "Longitude of your default search center."
+      },
+      "defaultLocationLabel": {
+        "label": "Default location label",
+        "description": "Label shown in the card header, e.g. 'Home' or 'Chicago, IL'."
+      },
+      "useBrowserGeolocation": {
+        "label": "Ask browser for precise location",
+        "description": "Show a button that lets the browser request your live location for more accurate nearby results."
+      },
+      "defaultRadius": {
+        "label": "Search radius",
+        "description": "Search radius in miles."
+      },
+      "resultsCount": {
+        "label": "Results count",
+        "description": "How many place cards to show."
+      },
+      "distanceUnit": {
+        "label": "Distance unit"
+      },
+      "customTileUrl": {
+        "label": "Custom map tile URL",
+        "description": "Optional raster tile template for the map."
+      }
+    }
+  }
+}

@@ -1,6 +1,57 @@
 (function () {
   "use strict";
 
+  var STOPWATCH_LANG_DICT = {
+    en: {
+      timer: "Timer",
+      stopwatch: "Stopwatch",
+      soundOff: "Sound off",
+      soundOn: "Sound on",
+      editTimerDuration: "Edit timer duration",
+      start: "Start",
+      pause: "Pause",
+      reset: "Reset",
+      timerDuration: "Timer duration"
+    },
+    es: {
+      timer: "Temporizador",
+      stopwatch: "Cronómetro",
+      soundOff: "Sonido desactivado",
+      soundOn: "Sonido activado",
+      editTimerDuration: "Editar duración del temporizador",
+      start: "Iniciar",
+      pause: "Pausa",
+      reset: "Reiniciar",
+      timerDuration: "Duración del temporizador"
+    },
+    fr: {
+      timer: "Minuteur",
+      stopwatch: "Chronomètre",
+      soundOff: "Sans son",
+      soundOn: "Son actif",
+      editTimerDuration: "Modifier la durée du minuteur",
+      start: "Démarrer",
+      pause: "Pause",
+      reset: "Réinitialiser",
+      timerDuration: "Durée du minuteur"
+    }
+  };
+
+  function getClientLang() {
+    var lang = document.documentElement.lang;
+    if (lang) lang = lang.split('-')[0].toLowerCase();
+    if (STOPWATCH_LANG_DICT[lang]) return lang;
+    var navLang = navigator.language;
+    if (navLang) navLang = navLang.split('-')[0].toLowerCase();
+    if (STOPWATCH_LANG_DICT[navLang]) return navLang;
+    return 'en';
+  }
+
+  function getStTranslation(key) {
+    var lang = getClientLang();
+    return STOPWATCH_LANG_DICT[lang][key] || STOPWATCH_LANG_DICT['en'][key] || key;
+  }
+
   var CIRCUMFERENCE = 2 * Math.PI * 54;
   var DEFAULT_DURATION_MS = 5 * 60 * 1000;
   var DEFAULT_STOPWATCH_CYCLE_MS = 60 * 1000;
@@ -55,7 +106,7 @@
   function parseTimeInput(value) {
     var raw = String(value || "").trim().toLowerCase();
     var unitMatch = raw.match(
-      /(\d+(?:\.\d+)?)\s*(hours?|hrs?|hr|h|minutes?|mins?|min|m|seconds?|secs?|sec|s)\b/g,
+      /(\d+(?:\.\d+)?)\s*(hours?|horas?|heures?|hrs?|hr|h|minutes?|minutos?|mins?|min|m|seconds?|segundos?|secondes?|secs?|seg|sec|s)\b/g,
     );
     if (unitMatch) {
       var totalSeconds = 0;
@@ -118,7 +169,7 @@
     if (display && display.tagName !== "INPUT") {
       var text = formatTime(displaySeconds());
       if (display.textContent !== text) display.textContent = text;
-      display.title = state.mode === "timer" ? "Edit timer duration" : "Stopwatch";
+      display.title = state.mode === "timer" ? getStTranslation("editTimerDuration") : getStTranslation("stopwatch");
     }
 
     var tabs = currentWidget.querySelectorAll("[data-timer-mode]");
@@ -217,8 +268,8 @@
     if (!button) return;
     var active = state.running || state.alarming;
     button.innerHTML = active ? ICON_PAUSE : ICON_PLAY;
-    button.setAttribute("aria-label", active ? "Pause" : "Start");
-    button.title = active ? "Pause" : "Start";
+    button.setAttribute("aria-label", active ? getStTranslation("pause") : getStTranslation("start"));
+    button.title = active ? getStTranslation("pause") : getStTranslation("start");
   }
 
   function updateSoundButton() {
@@ -226,8 +277,8 @@
     if (!button) return;
     button.innerHTML = soundEnabled ? ICON_SOUND_ON : ICON_SOUND_OFF;
     button.setAttribute("aria-pressed", soundEnabled ? "true" : "false");
-    button.setAttribute("aria-label", soundEnabled ? "Sound on" : "Sound off");
-    button.title = soundEnabled ? "Sound on" : "Sound off";
+    button.setAttribute("aria-label", soundEnabled ? getStTranslation("soundOn") : getStTranslation("soundOff"));
+    button.title = soundEnabled ? getStTranslation("soundOn") : getStTranslation("soundOff");
   }
 
   function getAudioContext() {
@@ -300,7 +351,7 @@
     input.inputMode = "numeric";
     input.value = display.textContent.trim();
     input.setAttribute("data-timer-display", "");
-    input.setAttribute("aria-label", "Timer duration");
+    input.setAttribute("aria-label", getStTranslation("timerDuration"));
     display.replaceWith(input);
     input.focus();
     input.select();
@@ -309,7 +360,7 @@
       var span = document.createElement("span");
       span.className = "timer-display";
       span.setAttribute("data-timer-display", "");
-      span.title = "Edit timer duration";
+      span.title = getStTranslation("editTimerDuration");
       if (text) span.textContent = text;
       input.replaceWith(span);
     }

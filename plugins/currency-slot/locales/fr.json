@@ -1,0 +1,12 @@
+{
+  "plugin-currency-slot": {
+    "name": "Devises",
+    "description": "Convertisseur de devises avec taux en direct. Prend en charge !currency ou des requêtes naturelles comme '100 usd to eur'.",
+    "settings": {
+      "defaultTo": {
+        "label": "Devise cible par défaut",
+        "description": "Devise vers laquelle convertir lorsqu'elle n'est pas spécifiée dans la requête."
+      }
+    }
+  }
+}

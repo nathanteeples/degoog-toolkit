@@ -1,0 +1,16 @@
+{
+  "plugin-snake": {
+    "name": "Jeu du Serpent",
+    "description": "Un plugin de jeu du serpent avec support mobile et mode plein écran.",
+    "settings": {
+      "enabled": {
+        "label": "Activé",
+        "description": "Afficher la carte du jeu du serpent pour les requêtes correspondantes."
+      },
+      "initialSpeed": {
+        "label": "Vitesse initiale",
+        "description": "La vitesse de départ du serpent."
+      }
+    }
+  }
+}

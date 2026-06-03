@@ -1,0 +1,24 @@
+{
+  "plugin-sports-slot": {
+    "name": "Sports Results",
+    "description": "Real-time scores, standings, and schedules for soccer, NBA, NFL, and MLB.",
+    "settings": {
+      "footballDataApiKey": {
+        "label": "football-data.org API key",
+        "description": "Used for soccer clubs, fixtures, and standings."
+      },
+      "balldontlieApiKey": {
+        "label": "BALLDONTLIE API key",
+        "description": "Used for NFL, NBA, and MLB results."
+      },
+      "soccerCompetitions": {
+        "label": "Preferred soccer competitions",
+        "description": "Preferred soccer leagues to prioritize."
+      },
+      "debugMode": {
+        "label": "Debug mode",
+        "description": "Show plugin version next to data source footer."
+      }
+    }
+  }
+}
