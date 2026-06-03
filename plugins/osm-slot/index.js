@@ -9,7 +9,7 @@ import {
 } from "./query-guards.js";
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.6";
+const PLUGIN_VERSION = "4.5.10";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -25,9 +25,9 @@ const HERE_GEOCODE = "https://geocode.search.hereapi.com/v1/geocode";
 const HERE_GEO_TYPES_CITY = "city,area,postalCode";
 const HERE_GEO_TYPES_PLACE = "place,address,street,houseNumber";
 
-/** POI/landmark-style "near …" hints — must not be biased to the user's Home coords. */
+/** POI/landmark-style "near …" hints — generic suffix words, not named landmarks. */
 const GEO_POI_HINT_RE =
-  /\b(center|centre|plaza|square|tower|building|campus|terminal|station|airport|field|garden|market|mall|arena|stadium|museum|library|hospital|university|college|palace|bridge|park|zoo|aquarium|memorial|monument|rockefeller|times\s+square|empire\s+state|world\s+trade|statue\s+of\s+liberty|central\s+park|grand\s+central|penn\s+station|union\s+station|white\s+house|golden\s+gate|space\s+needle)\b/i;
+  /\b(center|centre|plaza|square|tower|building|campus|terminal|station|airport|field|garden|market|mall|arena|stadium|museum|library|hospital|university|college|palace|bridge|park|zoo|aquarium|memorial|monument)\b/i;
 
 // Prefer broader area hits when picking among geocode response items.
 const HERE_GEO_RESULT_PRIORITY = [
@@ -552,6 +552,67 @@ function _looksLikePoiGeocodeHint(hint) {
   return GEO_POI_HINT_RE.test(String(hint || "").trim());
 }
 
+/** Generic POI-type word groups (not landmark names) for geocode title matching. */
+const GEO_NAME_TYPE_GROUPS = [
+  ["center", "centre", "plaza", "plz", "square", "sq"],
+  ["station", "terminal"],
+  ["building", "tower"],
+  ["park", "garden", "field"],
+];
+
+function _geocodeTokensMatch(a, b) {
+  if (a === b) return true;
+  for (const group of GEO_NAME_TYPE_GROUPS) {
+    if (group.includes(a) && group.includes(b)) return true;
+  }
+  return false;
+}
+
+function _titlePrimarySegment(title) {
+  const text = String(title || "").trim();
+  const idx = text.indexOf(",");
+  return idx === -1 ? text : text.slice(0, idx).trim();
+}
+
+function _geocodeHintMatchScore(hint, title) {
+  const q = _normalizeMatchText(hint);
+  const full = _normalizeMatchText(title);
+  const primary = _normalizeMatchText(_titlePrimarySegment(title));
+  if (!q || !full) return 0;
+  if (full.includes(q) || primary.includes(q)) {
+    return Math.min(q.length, primary.length || full.length) >= 3 ? 0.95 : 0;
+  }
+
+  const qTokens = q.split(" ").filter(Boolean);
+  if (qTokens.length === 0) return 0;
+
+  const primaryWords = primary.split(" ").filter(Boolean);
+  const wordMatchesToken = (word, token) => {
+    if (_geocodeTokensMatch(word, token)) return true;
+    if (token.length >= 5 && word.length >= 5) {
+      return word.startsWith(token.slice(0, 5)) || token.startsWith(word.slice(0, 5));
+    }
+    return false;
+  };
+
+  if (qTokens.length > 1) {
+    const firstAnchored = primaryWords.some((word) => wordMatchesToken(word, qTokens[0]));
+    if (!firstAnchored) {
+      return _nameMatchScore(hint, _titlePrimarySegment(title)) * 0.35;
+    }
+  }
+
+  let matched = 0;
+  for (const token of qTokens) {
+    if (primaryWords.some((word) => wordMatchesToken(word, token))) {
+      matched += 1;
+    }
+  }
+  const primaryScore = matched / qTokens.length;
+  const fullScore = _nameMatchScore(hint, title);
+  return Math.max(primaryScore, primaryScore * 0.75 + fullScore * 0.25);
+}
+
 function _pickHereGeocodeItem(items, hint) {
   if (!Array.isArray(items) || items.length === 0) return null;
 
@@ -562,14 +623,14 @@ function _pickHereGeocodeItem(items, hint) {
   for (const item of items) {
     if (!item?.position) continue;
     const label = _hereGeocodeLabel(item, hint);
-    let score = _nameMatchScore(hint, label);
-    if (item.title) {
-      score = Math.max(score, _nameMatchScore(hint, item.title));
-    }
+    const title = item.title || label;
+    let score = poiHint
+      ? Math.max(_geocodeHintMatchScore(hint, title), _geocodeHintMatchScore(hint, label))
+      : Math.max(_nameMatchScore(hint, label), _nameMatchScore(hint, title));
     if (poiHint) {
       if (item.resultType === "place") score += 0.15;
       if (item.resultType === "locality" || item.resultType === "administrativeArea") {
-        score -= 0.35;
+        score -= 0.45;
       }
     }
     if (score > bestScore) {
@@ -578,7 +639,9 @@ function _pickHereGeocodeItem(items, hint) {
     }
   }
 
-  if (best && bestScore >= 0.45) return best;
+  const minScore = poiHint ? 0.55 : 0.45;
+  if (best && bestScore >= minScore) return best;
+  if (poiHint) return null;
 
   for (const type of HERE_GEO_RESULT_PRIORITY) {
     const hit = items.find((item) => item?.resultType === type && item?.position);
@@ -592,11 +655,12 @@ async function _fetchHereGeocodeItems(hint, doFetch, types, options = {}) {
   if (!apiKey) return null;
 
   const useBias = options.useBias !== false;
+  const limit = Math.min(Math.max(parseInt(options.limit, 10) || 5, 1), 20);
   const biasLat = parseFloat(_settings.defaultLat);
   const biasLon = parseFloat(_settings.defaultLon);
   let url =
     `${HERE_GEOCODE}?q=${encodeURIComponent(hint)}` +
-    `&limit=5` +
+    `&limit=${limit}` +
     `&lang=en-US` +
     `&apiKey=${encodeURIComponent(apiKey)}`;
   if (types) {
@@ -629,7 +693,7 @@ async function _geocodeHere(hint, doFetch, apiStatus) {
     return null;
   }
 
-  const cacheKey = `geo:here:v2:${hint.toLowerCase()}`;
+  const cacheKey = `geo:here:v5:${hint.toLowerCase()}`;
   const cached = _cache?.get(cacheKey);
   if (cached) {
     if (apiStatus) {
@@ -643,14 +707,11 @@ async function _geocodeHere(hint, doFetch, apiStatus) {
 
   const poiHint = _looksLikePoiGeocodeHint(hint);
   const attempts = poiHint
-    ? [
-        { types: "place", mode: "poi/place", useBias: false },
-        { types: null, mode: "poi/open", useBias: false },
-      ]
+    ? [{ types: null, mode: "poi/open", useBias: true, limit: 10 }]
     : [
-        { types: HERE_GEO_TYPES_CITY, mode: "city/area", useBias: true },
-        { types: HERE_GEO_TYPES_PLACE, mode: "place/address", useBias: true },
-        { types: null, mode: "open", useBias: true },
+        { types: HERE_GEO_TYPES_CITY, mode: "city/area", useBias: true, limit: 5 },
+        { types: HERE_GEO_TYPES_PLACE, mode: "place/address", useBias: true, limit: 5 },
+        { types: null, mode: "open", useBias: true, limit: 5 },
       ];
 
   let lastError = null;
@@ -661,6 +722,7 @@ async function _geocodeHere(hint, doFetch, apiStatus) {
       );
       const items = await _fetchHereGeocodeItems(hint, doFetch, attempt.types, {
         useBias: attempt.useBias,
+        limit: attempt.limit,
       });
       const item = _pickHereGeocodeItem(items, hint);
       if (!item?.position) continue;
@@ -681,11 +743,11 @@ async function _geocodeHere(hint, doFetch, apiStatus) {
         apiStatus.source = out.source;
         apiStatus.label = out.label;
         apiStatus.mode = attempt.mode;
+        apiStatus.query = hint;
       }
       return out;
     } catch (err) {
       lastError = err;
-      // Invalid parameter on a typed request — skip to the next strategy.
       if (err.status === 400 && attempt.types) continue;
       console.warn(`[Places] HERE geocode (${attempt.mode}) failed for "${hint}":`, err);
     }
@@ -698,6 +760,89 @@ async function _geocodeHere(hint, doFetch, apiStatus) {
   return null;
 }
 
+function _pickHereDiscoverItem(items, hint) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+
+  const poiHint = _looksLikePoiGeocodeHint(hint);
+  let best = null;
+  let bestScore = -1;
+
+  for (const item of items) {
+    if (!item?.position) continue;
+    const title = item.title || item.address?.label || "";
+    const score = poiHint
+      ? Math.max(_geocodeHintMatchScore(hint, title), _nameMatchScore(hint, title))
+      : _nameMatchScore(hint, title);
+    if (score > bestScore) {
+      bestScore = score;
+      best = item;
+    }
+  }
+
+  const minScore = poiHint ? 0.55 : 0.45;
+  return best && bestScore >= minScore ? best : null;
+}
+
+/** Last-resort place-hint resolution — one Discover call when /geocode cannot pick a match. */
+async function _discoverPlaceHintFallback(hint, doFetch, apiStatus) {
+  const apiKey = _settings.hereApiKey;
+  if (!apiKey) return null;
+
+  const biasLat = parseFloat(_settings.defaultLat);
+  const biasLon = parseFloat(_settings.defaultLon);
+  if (!Number.isFinite(biasLat) || !Number.isFinite(biasLon)) return null;
+
+  const url =
+    `${HERE_DISCOVER}?q=${encodeURIComponent(hint)}` +
+    `&at=${encodeURIComponent(`${biasLat},${biasLon}`)}` +
+    `&limit=3` +
+    `&lang=en-US` +
+    `&apiKey=${encodeURIComponent(apiKey)}`;
+
+  try {
+    console.log(
+      `[Places Server v${PLUGIN_VERSION}] HERE discover fallback for "${hint}"`,
+    );
+    const res = await doFetch(url, {}, 8000);
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`HTTP status ${res.status}${errText ? `: ${errText}` : ""}`);
+    }
+
+    const data = await res.json();
+    const items = Array.isArray(data.items) ? data.items : [];
+    const item = _pickHereDiscoverItem(items, hint);
+    if (!item?.position) return null;
+
+    const lat = parseFloat(item.position.lat);
+    const lon = parseFloat(item.position.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+    const out = {
+      lat,
+      lon,
+      label: (item.title || item.address?.label || hint).trim(),
+      source: "here-discover",
+    };
+    _cache?.set(`geo:here:v5:${hint.toLowerCase()}`, out);
+    if (apiStatus) {
+      apiStatus.status = "success";
+      apiStatus.source = out.source;
+      apiStatus.label = out.label;
+      apiStatus.mode = "discover-fallback";
+      apiStatus.query = hint;
+    }
+    return out;
+  } catch (err) {
+    console.warn(`[Places] HERE discover fallback failed for "${hint}":`, err);
+    if (apiStatus && apiStatus.status !== "success") {
+      apiStatus.status = "error";
+      apiStatus.error = err.message;
+    }
+    return null;
+  }
+}
+
 /** Forward-geocode a trailing "near …" hint via HERE Geocoding & Search API v7. */
 async function _geocodePlaceHint(hint, doFetch, apiStatus) {
   const trimmed = String(hint || "").trim();
@@ -706,15 +851,15 @@ async function _geocodePlaceHint(hint, doFetch, apiStatus) {
   try {
     const here = await _geocodeHere(trimmed, doFetch, apiStatus);
     if (here) return here;
+    return await _discoverPlaceHintFallback(trimmed, doFetch, apiStatus);
   } catch (err) {
     console.warn(`[Places] HERE geocode failed for "${trimmed}":`, err);
     if (apiStatus && apiStatus.status === "unused") {
       apiStatus.status = "error";
       apiStatus.error = err.message;
     }
+    return await _discoverPlaceHintFallback(trimmed, doFetch, apiStatus);
   }
-
-  return null;
 }
 
 async function _resolveSearchLocation(plan, doFetch, apiStatus) {
