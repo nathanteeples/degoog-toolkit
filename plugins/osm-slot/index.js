@@ -12,7 +12,7 @@ function t(key, context) {
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.23";
+const PLUGIN_VERSION = "4.5.28";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -1563,7 +1563,11 @@ function _formatHoursLineDisplay(line) {
 /* ------------------------------------------------------------------ */
 
 const LOCAL_INTENT_RE =
-  /\b(near me|nearby|nearest|closest|locations?|address|directions?|hours?|open now|phone|menu|reservations?|reviews?|near [a-z .'-]+)\b/i;
+  /\b(nearby|nearest|closest|locations?|address|directions?|hours?|open now|phone|menu|reservations?|reviews?)\b/i;
+
+/** Common geographic tails after "near" (downtown, airport, …). */
+const NEAR_GEO_TAIL_RE =
+  /\bnear\s+(?:downtown|uptown|midtown|airport|station|beach|mall|center|centre|plaza|square|park|harbor|harbour|pier|boardwalk|highway|interstate|i-?\d{1,3})\b/i;
 
 const PLACE_CATEGORY_RE =
   /\b(restaurants?|taverns?|taps?|bars?|grills?|cafes?|coffee|pizza|pizzerias?|diners?|baker(?:y|ies)|brewer(?:y|ies)|pubs?|tacos?|taquerias?|burritos?|mexican|sushi|ramen|chinese|thai|indian|bbq|barbecue|wings?|seafood|steakhouses?|delis?|pharmac(?:y|ies)|drug\s*stores?|grocer(?:y|ies)|supermarkets?|markets?|banks?|hotels?|motels?|gas\s+stations?|fuel|stores?|shops?|salons?|gyms?|fitness|doctors?|physicians?|clinics?|dentists?|dental|hospitals?|urgent\s+care|vets?|veterinar(?:y|ian|ians)|auto|car\s+wash)\b/i;
@@ -1667,9 +1671,40 @@ function _isBlockedNonPlaceQuery(lower) {
   );
 }
 
+function _hasAnyPlaceSignal(lower) {
+  return (
+    _hasStrongPlaceIntent(lower) ||
+    PLACE_CATEGORY_RE.test(lower) ||
+    KNOWN_CHAIN_RE.test(lower) ||
+    LANDMARK_HINT_RE.test(lower) ||
+    isPlaceInLocation(lower)
+  );
+}
+
+/**
+ * Longer queries with no place/location signals are usually general search, not POI lookup.
+ */
+function _isOpenEndedNonPlaceQuery(lower, query) {
+  if (_wordCount(query) < 5) return false;
+  return !_hasAnyPlaceSignal(lower);
+}
+
+/**
+ * "near" only counts when paired with real place-seeking context — not any "near <noun>".
+ */
+function _hasNearPlaceIntent(lower) {
+  if (/\bnear\s+me\b/i.test(lower)) return true;
+  if (NEAR_GEO_TAIL_RE.test(lower)) return true;
+  if (!/\bnear\s+[a-z]/i.test(lower)) return false;
+  if (PLACE_CATEGORY_RE.test(lower) || KNOWN_CHAIN_RE.test(lower)) return true;
+  if (/\bnear\s+[a-z][a-z .'-]+(?:\s+[a-z][a-z .'-]+)+\b/i.test(lower)) return true;
+  if (_hasCityOrZipHint(lower)) return true;
+  return false;
+}
+
 /** Worth a HERE call: explicit place-seeking intent, not just a category keyword. */
 function _hasStrongPlaceIntent(lower) {
-  const hasLocalIntent = LOCAL_INTENT_RE.test(lower);
+  const hasLocalIntent = LOCAL_INTENT_RE.test(lower) || _hasNearPlaceIntent(lower);
   const hasCategory = PLACE_CATEGORY_RE.test(lower);
   const hasChain = KNOWN_CHAIN_RE.test(lower);
   const hasLocationHint = _hasCityOrZipHint(lower);
@@ -1694,6 +1729,7 @@ function _classifyLocalText(text) {
   if (query.length > 80) return null;
   if (URL_OR_CODE_RE.test(query)) return null;
   if (isUtilityPluginQuery(query)) return null;
+  if (_isOpenEndedNonPlaceQuery(lower, query)) return null;
 
   const hasCategory = PLACE_CATEGORY_RE.test(lower);
 
@@ -1722,8 +1758,10 @@ function _classifyLocalText(text) {
 function _classifyPlaceQuery(rawQuery) {
   const query = _normalizeQuery(rawQuery);
   if (!query || query.length > 80) return null;
+  const lower = query.toLowerCase();
   if (isUtilityPluginQuery(query)) return null;
   if (GAME_QUERY_RE.test(query)) return null;
+  if (_isOpenEndedNonPlaceQuery(lower, query)) return null;
   const wantsOpenNow = /\bopen(?:\s+now)?\b/i.test(query);
 
   // Handle explicit "where is …" place lookups before the generic
