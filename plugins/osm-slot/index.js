@@ -12,7 +12,7 @@ function t(key, context) {
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.28";
+const PLUGIN_VERSION = "4.5.29";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -1304,8 +1304,9 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus, contex
         let summary = "";
         if (today) {
           if (today.allDay) summary = t("open24h", context);
-          else if (openNow === true && today.close) summary = t("closesTime", context).replace("{time}", today.close);
-          else if (openNow === false && today.open) summary = t("opensTime", context).replace("{time}", today.open);
+          // Time must sit outside {{ t:… }} — degoog resolves placeholders after render.
+          else if (openNow === true && today.close) summary = `${t("closesAt", context)} ${today.close}`;
+          else if (openNow === false && today.open) summary = `${t("opensAt", context)} ${today.open}`;
           else if (today.open && today.close) summary = `${today.open} – ${today.close}`;
           else if (today.closed) summary = t("closedToday", context);
         }
@@ -1383,7 +1384,7 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus, contex
 <div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}" data-places-apis="${_esc(JSON.stringify(apiStatus || {}))}">
   <div class="places-header">
     <span class="places-label">${_esc(t("places", context))}</span>
-    <span class="places-subhead">${_esc(t("nearPlace", context).replace("{place}", locationLabel))}</span>
+    <span class="places-subhead">${t("nearLabel", context)} ${_esc(locationLabel)}</span>
     ${geoBtn}
   </div>
   <div class="places-layout">
