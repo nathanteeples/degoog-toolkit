@@ -12,7 +12,7 @@ function t(key, context) {
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.29";
+const PLUGIN_VERSION = "4.5.31";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -24,6 +24,10 @@ let _osmProviderIconSvg = "";
 const HERE_BROWSE = "https://browse.search.hereapi.com/v1/browse";
 const HERE_DISCOVER = "https://discover.search.hereapi.com/v1/discover";
 const HERE_GEOCODE = "https://geocode.search.hereapi.com/v1/geocode";
+
+/** Result ordering: closer places win, but name similarity can reorder (e.g. YMCA vs park). */
+const PLACE_RANK_DISTANCE_WEIGHT = 0.6;
+const PLACE_RANK_NAME_WEIGHT = 0.4;
 
 // HERE /geocode `types` filter (v7) — NOT the same strings as item.resultType in responses.
 const HERE_GEO_TYPES_CITY = "city,area,postalCode";
@@ -246,7 +250,10 @@ export const slot = {
         return { html: "" };
       }
 
-      let top = _processHerePlaces(places, radiusMeters, limit, { noRadiusFilter: isGlobal });
+      let top = _processHerePlaces(places, radiusMeters, limit, {
+        noRadiusFilter: isGlobal,
+        query: q,
+      });
 
       if (plan.wantsOpenNow) {
         top = _filterOpenNow(top);
@@ -401,7 +408,10 @@ export const routes = [
           return _jsonResponse({ html: "" });
         }
 
-        let top = _processHerePlaces(places, radiusMeters, limit, { noRadiusFilter: isGlobal });
+        let top = _processHerePlaces(places, radiusMeters, limit, {
+          noRadiusFilter: isGlobal,
+          query: searchText,
+        });
 
         if (plan?.wantsOpenNow) {
           top = _filterOpenNow(top);
@@ -958,7 +968,25 @@ async function _resolveSearchLocation(plan, doFetch, apiStatus) {
 /* HERE Search                                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * HERE discover often misses YMCA branches unless "Family" appears in the query
+ * (e.g. "deer path ymca" -> Deer Path Park; "deer path family ymca" -> YMCA).
+ * Only expands when YMCA is paired with other name tokens — bare "ymca" stays put.
+ */
+function _expandHereQuery(query) {
+  const q = _normalizeQuery(query);
+  const lower = q.toLowerCase();
+  if (!/\bymca\b/i.test(lower) || /\bfamily\b/i.test(lower)) return q;
+
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const hasBranchTokens = tokens.some((t) => t.toLowerCase() !== "ymca");
+  if (!hasBranchTokens) return q;
+
+  return q.replace(/\bymca\b/i, "family ymca").replace(/\s+/g, " ").trim();
+}
+
 async function _searchHere(query, lat, lon, radiusM, limit, doFetch, apiStatus, opts = {}) {
+  query = _expandHereQuery(query);
   const apiKey = _settings.hereApiKey;
   if (!apiKey) {
     if (apiStatus?.here) {
@@ -1142,7 +1170,7 @@ function _mapHereItem(item, lat, lon) {
 function _processHerePlaces(rawPlaces, radiusM, limit, opts = {}) {
   const maxDist = radiusM * 1.1;
   const skipRadius = opts.noRadiusFilter === true;
-  const out = [];
+  const candidates = [];
   const seenIds = new Set();
 
   for (const p of rawPlaces) {
@@ -1158,7 +1186,7 @@ function _processHerePlaces(rawPlaces, radiusM, limit, opts = {}) {
     // Dedupe by name + proximity (same business returned twice).
     const norm = String(p.name || "").toLowerCase().trim();
     let isDuplicate = false;
-    for (const e of out) {
+    for (const e of candidates) {
       const eNorm = String(e.name || "").toLowerCase().trim();
       if (
         norm &&
@@ -1176,12 +1204,15 @@ function _processHerePlaces(rawPlaces, radiusM, limit, opts = {}) {
     if (isDuplicate) continue;
 
     if (p.id) seenIds.add(p.id);
-    out.push(p);
-    // Keep HERE's relevance order; stop once we have enough.
-    if (out.length >= limit) break;
+    candidates.push(p);
   }
 
-  return out;
+  let ranked = candidates;
+  if (opts.query && ranked.length > 1) {
+    ranked = _rankPlacesByQuery(ranked, opts.query, radiusM);
+  }
+
+  return ranked.slice(0, limit);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1762,7 +1793,6 @@ function _classifyPlaceQuery(rawQuery) {
   const lower = query.toLowerCase();
   if (isUtilityPluginQuery(query)) return null;
   if (GAME_QUERY_RE.test(query)) return null;
-  if (_isOpenEndedNonPlaceQuery(lower, query)) return null;
   const wantsOpenNow = /\bopen(?:\s+now)?\b/i.test(query);
 
   // Handle explicit "where is …" place lookups before the generic
@@ -1778,6 +1808,8 @@ function _classifyPlaceQuery(rawQuery) {
     if (isUtilityPluginQuery(text)) return null;
 
     const lower = text.toLowerCase();
+    // Open-ended gate uses the place name remainder, not "where is …" filler words.
+    if (_isOpenEndedNonPlaceQuery(lower, text)) return null;
     if (CONSUMER_PRODUCT_RE.test(lower) && !_hasStrongPlaceIntent(lower)) {
       return null;
     }
@@ -1906,39 +1938,151 @@ function _normalizeMatchText(value) {
     .trim();
 }
 
-// 0..1 similarity between a query and a place name, combining substring
-// containment with token overlap so "tim hortons" matches "Tim Hortons" and
-// "starbucks" matches "STARBUCKS" but random words do not.
-function _nameMatchScore(query, name) {
+function _levenshteinDistance(a, b) {
+  if (a === b) return 0;
+  const al = a.length;
+  const bl = b.length;
+  if (al === 0) return bl;
+  if (bl === 0) return al;
+
+  let prev = new Array(bl + 1);
+  let curr = new Array(bl + 1);
+  for (let j = 0; j <= bl; j++) prev[j] = j;
+
+  for (let i = 1; i <= al; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= bl; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+    }
+    const swap = prev;
+    prev = curr;
+    curr = swap;
+  }
+  return prev[bl];
+}
+
+/** 0..1 character similarity via normalized Levenshtein ratio. */
+function _charSimilarity(a, b) {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen <= 2) return a === b ? 1 : 0;
+  const ratio = 1 - _levenshteinDistance(a, b) / maxLen;
+  return ratio >= 0.5 ? ratio : 0;
+}
+
+/** 0..1 similarity between two single tokens (exact, substring, prefix, Levenshtein). */
+function _tokenMatchScore(qTok, nTok) {
+  if (!qTok || !nTok) return 0;
+  if (qTok === nTok) return 1;
+
+  const qLen = qTok.length;
+  const nLen = nTok.length;
+  const shorter = qLen <= nLen ? qTok : nTok;
+  const longer = qLen <= nLen ? nTok : qTok;
+  if (longer.includes(shorter) && shorter.length >= 3) {
+    return 0.88 + 0.12 * (shorter.length / longer.length);
+  }
+
+  const minLen = Math.min(qLen, nLen);
+  if (minLen >= 4 && qTok.slice(0, 4) === nTok.slice(0, 4)) {
+    return 0.72 + 0.18 * _charSimilarity(qTok, nTok);
+  }
+  if (minLen <= 2) return 0;
+
+  return _charSimilarity(qTok, nTok);
+}
+
+/** Best one-to-one token alignment score (query tokens drive the average). */
+function _alignTokenScore(qTokens, nTokens) {
+  if (!qTokens.length || !nTokens.length) return 0;
+
+  const used = new Uint8Array(nTokens.length);
+  let total = 0;
+
+  for (const qt of qTokens) {
+    let best = 0;
+    let bestIdx = -1;
+    for (let i = 0; i < nTokens.length; i++) {
+      if (used[i]) continue;
+      const score = _tokenMatchScore(qt, nTokens[i]);
+      if (score > best) {
+        best = score;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx >= 0 && best > 0) used[bestIdx] = 1;
+    total += best;
+  }
+
+  return total / qTokens.length;
+}
+
+// 0..1 fuzzy similarity between a query and a place name — token alignment plus
+// character-level Levenshtein so "deer path ymca" beats "deer path park".
+function _fuzzyNameMatchScore(query, name) {
   const q = _normalizeMatchText(query);
   const n = _normalizeMatchText(name);
   if (!q || !n) return 0;
   if (q === n) return 1;
 
   const qTokens = q.split(" ").filter(Boolean);
-  const nTokens = new Set(n.split(" ").filter(Boolean));
-  if (qTokens.length === 0 || nTokens.size === 0) return 0;
+  const nTokens = n.split(" ").filter(Boolean);
+  if (!qTokens.length || !nTokens.length) return 0;
 
-  // Full containment of the query phrase within the name (or vice versa).
   if (n.includes(q) || q.includes(n)) {
-    return Math.min(q.length, n.length) >= 3 ? 0.95 : 0;
+    return Math.min(q.length, n.length) >= 3 ? 0.97 : 0;
   }
 
-  let matched = 0;
-  for (const t of qTokens) {
-    if (nTokens.has(t)) {
-      matched += 1;
-    } else if (t.length >= 5) {
-      // Allow a near-token match for longer words (minor spelling drift).
-      for (const nt of nTokens) {
-        if (nt.length >= 5 && (nt.startsWith(t.slice(0, 5)) || t.startsWith(nt.slice(0, 5)))) {
-          matched += 0.8;
-          break;
-        }
-      }
-    }
+  const forward = _alignTokenScore(qTokens, nTokens);
+  const reverse = _alignTokenScore(nTokens, qTokens);
+  const tokenScore = Math.max(forward, reverse * 0.92);
+  const charScore = _charSimilarity(q.replace(/\s+/g, ""), n.replace(/\s+/g, ""));
+
+  return Math.min(1, Math.max(tokenScore, tokenScore * 0.7 + charScore * 0.3, charScore * 0.82));
+}
+
+function _placeNameMatchScore(query, place) {
+  if (!place) return 0;
+  const nameScore = _fuzzyNameMatchScore(query, place.name || "");
+  const brandScore = place.brandName ? _fuzzyNameMatchScore(query, place.brandName) : 0;
+  return Math.max(nameScore, brandScore);
+}
+
+function _distanceRankScore(distanceMeters, radiusM, minDist, maxDist) {
+  if (!Number.isFinite(distanceMeters)) return 0;
+  // Prefer radius-based scaling so 100 m vs 120 m both stay "close" and name can break ties.
+  if (Number.isFinite(radiusM) && radiusM > 0) {
+    return Math.max(0, 1 - Math.min(1, distanceMeters / radiusM));
   }
-  return matched / qTokens.length;
+  if (!Number.isFinite(minDist) || !Number.isFinite(maxDist) || maxDist <= minDist) return 1;
+  return 1 - (distanceMeters - minDist) / (maxDist - minDist);
+}
+
+function _rankPlacesByQuery(places, query, radiusM) {
+  if (!Array.isArray(places) || places.length <= 1 || !query) return places;
+
+  const distances = places.map((p) => p.distanceMeters).filter(Number.isFinite);
+  const minDist = distances.length ? Math.min(...distances) : 0;
+  const maxDist = distances.length ? Math.max(...distances) : 0;
+
+  return [...places].sort((a, b) => {
+    const aDist = _distanceRankScore(a.distanceMeters, radiusM, minDist, maxDist);
+    const bDist = _distanceRankScore(b.distanceMeters, radiusM, minDist, maxDist);
+    const aName = _placeNameMatchScore(query, a);
+    const bName = _placeNameMatchScore(query, b);
+    const aComposite = PLACE_RANK_DISTANCE_WEIGHT * aDist + PLACE_RANK_NAME_WEIGHT * aName;
+    const bComposite = PLACE_RANK_DISTANCE_WEIGHT * bDist + PLACE_RANK_NAME_WEIGHT * bName;
+    if (bComposite !== aComposite) return bComposite - aComposite;
+    if (bDist !== aDist) return bDist - aDist;
+    return bName - aName;
+  });
+}
+
+// 0..1 similarity between a query and a place name (used for confidence gates).
+function _nameMatchScore(query, name) {
+  return _fuzzyNameMatchScore(query, name);
 }
 
 function _isConfidentNameMatchForPlan(plan, query, place) {
