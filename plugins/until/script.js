@@ -142,7 +142,7 @@
             el.getAttribute("data-until-display") || "";
         }
         el.classList.remove("until-card__flap--anim");
-      }, 580);
+      }, 406);
     });
   }
 
@@ -193,7 +193,7 @@
     detailEl.__untilDetailAnimationTimer = window.setTimeout(() => {
       if (lower) lower.textContent = next;
       detailEl.classList.remove("until-card__detail-value--anim");
-    }, 540);
+    }, 378);
   }
 
   function renderDetailFlapHtml(display) {
