@@ -82,9 +82,10 @@
             <span class="until-card__flap-sizer" aria-hidden="true">${safe}</span>
             <span class="until-card__flap-card until-card__flap-card--upper"><span class="until-card__flap-text" data-until-upper>${safe}</span></span>
             <span class="until-card__flap-card until-card__flap-card--lower" aria-hidden="true"><span class="until-card__flap-text" data-until-lower>${safe}</span></span>
-            <span class="until-card__flap-card until-card__flap-card--flip-upper" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-upper>${safe}</span></span>
-            <span class="until-card__flap-card until-card__flap-card--flip-lower" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-lower>${safe}</span></span>
+            <span class="until-card__flap-card until-card__flap-card--flip-upper" aria-hidden="true"></span>
+            <span class="until-card__flap-card until-card__flap-card--flip-lower" aria-hidden="true"></span>
             <span class="until-card__flap-label until-card__flap-label--old-upper" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-upper>${safe}</span></span>
+            <span class="until-card__flap-label until-card__flap-label--old-back" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-upper>${safe}</span></span>
             <span class="until-card__flap-label until-card__flap-label--new-lower" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-lower>${safe}</span></span>
           </span>
           <span class="until-card__part-unit">${escapeHtml(plural(part.unit.slice(0, -1), part.value))}</span>
@@ -155,14 +156,22 @@
     const sizer = detailEl.querySelector(".until-card__detail-sizer");
     const upper = detailEl.querySelector("[data-until-detail-upper]");
     const lower = detailEl.querySelector("[data-until-detail-lower]");
-    const flipUpper = detailEl.querySelector("[data-until-detail-flip-upper]");
-    const flipLower = detailEl.querySelector("[data-until-detail-flip-lower]");
+    const flipUppers = detailEl.querySelectorAll(
+      "[data-until-detail-flip-upper]",
+    );
+    const flipLowers = detailEl.querySelectorAll(
+      "[data-until-detail-flip-lower]",
+    );
 
     if (sizer) sizer.textContent = next;
     if (upper) upper.textContent = next;
     if (lower) lower.textContent = prefersReducedMotion ? next : previous;
-    if (flipUpper) flipUpper.textContent = previous;
-    if (flipLower) flipLower.textContent = next;
+    flipUppers.forEach((flipUpper) => {
+      flipUpper.textContent = previous;
+    });
+    flipLowers.forEach((flipLower) => {
+      flipLower.textContent = next;
+    });
 
     detailEl.setAttribute("data-until-detail-display", next);
     detailEl.setAttribute("aria-label", next);
@@ -175,6 +184,7 @@
 
     window.clearTimeout(detailEl.__untilDetailAnimationTimer);
     detailEl.__untilDetailAnimationTimer = window.setTimeout(() => {
+      if (lower) lower.textContent = next;
       detailEl.classList.remove("until-card__detail-value--anim");
     }, 540);
   }
@@ -185,8 +195,11 @@
       <span class="until-card__detail-sizer" aria-hidden="true">${safe}</span>
       <span class="until-card__detail-half until-card__detail-half--upper" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-upper>${safe}</span></span>
       <span class="until-card__detail-half until-card__detail-half--lower" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-lower>${safe}</span></span>
-      <span class="until-card__detail-half until-card__detail-half--flip-upper" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-flip-upper>${safe}</span></span>
-      <span class="until-card__detail-half until-card__detail-half--flip-lower" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-flip-lower>${safe}</span></span>`;
+      <span class="until-card__detail-half until-card__detail-half--flip-upper" aria-hidden="true"></span>
+      <span class="until-card__detail-half until-card__detail-half--flip-lower" aria-hidden="true"></span>
+      <span class="until-card__detail-label until-card__detail-label--old-upper" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-flip-upper>${safe}</span></span>
+      <span class="until-card__detail-label until-card__detail-label--old-back" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-flip-upper>${safe}</span></span>
+      <span class="until-card__detail-label until-card__detail-label--new-lower" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-flip-lower>${safe}</span></span>`;
   }
 
   function decomposeDuration(absMs, requestedUnit, count) {
