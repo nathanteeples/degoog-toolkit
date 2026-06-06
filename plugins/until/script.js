@@ -82,11 +82,8 @@
             <span class="until-card__flap-sizer" aria-hidden="true">${safe}</span>
             <span class="until-card__flap-card until-card__flap-card--upper"><span class="until-card__flap-text" data-until-upper>${safe}</span></span>
             <span class="until-card__flap-card until-card__flap-card--lower" aria-hidden="true"><span class="until-card__flap-text" data-until-lower>${safe}</span></span>
-            <span class="until-card__flap-card until-card__flap-card--flip-upper" aria-hidden="true"></span>
-            <span class="until-card__flap-card until-card__flap-card--flip-lower" aria-hidden="true"></span>
-            <span class="until-card__flap-label until-card__flap-label--old-upper" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-upper>${safe}</span></span>
-            <span class="until-card__flap-label until-card__flap-label--old-back" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-upper>${safe}</span></span>
-            <span class="until-card__flap-label until-card__flap-label--new-lower" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-lower>${safe}</span></span>
+            <span class="until-card__flap-card until-card__flap-card--flip-upper" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-upper>${safe}</span></span>
+            <span class="until-card__flap-card until-card__flap-card--flip-lower" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-lower>${safe}</span></span>
           </span>
           <span class="until-card__part-unit">${escapeHtml(plural(part.unit.slice(0, -1), part.value))}</span>
         </span>`;
@@ -136,6 +133,16 @@
         flipUpper.textContent = prev.display;
       });
       el.classList.add("until-card__flap--anim");
+
+      window.setTimeout(() => {
+        if (!el.isConnected) return;
+        const settledLower = el.querySelector("[data-until-lower]");
+        if (settledLower) {
+          settledLower.textContent =
+            el.getAttribute("data-until-display") || "";
+        }
+        el.classList.remove("until-card__flap--anim");
+      }, 580);
     });
   }
 
@@ -195,11 +202,8 @@
       <span class="until-card__detail-sizer" aria-hidden="true">${safe}</span>
       <span class="until-card__detail-half until-card__detail-half--upper" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-upper>${safe}</span></span>
       <span class="until-card__detail-half until-card__detail-half--lower" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-lower>${safe}</span></span>
-      <span class="until-card__detail-half until-card__detail-half--flip-upper" aria-hidden="true"></span>
-      <span class="until-card__detail-half until-card__detail-half--flip-lower" aria-hidden="true"></span>
-      <span class="until-card__detail-label until-card__detail-label--old-upper" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-flip-upper>${safe}</span></span>
-      <span class="until-card__detail-label until-card__detail-label--old-back" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-flip-upper>${safe}</span></span>
-      <span class="until-card__detail-label until-card__detail-label--new-lower" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-flip-lower>${safe}</span></span>`;
+      <span class="until-card__detail-half until-card__detail-half--flip-upper" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-flip-upper>${safe}</span></span>
+      <span class="until-card__detail-half until-card__detail-half--flip-lower" aria-hidden="true"><span class="until-card__detail-text" data-until-detail-flip-lower>${safe}</span></span>`;
   }
 
   function decomposeDuration(absMs, requestedUnit, count) {

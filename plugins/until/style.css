@@ -303,9 +303,8 @@
     transform-origin: center bottom;
     transform: rotateX(0deg);
     backface-visibility: visible;
-    transform-style: preserve-3d;
-    will-change: transform;
     pointer-events: none;
+    visibility: hidden;
 }
 
 .until-card__flap-card--flip-lower {
@@ -315,35 +314,8 @@
     transform-origin: center top;
     transform: rotateX(180deg);
     backface-visibility: hidden;
-    transform-style: preserve-3d;
-    will-change: transform;
     pointer-events: none;
-}
-
-.until-card__flap-label {
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 50%;
-    z-index: 5;
-    overflow: hidden;
-    pointer-events: none;
-}
-
-.until-card__flap-label--old-upper {
-    top: 0;
-    opacity: 0;
-}
-
-.until-card__flap-label--old-back {
-    bottom: 0;
-    opacity: 0;
-    transform: rotate(180deg);
-}
-
-.until-card__flap-label--new-lower {
-    bottom: 0;
-    opacity: 0;
+    visibility: hidden;
 }
 
 .until-card__flap-text {
@@ -362,37 +334,27 @@
     font-variant-numeric: tabular-nums;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
 }
 
 .until-card__flap-card--upper .until-card__flap-text,
-.until-card__flap-label--old-upper .until-card__flap-text {
+.until-card__flap-card--flip-upper .until-card__flap-text {
     top: 0;
 }
 
 .until-card__flap-card--lower .until-card__flap-text,
-.until-card__flap-label--old-back .until-card__flap-text,
-.until-card__flap-label--new-lower .until-card__flap-text {
+.until-card__flap-card--flip-lower .until-card__flap-text {
     bottom: 0;
 }
 
 .until-card__flap--anim .until-card__flap-card--flip-upper {
     animation: until-flip-top 560ms cubic-bezier(0.36, 0, 0.66, 1) both;
+    visibility: visible;
 }
 
 .until-card__flap--anim .until-card__flap-card--flip-lower {
     animation: until-flip-bottom 560ms cubic-bezier(0.34, 0.62, 0.46, 1) both;
-}
-
-.until-card__flap--anim .until-card__flap-label--old-upper {
-    animation: until-flip-old-label 560ms linear both;
-}
-
-.until-card__flap--anim .until-card__flap-label--old-back {
-    animation: until-flip-back-label 560ms linear both;
-}
-
-.until-card__flap--anim .until-card__flap-label--new-lower {
-    animation: until-flip-new-label 560ms linear both;
+    visibility: visible;
 }
 
 .until-card__part-unit {
@@ -556,8 +518,6 @@
     transform-origin: center bottom;
     transform: rotateX(0deg);
     backface-visibility: visible;
-    transform-style: preserve-3d;
-    will-change: transform;
     visibility: hidden;
 }
 
@@ -568,35 +528,7 @@
     transform-origin: center top;
     transform: rotateX(180deg);
     backface-visibility: hidden;
-    transform-style: preserve-3d;
-    will-change: transform;
     visibility: hidden;
-}
-
-.until-card__detail-label {
-    position: absolute;
-    left: 0;
-    right: 0;
-    z-index: 5;
-    height: 50%;
-    overflow: hidden;
-    pointer-events: none;
-}
-
-.until-card__detail-label--old-upper {
-    top: 0;
-    opacity: 0;
-}
-
-.until-card__detail-label--old-back {
-    bottom: 0;
-    opacity: 0;
-    transform: rotate(180deg);
-}
-
-.until-card__detail-label--new-lower {
-    bottom: 0;
-    opacity: 0;
 }
 
 .until-card__detail-text {
@@ -610,16 +542,16 @@
     color: var(--until-flap-text);
     line-height: 1;
     white-space: nowrap;
+    -webkit-font-smoothing: antialiased;
 }
 
 .until-card__detail-half--upper .until-card__detail-text,
-.until-card__detail-label--old-upper .until-card__detail-text {
+.until-card__detail-half--flip-upper .until-card__detail-text {
     top: 0;
 }
 
 .until-card__detail-half--lower .until-card__detail-text,
-.until-card__detail-label--old-back .until-card__detail-text,
-.until-card__detail-label--new-lower .until-card__detail-text {
+.until-card__detail-half--flip-lower .until-card__detail-text {
     bottom: 0;
 }
 
@@ -631,18 +563,6 @@
 .until-card__detail-value--anim .until-card__detail-half--flip-lower {
     animation: until-flip-bottom 520ms cubic-bezier(0.34, 0.62, 0.46, 1) both;
     visibility: visible;
-}
-
-.until-card__detail-value--anim .until-card__detail-label--old-upper {
-    animation: until-flip-old-label 520ms linear both;
-}
-
-.until-card__detail-value--anim .until-card__detail-label--old-back {
-    animation: until-flip-back-label 520ms linear both;
-}
-
-.until-card__detail-value--anim .until-card__detail-label--new-lower {
-    animation: until-flip-new-label 520ms linear both;
 }
 
 .until-card__detail dd::after {
@@ -697,45 +617,6 @@
     }
 }
 
-/* Printed values remain flat and sharp. They disappear while the physical
-   leaves are edge-on, where real flap text would not be readable anyway. */
-@keyframes until-flip-old-label {
-    0%,
-    22% {
-        opacity: 1;
-    }
-    38%,
-    100% {
-        opacity: 0;
-    }
-}
-
-@keyframes until-flip-back-label {
-    0%,
-    48% {
-        opacity: 0;
-    }
-    56%,
-    78% {
-        opacity: 1;
-    }
-    88%,
-    100% {
-        opacity: 0;
-    }
-}
-
-@keyframes until-flip-new-label {
-    0%,
-    82% {
-        opacity: 0;
-    }
-    94%,
-    100% {
-        opacity: 1;
-    }
-}
-
 @container (max-width: 650px) {
     .until-card__panel {
         grid-template-columns: 1fr;
@@ -783,14 +664,8 @@
     .until-card__status::before,
     .until-card__flap-card--flip-upper,
     .until-card__flap-card--flip-lower,
-    .until-card__flap-label--old-upper,
-    .until-card__flap-label--old-back,
-    .until-card__flap-label--new-lower,
     .until-card__detail-half--flip-upper,
-    .until-card__detail-half--flip-lower,
-    .until-card__detail-label--old-upper,
-    .until-card__detail-label--old-back,
-    .until-card__detail-label--new-lower {
+    .until-card__detail-half--flip-lower {
         animation: none !important;
     }
 
