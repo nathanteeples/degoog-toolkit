@@ -166,7 +166,6 @@
         inset 0 -1px 0 rgba(0, 0, 0, 0.5),
         0 6px 16px rgba(0, 0, 0, 0.26);
     font-variant-numeric: tabular-nums;
-    perspective: 320px;
 }
 
 /* Hidden in-flow element rendered at the real value size so the flap grows
@@ -206,7 +205,6 @@
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 60%),
         var(--until-board-2);
-    backface-visibility: hidden;
 }
 
 .until-card__flap-card--upper {
@@ -221,22 +219,20 @@
     border-radius: 0 0 var(--until-radius-flap) var(--until-radius-flap);
 }
 
-/* Top leaf: starts upright over the upper half and falls forward/down. */
+/* Top leaf: covers the upper half, then clips away to reveal the new value. */
 .until-card__flap-card--flip-upper {
     top: 0;
     z-index: 4;
     border-radius: var(--until-radius-flap) var(--until-radius-flap) 0 0;
-    transform-origin: center bottom;
-    transform: rotateX(0deg);
+    clip-path: inset(0 0 0 0);
 }
 
-/* Bottom leaf: waits folded up behind the hinge, then drops into place. */
+/* Bottom leaf: hidden above the hinge until phase two reveals the new value. */
 .until-card__flap-card--flip-lower {
     bottom: 0;
     z-index: 3;
     border-radius: 0 0 var(--until-radius-flap) var(--until-radius-flap);
-    transform-origin: center top;
-    transform: rotateX(90deg);
+    clip-path: inset(0 0 100% 0);
 }
 
 .until-card__flap-text {
@@ -373,25 +369,25 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* Phase 1 (0-50%): the top leaf falls forward, uncovering the new upper half. */
+/* Phase 1 (0-50%): clip the old top leaf away (no 3D transform — keeps text sharp). */
 @keyframes until-flip-top {
     0% {
-        transform: rotateX(0deg);
+        clip-path: inset(0 0 0 0);
     }
     50%,
     100% {
-        transform: rotateX(-90deg);
+        clip-path: inset(100% 0 0 0);
     }
 }
 
-/* Phase 2 (50-100%): the new bottom leaf swings down onto the lower half. */
+/* Phase 2 (50-100%): reveal the new bottom leaf from the hinge downward. */
 @keyframes until-flip-bottom {
     0%,
     50% {
-        transform: rotateX(90deg);
+        clip-path: inset(0 0 100% 0);
     }
     100% {
-        transform: rotateX(0deg);
+        clip-path: inset(0 0 0 0);
     }
 }
 
@@ -442,5 +438,13 @@
     .until-card__flap-card--flip-upper,
     .until-card__flap-card--flip-lower {
         animation: none !important;
+    }
+
+    .until-card__flap-card--flip-upper {
+        clip-path: inset(0 0 0 0);
+    }
+
+    .until-card__flap-card--flip-lower {
+        clip-path: inset(0 0 100% 0);
     }
 }
