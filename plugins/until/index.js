@@ -857,8 +857,6 @@ function renderPrimaryHtml(parts, context) {
           <span class="until-card__flap-card until-card__flap-card--lower" aria-hidden="true"><span class="until-card__flap-text" data-until-lower>${safe}</span></span>
           <span class="until-card__flap-card until-card__flap-card--flip-upper" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-upper>${safe}</span></span>
           <span class="until-card__flap-card until-card__flap-card--flip-lower" aria-hidden="true"><span class="until-card__flap-text" data-until-flip-lower>${safe}</span></span>
-          <span class="until-card__flap-panel until-card__flap-panel--upper" aria-hidden="true"></span>
-          <span class="until-card__flap-panel until-card__flap-panel--lower" aria-hidden="true"></span>
         </span>
         <span class="until-card__part-unit">${_esc(getUnitTranslation(part.unit, part.value, context))}</span>
       </span>`;
