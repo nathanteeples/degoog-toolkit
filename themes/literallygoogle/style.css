@@ -791,12 +791,14 @@ body {
         grid-row: 1;
     }
 
-    /* Full-width above-results plugin: span the whole results grid whenever
-       any above-results panel opts in with `.slot-full-width`. Individual
-       panels remain in DOM order, so degoog's plugin ordering setting still
-       controls stacked full-width panels. */
+    /* Full-width above-results plugin: span the whole results grid only when
+       the class is on the plugin's direct rendered root. Descendant utility
+       classes must not make an unrelated third-party plugin opt in. */
     #results-layout:has(
-            #slot-above-results > .results-slot-panel .slot-full-width
+            #slot-above-results
+                > .results-slot-panel
+                > .results-slot-panel-body
+                > .slot-full-width
         )
         #slot-above-results {
         grid-column: 1 / -1;
@@ -806,7 +808,10 @@ body {
     }
 
     #results-layout:has(
-            #slot-above-results > .results-slot-panel .slot-full-width
+            #slot-above-results
+                > .results-slot-panel
+                > .results-slot-panel-body
+                > .slot-full-width
         )
         #results-main {
         grid-column: 1;
@@ -815,7 +820,10 @@ body {
     }
 
     #results-layout:has(
-            #slot-above-results > .results-slot-panel .slot-full-width
+            #slot-above-results
+                > .results-slot-panel
+                > .results-slot-panel-body
+                > .slot-full-width
         )
         #sidebar-col {
         grid-column: 2;
@@ -825,15 +833,25 @@ body {
     /* Only full-width panel shells fill the spanned column; sibling panels stay
        visually aligned to the normal main-column width. */
     #results-layout:has(
-            #slot-above-results > .results-slot-panel .slot-full-width
+            #slot-above-results
+                > .results-slot-panel
+                > .results-slot-panel-body
+                > .slot-full-width
         )
         #slot-above-results
-        > .results-slot-panel:has(.slot-full-width),
+        > .results-slot-panel:has(
+            > .results-slot-panel-body > .slot-full-width
+        ),
     #results-layout:has(
-            #slot-above-results > .results-slot-panel .slot-full-width
+            #slot-above-results
+                > .results-slot-panel
+                > .results-slot-panel-body
+                > .slot-full-width
         )
         #slot-above-results
-        > .results-slot-panel:has(.slot-full-width)
+        > .results-slot-panel:has(
+            > .results-slot-panel-body > .slot-full-width
+        )
         > .results-slot-panel-body {
         max-width: none;
         width: 100%;
@@ -841,10 +859,15 @@ body {
     }
 
     #results-layout:has(
-            #slot-above-results > .results-slot-panel .slot-full-width
+            #slot-above-results
+                > .results-slot-panel
+                > .results-slot-panel-body
+                > .slot-full-width
         )
         #slot-above-results
-        > .results-slot-panel:not(:has(.slot-full-width)) {
+        > .results-slot-panel:not(
+            :has(> .results-slot-panel-body > .slot-full-width)
+        ) {
         max-width: var(--literallygoogle-results-main-col-max);
         width: 100%;
         box-sizing: border-box;
@@ -1047,7 +1070,20 @@ body {
     gap: 12px;
 }
 
-#slot-above-results > .results-slot-panel:has(.slot-full-width) {
+#slot-above-results > .results-slot-panel,
+#slot-above-results
+    > .results-slot-panel
+    > .results-slot-panel-body {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+#slot-above-results
+    > .results-slot-panel:has(
+        > .results-slot-panel-body > .slot-full-width
+    ) {
     background: var(--bg-light);
     border: 1px solid var(--border-light);
     border-radius: 16px;
@@ -1060,7 +1096,9 @@ body {
 }
 
 #slot-above-results
-    > .results-slot-panel:has(.slot-full-width)
+    > .results-slot-panel:has(
+        > .results-slot-panel-body > .slot-full-width
+    )
     > .results-slot-panel-body {
     padding: 16px;
     --slot-inset-bg: var(--bg);

@@ -258,7 +258,9 @@ function getLgTranslation(key) {
     }
 
     function fullWidthKey(panel) {
-        var root = panel.querySelector(".slot-full-width");
+        var root = panel.querySelector(
+            ":scope > .results-slot-panel-body > .slot-full-width",
+        );
         if (!root) return "";
         for (var i = 0; i < root.classList.length; i += 1) {
             var className = root.classList[i];
@@ -603,4 +605,3 @@ function getLgTranslation(key) {
         translateSettingsGear();
     }
 })();
-
