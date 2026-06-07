@@ -1,18 +1,17 @@
 // Places slot plugin — local place recognition powered by the HERE Search API
 // (hybrid of /browse with verified category codes and /discover free-text).
 
+import { analyzePlaceIntent } from "./intent-engine.mjs";
 import {
-  isInformationalQuestion,
-  isPlaceInLocation,
-  isUtilityPluginQuery,
-  PLACE_TOPIC_INFO_RE,
-} from "./query-guards.js";
+  createNominatimGeocoder,
+  NOMINATIM_DEFAULT_ENDPOINT,
+} from "./nominatim-geocoder.mjs";
 function t(key, context) {
   return `{{ t:plugin-osm-slot.${key} }}`;
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.5.31";
+const PLUGIN_VERSION = "4.6.2";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -20,6 +19,7 @@ let _settings = {};
 let _fetch = (...args) => fetch(...args);
 let _cache = null;
 let _osmProviderIconSvg = "";
+let _nominatimGeocoder = null;
 
 const HERE_BROWSE = "https://browse.search.hereapi.com/v1/browse";
 const HERE_DISCOVER = "https://discover.search.hereapi.com/v1/discover";
@@ -87,7 +87,18 @@ function _configure(s) {
     resultsCount: s?.resultsCount || "5",
     distanceUnit: s?.distanceUnit || "miles",
     customTileUrl: s?.customTileUrl || "",
+    useOsmGeocoder: s?.useOsmGeocoder !== false && s?.useOsmGeocoder !== "false",
+    nominatimEndpoint: s?.nominatimEndpoint || NOMINATIM_DEFAULT_ENDPOINT,
   };
+  _resetNominatimGeocoder();
+}
+
+function _resetNominatimGeocoder() {
+  _nominatimGeocoder = createNominatimGeocoder({
+    fetch: _makeWrapFetch(_fetch, " (nominatim)"),
+    cache: _cache,
+    endpoint: _settings.nominatimEndpoint,
+  });
 }
 
 export const slot = {
@@ -170,6 +181,23 @@ export const slot = {
       description:
         "Optional raster tile template for the map. Supports {z}, {x}, and {y}. Leave blank to use the default CartoDB Voyager map tiles.",
     },
+    {
+      key: "useOsmGeocoder",
+      label: "Use OpenStreetMap geocoding",
+      type: "toggle",
+      default: true,
+      description:
+        "Use Nominatim to validate NLP-derived locations and as a fallback when HERE cannot geocode a place hint.",
+    },
+    {
+      key: "nominatimEndpoint",
+      label: "Nominatim endpoint",
+      type: "url",
+      default: NOMINATIM_DEFAULT_ENDPOINT,
+      placeholder: NOMINATIM_DEFAULT_ENDPOINT,
+      description:
+        "Nominatim-compatible search endpoint. The public service is rate-limited to one request per second; self-hosted endpoints are supported.",
+    },
   ],
 
   init(ctx) {
@@ -178,6 +206,7 @@ export const slot = {
     }
     if (typeof ctx?.createCache === "function") {
       _cache = ctx.createCache(30 * 60 * 1000); // 30 minutes — repeat queries are free
+      _resetNominatimGeocoder();
     }
     if (typeof ctx?.readFile === "function") {
       ctx
@@ -230,6 +259,7 @@ export const slot = {
       const apiStatus = {
         here: { configured: !!_settings.hereApiKey, status: "unused", error: null, count: 0 },
         geocode: { configured: !!_settings.hereApiKey, status: "unused", error: null, source: null, label: null },
+        osm: { configured: _settings.useOsmGeocoder, status: "unused", error: null, source: null, label: null },
       };
 
       const resolved = await _resolveSearchLocation(plan, wrapFetch, apiStatus);
@@ -333,6 +363,7 @@ export const routes = [
         let lonNum = parseFloat(body.lon);
         let locationLabel = "your location";
         let geoStatus = null;
+        let osmStatus = null;
         const hasBrowserCoords = Number.isFinite(latNum) && Number.isFinite(lonNum);
 
         if (hasBrowserCoords) {
@@ -345,7 +376,17 @@ export const routes = [
             source: null,
             label: null,
           };
-          const geo = await _geocodePlaceHint(plan.placeHint, wrapFetch, geoStatus);
+          osmStatus = {
+            configured: _settings.useOsmGeocoder,
+            status: "unused",
+            error: null,
+            source: null,
+            label: null,
+          };
+          const geo = await _geocodePlaceHint(plan.placeHint, wrapFetch, geoStatus, {
+            osmStatus,
+            preferNominatim: plan.validationRequired === true,
+          });
           if (geo) {
             latNum = geo.lat;
             lonNum = geo.lon;
@@ -386,10 +427,14 @@ export const routes = [
         const apiStatus = {
           here: { configured: !!_settings.hereApiKey, status: "unused", error: null, count: 0 },
           geocode: { configured: !!_settings.hereApiKey, status: "unused", error: null, source: null, label: null },
+          osm: { configured: _settings.useOsmGeocoder, status: "unused", error: null, source: null, label: null },
         };
 
         if (plan?.placeHint && geoStatus?.status === "success") {
           Object.assign(apiStatus.geocode, geoStatus);
+        }
+        if (plan?.placeHint && osmStatus?.status !== "unused") {
+          Object.assign(apiStatus.osm, osmStatus);
         }
 
         _attachPlacesDebug(
@@ -458,19 +503,20 @@ function _makeWrapFetch(doFetch, tag) {
       mergedInit.signal = controller.signal;
     }
     const startFetch = Date.now();
-    console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch starting${tag}: ${url} (Timeout: ${timeoutMs}ms)`);
+    const safeUrl = _redactRequestUrl(url);
+    console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch starting${tag}: ${safeUrl} (Timeout: ${timeoutMs}ms)`);
     return doFetch(url, mergedInit)
       .then((res) => {
         clearTimeout(id);
-        console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch completed${tag}: ${url} in ${Date.now() - startFetch}ms (Status: ${res.status})`);
+        console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch completed${tag}: ${safeUrl} in ${Date.now() - startFetch}ms (Status: ${res.status})`);
         return res;
       })
       .catch((err) => {
         clearTimeout(id);
         if (err.name === "AbortError") {
-          console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch timed out${tag}: ${url} (gave up after ${timeoutMs / 1000} seconds)`);
+          console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch timed out${tag}: ${safeUrl} (gave up after ${timeoutMs / 1000} seconds)`);
         } else {
-          console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch failed${tag}: ${url} in ${Date.now() - startFetch}ms:`, err);
+          console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch failed${tag}: ${safeUrl} in ${Date.now() - startFetch}ms:`, err);
         }
         throw err;
       });
@@ -543,35 +589,6 @@ async function _ipGeolocate(doFetch, clientIp) {
   return null;
 }
 
-/* ------------------------------------------------------------------ */
-/* "near …" place hint parsing + HERE forward geocoding                */
-/* ------------------------------------------------------------------ */
-
-// Trailing "near Princeton" / "near Princeton, NJ" — not "near me".
-const NEAR_PLACE_RE =
-  /\bnear\s+(?!me\b|by\b|here\b|my(?:\s+location)?\b)([a-z0-9][a-z0-9 .,''-]{1,80})\s*$/i;
-
-function _splitNearPlace(query) {
-  const normalized = _normalizeQuery(query);
-  const match = NEAR_PLACE_RE.exec(normalized);
-  if (!match) {
-    return { searchText: normalized, placeHint: null };
-  }
-  const placeHint = match[1].trim().replace(/[,.]$/, "");
-  const searchText = normalized.slice(0, match.index).replace(/\s+/g, " ").trim();
-  if (!placeHint || placeHint.length < 2) {
-    return { searchText: normalized, placeHint: null };
-  }
-  return { searchText, placeHint };
-}
-
-function _attachPlaceHint(plan, rawQuery) {
-  if (!plan) return null;
-  const split = _splitNearPlace(plan.text || _normalizeQuery(rawQuery));
-  const text = _cleanSearchText(split.searchText) || split.searchText;
-  return { ...plan, text, placeHint: split.placeHint };
-}
-
 function _hereGeocodeLabel(item, fallback) {
   const addr = item?.address || {};
   if (typeof addr.label === "string" && addr.label.trim()) return addr.label.trim();
@@ -601,8 +618,11 @@ function _effectiveSearchRadiusMiles(plan) {
   return configured;
 }
 
-function _redactHereUrl(url) {
-  return String(url || "").replace(/([?&]apiKey=)[^&]+/i, "$1…");
+function _redactRequestUrl(url) {
+  return String(url || "").replace(
+    /([?&](?:apiKey|key|access_token|token)=)[^&]+/gi,
+    "$1…",
+  );
 }
 
 function _attachPlacesDebug(apiStatus, plan, rawQuery, searchText, center, radiusMiles) {
@@ -613,6 +633,8 @@ function _attachPlacesDebug(apiStatus, plan, rawQuery, searchText, center, radiu
     placeHint: plan?.placeHint || null,
     planMode: plan?.mode || null,
     planConfidence: plan?.confidence || null,
+    planKind: plan?.kind || null,
+    planEvidence: plan?.evidence || [],
     searchRadiusMiles: radiusMiles,
   };
   apiStatus.searchCenter = {
@@ -923,22 +945,82 @@ async function _discoverPlaceHintFallback(hint, doFetch, apiStatus) {
   }
 }
 
-/** Forward-geocode a trailing "near …" hint via HERE Geocoding & Search API v7. */
-async function _geocodePlaceHint(hint, doFetch, apiStatus) {
+async function _geocodeNominatim(hint, apiStatus) {
+  if (!_settings.useOsmGeocoder) return null;
+  if (!_nominatimGeocoder) {
+    _nominatimGeocoder = createNominatimGeocoder({
+      fetch: _makeWrapFetch(_fetch, " (nominatim)"),
+      cache: _cache,
+      endpoint: _settings.nominatimEndpoint,
+    });
+  }
+
+  try {
+    const lat = parseFloat(_settings.defaultLat);
+    const lon = parseFloat(_settings.defaultLon);
+    const result = await _nominatimGeocoder.geocode(hint, {
+      lat: Number.isFinite(lat) ? lat : undefined,
+      lon: Number.isFinite(lon) ? lon : undefined,
+      language: "en",
+    });
+    if (!result) {
+      if (apiStatus) {
+        apiStatus.status = "empty";
+        apiStatus.error = "No matching OpenStreetMap location";
+      }
+      return null;
+    }
+    const out = {
+      lat: result.lat,
+      lon: result.lon,
+      label: result.label || hint,
+      source: "nominatim",
+    };
+    if (apiStatus) {
+      apiStatus.status = "success";
+      apiStatus.source = out.source;
+      apiStatus.label = out.label;
+      apiStatus.lat = out.lat;
+      apiStatus.lon = out.lon;
+      apiStatus.cached = result.cached === true;
+    }
+    return out;
+  } catch (err) {
+    if (apiStatus) {
+      apiStatus.status = "error";
+      apiStatus.error = err.message;
+    }
+    return null;
+  }
+}
+
+/** Forward-geocode a location hint through HERE with a Nominatim fallback. */
+async function _geocodePlaceHint(hint, doFetch, apiStatus, options = {}) {
   const trimmed = String(hint || "").trim();
   if (!trimmed) return null;
+  const osmStatus = options.osmStatus || null;
+
+  // New NLP-derived relations are deliberately validated by OSM before a HERE
+  // place-search request. Explicit legacy "near …" flows still prefer HERE.
+  if (options.preferNominatim && _settings.useOsmGeocoder) {
+    return _geocodeNominatim(trimmed, osmStatus);
+  }
 
   try {
     const here = await _geocodeHere(trimmed, doFetch, apiStatus);
     if (here) return here;
-    return await _discoverPlaceHintFallback(trimmed, doFetch, apiStatus);
+    const discovered = await _discoverPlaceHintFallback(trimmed, doFetch, apiStatus);
+    if (discovered) return discovered;
+    return _geocodeNominatim(trimmed, osmStatus);
   } catch (err) {
     console.warn(`[Places] HERE geocode failed for "${trimmed}":`, err);
     if (apiStatus && apiStatus.status === "unused") {
       apiStatus.status = "error";
       apiStatus.error = err.message;
     }
-    return await _discoverPlaceHintFallback(trimmed, doFetch, apiStatus);
+    const discovered = await _discoverPlaceHintFallback(trimmed, doFetch, apiStatus);
+    if (discovered) return discovered;
+    return _geocodeNominatim(trimmed, osmStatus);
   }
 }
 
@@ -949,7 +1031,10 @@ async function _resolveSearchLocation(plan, doFetch, apiStatus) {
 
   if (plan?.placeHint) {
     const geoStatus = apiStatus?.geocode || null;
-    const geo = await _geocodePlaceHint(plan.placeHint, doFetch, geoStatus);
+    const geo = await _geocodePlaceHint(plan.placeHint, doFetch, geoStatus, {
+      osmStatus: apiStatus?.osm || null,
+      preferNominatim: plan.validationRequired === true,
+    });
     if (geo) {
       lat = geo.lat;
       lon = geo.lon;
@@ -1080,7 +1165,7 @@ async function _searchHere(query, lat, lon, radiusM, limit, doFetch, apiStatus, 
       apiStatus.here.center = { lat, lon };
       apiStatus.here.radiusMeters = radius;
       apiStatus.here.radiusMiles = Math.round((radius / 1609.34) * 10) / 10;
-      apiStatus.here.request = _redactHereUrl(url);
+      apiStatus.here.request = _redactRequestUrl(url);
       if (codes) apiStatus.here.categories = codes;
     }
 
@@ -1410,6 +1495,10 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus, contex
     ? `<button type="button" class="places-geo-btn" data-query="${_esc(query)}">${_esc(t("useMyLocation", context))}</button>`
     : "";
   const mapHtml = _renderMap(places, context);
+  const osmAttribution =
+    apiStatus?.osm?.status === "success"
+      ? `<div class="places-osm-attribution">${_esc(t("locationResolvedByOsm", context))} <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></div>`
+      : "";
 
   return `
 <div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}" data-places-apis="${_esc(JSON.stringify(apiStatus || {}))}">
@@ -1426,6 +1515,7 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus, contex
     </div>
     ${mapHtml}
   </div>
+  ${osmAttribution}
   <div class="places-modal" data-places-modal hidden>
     <div class="places-modal-backdrop" data-modal-close></div>
     <div class="places-modal-content">
@@ -1590,196 +1680,10 @@ function _formatHoursLineDisplay(line) {
   return out;
 }
 
-/* ------------------------------------------------------------------ */
-/* Conservative place query gate                                       */
-/* ------------------------------------------------------------------ */
-
-const LOCAL_INTENT_RE =
-  /\b(nearby|nearest|closest|locations?|address|directions?|hours?|open now|phone|menu|reservations?|reviews?)\b/i;
-
-/** Common geographic tails after "near" (downtown, airport, …). */
-const NEAR_GEO_TAIL_RE =
-  /\bnear\s+(?:downtown|uptown|midtown|airport|station|beach|mall|center|centre|plaza|square|park|harbor|harbour|pier|boardwalk|highway|interstate|i-?\d{1,3})\b/i;
-
-const PLACE_CATEGORY_RE =
-  /\b(restaurants?|taverns?|taps?|bars?|grills?|cafes?|coffee|pizza|pizzerias?|diners?|baker(?:y|ies)|brewer(?:y|ies)|pubs?|tacos?|taquerias?|burritos?|mexican|sushi|ramen|chinese|thai|indian|bbq|barbecue|wings?|seafood|steakhouses?|delis?|pharmac(?:y|ies)|drug\s*stores?|grocer(?:y|ies)|supermarkets?|markets?|banks?|hotels?|motels?|gas\s+stations?|fuel|stores?|shops?|salons?|gyms?|fitness|doctors?|physicians?|clinics?|dentists?|dental|hospitals?|urgent\s+care|vets?|veterinar(?:y|ian|ians)|auto|car\s+wash)\b/i;
-
-// Known chains/brands — supplements (does not replace) generic name/where-query detection.
-const KNOWN_CHAIN_RE =
-  /\b(costco|target|walmart|starbucks|mcdonald'?s|burger\s*king|wendy'?s|taco\s*bell|chipotle|domino'?s|pizza\s*hut|papa\s*john'?s|subway|dunkin'?|dunkin\s*donuts|kfc|five\s*guys|shake\s*shack|in-n-out|chick-fil-a|panera|olive\s*garden|red\s*lobster|longhorn|texas\s*roadhouse|cracker\s*barrel|ihop|denny'?s|applebee'?s|chili'?s|outback|buffalo\s*wild\s*wings|home\s*depot|lowe'?s|menards|best\s*buy|staples|office\s*depot|petco|petsmart|whole\s*foods|trader\s*joe'?s|kroger|safeway|albertsons|publix|wegmans|cvs|walgreens|rite\s*aid|sheetz|wawa|buc-ee'?s|flying\s*j|love'?s|pilot|speedway|shell|bp|exxon|mobil|sunoco|citgo|marathon|7-eleven|circle\s*k|royal\s*farms|kung\s*fu\s*tea|gong\s*cha|sharetea|boba\s*guys|panda\s*express|jack\s*in\s*the\s*box|raising\s*cane'?s?|auntie\s*anne'?s?|cinnabon|jamba\s*juice|smoothie\s*king|ulta|sephora|pancheros|aikou|nike|zara|gap|aldi|lidl|macy'?s|kohl'?s|gamestop|verizon|t-mobile)\b/i;
-
-const NON_PLACE_RE =
-  /\b(how to|how many|how much|what is|why|when|who|reddit|github|docs|documentation|install|download|error|fix|linux|macos|windows|npm|pip|python|javascript|typescript|docker|nginx|proxmox|ai|llm|model|qwen|claude|gpt|gemini|ollama|benchmark|review|vs|price)\b/i;
-
-const GENERAL_INFO_RE =
-  /\b(tutorial|course|book|pdf|lyrics|chords|movie|show|cast|actor|actress|season|episode|news|wiki|wikipedia|definition|meaning|synonym|antonym|pronunciation|translate|translation|weathers?|weather\w{0,2}|forecasts?|forecast\w{0,2}|stock|chart|price|convert|converter|calculator|calculate|history|biography|photo|image|picture|wallpaper|video|youtube|song|album|lyrics|map|maps|recipe|ingredients|cooking)\b/i;
-
-// Shopping / product wording — not a place lookup (saves Discover quota on "where to buy …").
-const CONSUMER_PRODUCT_RE =
-  /\b(ketchup|mustard|mayo|mayonnaise|sauce|soda|cola|pepsi|coke|coca[\s-]?cola|amazon|ebay|walmart|target|costco|buy|order|shipping|coupon|deal|deals|cheap|price|prices|iphone|android|laptop|tablet|gpu|cpu|ram|ssd|shirt|shoes|sneakers|hoodie|dress|pants|jeans)\b/i;
-
-// Landmarks / POI types that justify a global (at-only) discover lookup.
-const LANDMARK_HINT_RE =
-  /\b(castle|palace|museum|monument|memorial|park|national park|bridge|tower|stadium|arena|airport|beach|mountain|volcano|lake|river|falls|waterfall|cathedral|basilica|temple|mosque|synagogue|zoo|aquarium|university|college|capitol|parliament|pyramid|ruins|fort|fortress|lighthouse|observatory|planetarium|amusement park|theme park|boardwalk|pier|harbor|harbour|plaza|square)\b/i;
-
-const TECH_SCIENCE_RE =
-  /\b(react|angular|vue|svelte|node|npm|pip|python|javascript|typescript|golang|rust|java|c\+\+|c#|php|html|css|sql|git|docker|kubernetes|aws|azure|gcp|api|json|xml|csv|yaml|markdown|github|gitlab|bitbucket|stackoverflow|mdn|w3schools|npm|package|library|framework|module|class|function|object|array|string|number|boolean|null|undefined|regexp|regex|compiler|interpreter|theory|theorem|equation|formula|chemical|molecule|atom|cell|organism|species|evolution|math|physics|chemistry|biology)\b/i;
-
-// Medical / pharmacology / biochemistry — not local place lookups.
-const SCIENCE_MEDICAL_RE =
-  /\b(channel|blocker|blockers|receptor|receptors|agonist|antagonist|inhibitor|inhibitors|enzyme|enzymes|protein|proteins|peptide|peptides|neuron|neurons|neural|pharmacology|pharmacokinetic|pharmacokinetics|dosage|clinical|syndrome|pathology|antibody|antibodies|antigen|genome|chromosome|mutation|pathway|metabolite|hormone|cytokine|kinase|transcript|mrna|electrolyte|anesthesia|analgesic|antibiotic|antiviral|vaccine|steroid|opioid|benzodiazepine|ssri|nsaid|toxicity|diagnosis|symptom|symptoms|treatment|therapeutic|medication|medications|prescription|anatomy|physiology|histology|immunology|oncology|cardiology|neurology|psychiatry|epidemiology|biochemistry|biophysics)\b/i;
-
-const URL_OR_CODE_RE =
-  /https?:\/\/|www\.|[{}[\]<>]|=>|==|!=|\/etc\/|\.js\b|\.ts\b|\.py\b|\.sh\b|@[a-z0-9_-]+/i;
-
 function _normalizeQuery(query) {
   return String(query || "")
     .trim()
     .replace(/\s+/g, " ");
-}
-
-function _wordCount(query) {
-  return _normalizeQuery(query).split(/\s+/).filter(Boolean).length;
-}
-
-function _hasCityOrZipHint(query) {
-  return /\b\d{5}(?:-\d{4})?\b/.test(query) || /\b[A-Z]{2}\b/.test(query);
-}
-
-// Words that, on their own, are too generic/non-commercial to optimistically
-// treat as a brand/business name. Keeps the name-query relaxation honest.
-const GENERIC_NAME_STOPWORDS = new Set([
-  "the", "and", "for", "you", "your", "are", "was", "what", "when", "where",
-  "why", "how", "who", "yes", "no", "ok", "okay", "hello", "hi", "hey",
-  "good", "bad", "new", "old", "free", "love", "life", "time", "day", "today",
-  "tomorrow", "yesterday", "now", "here", "there", "this", "that", "them",
-  "thanks", "please", "help", "info", "about", "home", "work", "name",
-  // Very generic nouns/adjectives frequently searched in non-local contexts.
-  "best", "top", "cheap", "near", "local", "nearby", "open", "closed", "hours",
-  "menu", "price", "prices", "review", "reviews", "rating", "ratings",
-  "address", "location", "locations", "directions", "phone", "website",
-  "news", "wiki", "wikipedia", "video", "videos", "image", "images", "photo",
-  "photos", "map", "maps", "weather", "forecast", "translate", "calculator",
-  "converter", "stock", "stocks", "crypto", "bitcoin", "play", "game", "games",
-  // Broad topic words that should not trigger Places.
-  "music", "movie", "movies", "show", "shows", "book", "books", "recipe",
-  "recipes", "game", "games", "school", "college", "university", "hospitality",
-  "software", "hardware", "app", "apps", "website", "websites",
-  // Common animals/colors/objects that often collide with road names/business names.
-  "snake", "wolf", "fox", "bear", "eagle", "hawk", "deer", "dog", "cat",
-  "red", "blue", "green", "black", "white", "orange", "purple", "yellow",
-  "hill", "ridge", "valley", "river", "lake", "road", "street", "avenue",
-  // Game/animal terms that often collide with utility plugins and should not
-  // trigger Places as optimistic single-word business-name searches.
-  "snake", "minesweeper", "tictactoe", "tic", "tac", "toe",
-  // Utility / companion-plugin triggers — never treat as a business name.
-  "speedtest", "speed", "stopwatch", "countdown", "metronome", "time", "timezone",
-  "clock", "until", "coinflip", "yesno", "dice", "translate", "stocks", "stock",
-  "bitcoin", "crypto", "calculator", "calc", "graph", "plot", "tip", "tips",
-]);
-
-// Queries that should never trigger Places (handled by game plugins instead).
-const GAME_QUERY_RE =
-  /\b(tic[\s-]?tac[\s-]?toe|tictactoe|tic-tac-toe|minesweeper|play\s+snake|snake\s+game|play\s+tic|play\s+tictactoe|play\s+tic[\s-]?tac[\s-]?toe|solitaire|sudoku|wordle|chess|checkers|pong|pacman)\b/i;
-
-// Leading "where is / where's / where can i find ..." phrasing. Stripped before
-// searching; if the remainder is a proper place/landmark name (not a local
-// category) the search goes GLOBAL so far-away landmarks resolve.
-const WHERE_IS_RE = /^(where(?:'s|s| is| are| can i (?:find|get|buy)| to find))\s+/i;
-const WHERE_PLAIN_RE = /^where\s+/i;
-const LEADING_ARTICLE_RE = /^(the|a|an)\s+/i;
-
-// Suffixes common in independent business / restaurant names (allows shorter single-word names).
-const BUSINESS_NAME_SUFFIX_RE =
-  /(?:wala|house|grill|cafe|caf\u00e9|kitchen|bistro|cantina|taqueria|pizzeria|bakery|brewery|deli|shop|store|mart|express|junction|corner|palace|terrace|garden|spot|hub|bar|pub|diner|sushi|ramen|bbq|bites?|bowl|bowls|bro|bros|co|company|group)$/i;
-
-function _isBlockedNonPlaceQuery(lower) {
-  if (KNOWN_CHAIN_RE.test(lower)) return false;
-  return (
-    NON_PLACE_RE.test(lower) ||
-    GENERAL_INFO_RE.test(lower) ||
-    TECH_SCIENCE_RE.test(lower) ||
-    SCIENCE_MEDICAL_RE.test(lower)
-  );
-}
-
-function _hasAnyPlaceSignal(lower) {
-  return (
-    _hasStrongPlaceIntent(lower) ||
-    PLACE_CATEGORY_RE.test(lower) ||
-    KNOWN_CHAIN_RE.test(lower) ||
-    LANDMARK_HINT_RE.test(lower) ||
-    isPlaceInLocation(lower)
-  );
-}
-
-/**
- * Longer queries with no place/location signals are usually general search, not POI lookup.
- */
-function _isOpenEndedNonPlaceQuery(lower, query) {
-  if (_wordCount(query) < 5) return false;
-  return !_hasAnyPlaceSignal(lower);
-}
-
-/**
- * "near" only counts when paired with real place-seeking context — not any "near <noun>".
- */
-function _hasNearPlaceIntent(lower) {
-  if (/\bnear\s+me\b/i.test(lower)) return true;
-  if (NEAR_GEO_TAIL_RE.test(lower)) return true;
-  if (!/\bnear\s+[a-z]/i.test(lower)) return false;
-  if (PLACE_CATEGORY_RE.test(lower) || KNOWN_CHAIN_RE.test(lower)) return true;
-  if (/\bnear\s+[a-z][a-z .'-]+(?:\s+[a-z][a-z .'-]+)+\b/i.test(lower)) return true;
-  if (_hasCityOrZipHint(lower)) return true;
-  return false;
-}
-
-/** Worth a HERE call: explicit place-seeking intent, not just a category keyword. */
-function _hasStrongPlaceIntent(lower) {
-  const hasLocalIntent = LOCAL_INTENT_RE.test(lower) || _hasNearPlaceIntent(lower);
-  const hasCategory = PLACE_CATEGORY_RE.test(lower);
-  const hasChain = KNOWN_CHAIN_RE.test(lower);
-  const hasLocationHint = _hasCityOrZipHint(lower);
-  const hasCategoryInLocation = isPlaceInLocation(lower);
-
-  if (hasChain) return true;
-  if (hasLocalIntent) return true;
-  if (hasCategoryInLocation) return true;
-  if (hasCategory && hasLocationHint) return true;
-  return false;
-}
-
-// Classifies the (already where-is-stripped) text against the local signals.
-//   "strong" -> category / local-intent / known-chain / city-zip; render any nearby result.
-//   "name"   -> short, plausible brand/business name; render ONLY on a confident HERE match.
-//   null     -> no local signal.
-function _classifyLocalText(text) {
-  const query = _normalizeQuery(text);
-  const lower = query.toLowerCase();
-
-  if (!query || query.length < 3) return null;
-  if (query.length > 80) return null;
-  if (URL_OR_CODE_RE.test(query)) return null;
-  if (isUtilityPluginQuery(query)) return null;
-  if (_isOpenEndedNonPlaceQuery(lower, query)) return null;
-
-  const hasCategory = PLACE_CATEGORY_RE.test(lower);
-
-  // Real place-seeking queries beat generic informational wording ("best buy near me").
-  if (_hasStrongPlaceIntent(lower)) return "strong";
-
-  if (hasCategory && (PLACE_TOPIC_INFO_RE.test(lower) || GENERAL_INFO_RE.test(lower))) {
-    return null;
-  }
-
-  // Plausible independent business names ("Tacowala", "RS Pizza Bites", "Ulta") before category-only reject.
-  if (_looksLikeNameQuery(query) && !_isBlockedNonPlaceQuery(lower)) return "name";
-
-  if (hasCategory) return null;
-
-  if (_isBlockedNonPlaceQuery(lower)) return null;
-
-  return null;
 }
 
 // Plans a query for Places triggering. Returns null (no trigger) or:
@@ -1788,136 +1692,22 @@ function _classifyLocalText(text) {
 //   - mode "global" -> /discover with at-only (no radius) so landmarks resolve.
 //   - confidence "name" -> render only on a confident HERE name/brand match.
 function _classifyPlaceQuery(rawQuery) {
-  const query = _normalizeQuery(rawQuery);
-  if (!query || query.length > 80) return null;
-  const lower = query.toLowerCase();
-  if (isUtilityPluginQuery(query)) return null;
-  if (GAME_QUERY_RE.test(query)) return null;
-  const wantsOpenNow = /\bopen(?:\s+now)?\b/i.test(query);
+  const intent = analyzePlaceIntent(rawQuery);
+  if (!intent) return null;
 
-  // Handle explicit "where is …" place lookups before the generic
-  // informational-question gate (which also matches leading "where").
-  const whereMatch = WHERE_IS_RE.exec(query) || WHERE_PLAIN_RE.exec(query);
-
-  if (whereMatch) {
-    // Strip the "where is" prefix (and a leading article) before searching.
-    let text = query.slice(whereMatch[0].length).replace(LEADING_ARTICLE_RE, "").trim();
-    text = _cleanSearchText(text);
-    if (text.length < 3) return null;
-    if (URL_OR_CODE_RE.test(text)) return null;
-    if (isUtilityPluginQuery(text)) return null;
-
-    const lower = text.toLowerCase();
-    // Open-ended gate uses the place name remainder, not "where is …" filler words.
-    if (_isOpenEndedNonPlaceQuery(lower, text)) return null;
-    if (CONSUMER_PRODUCT_RE.test(lower) && !_hasStrongPlaceIntent(lower)) {
-      return null;
-    }
-    if (_isBlockedNonPlaceQuery(lower) && !_hasStrongPlaceIntent(lower)) {
-      return null;
-    }
-
-    // Local category/intent/chain/zip remainder -> stay local (e.g. "nearest pharmacy").
-    if (_hasStrongPlaceIntent(lower)) {
-      return _attachPlaceHint({ mode: "local", confidence: "any", text, wantsOpenNow }, query);
-    }
-
-    // Global discover is quota-expensive — only for landmark-style remainders.
-    if (LANDMARK_HINT_RE.test(lower)) {
-      return _attachPlaceHint({ mode: "global", confidence: "name", text, wantsOpenNow }, query);
-    }
-
-    // Business/brand names after "where …" — same intent as "near me" (show nearby matches).
-    if (_looksLikeNameQuery(text) && !_isBlockedNonPlaceQuery(lower)) {
-      return _attachPlaceHint({ mode: "local", confidence: "any", text, wantsOpenNow }, query);
-    }
-
-    return null;
-  }
-
-  if (isInformationalQuestion(query)) return null;
-
-  const local = _classifyLocalText(query);
-  const cleaned = _cleanSearchText(query);
-  if (local === "strong") {
-    return _attachPlaceHint(
-      { mode: "local", confidence: "any", text: cleaned || query, wantsOpenNow },
-      query,
-    );
-  }
-  if (local === "name") {
-    return _attachPlaceHint(
-      { mode: "local", confidence: "name", text: cleaned || query, wantsOpenNow },
-      query,
-    );
-  }
-  return null;
-}
-
-function _tokenLooksNameLike(token) {
-  const lower = token.toLowerCase();
-  if (GENERIC_NAME_STOPWORDS.has(lower)) return false;
-  if (PLACE_CATEGORY_RE.test(token) && !KNOWN_CHAIN_RE.test(token)) return false;
-  if (BUSINESS_NAME_SUFFIX_RE.test(token)) return true;
-  if (/^[A-Z]{2,}$/.test(token)) return true;
-  if (/^[A-Za-z]+(?:'s|'|s)$/i.test(token) && lower.length >= 4) return true;
-  if (lower.length >= 4) return true;
-  return false;
-}
-
-/** Multi-word brands with all short tokens ("kung fu tea", "gong cha"). */
-function _looksLikeCompactBrandName(tokens) {
-  const meaningful = tokens.filter((t) => !GENERIC_NAME_STOPWORDS.has(t.toLowerCase()));
-  if (meaningful.length < 2) return false;
-  if (!meaningful.every((t) => t.length >= 2 && /^[a-z0-9][a-z0-9'’&.-]*$/i.test(t))) {
-    return false;
-  }
-  return meaningful.join("").length >= 7;
-}
-
-function _looksLikeNameQuery(query) {
-  const normalized = _normalizeQuery(query);
-  if (isUtilityPluginQuery(normalized)) return false;
-
-  const tokens = normalized.split(/\s+/).filter(Boolean);
-  if (tokens.length < 1 || tokens.length > 4) return false;
-  if (SCIENCE_MEDICAL_RE.test(normalized.toLowerCase())) return false;
-  if (PLACE_TOPIC_INFO_RE.test(normalized.toLowerCase())) return false;
-
-  for (const token of tokens) {
-    // Name tokens: letters/digits plus internal apostrophes/hyphens/ampersands/dots.
-    if (!/^[a-z0-9][a-z0-9'’&.-]*$/i.test(token)) return false;
-  }
-
-  const compact = tokens.join("");
-  if (compact.length < 3) return false;
-
-  if (tokens.every((t) => GENERIC_NAME_STOPWORDS.has(t.toLowerCase()))) return false;
-
-  if (tokens.length === 1) {
-    if (PLACE_CATEGORY_RE.test(tokens[0]) && !KNOWN_CHAIN_RE.test(tokens[0])) return false;
-    return _tokenLooksNameLike(tokens[0]);
-  }
-
-  // Multi-word: allow short initials ("RS Pizza Bites") when a non-category token reads like a name.
-  const nonCategoryTokens = tokens.filter(
-    (t) => !PLACE_CATEGORY_RE.test(t) || KNOWN_CHAIN_RE.test(t),
-  );
-  if (nonCategoryTokens.length === 0) return false;
-  if (nonCategoryTokens.some((t) => _tokenLooksNameLike(t))) return true;
-  return _looksLikeCompactBrandName(nonCategoryTokens);
-}
-
-function _cleanSearchText(text) {
-  return String(text || "")
-    .replace(/\bopen\s+now\b/gi, " ")
-    .replace(/\bopen\b/gi, " ")
-    .replace(/\bnear\s+me\b/gi, " ")
-    .replace(/\bnearby\b/gi, " ")
-    .replace(/\bclosest\b/gi, " ")
-    .replace(/\bnearest\b/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return {
+    mode: intent.mode,
+    confidence:
+      intent.mode === "global" || (intent.kind === "business" && intent.confidence === "verify")
+        ? "name"
+        : "any",
+    text: intent.searchText,
+    placeHint: intent.locationText,
+    wantsOpenNow: intent.qualifiers.openNow,
+    validationRequired: intent.validationRequired === true,
+    kind: intent.kind,
+    evidence: intent.evidence,
+  };
 }
 
 function _filterOpenNow(places) {

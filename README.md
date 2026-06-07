@@ -91,11 +91,13 @@ Click a plugin name to expand screenshots and previews.
 </details>
 
 <details>
-<summary><strong>Places</strong> — Local place cards with hours, phone, directions, and map (HERE API key required)</summary>
+<summary><strong>Places</strong> — NLP-assisted local place cards with hours, phone, directions, and map (HERE API key required)</summary>
 
 ![Places](plugins/osm-slot/screenshots/1.png)
 
 ![Places map](plugins/osm-slot/screenshots/2.png)
+
+**Places** uses a vendored Compromise NLP parser plus conservative safety guards to recognize local intent without turning general searches into place cards. It keeps HERE as the rich POI/details provider and uses OpenStreetMap/Nominatim to validate NLP-derived location phrases and as a geocoding fallback. Supported shapes include bare business names like `Tacoria`, `Aikou`, `HomeGoods`, and `Tim Hortons`; explicit local queries like `Kohls near me`; category/location phrasing like `cafes around Princeton`; and landmark directions like `directions to Eiffel Tower`.
 
 </details>
 

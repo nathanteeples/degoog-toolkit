@@ -37,6 +37,14 @@
       "customTileUrl": {
         "label": "Custom map tile URL",
         "description": "Optional raster tile template for the map."
+      },
+      "useOsmGeocoder": {
+        "label": "Use OpenStreetMap geocoding",
+        "description": "Use Nominatim to validate NLP-derived locations and as a fallback for HERE geocoding."
+      },
+      "nominatimEndpoint": {
+        "label": "Nominatim endpoint",
+        "description": "Nominatim-compatible search endpoint. The public service is limited to one request per second."
       }
     },
     "openInOsm": "Open in OpenStreetMap",
@@ -57,6 +65,7 @@
     "viewLargerMap": "View larger map",
     "seeHours": "Hours",
     "openInGoogle": "Open in Google Maps",
-    "openInApple": "Open in Apple Maps"
+    "openInApple": "Open in Apple Maps",
+    "locationResolvedByOsm": "Location resolved with"
   }
 }

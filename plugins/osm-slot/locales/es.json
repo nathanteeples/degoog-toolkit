@@ -37,6 +37,14 @@
       "customTileUrl": {
         "label": "URL personalizada de mosaicos de mapa",
         "description": "Plantilla de mosaico ráster opcional para el mapa."
+      },
+      "useOsmGeocoder": {
+        "label": "Usar geocodificación de OpenStreetMap",
+        "description": "Usa Nominatim para validar ubicaciones detectadas por NLP y como alternativa a la geocodificación de HERE."
+      },
+      "nominatimEndpoint": {
+        "label": "Punto de acceso de Nominatim",
+        "description": "Punto de búsqueda compatible con Nominatim. El servicio público está limitado a una solicitud por segundo."
       }
     },
     "openInOsm": "Abrir en OpenStreetMap",
@@ -57,6 +65,7 @@
     "viewLargerMap": "Ver mapa más grande",
     "seeHours": "Horario",
     "openInGoogle": "Abrir en Google Maps",
-    "openInApple": "Abrir en Apple Maps"
+    "openInApple": "Abrir en Apple Maps",
+    "locationResolvedByOsm": "Ubicación resuelta con"
   }
 }

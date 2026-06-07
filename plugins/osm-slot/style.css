@@ -69,6 +69,17 @@
   gap: 12px;
 }
 
+.places-osm-attribution {
+  margin-top: 10px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.places-osm-attribution a {
+  color: var(--text-link);
+}
+
 #results-page.degoog-fullwidth-slot-shell .places-layout {
   grid-template-columns: minmax(300px, 0.85fr) minmax(420px, 1.15fr);
   align-items: stretch;

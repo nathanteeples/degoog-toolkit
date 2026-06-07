@@ -37,6 +37,14 @@
       "customTileUrl": {
         "label": "URL personnalisée des tuiles de carte",
         "description": "Modèle de tuile raster facultatif pour la carte."
+      },
+      "useOsmGeocoder": {
+        "label": "Utiliser le géocodage OpenStreetMap",
+        "description": "Utilise Nominatim pour valider les lieux détectés par le NLP et comme solution de secours pour HERE."
+      },
+      "nominatimEndpoint": {
+        "label": "Point de terminaison Nominatim",
+        "description": "Point de terminaison de recherche compatible Nominatim. Le service public est limité à une requête par seconde."
       }
     },
     "openInOsm": "Ouvrir dans OpenStreetMap",
@@ -57,6 +65,7 @@
     "viewLargerMap": "Afficher une carte plus grande",
     "seeHours": "Horaires",
     "openInGoogle": "Ouvrir dans Google Maps",
-    "openInApple": "Ouvrir dans Plans"
+    "openInApple": "Ouvrir dans Plans",
+    "locationResolvedByOsm": "Emplacement résolu avec"
   }
 }
