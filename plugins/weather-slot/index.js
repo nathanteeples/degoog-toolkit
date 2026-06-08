@@ -353,10 +353,10 @@ const slotDef = {
         "",
       )
       .replace(
-        /^(weather|forecast|temperature|sunrise|sunset|прогноз\s+погоди|яка\s+погода|погода)\s*(in|for|at|в|у|для)?\s*/i,
+        /^(weather|forecast|temperature|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|tiempo|clima|pronóstico|pronostico|прогноз\s+погоди|яка\s+погода|погода)\s*(in|for|at|в|у|для|à|dans|pour|en|para)?\s*/i,
         "",
       )
-      .replace(/^(in|for|at|в|у|для)\s+/i, "")
+      .replace(/^(in|for|at|в|у|для|à|dans|pour|en|para)\s+/i, "")
       // Also strip trailing weather keywords so "romania weather",
       // "london forecast today", "paris temperature tomorrow", and the
       // Russian/Ukrainian variants all reduce to just the location. This
@@ -543,8 +543,8 @@ const slotDef = {
         ? _timeFmtAt(sunrise, utcOffsetSeconds)
         : "—";
       const sunsetStr = sunset ? _timeFmtAt(sunset, utcOffsetSeconds) : "—";
-      const sunriseRelative = _fmtRelativeEvent(sunrise, now);
-      const sunsetRelative = _fmtRelativeEvent(sunset, now);
+      const sunriseRelative = _fmtRelativeEvent(sunrise, now, context);
+      const sunsetRelative = _fmtRelativeEvent(sunset, now, context);
 
       let sunPct = 0;
       if (sunrise && sunset) {
@@ -579,8 +579,8 @@ const slotDef = {
         const d = _safeApiDate(`${tCode}T12:00:00`, utcOffsetSeconds) || new Date();
         const weekday = _weekdayAt(d, utcOffsetSeconds);
         const lang = context?.lang || "en-US";
-        const name = i === 0 ? "{{ t:plugin-weather-slot.today }}" : d.toLocaleDateString(lang, { weekday: "short" });
-        const longName = i === 0 ? "{{ t:plugin-weather-slot.today }}" : d.toLocaleDateString(lang, { weekday: "long" });
+        const name = i === 0 ? "{{ t:plugin-weather-slot.today }}" : `{{ t:plugin-weather-slot.weekday_short_${weekday} }}`;
+        const longName = i === 0 ? "{{ t:plugin-weather-slot.today }}" : `{{ t:plugin-weather-slot.weekday_long_${weekday} }}`;
         const dayDateLabel = _dateFmtAt(d, utcOffsetSeconds, context);
         const hi = Math.round(daily.temperature_2m_max[i]);
         const lo = Math.round(daily.temperature_2m_min[i]);
