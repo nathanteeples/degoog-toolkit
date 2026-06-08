@@ -210,6 +210,29 @@
     return "gas";
   }
 
+  function formatElectronConfiguration(conf) {
+    if (!conf) return "N/A";
+    const nobleGasMatch = conf.match(/^(\[[A-Z][a-z]?\])\s*/);
+    let nobleGasHtml = "";
+    let remainder = conf;
+    if (nobleGasMatch) {
+      nobleGasHtml = `<span class="pt-conf-core">${nobleGasMatch[1]}</span>`;
+      remainder = conf.slice(nobleGasMatch[0].length);
+    }
+    const orbitals = remainder.split(/\s+/).filter(Boolean);
+    const orbitalsHtml = orbitals.map(orb => {
+      const match = orb.match(/^(\d+)([spdf])(.*)$/);
+      if (match) {
+        const shell = match[1];
+        const subshell = match[2];
+        const power = match[3];
+        return `<span class="pt-conf-orbital"><span class="pt-conf-shell">${shell}</span><span class="pt-conf-subshell subshell-${subshell}">${subshell}</span><sup class="pt-conf-power">${power}</sup></span>`;
+      }
+      return `<span class="pt-conf-orbital">${orb}</span>`;
+    }).join("");
+    return `${nobleGasHtml}${orbitalsHtml}`;
+  }
+
   function updateDetailDisplay(el) {
     const content = qs(".pt-dd-content");
     const emptyMsg = qs(".pt-dd-empty");
@@ -235,11 +258,17 @@
     content.querySelector("[data-dd-mass]").textContent = el.mass;
     content.querySelector("[data-dd-name]").textContent = el.name;
     content.querySelector("[data-dd-cat]").textContent = CATEGORY_NAMES[el.cat] || el.cat;
-    content.querySelector("[data-dd-conf]").textContent = el.conf;
+    content.querySelector("[data-dd-conf]").innerHTML = formatElectronConfiguration(el.conf);
 
     const slider = qs("[data-pt-temp-slider]");
     const currentTemp = slider ? parseInt(slider.value, 10) : 298;
     const simState = getSimulatedState(el, currentTemp);
+
+    // Set data-state attribute on the state badge
+    const stateBadge = content.querySelector("[data-dd-state-badge]");
+    if (stateBadge) {
+      stateBadge.setAttribute("data-state", simState);
+    }
 
     content.querySelector("[data-dd-state]").textContent = getTranslation(simState, simState.charAt(0).toUpperCase() + simState.slice(1));
     content.querySelector("[data-dd-melt]").textContent = el.melt ? `${el.melt} K` : "N/A";
@@ -261,7 +290,7 @@
     modal.querySelector("[data-modal-state]").textContent = rtState;
     modal.querySelector("[data-modal-melt]").textContent = el.melt ? formatTemp(el.melt) : "N/A";
     modal.querySelector("[data-modal-boil]").textContent = el.boil ? formatTemp(el.boil) : "N/A";
-    modal.querySelector("[data-modal-conf]").textContent = el.conf;
+    modal.querySelector("[data-modal-conf]").innerHTML = formatElectronConfiguration(el.conf);
     modal.querySelector("[data-modal-disc]").textContent = el.disc || "Unknown";
     modal.querySelector("[data-modal-desc]").textContent = getElementDescription(el);
 

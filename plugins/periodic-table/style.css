@@ -759,3 +759,99 @@
   padding: 12px;
   border-radius: 12px;
 }
+
+/* Electron Configuration Styled Representation */
+.pt-conf-core {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-right: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.pt-conf-orbital {
+  display: inline-flex;
+  align-items: baseline;
+  margin-right: 5px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.pt-conf-shell {
+  color: var(--text-primary);
+}
+
+.pt-conf-subshell {
+  font-weight: 800;
+  margin-left: 1px;
+}
+.pt-conf-subshell.subshell-s { color: var(--pt-noble); }             /* s-block: bright pink */
+.pt-conf-subshell.subshell-p { color: var(--pt-alkaline); }          /* p-block: gold/orange */
+.pt-conf-subshell.subshell-d { color: var(--pt-transition); }        /* d-block: blue */
+.pt-conf-subshell.subshell-f { color: var(--pt-lanthanide); }        /* f-block: purple */
+
+.pt-conf-power {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  vertical-align: super;
+  line-height: 0;
+  margin-left: 0.5px;
+}
+
+/* Preview Display Badges */
+.pt-dd-stats {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.pt-dd-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.01);
+  transition: all 0.2s ease;
+}
+
+.pt-dd-badge-lbl {
+  color: var(--text-secondary);
+  margin-right: 5px;
+}
+
+.pt-dd-badge-val {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+/* Simulated State Pill Color overrides */
+.pt-dd-badge[data-state="gas"] {
+  background: rgba(56, 239, 125, 0.08);
+  border-color: rgba(56, 239, 125, 0.2);
+  color: var(--pt-nonmetal);
+}
+.pt-dd-badge[data-state="liquid"] {
+  background: rgba(79, 172, 254, 0.08);
+  border-color: rgba(79, 172, 254, 0.2);
+  color: var(--pt-transition);
+}
+.pt-dd-badge[data-state="solid"] {
+  background: rgba(161, 161, 161, 0.08);
+  border-color: rgba(161, 161, 161, 0.2);
+  color: var(--text-secondary);
+}
+.pt-dd-badge[data-state="synthetic"] {
+  background: rgba(248, 87, 166, 0.08);
+  border-color: rgba(248, 87, 166, 0.2);
+  color: var(--pt-noble);
+}
