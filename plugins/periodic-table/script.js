@@ -16,7 +16,7 @@
     [10, "Ne", "Neon", "20.180", "noble-gas", "gas", 24, 27, "[He] 2s² 2p⁶", "Morris Travers & William Ramsay", 2, 18],
     [11, "Na", "Sodium", "22.990", "alkali-metal", "solid", 371, 1156, "[Ne] 3s¹", "Humphry Davy", 3, 1],
     [12, "Mg", "Magnesium", "24.305", "alkaline-earth-metal", "solid", 923, 1363, "[Ne] 3s²", "Joseph Black", 3, 2],
-    [13, "Al", "Aluminium", "26.982", "post-transition-metal", "solid", 933, 2792, "[Ne] 3s² 3p¹,", "Hans Christian Ørsted", 3, 13],
+    [13, "Al", "Aluminium", "26.982", "post-transition-metal", "solid", 933, 2792, "[Ne] 3s² 3p¹", "Hans Christian Ørsted", 3, 13],
     [14, "Si", "Silicon", "28.085", "metalloid", "solid", 1687, 3538, "[Ne] 3s² 3p²", "Jöns Jacob Berzelius", 3, 14],
     [15, "P", "Phosphorus", "30.974", "reactive-nonmetal", "solid", 317, 553, "[Ne] 3s² 3p³", "Hennig Brand", 3, 15],
     [16, "S", "Sulfur", "32.06", "reactive-nonmetal", "solid", 388, 717, "[Ne] 3s² 3p⁴", "Ancient China", 3, 16],
@@ -63,7 +63,7 @@
     [57, "La", "Lanthanum", "138.91", "lanthanide", "solid", 1193, 3737, "[Xe] 5d¹ 6s²", "Carl Gustaf Mosander", 9, 4],
     [58, "Ce", "Cerium", "140.12", "lanthanide", "solid", 1068, 3716, "[Xe] 4f¹ 5d¹ 6s²", "Martin Heinrich Klaproth, Jöns Jacob Berzelius & Wilhelm Hisinger", 9, 5],
     [59, "Pr", "Praseodymium", "140.91", "lanthanide", "solid", 1208, 3793, "[Xe] 4f³ 6s²", "Carl Auer von Welsbach", 9, 6],
-    [60, "Nd", "Neodymium", "144.24", "lanthanide", "solid", 1297, 3347, "[Xe] 4f⁴ 6s²,", "Carl Auer von Welsbach", 9, 7],
+    [60, "Nd", "Neodymium", "144.24", "lanthanide", "solid", 1297, 3347, "[Xe] 4f⁴ 6s²", "Carl Auer von Welsbach", 9, 7],
     [61, "Pm", "Promethium", "145", "lanthanide", "solid", 1315, 3273, "[Xe] 4f⁵ 6s²", "Charles D. Coryell, Jacob A. Marinsky & Lawrence E. Glendenin", 9, 8],
     [62, "Sm", "Samarium", "150.36", "lanthanide", "solid", 1345, 2067, "[Xe] 4f⁶ 6s²", "Paul-Émile Lecoq de Boisbaudran", 9, 9],
     [63, "Eu", "Europium", "151.96", "lanthanide", "solid", 1099, 1802, "[Xe] 4f⁷ 6s²", "Eugène-Anatole Demarçay", 9, 10],
@@ -328,7 +328,7 @@
   }
 
   function filterByCategory(category) {
-    const elements = currentWidget.querySelectorAll(".pt-element[data-num]");
+    const elements = currentWidget.querySelectorAll(".pt-element");
     const filterButtons = currentWidget.querySelectorAll("[data-category]");
 
     filterButtons.forEach(btn => {
@@ -343,6 +343,17 @@
 
     elements.forEach(cell => {
       const num = parseInt(cell.getAttribute("data-num"), 10);
+      const placeholderCat = cell.getAttribute("data-placeholder-cat");
+
+      if (placeholderCat) {
+        if (!category || placeholderCat === category) {
+          cell.classList.remove("dimmed");
+        } else {
+          cell.classList.add("dimmed");
+        }
+        return;
+      }
+
       const el = ELEMENTS.find(e => e.num === num);
       if (!el) return;
 
@@ -356,7 +367,7 @@
 
   function searchElements(query) {
     const cleanQuery = query.trim().toLowerCase();
-    const elements = currentWidget.querySelectorAll(".pt-element[data-num]");
+    const elements = currentWidget.querySelectorAll(".pt-element");
     const clearBtn = qs("[data-pt-clear-search]");
 
     if (clearBtn) {
@@ -371,13 +382,21 @@
 
     elements.forEach(cell => {
       const num = parseInt(cell.getAttribute("data-num"), 10);
-      const el = ELEMENTS.find(e => e.num === num);
-      if (!el) return;
+      const placeholderCat = cell.getAttribute("data-placeholder-cat");
 
       if (!cleanQuery) {
         cell.classList.remove("dimmed", "highlighted");
         return;
       }
+
+      if (placeholderCat) {
+        cell.classList.add("dimmed");
+        cell.classList.remove("highlighted");
+        return;
+      }
+
+      const el = ELEMENTS.find(e => e.num === num);
+      if (!el) return;
 
       const matchSym = el.sym.toLowerCase() === cleanQuery;
       const matchNum = String(el.num) === cleanQuery;
@@ -410,6 +429,7 @@
     laPlaceholder.className = "pt-element lanthanide pt-placeholder-cell";
     laPlaceholder.style.gridColumn = 3;
     laPlaceholder.style.gridRow = 6;
+    laPlaceholder.setAttribute("data-placeholder-cat", "lanthanide");
     laPlaceholder.innerHTML = `
       <span class="pt-element-num">57-71</span>
       <span class="pt-element-sym">La-Lu</span>
@@ -421,6 +441,7 @@
     acPlaceholder.className = "pt-element actinide pt-placeholder-cell";
     acPlaceholder.style.gridColumn = 3;
     acPlaceholder.style.gridRow = 7;
+    acPlaceholder.setAttribute("data-placeholder-cat", "actinide");
     acPlaceholder.innerHTML = `
       <span class="pt-element-num">89-103</span>
       <span class="pt-element-sym">Ac-Lr</span>
