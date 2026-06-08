@@ -153,16 +153,16 @@ const NATURAL_LANGUAGE_PHRASES = [
 // Bang prefixes the slot should accept (mirrors the old command's trigger +
 // aliases). Also used by execute() to strip the prefix off the query before
 // parsing the city out.
-const BANG_PREFIX_RX = /^!(weather|forecast|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|tiempo|clima|pronóstico|pronostico|погода|прогноз|метео)\b\s*/i;
+const BANG_PREFIX_RX = /^!(weather|forecast|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|previsioni|tiempo|clima|pronóstico|pronostico|погода|прогноз|метео|wetter|vorhersage|tempo|previsão|alba|tramonto)\b\s*/i;
 
 // Regex used for trailing-keyword matching ("rome weather", "london forecast
 // today"). Kept loose; the slot's trigger() does further checks to make sure
 // there's an actual location token in the query.
 const WEATHER_KEYWORD_RX =
-  /\b(weather|forecast|temperature|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|tiempo|clima|pronóstico|pronostico|погода|прогноз|метео)\b/i;
+  /\b(weather|forecast|temperature|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|previsioni|tiempo|clima|pronóstico|pronostico|погода|прогноз|метео|wetter|vorhersage|temperatur|sonnenaufgang|sonnenuntergang|tempo|previsão|temperatura|alba|tramonto)\b/i;
 
 const LOCATION_STRIP_RX =
-  /\b(weather|forecast|temperature|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|tiempo|clima|pronóstico|pronostico|today|tomorrow|in|for|at|the|pour|en|dans|para|a|погода|прогноз|метео|в|у|для)\b/gi;
+  /\b(weather|forecast|temperature|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|previsioni|tiempo|clima|pronóstico|pronostico|today|tomorrow|in|for|at|the|pour|en|dans|para|a|погода|прогноз|метео|в|у|для|wetter|vorhersage|temperatur|sonnenaufgang|sonnenuntergang|tempo|previsão|temperatura|alba|tramonto|für|bei|per|em)\b/gi;
 const NON_LOCATION_WEATHER_TARGET_RX =
   /^(celsius|fahrenheit|kelvin|centigrade|metric|imperial|degrees?|deg|f|c|k|today|tomorrow|now|current)$/i;
 
@@ -353,10 +353,10 @@ const slotDef = {
         "",
       )
       .replace(
-        /^(weather|forecast|temperature|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|tiempo|clima|pronóstico|pronostico|прогноз\s+погоди|яка\s+погода|погода)\s*(in|for|at|в|у|для|à|dans|pour|en|para)?\s*/i,
+        /^(weather|forecast|temperature|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|previsioni|tiempo|clima|pronóstico|pronostico|прогноз\s+погоди|яка\s+погода|погода|прогноз|wetter|vorhersage|temperatur|sonnenaufgang|sonnenuntergang|tempo|previsão|temperatura|température|temps|alba|tramonto)(?![\p{L}\p{N}_])(\s+(in|for|at|в|у|для|à|dans|pour|en|para|für|bei|a|per|em)(?![\p{L}\p{N}_]))?\s*/iu,
         "",
       )
-      .replace(/^(in|for|at|в|у|для|à|dans|pour|en|para)\s+/i, "")
+      .replace(/^(in|for|at|в|у|для|à|dans|pour|en|para|für|bei|a|per|em)(?![\p{L}\p{N}_])\s+/iu, "")
       // Also strip trailing weather keywords so "romania weather",
       // "london forecast today", "paris temperature tomorrow", and the
       // Russian/Ukrainian variants all reduce to just the location. This
@@ -364,7 +364,7 @@ const slotDef = {
       // that degoog's prefix-only natural-language matcher skips) reuse
       // this same execute path without a separate parser.
       .replace(
-        /\s+(weather|forecast|temperature|sunrise|sunset|погода|прогноз|метео)(\s+(today|tomorrow))?\s*$/i,
+        /\s+(weather|forecast|temperature|sunrise|sunset|погода|прогноз|метео|wetter|vorhersage|tempo|previsão|previsioni|alba|tramonto|meteo|météo|tiempo|clima|pronóstico|pronostico|temperatura|température)(?![\p{L}\p{N}_])(\s+(today|tomorrow)(?![\p{L}\p{N}_]))?\s*$/iu,
         "",
       )
       .replace(/\s+(today|tomorrow)\s*$/i, "")
