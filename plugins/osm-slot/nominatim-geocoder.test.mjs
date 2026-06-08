@@ -24,7 +24,7 @@ test("geocodes and caches a matching feature", async () => {
       calls.push({ url, init });
       return response([{
         geometry: { coordinates: [-74.6597, 40.3497] },
-        properties: { geocoding: { label: "Princeton, New Jersey, United States", type: "city" } },
+        properties: { geocoding: { label: "Chicago, Illinois, United States", type: "city" } },
       }]);
     },
     cache: {
@@ -36,8 +36,8 @@ test("geocodes and caches a matching feature", async () => {
     },
   });
 
-  const first = await geocoder.geocode("Princeton");
-  const second = await geocoder.geocode("Princeton");
+  const first = await geocoder.geocode("Chicago");
+  const second = await geocoder.geocode("Chicago");
   assert.equal(first.source, "nominatim");
   assert.equal(second.cached, true);
   assert.equal(calls.length, 1);
@@ -77,7 +77,7 @@ test("serializes requests and enforces one second spacing", async () => {
     }]),
   });
 
-  await Promise.all([geocoder.geocode("Princeton"), geocoder.geocode("Trenton")]);
+  await Promise.all([geocoder.geocode("Chicago"), geocoder.geocode("Evanston")]);
   assert.deepEqual(sleeps, [1000]);
 });
 
@@ -87,6 +87,6 @@ test("returns null on provider failure", async () => {
       throw new Error("offline");
     },
   });
-  assert.equal(await geocoder.geocode("Princeton"), null);
+  assert.equal(await geocoder.geocode("Chicago"), null);
 });
 

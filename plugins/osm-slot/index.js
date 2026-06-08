@@ -11,7 +11,7 @@ function t(key, context) {
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.6.3";
+const PLUGIN_VERSION = "4.6.4";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -117,7 +117,7 @@ export const slot = {
       required: true,
       secret: true,
       description:
-        "Required. Powers place search (/discover, /browse) and city geocoding for queries like 'near Princeton' (/geocode). Free tier includes generous monthly Geocoding & Search requests — get a key at developer.here.com.",
+        "Required. Powers place search (/discover, /browse) and city geocoding for queries like 'near Chicago' (/geocode). Free tier includes generous monthly Geocoding & Search requests — get a key at developer.here.com.",
     },
     {
       key: "defaultLat",
@@ -358,7 +358,7 @@ export const routes = [
 
         // Coordinate resolution, in priority order:
         //   1. Precise browser coords from "Use my location".
-        //   2. Explicit "near Princeton" (etc.) geocoded via HERE Geocoding API.
+        //   2. Explicit "near Chicago" (etc.) geocoded via HERE Geocoding API.
         //   3. Server-side IP geolocation.
         //   4. Configured default location.
         let latNum = parseFloat(body.lat);

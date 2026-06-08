@@ -3,38 +3,38 @@ import test from "node:test";
 import { analyzePlaceIntent } from "./intent-engine.mjs";
 
 const positiveFixtures = [
-  ["Tacoria", { kind: "business", searchText: "Tacoria" }],
-  ["Aikou", { kind: "business", searchText: "Aikou" }],
-  ["Jazams", { kind: "business", searchText: "Jazams" }],
+  ["Starbucks", { kind: "business", searchText: "Starbucks" }],
+  ["Walmart", { kind: "business", searchText: "Walmart" }],
+  ["Target", { kind: "business", searchText: "Target" }],
   ["Kohls near me", { kind: "business", searchText: "Kohls", confidence: "high" }],
   ["HomeGoods", { kind: "business", searchText: "HomeGoods" }],
   ["Dollar General", { kind: "business", searchText: "Dollar General" }],
   ["Tim Hortons", { kind: "business", searchText: "Tim Hortons" }],
   ["Noodles and Company", { kind: "business", searchText: "Noodles and Company" }],
-  ["Small World Coffee", { kind: "business", searchText: "Small World Coffee" }],
+  ["Dunkin", { kind: "business", searchText: "Dunkin" }],
   ["Joe's Pizza", { kind: "business", searchText: "Joe's Pizza" }],
-  ["cafes around Princeton", { kind: "category", searchText: "cafes", locationText: "Princeton" }],
+  ["cafes around Chicago", { kind: "category", searchText: "cafes", locationText: "Chicago" }],
   ["directions to Eiffel Tower", { kind: "landmark", searchText: "Eiffel Tower", mode: "global" }],
   ["show me museums close to downtown Boston", {
     kind: "category",
     searchText: "museums",
     locationText: "downtown Boston",
   }],
-  ["Tacoria near Princeton", {
+  ["Starbucks near Chicago", {
     kind: "business",
-    searchText: "Tacoria",
-    locationText: "Princeton",
+    searchText: "Starbucks",
+    locationText: "Chicago",
   }],
-  ["Tim Hortons near Nassau Street", {
+  ["Tim Hortons near Broadway", {
     kind: "business",
     searchText: "Tim Hortons",
-    locationText: "Nassau Street",
+    locationText: "Broadway",
   }],
   ["where ulta", { kind: "business", searchText: "ulta", confidence: "high" }],
-  ["kung fu tea near princeton", {
+  ["kung fu tea near chicago", {
     kind: "business",
     searchText: "kung fu tea",
-    locationText: "princeton",
+    locationText: "chicago",
   }],
   ["lil sweet treat near rockefeller center", {
     kind: "business",
@@ -92,7 +92,7 @@ for (const query of [
   "time in Tokyo",
   "pizza calories and nutrition",
   "where to buy ketchup",
-  "weather Princeton",
+  "weather Chicago",
   "react hooks",
   "python list comprehension",
   "play minesweeper",
@@ -100,7 +100,7 @@ for (const query of [
   "concrete crack near pool",
   "crack near pool",
   "dog near fence",
-  "concrete crack near Princeton",
+  "concrete crack near Chicago",
   "HomeGoods near pool",
   "restaurants near pool",
   "coffee near pool",

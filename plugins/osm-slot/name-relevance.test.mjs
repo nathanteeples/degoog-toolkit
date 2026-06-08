@@ -39,9 +39,9 @@ test("rejects nearby partial matches missing meaningful query tokens", () => {
 test("keeps strong exact business matches throughout the radius", () => {
   assert.equal(
     testNameResultRelevance(
-      "Aikou",
+      "Walmart",
       {
-        name: "Aikou",
+        name: "Walmart",
         brandName: null,
         ontologyId: null,
         distanceMeters: 14 * MILE,
@@ -90,12 +90,12 @@ test("renders empty HTML when HERE only returns distant partial matches", async 
       address: { label: "400 Commons Way, Bridgewater, NJ" },
     },
     {
-      id: "janie-princeton",
+      id: "janie-chicago",
       title: "Janie and Jack",
       position: { lat: 40.31497, lng: -74.66039 },
       distance: 14.4 * MILE,
       chains: [{ id: "chain:janie-and-jack", name: "Janie and Jack" }],
-      address: { label: "3535 US Highway 1, Princeton, NJ" },
+      address: { label: "3535 N Broadway, Chicago, IL" },
     },
   ];
 
