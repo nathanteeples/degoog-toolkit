@@ -812,7 +812,7 @@
 .pt-conf-subshell.subshell-f { color: var(--pt-lanthanide); }        /* f-block: purple */
 
 .pt-conf-power {
-  font-size: 0.65rem;
+  font-size: 0.78rem;
   font-weight: 800;
   color: var(--text-secondary);
   vertical-align: super;

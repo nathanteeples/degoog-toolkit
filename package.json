@@ -57,7 +57,7 @@
       "path": "plugins/osm-slot",
       "name": "Places",
       "description": "HERE-powered local place recognition with Compromise NLP intent parsing and OpenStreetMap/Nominatim geocoding assistance. Shows nearby businesses and POIs with address, today's hours, cuisine, phone, directions, and an interactive multi-pin map. Recognizes bare business names, category/location phrases, 'near me' queries, and landmark lookups while preserving conservative false-positive guards. Requires a free HERE API key.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "4.6.2",
+      "version": "4.6.3",
       "type": "slot"
     },
     {
@@ -169,7 +169,7 @@
       "path": "plugins/periodic-table",
       "name": "Periodic Table",
       "description": "Interactive periodic table of elements with symbol/name search, element group filters, dynamic temperature state simulator, and element details modal.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "type": "slot"
     }
   ],

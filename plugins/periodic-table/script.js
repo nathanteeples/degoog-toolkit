@@ -210,6 +210,15 @@
     return "gas";
   }
 
+  const SUPERSCRIPT_MAP = {
+    "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
+    "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9"
+  };
+
+  function convertSuperscriptToNormal(str) {
+    return str.split("").map(char => SUPERSCRIPT_MAP[char] || char).join("");
+  }
+
   function formatElectronConfiguration(conf) {
     if (!conf) return "N/A";
     const nobleGasMatch = conf.match(/^(\[[A-Z][a-z]?\])\s*/);
@@ -225,7 +234,7 @@
       if (match) {
         const shell = match[1];
         const subshell = match[2];
-        const power = match[3];
+        const power = convertSuperscriptToNormal(match[3]);
         return `<span class="pt-conf-orbital"><span class="pt-conf-shell">${shell}</span><span class="pt-conf-subshell subshell-${subshell}">${subshell}</span><sup class="pt-conf-power">${power}</sup></span>`;
       }
       return `<span class="pt-conf-orbital">${orb}</span>`;
