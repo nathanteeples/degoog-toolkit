@@ -223,10 +223,11 @@
     emptyMsg.style.display = "none";
     content.style.display = "flex";
 
-    // Set border color match category
+    // Set border color match category and data-cat attribute for background gradients
     const detailPanel = qs("[data-pt-detail-display]");
     if (detailPanel) {
       detailPanel.style.borderLeft = `4px solid var(--pt-${el.cat})`;
+      detailPanel.setAttribute("data-cat", el.cat);
     }
 
     content.querySelector("[data-dd-num]").textContent = el.num;
@@ -489,15 +490,37 @@
     w.querySelectorAll("[data-pt-close-modal]").forEach(btn => {
       btn.addEventListener("click", hideModal);
     });
+
+    // Run initial sizing and attach resize listener
+    handleResize();
+    window.addEventListener("resize", handleResize);
+  }
+
+  function handleResize() {
+    if (!currentWidget) return;
+    const width = currentWidget.getBoundingClientRect().width;
+    if (width < 850) {
+      currentWidget.classList.add("pt-compact");
+    } else {
+      currentWidget.classList.remove("pt-compact");
+    }
+  }
+
+  function cleanupWidget() {
+    if (currentWidget) {
+      window.removeEventListener("resize", handleResize);
+      currentWidget = null;
+    }
   }
 
   function handleDocumentClick(e) {
     const w = widget();
     if (!w) {
-      if (currentWidget) currentWidget = null;
+      cleanupWidget();
       return;
     }
     if (w !== currentWidget) {
+      cleanupWidget();
       initFromWidget(w);
     }
   }
@@ -505,10 +528,11 @@
   function checkWidget() {
     const w = widget();
     if (!w) {
-      if (currentWidget) currentWidget = null;
+      cleanupWidget();
       return;
     }
     if (w !== currentWidget) {
+      cleanupWidget();
       initFromWidget(w);
     }
   }
