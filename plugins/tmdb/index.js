@@ -857,6 +857,23 @@ const _buildCastCarousel = (stripHtml) => {
   );
 };
 
+/** Cast heading + horizontal carousel in a rounded panel. */
+const _buildCastSection = (cast, ctx) => {
+  const castStrip = _buildCastStrip(cast, ctx);
+  if (!castStrip) return "";
+  const castCountLabel = _formatCastCountLabel(cast.length, ctx);
+  return (
+    `<div class="tmdb-section tmdb-section--cast">` +
+    `<div class="tmdb-cast-panel">` +
+    `<div class="tmdb-section-heading">${_esc(t("cast", ctx))}` +
+    ` <span class="tmdb-section-count">${castCountLabel}</span>` +
+    `</div>` +
+    _buildCastCarousel(castStrip) +
+    `</div>` +
+    `</div>`
+  );
+};
+
 const _buildCastAccordion = (cast, label, ctx) => {
   const strip = _buildCastStrip(cast, ctx);
   if (!strip) return "";
@@ -1327,17 +1344,7 @@ const _renderMovie = (
       `<div class="tmdb-hero-info">${heroInfoInner}</div>` +
       `</div>`;
 
-  const cast = credits?.cast || [];
-  const castStrip = _buildCastStrip(cast, ctx);
-  const castCountLabel = _formatCastCountLabel(cast.length, ctx);
-  const castSection = castStrip
-    ? `<div class="tmdb-section">` +
-      `<div class="tmdb-section-heading">${_esc(t("cast", ctx))}` +
-      ` <span class="tmdb-section-count">${castCountLabel}</span>` +
-      `</div>` +
-      _buildCastCarousel(castStrip) +
-      `</div>`
-    : "";
+  const castSection = _buildCastSection(credits?.cast || [], ctx);
 
   const labelText = `${title}${year ? ` (${year})` : ""}`;
 
@@ -1417,17 +1424,7 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, imdbId, 
 
   const plotHtml = overview ? `<p class="tmdb-plot">${_esc(overview)}</p>` : "";
 
-  const cast = credits?.cast || [];
-  const castStrip = _buildCastStrip(cast, ctx);
-  const castCountLabel = _formatCastCountLabel(cast.length, ctx);
-  const castSection = castStrip
-    ? `<div class="tmdb-section">` +
-      `<div class="tmdb-section-heading">${_esc(t("cast", ctx))}` +
-      ` <span class="tmdb-section-count">${castCountLabel}</span>` +
-      `</div>` +
-      _buildCastCarousel(castStrip) +
-      `</div>`
-    : "";
+  const castSection = _buildCastSection(credits?.cast || [], ctx);
 
   const seasonsAccordion = _buildSeasonsRail(details, ctx);
   const seasonCount =

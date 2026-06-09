@@ -1836,6 +1836,48 @@
     min-width: 0;
 }
 
+.tmdb-section--cast {
+    margin-bottom: 0;
+}
+
+.tmdb-cast-panel {
+    border: 1px solid var(--tmdb-edge);
+    border-radius: 16px;
+    background: var(--bg-light, rgba(255, 255, 255, 0.04));
+    padding: 0.75rem 0.85rem 0.55rem;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.tmdb-cast-panel .tmdb-section-heading {
+    margin-bottom: 0.55rem;
+    padding: 0 0.1rem;
+}
+
+.tmdb-cast-panel .tmdb-cast-scroll {
+    padding: 0.1rem 0 0;
+}
+
+.tmdb-panel > .tmdb-section--cast:last-child,
+.tmdb-tv-body > .tmdb-section--cast:last-child,
+.tmdb-tv-main > .tmdb-section--cast:last-child {
+    margin-bottom: 0;
+}
+
+.tmdb-panel > .tmdb-section--cast:last-child,
+.tmdb-tv-body > .tmdb-section--cast:last-child {
+    padding-bottom: 0;
+}
+
+.tmdb-panel:has(> .tmdb-section--cast:last-child),
+.tmdb-tv-body:has(> .tmdb-section--cast:last-child) {
+    padding-bottom: 0;
+}
+
+.tmdb-result:has(.tmdb-section--cast:last-child) {
+    padding-bottom: 0.5rem;
+}
+
 .tmdb-section-heading {
     font-size: 0.74rem;
     font-weight: 700;
@@ -2096,7 +2138,7 @@
 
     .tmdb-tv-main .tmdb-section:last-child,
     .tmdb-tv-body > .tmdb-section:last-child {
-        margin-bottom: 0.3rem;
+        margin-bottom: 0;
     }
 }
 
