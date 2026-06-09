@@ -23,6 +23,35 @@
   const PLUGIN_API_BASE = `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
   const historyCache = new Map();
   const historyInFlight = new Map();
+  let currencySearchByCode = null;
+  let currencySearchLoadPromise = null;
+
+  async function ensureCurrencySearchIndex() {
+    if (currencySearchByCode) return currencySearchByCode;
+    if (!currencySearchLoadPromise) {
+      currencySearchLoadPromise = (async () => {
+        try {
+          const res = await fetch(pluginApiUrl("search-index"));
+          if (res.ok) {
+            currencySearchByCode = await res.json();
+          }
+        } catch (e) {
+          // Fall back to code + name matching only.
+        }
+        return currencySearchByCode || {};
+      })();
+    }
+    return currencySearchLoadPromise;
+  }
+
+  function currencyMatchesFilter(currency, filter, searchIndex) {
+    const needle = String(filter || "").trim().toLowerCase();
+    if (!needle) return true;
+    if (currency.code.toLowerCase().includes(needle)) return true;
+    if (currency.name.toLowerCase().includes(needle)) return true;
+    const searchText = searchIndex?.[currency.code] || "";
+    return searchText.includes(needle);
+  }
 
   function historyKey(from, to, days) {
     return `${from}|${to}|${days}`;
@@ -495,13 +524,12 @@
 
       // Get selected currency for this picker
       const selectedCode = pickerTarget === "from" ? fromCode : toCode;
+      const searchIndex = currencySearchByCode || {};
 
       // Filter currencies
       const filtered = filter
-        ? CURRENCIES.filter(
-            (c) =>
-              c.code.toLowerCase().includes(filter) ||
-              c.name.toLowerCase().includes(filter),
+        ? CURRENCIES.filter((c) =>
+            currencyMatchesFilter(c, filter, searchIndex),
           )
         : CURRENCIES;
 
@@ -526,6 +554,12 @@
         })
         .join("");
     }
+
+    ensureCurrencySearchIndex().then(() => {
+      if (isPickerOpen) {
+        renderPickerList(pickerSearch?.value.trim().toLowerCase() || "");
+      }
+    });
 
     const fromBtn = wrap.querySelector("#cxs-from-btn");
     const toBtn = wrap.querySelector("#cxs-to-btn");

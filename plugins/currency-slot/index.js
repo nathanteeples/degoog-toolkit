@@ -1,6 +1,10 @@
 let template = "";
 let externalFetch = (...args) => fetch(...args);
 import {
+  buildCurrencyAliasIndex,
+  parseCurrencyQuery,
+} from "./currency-aliases.js";
+import {
   hasNumericConversionPattern,
   isEnglishPrepositionIn,
   isInformationalQuestion,
@@ -360,7 +364,7 @@ const KNOWN_SYMBOLS = {
 };
 
 const CODES = Object.keys(CURRENCIES);
-const CODE_REGEX = new RegExp("\\b(" + CODES.join("|") + ")\\b", "g");
+const CURRENCY_ALIAS_INDEX = buildCurrencyAliasIndex(CURRENCIES);
 
 const POPULAR_PAIRS = [
   ["EUR", "USD"],
@@ -403,27 +407,10 @@ function _makeFlag(code) {
 
 // ── Query parser ──────────────────────────────────────────────
 function parseQuery(query) {
-  const q = query.trim().toLowerCase();
-  const clean = q
-    .replace(
-      /\b(convert|\u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c|\u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0443\u0432\u0430\u0442\u0438|\u0441\u043a\u0456\u043b\u044c\u043a\u0438|\u0441\u043a\u043e\u043b\u044c\u043a\u043e|\u043a\u0443\u0440\u0441|rate|price)\b/g,
-      "",
-    )
-    .replace(/\b(to|in|\u0443|\u0432|\u0434\u043e|into|a|en|=)\b/g, " TO ")
-    .trim();
-
-  const amountMatch = clean.match(/(\d[\d\s,']*(?:\.\d+)?)/);
-  const amount = amountMatch
-    ? parseFloat(amountMatch[1].replace(/[\s,]/g, "").replace(/'/g, ""))
-    : 1;
-
-  const codes = clean.toUpperCase().match(CODE_REGEX) || [];
-
-  return {
-    amount: amount || 1,
-    from: codes[0] || null,
-    to: codes[1] || null,
-  };
+  return parseCurrencyQuery(query, CURRENCY_ALIAS_INDEX, {
+    validCodes: CODES,
+    ambiguousWordCodes: AMBIGUOUS_WORD_CODES,
+  });
 }
 
 function _hasCurrencyTriggerIntent(query, parsed) {
@@ -807,6 +794,12 @@ export const routes = [
     path: "history",
     method: "get",
     handler: _handleHistoryRoute,
+  },
+  {
+    path: "search-index",
+    method: "get",
+    handler: async () =>
+      _jsonResponse(CURRENCY_ALIAS_INDEX.searchTextByCode),
   },
 ];
 
