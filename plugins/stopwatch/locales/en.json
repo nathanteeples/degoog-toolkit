@@ -10,12 +10,9 @@
       "stopwatchCycle": {
         "label": "Stopwatch ring cycle",
         "description": "Seconds per stopwatch progress ring. A short tick plays each time a ring completes."
-      },
-      "alarmTone": {
-        "label": "Timer alarm tone",
-        "description": "Tone when a timer reaches zero (not stopwatch). Add .m4a or .mp3 files to the plugin sounds/ folder."
       }
     },
+    "alarmTone": "Alarm tone",
     "timer": "Timer",
     "stopwatch": "Stopwatch",
     "soundOff": "Sound off",

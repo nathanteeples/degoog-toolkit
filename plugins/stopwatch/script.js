@@ -29,6 +29,7 @@
   var currentWidget = null;
   var audioCtx = null;
   var alarmAudio = null;
+  var ALARM_TONE_KEY = "degoog-stopwatch-alarm-tone";
 
   var state = {
     mode: "timer",
@@ -262,19 +263,59 @@
     return audioCtx;
   }
 
+  function getAlarmSoundsList() {
+    if (!currentWidget) return [];
+    var raw = currentWidget.getAttribute("data-alarm-sounds");
+    if (!raw) return [];
+    try {
+      var sounds = JSON.parse(raw);
+      return Array.isArray(sounds) ? sounds : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function isValidAlarmTone(tone) {
+    if (!tone || tone === "beep") return tone === "beep";
+    var sounds = getAlarmSoundsList();
+    for (var i = 0; i < sounds.length; i++) {
+      if (sounds[i].id === tone) return true;
+    }
+    return false;
+  }
+
+  function applyAlarmTone(tone) {
+    if (!currentWidget || !isValidAlarmTone(tone)) return;
+    currentWidget.setAttribute("data-alarm-tone", tone);
+    var select = qs("[data-timer-alarm-select]");
+    if (select && select.value !== tone) select.value = tone;
+    try {
+      localStorage.setItem(ALARM_TONE_KEY, tone);
+    } catch (error) {
+      // Ignore storage failures.
+    }
+  }
+
+  function restoreStoredAlarmTone() {
+    if (!currentWidget) return;
+    var stored = null;
+    try {
+      stored = localStorage.getItem(ALARM_TONE_KEY);
+    } catch (error) {
+      // Ignore storage failures.
+    }
+    if (stored && isValidAlarmTone(stored)) {
+      applyAlarmTone(stored);
+    }
+  }
+
   function resolveAlarmUrl() {
     if (!currentWidget) return null;
     var tone = currentWidget.getAttribute("data-alarm-tone") || "";
     if (!tone || tone === "beep") return null;
-    var raw = currentWidget.getAttribute("data-alarm-sounds");
-    if (!raw) return null;
-    try {
-      var sounds = JSON.parse(raw);
-      for (var i = 0; i < sounds.length; i++) {
-        if (sounds[i].id === tone) return sounds[i].url;
-      }
-    } catch (error) {
-      // Ignore malformed payload.
+    var sounds = getAlarmSoundsList();
+    for (var i = 0; i < sounds.length; i++) {
+      if (sounds[i].id === tone) return sounds[i].url;
     }
     return null;
   }
@@ -463,9 +504,16 @@
     state.alarming = false;
     state.lastFrameTime = 0;
 
+    restoreStoredAlarmTone();
     render();
     if (w.getAttribute("data-autostart") === "true") start();
   }
+
+  document.addEventListener("change", function (event) {
+    var select = event.target.closest("[data-timer-alarm-select]");
+    if (!select || !currentWidget || !currentWidget.contains(select)) return;
+    applyAlarmTone(select.value);
+  });
 
   function handleClick(event) {
     var w = event.target.closest("[data-timer-widget]");

@@ -10,12 +10,9 @@
       "stopwatchCycle": {
         "label": "Ciclo del anillo del cronómetro",
         "description": "Segundos por anillo de progreso. Un tic breve suena al completar cada vuelta."
-      },
-      "alarmTone": {
-        "label": "Tono de alarma del temporizador",
-        "description": "Tono al llegar a cero (no el cronómetro). Añada .m4a o .mp3 en sounds/."
       }
     },
+    "alarmTone": "Tono de alarma",
     "timer": "Temporizador",
     "stopwatch": "Cronómetro",
     "soundOff": "Sonido desactivado",

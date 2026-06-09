@@ -10,12 +10,9 @@
       "stopwatchCycle": {
         "label": "Cycle de l'anneau du chronomètre",
         "description": "Secondes par anneau de progression. Un bref signal sonne à chaque tour complet."
-      },
-      "alarmTone": {
-        "label": "Son d'alarme du minuteur",
-        "description": "Son à la fin d'un minuteur (pas le chronomètre). Ajoutez des .m4a ou .mp3 dans sounds/."
       }
     },
+    "alarmTone": "Son d'alarme",
     "timer": "Minuteur",
     "stopwatch": "Chronomètre",
     "soundOff": "Sans son",

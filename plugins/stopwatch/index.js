@@ -76,15 +76,6 @@ const settingsSchema = [
     description:
       "Seconds per stopwatch progress ring. A short tick plays each time a ring completes.",
   },
-  {
-    key: "alarmTone",
-    label: "Timer alarm tone",
-    type: "select",
-    options: ["beep"],
-    default: "beep",
-    description:
-      "Tone when a timer reaches zero (not stopwatch). Add .m4a or .mp3 files to the plugin sounds/ folder.",
-  },
 ];
 
 function setPluginRouteBase(ctx) {
@@ -123,20 +114,13 @@ async function scanAlarmSounds(dir) {
   }
 }
 
-function syncAlarmToneSchema() {
-  const field = settingsSchema.find((item) => item.key === "alarmTone");
-  if (!field) return;
-
-  if (alarmSounds.length) {
-    field.options = alarmSounds.map((sound) => sound.id);
-    field.default = alarmSounds[0].id;
-    if (!field.options.includes(alarmTone)) {
-      alarmTone = alarmSounds[0].id;
-    }
-  } else {
-    field.options = ["beep"];
-    field.default = "beep";
-    if (alarmTone !== "beep") alarmTone = "beep";
+function syncDefaultAlarmTone() {
+  if (!alarmSounds.length) {
+    alarmTone = "beep";
+    return;
+  }
+  if (!alarmSounds.some((sound) => sound.id === alarmTone)) {
+    alarmTone = alarmSounds[0].id;
   }
 }
 
@@ -157,6 +141,32 @@ function escAttr(value) {
     .replace(/&/g, "&amp;")
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;");
+}
+
+function escHtml(value) {
+  return escAttr(value);
+}
+
+function renderAlarmToneOptions(selected) {
+  return alarmSounds
+    .map((sound) => {
+      const isSelected = sound.id === selected ? " selected" : "";
+      return `<option value="${escAttr(sound.id)}"${isSelected}>${escHtml(sound.label)}</option>`;
+    })
+    .join("");
+}
+
+function renderAlarmToneBar() {
+  if (!alarmSounds.length) return "";
+  return `<div class="timer-tone-bar" data-timer-tone-bar>
+    <label class="timer-tone-label" for="timer-alarm-tone-select">{{ t:plugin-stopwatch.alarmTone }}</label>
+    <select
+      id="timer-alarm-tone-select"
+      class="timer-tone-select"
+      data-timer-alarm-select
+      aria-label="{{ t:plugin-stopwatch.alarmTone }}"
+    >${renderAlarmToneOptions(alarmTone)}</select>
+  </div>`;
 }
 
 function audioContentType(file) {
@@ -277,17 +287,7 @@ function configureSettings(settings) {
   stopwatchCycleSeconds = STOPWATCH_CYCLE_OPTIONS.has(nextCycle)
     ? Number(nextCycle)
     : DEFAULT_STOPWATCH_CYCLE_SECONDS;
-
-  const requestedTone = String(settings?.alarmTone || "").trim();
-  if (requestedTone === "beep" && alarmSounds.length) {
-    alarmTone = alarmSounds[0].id;
-  } else if (alarmSounds.some((sound) => sound.id === requestedTone)) {
-    alarmTone = requestedTone;
-  } else if (alarmSounds.length) {
-    alarmTone = alarmSounds[0].id;
-  } else {
-    alarmTone = "beep";
-  }
+  syncDefaultAlarmTone();
 }
 
 function renderTemplate(request) {
@@ -298,7 +298,8 @@ function renderTemplate(request) {
     .replaceAll("{{autostart}}", request.autostart ? "true" : "false")
     .replaceAll("{{stopwatch_cycle_seconds}}", String(stopwatchCycleSeconds))
     .replaceAll("{{alarm_tone}}", escAttr(alarmTone))
-    .replaceAll("{{alarm_sounds_json}}", escAttr(soundsJson));
+    .replaceAll("{{alarm_sounds_json}}", escAttr(soundsJson))
+    .replaceAll("{{alarm_tone_bar}}", renderAlarmToneBar());
 }
 
 export const slot = {
@@ -320,7 +321,7 @@ export const slot = {
     }
     if (pluginDir) {
       alarmSounds = await scanAlarmSounds(pluginDir);
-      syncAlarmToneSchema();
+      syncDefaultAlarmTone();
     }
   },
 
