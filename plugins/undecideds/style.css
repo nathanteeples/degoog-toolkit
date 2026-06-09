@@ -713,13 +713,6 @@
   border-radius: 999px;
 }
 
-#at-a-glance > .glance-box,
-.glance-box:has(.undecideds-slot) {
-  padding: 0;
-  overflow: hidden;
-  width: 100%;
-}
-
 /* REDUCED MOTION PREFERENCE */
 @media (prefers-reduced-motion: reduce) {
   .undecideds-slot__btn,

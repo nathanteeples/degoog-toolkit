@@ -1,11 +1,5 @@
-import {
-  finalizeSlotHtml,
-  readSlotPosition,
-  shouldRenderSlotForContext,
-} from "./slot-position.js";
 
 let template = "";
-let selectedSlotPosition = "at-a-glance";
 let pluginFetch = (...args) => fetch(...args);
 let pluginRouteBase = "";
 let dictionaryCache = null;
@@ -204,18 +198,14 @@ const FALLBACK_TEMPLATE = `
   <div class="dslot-source">Data: <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">dictionaryapi.dev</a> · Related: <a href="https://www.powerthesaurus.org/" target="_blank" rel="noopener">Power Thesaurus</a></div>
 </div>`;
 
-function finishSlot(context, html) {
-  return { html: finalizeSlotHtml(html, context, selectedSlotPosition) };
-}
-
 export const slot = {
   id: "define-slot",
   name: "Dictionary",
   description:
     "Shows definitions, pronunciation, synonyms, antonyms, and origin for explicit dictionary queries.",
   isClientExposed: false,
-  position: "at-a-glance",
-  slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  position: "above-results",
+  slotPositions: ["above-results", "knowledge-panel"],
 
   settingsSchema: [
     {
@@ -257,7 +247,6 @@ export const slot = {
   },
 
   configure(nextSettings) {
-    selectedSlotPosition = readSlotPosition(nextSettings, "at-a-glance");
     settings.triggerMode =
       nextSettings?.triggerMode === "single-word" ? "single-word" : "keyword";
     settings.maxDefinitions = readBoundedInteger(
@@ -280,9 +269,6 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
-    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
-      return { html: "" };
-    }
 
     const parsed = parseDictionaryQuery(query);
     if (!parsed) return { html: "" };
@@ -306,7 +292,7 @@ export const slot = {
       );
 
       if (hasRenderableEntry(entry)) {
-        return finishSlot(context, renderEntry(entry, parsed.intent));
+        return { html: renderEntry(entry, parsed.intent) };
       }
     }
 
@@ -320,11 +306,11 @@ export const slot = {
       antonyms: relatedTerms.antonyms,
     };
     if (hasRenderableEntry(relatedOnlyEntry)) {
-      return finishSlot(context, renderEntry(relatedOnlyEntry, parsed.intent));
+      return { html: renderEntry(relatedOnlyEntry, parsed.intent) };
     }
 
     if (parsed.explicit && result.status === "not-found") {
-      return finishSlot(context, renderEmpty(parsed.word));
+      return { html: renderEmpty(parsed.word) };
     }
 
     return { html: "" };

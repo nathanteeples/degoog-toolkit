@@ -100,13 +100,6 @@
     padding: 0;
 }
 
-#at-a-glance > .glance-box,
-.glance-box:has(.until-card) {
-    padding: 0;
-    overflow: hidden;
-    width: 100%;
-}
-
 .until-card__panel {
     display: grid;
     grid-template-columns: minmax(0, 1.08fr) minmax(230px, 0.92fr);

@@ -1,9 +1,4 @@
 import chronoEn from "./vendor/chrono-node/dist/cjs/locales/en/index.js";
-import {
-  finalizeSlotHtml,
-  readSlotPosition,
-  shouldRenderSlotForContext,
-} from "./slot-position.js";
 
 let template = "";
 
@@ -170,8 +165,8 @@ export const slot = {
   description:
     "Shows countdown answers for natural queries like years until 3000, days since Christmas, !until 5pm, or weeks until July 6th, 2033.",
   isClientExposed: false,
-  position: "at-a-glance",
-  slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  position: "above-results",
+  slotPositions: ["above-results", "knowledge-panel"],
   settingsSchema: [TOP_UNITS_SETTING],
 
   init(ctx) {
@@ -187,9 +182,6 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { title: "", html: "" };
-    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
-      return { title: "", html: "" };
-    }
     const isCommand = isCommandQuery(query);
     const parsed = parseUntilQuery(query, { allowTargetOnly: isCommand });
     if (!parsed) {
@@ -248,10 +240,7 @@ function parseUntilQuery(input, options = {}) {
   return null;
 }
 
-let selectedSlotPosition = "at-a-glance";
-
 function configureSettings(saved = {}) {
-  selectedSlotPosition = readSlotPosition(saved, "at-a-glance");
   if (!Object.prototype.hasOwnProperty.call(saved, "topUnits")) return;
 
   const topUnits = Number(saved.topUnits);
@@ -825,10 +814,7 @@ function renderUntil(parsed, now, context) {
     .split("{{details_html}}")
     .join(renderDetails(absMs, context));
 
-  return {
-    title: "",
-    html: finalizeSlotHtml(html, context, selectedSlotPosition),
-  };
+  return { title: "", html };
 }
 
 function formatPrimary(absMs, requestedUnit, context) {

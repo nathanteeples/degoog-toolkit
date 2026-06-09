@@ -8,11 +8,6 @@ import {
   isInformationalQuestion,
   isUnitConversionIn,
 } from "./query-guards.js";
-import {
-  finalizeSlotHtml,
-  readSlotPosition,
-  shouldRenderSlotForContext,
-} from "./slot-position.js";
 
 // ── Build Alias Map ──────────────────────────────────────────
 const ALIASES = {
@@ -516,14 +511,6 @@ const TriggerGuard = {
   }
 };
 
-const DEFAULT_SLOT_POSITION = "above-results";
-
-let selectedSlotPosition = DEFAULT_SLOT_POSITION;
-
-function configureSlotSettings(settings = {}) {
-  selectedSlotPosition = readSlotPosition(settings, DEFAULT_SLOT_POSITION);
-}
-
 // ── Slot export ───────────────────────────────────────────────
 export const slot = {
   id: "unit-slot",
@@ -531,8 +518,8 @@ export const slot = {
   description:
     "Unit converter for length, mass, volume, temperature, and more. Supports fuzzy natural queries like '25.4oz toml' or '!unit 100c f'.",
   isClientExposed: false,
-  position: "at-a-glance",
-  slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],
+  position: "above-results",
+  slotPositions: ["above-results", "knowledge-panel"],
   settingsSchema: [
     {
       key: "debugMode",
@@ -551,8 +538,6 @@ export const slot = {
     }
   },
 
-  configure: configureSlotSettings,
-
   trigger(query) {
     const q = query.trim();
     if (q.length < 3) return false;
@@ -567,9 +552,6 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
-    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
-      return { html: "" };
-    }
 
     const parsed = parseQuery(query);
     if (!parsed) return { html: "" };
@@ -612,9 +594,7 @@ export const slot = {
       .split("{{measure}}")
       .join(measure);
 
-    return {
-      html: finalizeSlotHtml(html, context, selectedSlotPosition),
-    };
+    return { html };
   },
 };
 

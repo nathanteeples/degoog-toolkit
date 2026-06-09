@@ -392,11 +392,9 @@
 }
 
 /* Unnest inside at-a-glance wrapper (.glance-box) */
-#at-a-glance > .glance-box,
 .glance-box:has(.dslot-card) {
   padding: 0 !important;
   overflow: hidden;
-  width: 100%;
 }
 
 .glance-box:has(.dslot-card) .dslot-card {

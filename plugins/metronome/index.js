@@ -1,13 +1,6 @@
-import {
-  finalizeSlotHtml,
-  readSlotPosition,
-  shouldRenderSlotForContext,
-} from "./slot-position.js";
-
 let template = "";
 let enabled = true;
 let defaultBpmSetting = 120;
-let selectedSlotPosition = "at-a-glance";
 
 const METRONOME_CMD_RX = /^!(?:metronome|bpm|tempo)\b/i;
 const METRONOME_KEYWORDS_RX = /\b(?:metronome|tempo|bpm|tap\s+tempo)\b/i;
@@ -63,7 +56,6 @@ function configureSettings(settings) {
   } else {
     defaultBpmSetting = 120;
   }
-  selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
 }
 
 
@@ -78,8 +70,8 @@ export const slot = {
   name: "Metronome",
   description: "Metronome widget with tempo controls, tap tempo, and beat signatures.",
   isClientExposed: false,
-  position: "at-a-glance",
-  slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  position: "above-results",
+  slotPositions: ["above-results", "knowledge-panel"],
   settingsSchema,
 
   async init(ctx) {
@@ -100,19 +92,12 @@ export const slot = {
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { title: "", html: "" };
-    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
-      return { title: "", html: "" };
-    }
     const request = parseRequest(query);
     if (!request) return { title: "", html: "" };
 
     return {
       title: "",
-      html: finalizeSlotHtml(
-        renderTemplate(request, context),
-        context,
-        selectedSlotPosition,
-      ),
+      html: renderTemplate(request, context),
     };
   },
 };

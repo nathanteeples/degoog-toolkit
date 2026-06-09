@@ -1,8 +1,4 @@
 import exprEvalModule from "./vendor/expr-eval.min.cjs";
-import {
-  readSlotPosition,
-  shouldRenderSlotForContext,
-} from "./slot-position.js";
 
 const exprEval = exprEvalModule?.Parser
   ? exprEvalModule
@@ -12,7 +8,6 @@ const Parser = exprEval.Parser;
 let calcEnabled = true;
 let templateHtml = "";
 let parserBundle = "";
-let selectedSlotPosition = "knowledge-panel";
 
 const DEFAULT_ANGLE_MODE = "rad";
 const MAX_QUERY_LENGTH = 220;
@@ -395,7 +390,6 @@ export const slot = {
 
   configure(settings) {
     calcEnabled = settings?.enabled !== false && settings?.enabled !== "false";
-    selectedSlotPosition = readSlotPosition(settings, "knowledge-panel");
   },
 
   trigger(query) {
@@ -403,10 +397,6 @@ export const slot = {
   },
 
   async execute(query, context) {
-    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
-      return { html: "" };
-    }
-
     const intent = getIntent(query);
     const expression = stripEquationPrefix(intent.expression).trim();
 

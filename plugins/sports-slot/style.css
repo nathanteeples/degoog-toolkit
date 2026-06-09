@@ -615,16 +615,3 @@
         grid-template-columns: 34px minmax(0, 1fr) 40px 48px 44px;
     }
 }
-
-#at-a-glance > .glance-box,
-.glance-box:has(.sports-slot) {
-    padding: 0;
-    overflow: hidden;
-    width: 100%;
-}
-
-.glance-box:has(.sports-slot) .sports-slot {
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-}

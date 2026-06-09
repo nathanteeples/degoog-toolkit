@@ -1,7 +1,4 @@
-import { readSlotPosition, finalizeSlotHtml, shouldRenderSlotForContext } from "./slot-position.js";
-
 let template = "";
-let selectedSlotPosition = "at-a-glance";
 
 const YES_MESSAGES = [
   "Absolutely!",
@@ -43,8 +40,8 @@ export const slot = {
   name: "Undecideds",
   description: "Decision tools for coin flips, dice rolls, number picks, and yes/no choices.",
   isClientExposed: false,
-  position: "at-a-glance",
-  slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  position: "above-results",
+  slotPositions: ["above-results", "knowledge-panel"],
   settingsSchema: [
     {
       key: "debugMode",
@@ -59,19 +56,12 @@ export const slot = {
     template = ctx.template || FALLBACK_TEMPLATE;
   },
 
-  configure(settings) {
-    selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
-  },
-
   trigger(query) {
     return parseQuery(query) !== null;
   },
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
-    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
-      return { html: "" };
-    }
 
     const parsed = parseQuery(query) || { mode: "coin" };
     const { mode, dieType = "d6", min = 1, max = 100 } = parsed;
@@ -115,13 +105,7 @@ export const slot = {
       yesno_ticker: "waiting"
     };
 
-    return {
-      html: finalizeSlotHtml(
-        renderTemplate(template || FALLBACK_TEMPLATE, data),
-        context,
-        selectedSlotPosition,
-      ),
-    };
+    return { html: renderTemplate(template || FALLBACK_TEMPLATE, data) };
   }
 };
 

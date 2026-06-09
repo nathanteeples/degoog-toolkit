@@ -49,12 +49,3 @@ test("renders comma-formatted and small length conversions", async () => {
     assert.match(output.html, new RegExp(`data-result="${result}"`), query);
   }
 });
-
-test("at-a-glance position wraps glance output and skips main slot path", async () => {
-  slot.configure({ slotPosition: "at-a-glance" });
-  const main = await slot.execute("12 ft to in", { tab: "all" });
-  assert.equal(main.html, "");
-  const glance = await slot.execute("12 ft to in", { tab: "all", results: [] });
-  assert.match(glance.html, /glance-box/);
-  assert.match(glance.html, /data-from="ft"/);
-});

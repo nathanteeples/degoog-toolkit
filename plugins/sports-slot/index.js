@@ -1,9 +1,3 @@
-import {
-  finalizeSlotHtml,
-  readSlotPosition,
-  shouldRenderSlotForContext,
-} from "./slot-position.js";
-
 const FOOTBALL_DATA_BASE = "https://api.football-data.org/v4";
 const BALLDONTLIE_BASE = {
   nba: "https://api.balldontlie.io/v1",
@@ -820,7 +814,6 @@ let footballDataApiKey = "";
 let balldontlieApiKey = "";
 let preferredSoccerCompetitions = [...DEFAULT_SOCCER_COMPETITIONS];
 let debugMode = false;
-let selectedSlotPosition = "at-a-glance";
 let pluginRouteBase = "";
 let pluginFetch = (...args) => fetch(...args);
 
@@ -2950,7 +2943,6 @@ function configureSharedSettings(settings = {}) {
     settings.soccerCompetitions,
   );
   debugMode = Boolean(settings.debugMode);
-  selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
 }
 
 async function executeSportsQuery(query, context) {
@@ -3114,8 +3106,7 @@ export const slot = {
   name: PLUGIN_NAME,
   description: PLUGIN_DESCRIPTION,
   isClientExposed: true,
-  position: "at-a-glance",
-  slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  position: "above-results",
   settingsSchema: sharedSettingsSchema,
   init: initRuntime,
   configure: configureSharedSettings,
@@ -3129,31 +3120,19 @@ export const slot = {
     return Boolean(parseQuery(query));
   },
   async execute(query, context) {
-    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
-      return { html: "" };
-    }
-
     try {
-      const output = await executeSportsQuery(query, context);
-      return {
-        ...output,
-        html: finalizeSlotHtml(output.html, context, selectedSlotPosition),
-      };
+      return await executeSportsQuery(query, context);
     } catch (error) {
       const parsed = parseQuery(query);
       const message =
         error instanceof Error ? error.message : "Unknown provider error";
       return {
         title: PLUGIN_NAME,
-        html: finalizeSlotHtml(
-          renderEmptyCard(
-            parsed?.sport || "soccer",
-            PLUGIN_NAME,
-            t("providerFailed"),
-            message,
-          ),
-          context,
-          selectedSlotPosition,
+        html: renderEmptyCard(
+          parsed?.sport || "soccer",
+          PLUGIN_NAME,
+          t("providerFailed"),
+          message,
         ),
       };
     }
@@ -3168,13 +3147,7 @@ export const slot = {
 // (redundant) Configure panel. Keeping only the slot collapses that
 // to a single row.
 //
-// The slot uses position "at-a-glance" (with slotPositions fallbacks)
-// which the command form could not replicate anyway — commands always
-// render as a regular result card, not as the glance panel above the
-// results. Bang activation via `!sports` / `!scoreboard` is lost from
-// the `!`-autobang suggestion list as a trade-off; the slot's own
-// `trigger(query)` still fires for natural queries (team names,
-// competitions, etc.) via `parseQuery`.
+// The slot renders above search results for natural sports queries.
 export const slotPlugin = slot;
 
 export default slot;
