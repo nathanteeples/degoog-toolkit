@@ -595,7 +595,7 @@
     };
   }
 
-  // Pad the view so data aspect matches the canvas — never shrink an axis.
+  // Pad vertically when the x window is relatively wide — never widen x.
   function expandViewBoundsToCanvasAspect(state, width, height) {
     if (width <= 0 || height <= 0) return;
 
@@ -611,7 +611,6 @@
 
     var pixelAspect = width / height;
     var dataAspect = xSpan / ySpan;
-    var xCenter = (xMin + xMax) / 2;
     var yCenter = (yMin + yMax) / 2;
     var epsilon = 1e-9;
 
@@ -619,32 +618,141 @@
       var matchedYSpan = xSpan / pixelAspect;
       state.yMin = yCenter - matchedYSpan / 2;
       state.yMax = yCenter + matchedYSpan / 2;
-      return;
+    }
+  }
+
+  function sampleGraphPoints(state, analysis, xMin, xMax, sampleCount) {
+    var points = [];
+    var samples = Math.max(sampleCount || 320, 320);
+
+    for (var i = 0; i < samples; i += 1) {
+      var x = xMin + (i / (samples - 1)) * (xMax - xMin);
+      try {
+        var y = evaluateParsed(analysis, state, x);
+        if (Number.isFinite(y) && Math.abs(y) < 1e6) {
+          points.push({ x: x, y: y });
+        }
+      } catch (error) {
+        // Skip invalid samples.
+      }
     }
 
-    if (dataAspect + epsilon < pixelAspect) {
-      var matchedXSpan = ySpan * pixelAspect;
-      state.xMin = xCenter - matchedXSpan / 2;
-      state.xMax = xCenter + matchedXSpan / 2;
+    return points;
+  }
+
+  function computeSmartXBounds(points) {
+    if (points.length < 2) return null;
+
+    var extremumIdx = 0;
+    for (var i = 1; i < points.length; i += 1) {
+      if (points[i].y < points[extremumIdx].y) extremumIdx = i;
     }
+
+    var extremum = points[extremumIdx];
+    var endHigher =
+      points[0].y > extremum.y && points[points.length - 1].y > extremum.y;
+
+    if (!endHigher) {
+      extremumIdx = 0;
+      for (var j = 1; j < points.length; j += 1) {
+        if (points[j].y > points[extremumIdx].y) extremumIdx = j;
+      }
+      extremum = points[extremumIdx];
+    }
+
+    var globalYMin = points[0].y;
+    var globalYMax = points[0].y;
+    points.forEach(function (point) {
+      globalYMin = Math.min(globalYMin, point.y);
+      globalYMax = Math.max(globalYMax, point.y);
+    });
+
+    var rise = endHigher
+      ? globalYMax - extremum.y
+      : extremum.y - globalYMin;
+    if (rise <= 0) return null;
+
+    var cutoff = endHigher
+      ? extremum.y + rise * 0.32
+      : extremum.y - rise * 0.32;
+    var xVals = [];
+
+    points.forEach(function (point) {
+      if (endHigher ? point.y <= cutoff : point.y >= cutoff) {
+        xVals.push(point.x);
+      }
+    });
+
+    if (xVals.length < 2) return null;
+
+    var xMin = Math.min.apply(null, xVals);
+    var xMax = Math.max.apply(null, xVals);
+    var xSpan = xMax - xMin;
+    if (xSpan <= 0) return null;
+
+    var xPad = Math.max(xSpan * 0.14, 0.5);
+    return { xMin: xMin - xPad, xMax: xMax + xPad };
+  }
+
+  function fitInitialGraphView(state, analysis, width, height) {
+    var scanXMin = -10;
+    var scanXMax = 10;
+    var points = sampleGraphPoints(state, analysis, scanXMin, scanXMax, Math.max(width, 400));
+    if (points.length < 2) return false;
+
+    var globalYMin = points[0].y;
+    var globalYMax = points[0].y;
+    points.forEach(function (point) {
+      globalYMin = Math.min(globalYMin, point.y);
+      globalYMax = Math.max(globalYMax, point.y);
+    });
+
+    var defaultXSpan = scanXMax - scanXMin;
+    var ySpanData = globalYMax - globalYMin || 1;
+
+    if (ySpanData / defaultXSpan > 12) {
+      var smartX = computeSmartXBounds(points);
+      if (smartX) {
+        state.xMin = smartX.xMin;
+        state.xMax = smartX.xMax;
+      } else {
+        state.xMin = scanXMin;
+        state.xMax = scanXMax;
+      }
+    } else {
+      state.xMin = scanXMin;
+      state.xMax = scanXMax;
+    }
+
+    var finiteY = sampleFiniteYForGraph(state, analysis, width);
+    if (finiteY.length < 2) return false;
+
+    var autoBounds = computeAutoYBounds(finiteY);
+    state.yMin = autoBounds.yMin;
+    state.yMax = autoBounds.yMax;
+    expandViewBoundsToCanvasAspect(state, width, height);
+    state.yNeedsAutoFit = false;
+    return true;
   }
 
   function computeAutoYBounds(finiteY) {
     finiteY.sort(function (a, b) {
       return a - b;
     });
-    var yMin = finiteY[Math.floor(finiteY.length * 0.05)];
-    var yMax = finiteY[Math.floor(finiteY.length * 0.95)];
+    var yMin = finiteY[Math.floor(finiteY.length * 0.08)];
+    var yMax = finiteY[Math.floor(finiteY.length * 0.92)];
 
     if (yMin === yMax) {
       yMin -= 1;
       yMax += 1;
     }
 
-    yMin = Math.min(yMin, 0);
-    yMax = Math.max(yMax, 0);
+    if (0 >= yMin && 0 <= yMax) {
+      yMin = Math.min(yMin, 0);
+      yMax = Math.max(yMax, 0);
+    }
 
-    var yPad = (yMax - yMin) * 0.12 || 1;
+    var yPad = (yMax - yMin) * 0.1 || 1;
     return { yMin: yMin - yPad, yMax: yMax + yPad };
   }
 
@@ -678,15 +786,7 @@
 
     var canvas = root.querySelector("[data-calc-canvas]");
     var size = readCanvasSize(canvas);
-    var finiteY = sampleFiniteYForGraph(state, analysis, size.width);
-    if (finiteY.length < 2) return false;
-
-    var autoBounds = computeAutoYBounds(finiteY);
-    state.yMin = autoBounds.yMin;
-    state.yMax = autoBounds.yMax;
-    expandViewBoundsToCanvasAspect(state, size.width, size.height);
-    state.yNeedsAutoFit = false;
-    return true;
+    return fitInitialGraphView(state, analysis, size.width, size.height);
   }
 
   function drawGraph(root, state, analysis) {
@@ -722,16 +822,10 @@
     ctx.fillRect(0, 0, width, height);
 
     if (state.yNeedsAutoFit || state.yMin === undefined || state.yMax === undefined) {
-      var previewY = sampleFiniteYForGraph(state, analysis, width);
-      if (previewY.length < 2) {
+      if (!fitInitialGraphView(state, analysis, width, height)) {
         drawCenteredText(ctx, width, height, "No finite values", textColor);
         return;
       }
-      var autoBounds = computeAutoYBounds(previewY);
-      state.yMin = autoBounds.yMin;
-      state.yMax = autoBounds.yMax;
-      state.yNeedsAutoFit = false;
-      expandViewBoundsToCanvasAspect(state, width, height);
     }
 
     var xMin = state.xMin !== undefined ? state.xMin : -10;
