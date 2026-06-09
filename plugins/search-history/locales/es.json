@@ -7,6 +7,10 @@
         "label": "Entradas máximas",
         "placeholder": "1000",
         "description": "Número máximo de entradas de historial a mantener (las más antiguas se eliminan cuando se excede)."
+      },
+      "naturalLanguage": {
+        "label": "Lenguaje natural",
+        "description": "Permitir que este comando se ejecute cuando su consulta coincide con una de sus frases."
       }
     },
     "history": "Historial",

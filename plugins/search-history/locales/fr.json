@@ -7,6 +7,10 @@
         "label": "Entrées max",
         "placeholder": "1000",
         "description": "Nombre maximum d'entrées d'historique à conserver (les plus anciennes sont supprimées en cas de dépassement)."
+      },
+      "naturalLanguage": {
+        "label": "Langage naturel",
+        "description": "Autoriser cette commande lorsque votre requête correspond à l'une de ses phrases."
       }
     },
     "history": "Historique",
