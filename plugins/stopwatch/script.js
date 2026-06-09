@@ -42,6 +42,7 @@
     running: false,
     alarming: false,
     intervalId: 0,
+    rafId: 0,
     /** Timer: wall-clock instant when countdown reaches zero. */
     deadlineMs: 0,
     /** Stopwatch: wall-clock instant matching elapsedMs === 0 at start. */
@@ -123,18 +124,34 @@
     arc.style.strokeDashoffset = (CIRCUMFERENCE * (1 - bounded)).toFixed(3);
   }
 
+  function liveRemainingMs() {
+    if (state.running && state.mode === "timer" && state.deadlineMs) {
+      return Math.max(0, state.deadlineMs - nowMs());
+    }
+    return state.remainingMs;
+  }
+
+  function liveElapsedMs() {
+    if (state.running && state.mode === "stopwatch" && state.epochMs) {
+      return Math.max(0, nowMs() - state.epochMs);
+    }
+    return state.elapsedMs;
+  }
+
   function progressRatio() {
     if (state.mode === "timer") {
-      return state.durationMs > 0 ? state.remainingMs / state.durationMs : 0;
+      return state.durationMs > 0 ? liveRemainingMs() / state.durationMs : 0;
     }
-    return (state.elapsedMs % state.stopwatchCycleMs) / state.stopwatchCycleMs;
+    var elapsed = liveElapsedMs();
+    return (elapsed % state.stopwatchCycleMs) / state.stopwatchCycleMs;
   }
 
   function displaySeconds() {
     if (state.mode === "timer") {
-      return state.remainingMs > 0 ? Math.ceil(state.remainingMs / 1000) : 0;
+      var remaining = liveRemainingMs();
+      return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
     }
-    return Math.floor(state.elapsedMs / 1000);
+    return Math.floor(liveElapsedMs() / 1000);
   }
 
   function render() {
@@ -165,16 +182,38 @@
     return Date.now();
   }
 
+  function stopRenderLoop() {
+    if (state.rafId) {
+      cancelAnimationFrame(state.rafId);
+      state.rafId = 0;
+    }
+  }
+
+  function renderFrame() {
+    state.rafId = 0;
+    if (!state.running || document.hidden) return;
+    render();
+    requestRenderLoop();
+  }
+
+  function requestRenderLoop() {
+    if (!state.rafId && state.running && !document.hidden) {
+      state.rafId = requestAnimationFrame(renderFrame);
+    }
+  }
+
   function clearTickDriver() {
     if (state.intervalId) {
       window.clearInterval(state.intervalId);
       state.intervalId = 0;
     }
+    stopRenderLoop();
   }
 
-  /** Derive timer/stopwatch position from wall clock (survives background throttling). */
+  /** Wall-clock logic: completion, lap ticks, pause snapshots (background-safe). */
   function syncFromWallClock() {
     if (!state.running) return;
+    var renderWhileHidden = document.hidden;
 
     if (state.mode === "timer") {
       var remaining = Math.max(0, state.deadlineMs - nowMs());
@@ -195,7 +234,7 @@
       if (nextCycle > prevCycle) playStopwatchTick();
     }
 
-    render();
+    if (renderWhileHidden) render();
   }
 
   function startTickDriver() {
@@ -203,6 +242,7 @@
     syncFromWallClock();
     if (!state.running) return;
     state.intervalId = window.setInterval(syncFromWallClock, TICK_INTERVAL_MS);
+    requestRenderLoop();
   }
 
   function armWallClockAnchors() {
@@ -608,11 +648,17 @@
   document.addEventListener("visibilitychange", function () {
     if (!state.running) return;
     syncFromWallClock();
+    if (document.hidden) {
+      stopRenderLoop();
+    } else {
+      requestRenderLoop();
+    }
   });
 
   window.addEventListener("focus", function () {
     if (!state.running) return;
     syncFromWallClock();
+    requestRenderLoop();
   });
 
   window.addEventListener("pageshow", function (event) {
