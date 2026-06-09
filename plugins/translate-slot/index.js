@@ -253,62 +253,17 @@ const SLOT_TRIGGER_PHRASES = [
   "how can you say",
 ];
 
-const TriggerGuard = {
-  // Checks if a query looks like physical unit conversion (e.g. "5m to km")
-  isUnitConversion(q, lower) {
-    const TRANSLATE_KEYWORDS = /\b(translate|translation|say|говорить|mean|meaning)\b/i;
-    if (!TRANSLATE_KEYWORDS.test(lower)) {
-      const UNIT_CONV_RE = /^-?[\d][\d\s.,]*\s*\S.*?\b(?:to|into)\s+[a-z0-9°µ]{1,8}\s*$/i;
-      return UNIT_CONV_RE.test(q.trim());
-    }
-    return false;
-  },
+function isUnitConversion(q) {
+  const TRANSLATE_KEYWORDS = /\b(translate|translation|say|говорить|mean|meaning)\b/i;
+  if (TRANSLATE_KEYWORDS.test(q)) return false;
+  return /^-?[\d][\d\s.,]*\s*\S.*?\b(?:to|into)\s+[a-z0-9°µ]{1,8}\s*$/i.test(q.trim());
+}
 
-  // Checks if a query looks like currency conversion (e.g. "100 usd to eur")
-  isCurrencyConversion(q, lower) {
-    const TRANSLATE_KEYWORDS = /\b(translate|translation|say|говорить|mean|meaning)\b/i;
-    if (!TRANSLATE_KEYWORDS.test(lower)) {
-      const CURRENCY_CONV_RE = /^-?[\d][\d\s.,]*\s*[a-z]{3}\s+\b(?:to|into|in|=)\s+[a-z]{3}\s*$/i;
-      return CURRENCY_CONV_RE.test(q.trim());
-    }
-    return false;
-  },
-
-  // Checks if a query is language translation
-  isTranslation(q, lower) {
-    return /\b(translate|translation|say|говорить|mean|meaning)\b/i.test(q) ||
-           /how (do|would|can) you say\b/i.test(q);
-  },
-
-  // Checks if a query is a general non-financial tips article/advice (e.g. "gardening tips")
-  isTipAdvice(q) {
-    return /\b(tips?\s+(?:to|on\s+how|on|for|about|with|and|from|in)|(?:gardening|coding|interview|study|writing|clean|life|health|safety|cooking|travel|career|business)\s+tips?)\b/i.test(q);
-  },
-
-  // Checks if a query is a dice roll (e.g. "roll a 20 sided die", "d20")
-  isDiceRoll(q) {
-    return (
-      /roll\s+(?:a\s+)?(?:die|dice)\b/i.test(q) ||
-      /\bdice\s+roll\b/i.test(q) ||
-      /\bdie\s+roll\b/i.test(q) ||
-      /roll\s+d\d+\b/i.test(q) ||
-      /roll\s+(?:a\s+)?d\d+\b/i.test(q) ||
-      /roll\s+(?:a\s+)?\d+\s*-?\s*sided\s+(?:die|dice)\b/i.test(q) ||
-      /\b(d6|d20|d8|d10|d12|d100)\b/i.test(q) ||
-      /\b\d+\s*-?\s*sided\s+(?:die|dice)\b/i.test(q)
-    );
-  },
-
-  // Checks if a query specifically targets a 20-sided die
-  isD20Dice(q) {
-    return /\bd20\b/i.test(q) || /\b20\s*-?\s*sided\b/i.test(q);
-  },
-
-  // Checks if a query is a utility tool (calculator, weather, timer, stocks, etc.)
-  isUtility(q) {
-    return /\b(weather|forecast|погода|метео|temperature|humidity|wind|rain|snow|translate|translation|convert|currency|calculator|calculate|math|stopwatch|timer|countdown|coinflip|coin-flip|yesno|yes-no|tip|tips|gratuity|gratuities|stocks?)\b/i.test(q);
-  }
-};
+function isCurrencyConversion(q) {
+  const TRANSLATE_KEYWORDS = /\b(translate|translation|say|говорить|mean|meaning)\b/i;
+  if (TRANSLATE_KEYWORDS.test(q)) return false;
+  return /^-?[\d][\d\s.,]*\s*[a-z]{3}\s+\b(?:to|into|in|=)\s+[a-z]{3}\s*$/i.test(q.trim());
+}
 
 export const slot = {
   id: "translate",
@@ -329,20 +284,15 @@ export const slot = {
   trigger(query) {
     const q = String(query || "").trim();
     if (q.length < 2 || q.length > 500) return false;
-
-    // Always accept bang prefixes
     if (BANG_PREFIX_RE_SLOT.test(q)) return true;
 
-    // Leading phrase match
     const lower = q.toLowerCase();
     for (const phrase of SLOT_TRIGGER_PHRASES) {
       if (lower === phrase || lower.startsWith(phrase + " ")) return true;
     }
 
-    // Guard: reject queries that look like unit or currency conversions
-    if (TriggerGuard.isUnitConversion(q, lower) || TriggerGuard.isCurrencyConversion(q, lower)) return false;
+    if (isUnitConversion(q) || isCurrencyConversion(q)) return false;
 
-    // Check if query looks like a translation intent via the full parser
     const parsed = parseTranslationQuery(q, { forceIntent: false });
     return parsed.hasIntent && Boolean(parsed.text);
   },
