@@ -2,7 +2,7 @@ let template = "";
 function t(key) {
   return `{{ t:plugin-unit-slot.${key} }}`;
 }
-import convert from "./convert-units.cjs";
+import convert from "./convert-units.js";
 import {
   hasNumericConversionPattern,
   isInformationalQuestion,
@@ -541,8 +541,11 @@ export const slot = {
     },
   ],
 
-  init(ctx) {
-    template = ctx.template;
+  async init(ctx) {
+    template = ctx?.template || "";
+    if (!template && typeof ctx?.readFile === "function") {
+      template = await ctx.readFile("template.html");
+    }
   },
 
   configure: configureSlotSettings,

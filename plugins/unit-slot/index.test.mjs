@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { slot } from "./index.js";
 
-slot.init({
+await slot.init({
   template:
     '<div data-from="{{from_code}}" data-to="{{to_code}}" data-result="{{result}}"></div>',
 });
@@ -29,5 +29,23 @@ test("opens a default conversion for launcher queries", async () => {
     });
     assert.match(output.html, /data-from="m"/);
     assert.match(output.html, /data-to="ft"/);
+  }
+});
+
+test("renders comma-formatted and small length conversions", async () => {
+  const cases = [
+    ["16,093 meters to mi", "m", "mi", "9.9997"],
+    ["12 ft to mi", "ft", "mi", "0.002273"],
+  ];
+
+  for (const [query, from, to, result] of cases) {
+    assert.equal(slot.trigger(query), true, query);
+    const output = await slot.execute(query, {
+      tab: "all",
+      results: [],
+    });
+    assert.match(output.html, new RegExp(`data-from="${from}"`), query);
+    assert.match(output.html, new RegExp(`data-to="${to}"`), query);
+    assert.match(output.html, new RegExp(`data-result="${result}"`), query);
   }
 });

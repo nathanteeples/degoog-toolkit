@@ -2473,4 +2473,4 @@ Converter.prototype.measures = function() {
 convert = function(value) {
   return new Converter(value);
 };
-module.exports = convert;
+export default convert;
