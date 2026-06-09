@@ -573,6 +573,47 @@
     }
   }
 
+  function readCanvasSize(canvas) {
+    if (!canvas) return { width: 320, height: 224 };
+    var rect = canvas.getBoundingClientRect();
+    var width = Math.floor(canvas.clientWidth || rect.width || 0);
+    var height = Math.floor(canvas.clientHeight || rect.height || 0);
+    return {
+      width: Math.max(1, width),
+      height: Math.max(1, height),
+    };
+  }
+
+  function fitViewBoundsToCanvasAspect(state, width, height) {
+    if (width <= 0 || height <= 0) return;
+
+    var xMin = state.xMin !== undefined ? state.xMin : -10;
+    var xMax = state.xMax !== undefined ? state.xMax : 10;
+    var yMin = state.yMin;
+    var yMax = state.yMax;
+    if (yMin === undefined || yMax === undefined) return;
+
+    var xSpan = xMax - xMin;
+    var ySpan = yMax - yMin;
+    if (xSpan <= 0 || ySpan <= 0) return;
+
+    var pixelAspect = width / height;
+    var dataAspect = xSpan / ySpan;
+    var xCenter = (xMin + xMax) / 2;
+    var yCenter = (yMin + yMax) / 2;
+
+    if (dataAspect > pixelAspect) {
+      var matchedYSpan = xSpan / pixelAspect;
+      state.yMin = yCenter - matchedYSpan / 2;
+      state.yMax = yCenter + matchedYSpan / 2;
+      return;
+    }
+
+    var matchedXSpan = ySpan * pixelAspect;
+    state.xMin = xCenter - matchedXSpan / 2;
+    state.xMax = xCenter + matchedXSpan / 2;
+  }
+
   function computeAutoYBounds(finiteY) {
     finiteY.sort(function (a, b) {
       return a - b;
@@ -612,24 +653,25 @@
   }
 
   function ensureGraphYBounds(root, state, analysis) {
+    var canvas = root.querySelector("[data-calc-canvas]");
+    var size = readCanvasSize(canvas);
+
     if (
       state.yMin !== undefined &&
       state.yMax !== undefined &&
       !state.yNeedsAutoFit
     ) {
+      fitViewBoundsToCanvasAspect(state, size.width, size.height);
       return true;
     }
 
-    var canvas = root.querySelector("[data-calc-canvas]");
-    var width = canvas
-      ? Math.max(280, Math.floor(canvas.clientWidth || 640))
-      : 640;
-    var finiteY = sampleFiniteYForGraph(state, analysis, width);
+    var finiteY = sampleFiniteYForGraph(state, analysis, size.width);
     if (finiteY.length < 2) return false;
 
     var autoBounds = computeAutoYBounds(finiteY);
     state.yMin = autoBounds.yMin;
     state.yMax = autoBounds.yMax;
+    fitViewBoundsToCanvasAspect(state, size.width, size.height);
     state.yNeedsAutoFit = false;
     return true;
   }
@@ -643,8 +685,9 @@
     graph.hidden = false;
     if (label) label.textContent = stripEquationPrefix(state.expr);
 
-    var width = Math.max(280, Math.floor(canvas.clientWidth || 640));
-    var height = Math.max(160, Math.floor(canvas.clientHeight || 220));
+    var size = readCanvasSize(canvas);
+    var width = size.width;
+    var height = size.height;
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.floor(width * dpr);
     canvas.height = Math.floor(height * dpr);
@@ -693,6 +736,7 @@
       state.yMin = autoBounds.yMin;
       state.yMax = autoBounds.yMax;
       state.yNeedsAutoFit = false;
+      fitViewBoundsToCanvasAspect(state, width, height);
     }
 
     var yMin = state.yMin;
@@ -1149,7 +1193,7 @@
     };
   }
 
-  function applyGraphZoomFromCenter(state, factor) {
+  function applyGraphZoomFromCenter(state, factor, width, height) {
     if (state.yMin === undefined || state.yMax === undefined) return;
 
     var xMin = state.xMin !== undefined ? state.xMin : -10;
@@ -1157,17 +1201,14 @@
     var xCenter = (xMin + xMax) / 2;
     var yCenter = (state.yMin + state.yMax) / 2;
     var xZoom = zoomRangeAroundFocus(xMin, xMax, xCenter, factor);
-    var yZoom = zoomRangeAroundFocus(
-      state.yMin,
-      state.yMax,
-      yCenter,
-      factor,
-    );
+    var xSpan = xZoom.max - xZoom.min;
+    var ySpan =
+      width > 0 && height > 0 ? xSpan * (height / width) : (state.yMax - state.yMin) * factor;
 
     state.xMin = xZoom.min;
     state.xMax = xZoom.max;
-    state.yMin = yZoom.min;
-    state.yMax = yZoom.max;
+    state.yMin = yCenter - ySpan / 2;
+    state.yMax = yCenter + ySpan / 2;
     state.yNeedsAutoFit = false;
   }
 
@@ -1278,18 +1319,39 @@
         event.preventDefault();
         if (!ensureGraphYBounds(root, state, state.lastGraphAnalysis)) return;
 
+        var size = readCanvasSize(canvas);
         var factor = event.deltaY < 0 ? 1 / GRAPH_ZOOM_STEP : GRAPH_ZOOM_STEP;
-        applyGraphZoomFromCenter(state, factor);
+        applyGraphZoomFromCenter(state, factor, size.width, size.height);
 
         var rect = canvas.getBoundingClientRect();
         var mx = event.clientX - rect.left;
-        var width = canvas.clientWidth || rect.width;
-        if (width > 0) {
-          state.hoverX = state.xMin + (mx / width) * (state.xMax - state.xMin);
+        if (size.width > 0) {
+          state.hoverX = state.xMin + (mx / size.width) * (state.xMax - state.xMin);
           state.hoverPx = mx;
         }
         drawGraph(root, state, state.lastGraphAnalysis);
       }, { passive: false });
+
+      var graphArea = root.querySelector(".calc-graph-area");
+      if (graphArea && typeof ResizeObserver !== "undefined") {
+        var resizeTimer = null;
+        var resizeObserver = new ResizeObserver(function () {
+          if (!state.lastGraphAnalysis || graph.hidden) return;
+          if (resizeTimer) clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(function () {
+            resizeTimer = null;
+            if (!state.lastGraphAnalysis || graph.hidden) return;
+            var size = readCanvasSize(canvas);
+            if (state.yNeedsAutoFit) {
+              ensureGraphYBounds(root, state, state.lastGraphAnalysis);
+            } else if (state.yMin !== undefined && state.yMax !== undefined) {
+              fitViewBoundsToCanvasAspect(state, size.width, size.height);
+            }
+            drawGraph(root, state, state.lastGraphAnalysis);
+          }, 50);
+        });
+        resizeObserver.observe(graphArea);
+      }
     }
 
     updateRoot(root);
@@ -1323,9 +1385,13 @@
       state.yNeedsAutoFit = true;
     } else if (action === "in" || action === "out") {
       if (!ensureGraphYBounds(root, state, state.lastGraphAnalysis)) return;
+      var canvas = root.querySelector("[data-calc-canvas]");
+      var size = readCanvasSize(canvas);
       applyGraphZoomFromCenter(
         state,
         action === "in" ? 1 / GRAPH_ZOOM_STEP : GRAPH_ZOOM_STEP,
+        size.width,
+        size.height,
       );
     }
 

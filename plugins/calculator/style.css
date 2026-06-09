@@ -222,6 +222,13 @@
   display: none;
 }
 
+#results-sidebar .calc-card,
+.results-slot-panel:has(.calc-card) .calc-card {
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+
 .calc-row {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
