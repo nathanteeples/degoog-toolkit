@@ -1116,6 +1116,7 @@ const _buildRatingsHtml = (opts, ctx) => {
   const {
     voteAverage,
     voteCount,
+    tmdbHref,
     imdb,
     imdbHref,
     rottenTomatoes,
@@ -1131,13 +1132,19 @@ const _buildRatingsHtml = (opts, ctx) => {
       typeof voteCount === "number" && voteCount > 0
         ? ` title="${_esc(`${voteCount.toLocaleString(ctx?.lang || "en-US")} ${t("tmdbVotes", ctx)}`)}"`
         : "";
-    parts.push(
-      `<div class="tmdb-rating-item"${voteTitle}>` +
-        `<span class="tmdb-rating-badge tmdb-rating-badge--tmdb">TMDB</span>` +
-        `<span class="tmdb-rating-score">${score}</span>` +
-        `<span class="tmdb-rating-unit">\u202f/10</span>` +
-        `</div>`,
-    );
+    const tmdbInner =
+      `<span class="tmdb-rating-badge tmdb-rating-badge--tmdb">TMDB</span>` +
+      `<span class="tmdb-rating-score">${score}</span>` +
+      `<span class="tmdb-rating-unit">\u202f/10</span>`;
+    if (tmdbHref) {
+      parts.push(
+        `<a href="${_esc(tmdbHref)}" target="_blank" rel="noopener" class="tmdb-rating-item tmdb-rating-item--link"${voteTitle}>` +
+          tmdbInner +
+          `</a>`,
+      );
+    } else {
+      parts.push(`<div class="tmdb-rating-item"${voteTitle}>${tmdbInner}</div>`);
+    }
   }
 
   if (imdb) {
@@ -1252,6 +1259,7 @@ const _renderMovie = (
     {
       voteAverage: details.vote_average,
       voteCount: details.vote_count,
+      tmdbHref: `https://www.themoviedb.org/movie/${details.id}`,
       imdb: omdbRatings?.imdb,
       imdbHref: _imdbHref(imdbId),
       rottenTomatoes: omdbRatings?.rottenTomatoes,
@@ -1359,6 +1367,7 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, imdbId, 
     {
       voteAverage: details.vote_average,
       voteCount: details.vote_count,
+      tmdbHref: `https://www.themoviedb.org/tv/${details.id}`,
       imdb: omdbRatings?.imdb,
       imdbHref: _imdbHref(imdbId),
       rottenTomatoes: omdbRatings?.rottenTomatoes,
