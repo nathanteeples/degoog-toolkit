@@ -152,13 +152,6 @@ Click a plugin name to expand screenshots and previews.
 </details>
 
 <details>
-<summary><strong>Sports Results</strong> — Live scores, schedules, and standings (API keys required)</summary>
-
-_No Store screenshots yet._ Example queries: `arsenal vs chelsea`, `lakers vs warriors`, `premier league standings`. Configure **football-data.org** and **BALLDONTLIE** keys in Settings → Plugins.
-
-</details>
-
-<details>
 <summary><strong>Tip Calculator</strong> — Interactive tip and bill split (`tip 20% on $85`)</summary>
 
 ![Tip Calculator](plugins/tip-calculator/screenshots/1.png)
@@ -220,6 +213,13 @@ _No Store screenshots yet._ Example queries: `arsenal vs chelsea`, `lakers vs wa
 <summary><strong>Periodic Table</strong> — Interactive periodic table of elements with search, group highlighting, temperature-state simulator, and detail modals</summary>
 
 _No screenshots yet._ Triggers on `periodic table`, `periodic table of elements`, `!periodic`, `!elements`, and `!ptable`.
+
+</details>
+
+<details>
+<summary><strong>Sports Results</strong> — Live scores, schedules, and standings (API keys required)</summary>
+
+_No Store screenshots yet._ Example queries: `arsenal vs chelsea`, `lakers vs warriors`, `premier league standings`. Configure **football-data.org** and **BALLDONTLIE** keys in Settings → Plugins.
 
 </details>
 
