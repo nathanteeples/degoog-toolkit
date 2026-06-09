@@ -7,10 +7,6 @@
         "label": "Max entries",
         "placeholder": "1000",
         "description": "Maximum number of history entries to keep (oldest removed when exceeded)."
-      },
-      "naturalLanguage": {
-        "label": "Natural language",
-        "description": "Allow this command to run when your query matches one of its phrases."
       }
     },
     "history": "History",

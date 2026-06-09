@@ -91,11 +91,9 @@ test("command plugins expose their expected triggers", async () => {
   const speedtest = await loadPlugin("speedtest");
 
   assert.equal((searchHistory.command || searchHistory.default).trigger, "history");
-  const searchHistoryCommand = searchHistory.command || searchHistory.default;
-  assert.equal(
-    searchHistoryCommand.settingsSchema.find((field) => field.key === "naturalLanguage")
-      ?.default,
-    true,
+  assert.deepEqual(
+    (searchHistory.command || searchHistory.default).settingsSchema.map((field) => field.key),
+    ["maxEntries"],
   );
   const speedtestCommand = speedtest.command || speedtest.default;
   assert.equal(speedtestCommand.trigger, "speed");

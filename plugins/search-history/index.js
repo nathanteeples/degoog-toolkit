@@ -89,7 +89,6 @@ const command = {
   isClientExposed: false,
   trigger: "history",
   aliases: [],
-  naturalLanguagePhrases: ["search history"],
 
   init(ctx) {
     setPluginRouteBase(ctx);
@@ -103,14 +102,6 @@ const command = {
       placeholder: "1000",
       description:
         "Maximum number of history entries to keep (oldest removed when exceeded).",
-    },
-    {
-      key: "naturalLanguage",
-      label: "Natural language",
-      type: "toggle",
-      default: true,
-      description:
-        "Allow this command to run when your query matches one of its phrases.",
     },
   ],
 
