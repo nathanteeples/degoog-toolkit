@@ -1,155 +1,24 @@
 (function () {
-  const NAMED_COLORS = {
-    aliceblue: "#f0f8ff",
-    antiquewhite: "#faebd7",
-    aqua: "#00ffff",
-    aquamarine: "#7fffd4",
-    azure: "#f0ffff",
-    beige: "#f5f5dc",
-    bisque: "#ffe4c4",
-    black: "#000000",
-    blanchedalmond: "#ffebcd",
-    blue: "#0000ff",
-    blueviolet: "#8a2be2",
-    brown: "#a52a2a",
-    burlywood: "#deb887",
-    cadetblue: "#5f9ea0",
-    chartreuse: "#7fff00",
-    chocolate: "#d2691e",
-    coral: "#ff7f50",
-    cornflowerblue: "#6495ed",
-    cornsilk: "#fff8dc",
-    crimson: "#dc143c",
-    cyan: "#00ffff",
-    darkblue: "#00008b",
-    darkcyan: "#008b8b",
-    darkgoldenrod: "#b8860b",
-    darkgray: "#a9a9a9",
-    darkgreen: "#006400",
-    darkgrey: "#a9a9a9",
-    darkkhaki: "#bdb76b",
-    darkmagenta: "#8b008b",
-    darkolivegreen: "#556b2f",
-    darkorange: "#ff8c00",
-    darkorchid: "#9932cc",
-    darkred: "#8b0000",
-    darksalmon: "#e9967a",
-    darkseagreen: "#8fbc8f",
-    darkslate5a0: "#2f4f4f",
-    darkslateblue: "#483d8b",
-    darkslategrey: "#2f4f4f",
-    darkturquoise: "#00ced1",
-    darkviolet: "#9400d3",
-    deeppink: "#ff1493",
-    deepskyblue: "#00bfff",
-    dimgray: "#696969",
-    dimgrey: "#696969",
-    dodgerblue: "#1e90ff",
-    firebrick: "#b22222",
-    floralwhite: "#fffaf0",
-    forestgreen: "#228b22",
-    fuchsia: "#ff00ff",
-    gainsboro: "#dcdcdc",
-    ghostwhite: "#f8f8ff",
-    gold: "#ffd700",
-    goldenrod: "#daa520",
-    gray: "#808080",
-    green: "#008000",
-    greenyellow: "#adff2f",
-    grey: "#808080",
-    honeydew: "#f0fff0",
-    hotpink: "#ff69b4",
-    indianred: "#cd5c5c",
-    indigo: "#4b0082",
-    ivory: "#fffff0",
-    khaki: "#f0e68c",
-    lavender: "#e6e6fa",
-    lavenderblush: "#fff0f5",
-    lawngreen: "#7cfc00",
-    lemonchiffon: "#fffacd",
-    lightblue: "#add8e6",
-    lightcoral: "#f08080",
-    lightcyan: "#e0ffff",
-    lightgoldenrodyellow: "#fafad2",
-    lightgray: "#d3d3d3",
-    lightgreen: "#90ee90",
-    lightgrey: "#d3d3d3",
-    lightpink: "#ffb6c1",
-    lightsalmon: "#ffa07a",
-    lightseagreen: "#20b2aa",
-    lightskyblue: "#87cefa",
-    lightslategrey: "#778899",
-    lightyellow: "#ffffe0",
-    lime: "#00ff00",
-    limegreen: "#32cd32",
-    linen: "#faf0e6",
-    magenta: "#ff00ff",
-    maroon: "#800000",
-    mediumaquamarine: "#66cdaa",
-    mediumblue: "#0000cd",
-    mediumorchid: "#ba55d3",
-    mediumpurple: "#9370db",
-    mediumseagreen: "#3cb371",
-    mediumslateblue: "#7b68ee",
-    mediumspringgreen: "#00fa9a",
-    mediumturquoise: "#48d1cc",
-    mediumvioletred: "#c71585",
-    midnightblue: "#191970",
-    mintcream: "#f5fffa",
-    mistyrose: "#ffe4e1",
-    moccasin: "#ffe4b5",
-    navajowhite: "#ffdead",
-    navy: "#000080",
-    oldlace: "#fdf5e6",
-    olive: "#808000",
-    olivedrab: "#6b8e23",
-    orange: "#ffa500",
-    orangered: "#ff4500",
-    orchid: "#da70d6",
-    palegoldenrod: "#eee8aa",
-    palegreen: "#98fb98",
-    paleturquoise: "#afeeee",
-    palevioletred: "#db7093",
-    papayawhip: "#ffefd5",
-    peachpuff: "#ffdab9",
-    peru: "#cd853f",
-    pink: "#ffc0cb",
-    plum: "#dda0dd",
-    powderblue: "#b0e0e6",
-    purple: "#800080",
-    rebeccapurple: "#663399",
-    red: "#ff0000",
-    rosybrown: "#bc8f8f",
-    royalblue: "#4169e1",
-    saddlebrown: "#8b4513",
-    salmon: "#fa8072",
-    sandybrown: "#f4a460",
-    seagreen: "#2e8b57",
-    seashell: "#fff5ee",
-    sienna: "#a0522d",
-    silver: "#c0c0c0",
-    skyblue: "#87ceeb",
-    slateblue: "#6a5acd",
-    slategrey: "#708090",
-    snow: "#fffafa",
-    springgreen: "#00ff7f",
-    steelblue: "#4682b4",
-    tan: "#d2b48c",
-    teal: "#008080",
-    thistle: "#d8bfd8",
-    tomato: "#ff6347",
-    turquoise: "#40e0d0",
-    violet: "#ee82ee",
-    wheat: "#f5deb3",
-    white: "#ffffff",
-    whitesmoke: "#f5f5f5",
-    yellow: "#ffff00",
-    yellowgreen: "#9acd32"
-  };
+  let hexToName = {};
+  let hexToNamePromise = null;
 
-  const HEX_TO_NAME = {};
-  for (const [name, hex] of Object.entries(NAMED_COLORS)) {
-    HEX_TO_NAME[hex.toLowerCase()] = name;
+  function pluginBase() {
+    const id = typeof __PLUGIN_ID__ !== "undefined" ? __PLUGIN_ID__ : "color-translator";
+    return `/api/plugin/${encodeURIComponent(id)}`;
+  }
+
+  function ensureHexToName() {
+    if (Object.keys(hexToName).length) return Promise.resolve(hexToName);
+    if (!hexToNamePromise) {
+      hexToNamePromise = fetch(`${pluginBase()}/color-names`)
+        .then((res) => (res.ok ? res.json() : {}))
+        .then((map) => {
+          hexToName = map || {};
+          return hexToName;
+        })
+        .catch(() => ({}));
+    }
+    return hexToNamePromise;
   }
 
   function rgbToHsl(r, g, b) {
@@ -276,17 +145,6 @@
     ];
   }
 
-  function cmykToRgb(c, m, y, k) {
-    c /= 100;
-    m /= 100;
-    y /= 100;
-    k /= 100;
-    const r = Math.round(255 * (1 - c) * (1 - k));
-    const g = Math.round(255 * (1 - m) * (1 - k));
-    const b = Math.round(255 * (1 - y) * (1 - k));
-    return [r, g, b];
-  }
-
   function parseHex(hex) {
     let r, g, b, a = 1;
     const cleanHex = hex.startsWith('#') ? hex.slice(1) : hex;
@@ -314,176 +172,24 @@
     return { r, g, b, a: Number(a.toFixed(3)) };
   }
 
-  function parseComponent(val, max) {
-    if (val.endsWith('%')) {
-      return Math.round((parseFloat(val) / 100) * max);
+  const parseCache = new Map();
+
+  async function fetchParsedColor(value) {
+    const key = value.trim();
+    if (!key) return null;
+    if (parseCache.has(key)) return parseCache.get(key);
+
+    try {
+      const url = `${pluginBase()}/parse?q=${encodeURIComponent(key)}`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const parsed = await res.json();
+      if (!parsed || parsed.r === undefined) return null;
+      parseCache.set(key, parsed);
+      return parsed;
+    } catch {
+      return null;
     }
-    return Math.round(parseFloat(val));
-  }
-
-  function clamp(val, min, max) {
-    return Math.max(min, Math.min(max, val));
-  }
-
-  function parseColor(query) {
-    let q = query.trim().toLowerCase();
-    
-    q = q.replace(/^!(?:color-translator|color|translate-color)\s+/i, '');
-    q = q.replace(/^color\s+/i, '');
-    q = q.trim();
-
-    if (!q) return null;
-
-    if (NAMED_COLORS[q]) {
-      return parseHex(NAMED_COLORS[q]);
-    }
-
-    const hexMatch = q.match(/^#?([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
-    if (hexMatch) {
-      const rawHex = hexMatch[1];
-      if (rawHex.length === 3 || rawHex.length === 4 || rawHex.length === 6 || rawHex.length === 8) {
-        return parseHex(rawHex);
-      }
-    }
-
-    const rgbMatch = q.match(/rgba?\(\s*([0-9.]+%?)\s*,\s*([0-9.]+%?)\s*,\s*([0-9.]+%?)\s*(?:,\s*([0-9.]+)\s*)?\)/i);
-    if (rgbMatch) {
-      const r = parseComponent(rgbMatch[1], 255);
-      const g = parseComponent(rgbMatch[2], 255);
-      const b = parseComponent(rgbMatch[3], 255);
-      const a = rgbMatch[4] !== undefined ? parseFloat(rgbMatch[4]) : 1;
-      if (r !== null && g !== null && b !== null && !isNaN(a)) {
-        return { r: clamp(r, 0, 255), g: clamp(g, 0, 255), b: clamp(b, 0, 255), a: clamp(a, 0, 1) };
-      }
-    }
-
-    const hslMatch = q.match(/hsla?\(\s*([0-9.]+)\s*,\s*([0-9.]+)%?\s*,\s*([0-9.]+)%?\s*(?:,\s*([0-9.]+)\s*)?\)/i);
-    if (hslMatch) {
-      const h = parseFloat(hslMatch[1]);
-      const s = parseFloat(hslMatch[2]);
-      const l = parseFloat(hslMatch[3]);
-      const a = hslMatch[4] !== undefined ? parseFloat(hslMatch[4]) : 1;
-      if (!isNaN(h) && !isNaN(s) && !isNaN(l) && !isNaN(a)) {
-        const [r, g, b] = hslToRgb(h, s, l);
-        return { r, g, b, a: clamp(a, 0, 1) };
-      }
-    }
-
-    const hsbMatch = q.match(/hs[bv]a?\(\s*([0-9.]+)\s*,\s*([0-9.]+)%?\s*,\s*([0-9.]+)%?\s*(?:,\s*([0-9.]+)\s*)?\)/i);
-    if (hsbMatch) {
-      const h = parseFloat(hsbMatch[1]);
-      const s = parseFloat(hsbMatch[2]);
-      const b = parseFloat(hsbMatch[3]);
-      const a = hsbMatch[4] !== undefined ? parseFloat(hsbMatch[4]) : 1;
-      if (!isNaN(h) && !isNaN(s) && !isNaN(b) && !isNaN(a)) {
-        const [r, g, bVal] = hsbToRgb(h, s, b);
-        return { r, g, b: bVal, a: clamp(a, 0, 1) };
-      }
-    }
-
-    const objcRgbMatch = q.match(/(?:ui|ns)color\s+colorwith(?:calibrated|device)?red\s*:\s*([0-9.]+)\s+green\s*:\s*([0-9.]+)\s+blue\s*:\s*([0-9.]+)(?:\s+alpha\s*:\s*([0-9.]+))?/i);
-    if (objcRgbMatch) {
-      const r = Math.round(parseFloat(objcRgbMatch[1]) * 255);
-      const g = Math.round(parseFloat(objcRgbMatch[2]) * 255);
-      const b = Math.round(parseFloat(objcRgbMatch[3]) * 255);
-      const a = objcRgbMatch[4] !== undefined ? parseFloat(objcRgbMatch[4]) : 1;
-      return { r: clamp(r, 0, 255), g: clamp(g, 0, 255), b: clamp(b, 0, 255), a: clamp(a, 0, 1) };
-    }
-
-    const objcHsbMatch = q.match(/(?:ui|ns)color\s+colorwith(?:calibrated|device)?hue\s*:\s*([0-9.]+)\s+saturation\s*:\s*([0-9.]+)\s+brightness\s*:\s*([0-9.]+)(?:\s+alpha\s*:\s*([0-9.]+))?/i);
-    if (objcHsbMatch) {
-      const h = parseFloat(objcHsbMatch[1]) * 360;
-      const s = parseFloat(objcHsbMatch[2]) * 100;
-      const b = parseFloat(objcHsbMatch[3]) * 100;
-      const a = objcHsbMatch[4] !== undefined ? parseFloat(objcHsbMatch[4]) : 1;
-      const [r, g, bVal] = hsbToRgb(h, s, b);
-      return { r, g, b: bVal, a: clamp(a, 0, 1) };
-    }
-
-    const looseRgbMatch = q.match(/red\s*[:\s]\s*([0-9.]+)(?:%|\b)\s*green\s*[:\s]\s*([0-9.]+)(?:%|\b)\s*blue\s*[:\s]\s*([0-9.]+)(?:%|\b)(?:\s*alpha\s*[:\s]\s*([0-9.]+))?/i);
-    if (looseRgbMatch) {
-      const isPct = looseRgbMatch[0].includes('%');
-      const r = parseComponent(looseRgbMatch[1] + (isPct ? '%' : ''), 255);
-      const g = parseComponent(looseRgbMatch[2] + (isPct ? '%' : ''), 255);
-      const b = parseComponent(looseRgbMatch[3] + (isPct ? '%' : ''), 255);
-      const a = looseRgbMatch[4] !== undefined ? parseFloat(looseRgbMatch[4]) : 1;
-      if (r !== null && g !== null && b !== null && !isNaN(a)) {
-        return { r: clamp(r, 0, 255), g: clamp(g, 0, 255), b: clamp(b, 0, 255), a: clamp(a, 0, 1) };
-      }
-    }
-
-    const looseHsbMatch = q.match(/hue\s*[:\s]\s*([0-9.]+)(?:%|\b)\s*saturation\s*[:\s]\s*([0-9.]+)(?:%|\b)\s*(?:brightness|value)\s*[:\s]\s*([0-9.]+)(?:%|\b)(?:\s*alpha\s*[:\s]\s*([0-9.]+))?/i);
-    if (looseHsbMatch) {
-      const h = parseFloat(looseHsbMatch[1]);
-      const s = parseFloat(looseHsbMatch[2]);
-      const b = parseFloat(looseHsbMatch[3]);
-      const a = looseHsbMatch[4] !== undefined ? parseFloat(looseHsbMatch[4]) : 1;
-      if (!isNaN(h) && !isNaN(s) && !isNaN(b) && !isNaN(a)) {
-        const [r, g, bVal] = hsbToRgb(h, s, b);
-        return { r, g, b: bVal, a: clamp(a, 0, 1) };
-      }
-    }
-
-    const spaceRgbMatch = q.match(/^rgba?\s+([0-9.]+%?)\s+([0-9.]+%?)\s+([0-9.]+%?)(?:\s+([0-9.]+))?$/i);
-    if (spaceRgbMatch) {
-      const r = parseComponent(spaceRgbMatch[1], 255);
-      const g = parseComponent(spaceRgbMatch[2], 255);
-      const b = parseComponent(spaceRgbMatch[3], 255);
-      const a = spaceRgbMatch[4] !== undefined ? parseFloat(spaceRgbMatch[4]) : 1;
-      if (r !== null && g !== null && b !== null && !isNaN(a)) {
-        return { r: clamp(r, 0, 255), g: clamp(g, 0, 255), b: clamp(b, 0, 255), a: clamp(a, 0, 1) };
-      }
-    }
-
-    const spaceHslMatch = q.match(/^hsla?\s+([0-9.]+)\s+([0-9.]+)%?\s+([0-9.]+)%?(?:\s+([0-9.]+))?$/i);
-    if (spaceHslMatch) {
-      const h = parseFloat(spaceHslMatch[1]);
-      const s = parseFloat(spaceHslMatch[2]);
-      const l = parseFloat(spaceHslMatch[3]);
-      const a = spaceHslMatch[4] !== undefined ? parseFloat(spaceHslMatch[4]) : 1;
-      if (!isNaN(h) && !isNaN(s) && !isNaN(l) && !isNaN(a)) {
-        const [r, g, b] = hslToRgb(h, s, l);
-        return { r, g, b, a: clamp(a, 0, 1) };
-      }
-    }
-
-    const spaceHsbMatch = q.match(/^hs[bv]a?\s+([0-9.]+)\s+([0-9.]+)%?\s+([0-9.]+)%?(?:\s+([0-9.]+))?$/i);
-    if (spaceHsbMatch) {
-      const h = parseFloat(spaceHsbMatch[1]);
-      const s = parseFloat(spaceHsbMatch[2]);
-      const b = parseFloat(spaceHsbMatch[3]);
-      const a = spaceHsbMatch[4] !== undefined ? parseFloat(spaceHsbMatch[4]) : 1;
-      if (!isNaN(h) && !isNaN(s) && !isNaN(b) && !isNaN(a)) {
-        const [r, g, bVal] = hsbToRgb(h, s, b);
-        return { r, g, b: bVal, a: clamp(a, 0, 1) };
-      }
-    }
-
-    const cmykMatch = q.match(/(?:device-)?cmyk\(\s*([0-9.]+)%?\s*,\s*([0-9.]+)%?\s*,\s*([0-9.]+)%?\s*,\s*([0-9.]+)%?\s*\)/i);
-    if (cmykMatch) {
-      const c = parseFloat(cmykMatch[1]);
-      const m = parseFloat(cmykMatch[2]);
-      const y = parseFloat(cmykMatch[3]);
-      const k = parseFloat(cmykMatch[4]);
-      if (!isNaN(c) && !isNaN(m) && !isNaN(y) && !isNaN(k)) {
-        const [r, g, b] = cmykToRgb(c, m, y, k);
-        return { r, g, b, a: 1 };
-      }
-    }
-
-    const spaceCmykMatch = q.match(/^(?:device-)?cmyk\s+([0-9.]+)%?\s+([0-9.]+)%?\s+([0-9.]+)%?\s+([0-9.]+)%?$/i);
-    if (spaceCmykMatch) {
-      const c = parseFloat(spaceCmykMatch[1]);
-      const m = parseFloat(spaceCmykMatch[2]);
-      const y = parseFloat(spaceCmykMatch[3]);
-      const k = parseFloat(spaceCmykMatch[4]);
-      if (!isNaN(c) && !isNaN(m) && !isNaN(y) && !isNaN(k)) {
-        const [r, g, b] = cmykToRgb(c, m, y, k);
-        return { r, g, b, a: 1 };
-      }
-    }
-
-    return null;
   }
 
   function formatCssHex(r, g, b, a) {
@@ -538,7 +244,7 @@
   function formatNamedColor(r, g, b, a) {
     if (a < 1) return "None";
     const hex = formatCssHex(r, g, b, 1).toLowerCase();
-    return HEX_TO_NAME[hex] || "None";
+    return hexToName[hex] || "None";
   }
 
   function formatNsCalibratedRgb(r, g, b, a) {
@@ -679,7 +385,7 @@
 
     const hexInput = card.querySelector('[data-clrtr-input="hex"]');
     const initialHex = hexInput ? hexInput.value : '#FF0000';
-    let currentColor = parseColor(initialHex) || { r: 255, g: 0, b: 0, a: 1 };
+    let currentColor = parseHex(initialHex) || { r: 255, g: 0, b: 0, a: 1 };
     let [h, s, l] = rgbToHsl(currentColor.r, currentColor.g, currentColor.b);
     let a = currentColor.a;
 
@@ -796,16 +502,27 @@
       });
     });
 
+    let inputParseTimer = null;
     for (const [type, input] of Object.entries(inputs)) {
       input.addEventListener('input', () => {
-        const parsed = parseColor(input.value);
-        if (parsed) {
-          updateColorFromRgb(parsed.r, parsed.g, parsed.b, parsed.a);
-          updateUI(input);
-        }
+        clearTimeout(inputParseTimer);
+        const value = input.value;
+        inputParseTimer = setTimeout(async () => {
+          const parsed = await fetchParsedColor(value);
+          if (parsed) {
+            updateColorFromRgb(parsed.r, parsed.g, parsed.b, parsed.a);
+            updateUI(input);
+          }
+        }, 120);
       });
       input.addEventListener('blur', () => {
-        updateUI();
+        clearTimeout(inputParseTimer);
+        fetchParsedColor(input.value).then((parsed) => {
+          if (parsed) {
+            updateColorFromRgb(parsed.r, parsed.g, parsed.b, parsed.a);
+          }
+          updateUI();
+        });
       });
     }
 
@@ -829,13 +546,19 @@
     updateUI();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, { once: true });
-  } else {
-    init();
+  function boot() {
+    ensureHexToName().finally(init);
   }
 
-  const observer = new MutationObserver(init);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    boot();
+  }
+
+  const observer = new MutationObserver(() => {
+    ensureHexToName().finally(init);
+  });
   observer.observe(document.documentElement, {
     childList: true,
     subtree: true,
