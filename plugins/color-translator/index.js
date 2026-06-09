@@ -3,7 +3,7 @@ import { HEX_TO_NAME } from "./named-colors.js";
 
 let template = "";
 
-const FALLBACK_TEMPLATE = `<div class="clrtr-card slot-full-width" data-color-translator-card>
+const FALLBACK_TEMPLATE = `<div class="clrtr-card slot-full-width" data-color-translator-card data-source-cmyk="{{source_cmyk}}">
   <div class="clrtr-panel">
     <div class="clrtr-preview-container">
       <div class="clrtr-preview-box" style="background-color: {{color_css}}">
@@ -366,9 +366,16 @@ function formatCssHsv(r, g, b, a) {
   return `hsva(${h}, ${s}%, ${v}%, ${parseFloat(a.toFixed(3))})`;
 }
 
-function formatCmyk(r, g, b) {
-  const [c, m, y, k] = rgbToCmyk(r, g, b);
+function formatCmykValues(c, m, y, k) {
   return `cmyk(${c}%, ${m}%, ${y}%, ${k}%)`;
+}
+
+function formatCmyk(r, g, b, sourceCmyk) {
+  if (sourceCmyk) {
+    return formatCmykValues(...sourceCmyk);
+  }
+  const [c, m, y, k] = rgbToCmyk(r, g, b);
+  return formatCmykValues(c, m, y, k);
 }
 
 function formatNamedColor(r, g, b, a) {
@@ -446,8 +453,9 @@ function renderColorCard(color, context) {
   const cssRgbPercent = formatCssRgbPercent(color.r, color.g, color.b, color.a);
   const cssHsl = formatCssHsl(color.r, color.g, color.b, color.a);
   const cssHsv = formatCssHsv(color.r, color.g, color.b, color.a);
-  const cssCmyk = formatCmyk(color.r, color.g, color.b);
+  const cssCmyk = formatCmyk(color.r, color.g, color.b, color.sourceCmyk);
   const cssName = formatNamedColor(color.r, color.g, color.b, color.a);
+  const sourceCmyk = color.sourceCmyk ? color.sourceCmyk.join(",") : "";
   
   const placeholders = {
     color_css: cssRgb,
@@ -457,6 +465,7 @@ function renderColorCard(color, context) {
     color_hsl: cssHsl,
     color_hsv: cssHsv,
     color_cmyk: cssCmyk,
+    source_cmyk: sourceCmyk,
     color_name: cssName,
     color_name_disabled: cssName === "None" ? "disabled" : "",
     color_ns_calibrated_rgb: formatNsCalibratedRgb(color.r, color.g, color.b, color.a),

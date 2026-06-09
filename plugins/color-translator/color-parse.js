@@ -85,6 +85,23 @@ function cmykToRgb(c, m, y, k) {
   return [r, g, b];
 }
 
+function parseCmykComponent(val) {
+  const n = parseFloat(String(val).trim());
+  if (Number.isNaN(n)) return null;
+  return Math.round(n);
+}
+
+function rgbFromCmykParts(parts) {
+  if (parts.length < 4) return null;
+  const c = parseCmykComponent(parts[0]);
+  const m = parseCmykComponent(parts[1]);
+  const y = parseCmykComponent(parts[2]);
+  const k = parseCmykComponent(parts[3]);
+  if (c === null || m === null || y === null || k === null) return null;
+  const [r, g, b] = cmykToRgb(c, m, y, k);
+  return { r, g, b, a: 1, sourceCmyk: [c, m, y, k] };
+}
+
 function parseHex(hex) {
   let r;
   let g;
@@ -241,16 +258,8 @@ function tryParseSingleColor(rawQuery, originalQuery) {
   const parenCmyk = q.match(/(?:device-)?cmyk\(\s*([^)]+)\)/i);
   if (parenCmyk) {
     const { parts } = splitParenArgs(parenCmyk[1]);
-    if (parts.length >= 4) {
-      const c = parseFloat(parts[0]);
-      const m = parseFloat(parts[1]);
-      const y = parseFloat(parts[2]);
-      const k = parseFloat(parts[3]);
-      if (!Number.isNaN(c) && !Number.isNaN(m) && !Number.isNaN(y) && !Number.isNaN(k)) {
-        const [r, g, b] = cmykToRgb(c, m, y, k);
-        return { r, g, b, a: 1 };
-      }
-    }
+    const parsed = rgbFromCmykParts(parts);
+    if (parsed) return parsed;
   }
 
   const objcRgbMatch = q.match(/(?:ui|ns)color\s+colorwith(?:calibrated|device)?red\s*:\s*([0-9.]+)\s+green\s*:\s*([0-9.]+)\s+blue\s*:\s*([0-9.]+)(?:\s+alpha\s*:\s*([0-9.]+))?/i);
@@ -346,14 +355,13 @@ function tryParseSingleColor(rawQuery, originalQuery) {
 
   const spaceCmykMatch = q.match(/^(?:device-)?cmyk\s+([0-9.]+)%?\s+([0-9.]+)%?\s+([0-9.]+)%?\s+([0-9.]+)%?$/i);
   if (spaceCmykMatch) {
-    const c = parseFloat(spaceCmykMatch[1]);
-    const m = parseFloat(spaceCmykMatch[2]);
-    const y = parseFloat(spaceCmykMatch[3]);
-    const k = parseFloat(spaceCmykMatch[4]);
-    if (!Number.isNaN(c) && !Number.isNaN(m) && !Number.isNaN(y) && !Number.isNaN(k)) {
-      const [r, g, b] = cmykToRgb(c, m, y, k);
-      return { r, g, b, a: 1 };
-    }
+    const parsed = rgbFromCmykParts([
+      spaceCmykMatch[1],
+      spaceCmykMatch[2],
+      spaceCmykMatch[3],
+      spaceCmykMatch[4]
+    ]);
+    if (parsed) return parsed;
   }
 
   return null;

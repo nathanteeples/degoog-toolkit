@@ -236,9 +236,16 @@
     return `hsva(${h}, ${s}%, ${v}%, ${parseFloat(a.toFixed(3))})`;
   }
 
-  function formatCmyk(r, g, b) {
-    const [c, m, y, k] = rgbToCmyk(r, g, b);
+  function formatCmykValues(c, m, y, k) {
     return `cmyk(${c}%, ${m}%, ${y}%, ${k}%)`;
+  }
+
+  function formatCmyk(r, g, b, sourceCmyk) {
+    if (sourceCmyk) {
+      return formatCmykValues(...sourceCmyk);
+    }
+    const [c, m, y, k] = rgbToCmyk(r, g, b);
+    return formatCmykValues(c, m, y, k);
   }
 
   function formatNamedColor(r, g, b, a) {
@@ -293,14 +300,14 @@
   }
 
   function formatColor(color, type) {
-    const { r, g, b, a } = color;
+    const { r, g, b, a, sourceCmyk } = color;
     switch (type) {
       case 'hex': return formatCssHex(r, g, b, a);
       case 'rgb': return formatCssRgb(r, g, b, a);
       case 'rgb_percent': return formatCssRgbPercent(r, g, b, a);
       case 'hsl': return formatCssHsl(r, g, b, a);
       case 'hsv': return formatCssHsv(r, g, b, a);
-      case 'cmyk': return formatCmyk(r, g, b);
+      case 'cmyk': return formatCmyk(r, g, b, sourceCmyk);
       case 'ns_calibrated_rgb': return formatNsCalibratedRgb(r, g, b, a);
       case 'ns_calibrated_hsb': return formatNsCalibratedHsb(r, g, b, a);
       case 'ns_device_rgb': return formatNsDeviceRgb(r, g, b, a);
@@ -386,6 +393,13 @@
     const hexInput = card.querySelector('[data-clrtr-input="hex"]');
     const initialHex = hexInput ? hexInput.value : '#FF0000';
     let currentColor = parseHex(initialHex) || { r: 255, g: 0, b: 0, a: 1 };
+    const sourceCmykAttr = card.getAttribute('data-source-cmyk');
+    if (sourceCmykAttr) {
+      const parts = sourceCmykAttr.split(',').map((n) => Number(n));
+      if (parts.length === 4 && parts.every((n) => Number.isFinite(n))) {
+        currentColor.sourceCmyk = parts;
+      }
+    }
     let [h, s, l] = rgbToHsl(currentColor.r, currentColor.g, currentColor.b);
     let a = currentColor.a;
 
@@ -405,11 +419,16 @@
     const lightnessSlider = card.querySelector('[data-clrtr-slider="lightness"]');
     const opacitySlider = card.querySelector('[data-clrtr-slider="opacity"]');
 
-    function updateColorFromRgb(r, g, b, newAlpha) {
+    function updateColorFromRgb(r, g, b, newAlpha, sourceCmyk) {
       currentColor.r = r;
       currentColor.g = g;
       currentColor.b = b;
       currentColor.a = newAlpha;
+      if (sourceCmyk) {
+        currentColor.sourceCmyk = sourceCmyk;
+      } else {
+        delete currentColor.sourceCmyk;
+      }
       
       const [newH, newS, newL] = rgbToHsl(r, g, b);
       h = newH;
@@ -429,6 +448,7 @@
       currentColor.g = g;
       currentColor.b = b;
       currentColor.a = a;
+      delete currentColor.sourceCmyk;
     }
 
     function updateUI(source) {
@@ -510,7 +530,7 @@
         inputParseTimer = setTimeout(async () => {
           const parsed = await fetchParsedColor(value);
           if (parsed) {
-            updateColorFromRgb(parsed.r, parsed.g, parsed.b, parsed.a);
+            updateColorFromRgb(parsed.r, parsed.g, parsed.b, parsed.a, parsed.sourceCmyk);
             updateUI(input);
           }
         }, 120);
@@ -519,7 +539,7 @@
         clearTimeout(inputParseTimer);
         fetchParsedColor(input.value).then((parsed) => {
           if (parsed) {
-            updateColorFromRgb(parsed.r, parsed.g, parsed.b, parsed.a);
+            updateColorFromRgb(parsed.r, parsed.g, parsed.b, parsed.a, parsed.sourceCmyk);
           }
           updateUI();
         });
