@@ -20,9 +20,13 @@ export const UTILITY_QUERY_RE =
 export const TIMEZONE_QUERY_RE =
   /\b(?:(?:what(?:'s|s|\s+is)?|current|local)\s+)?(?:time|timezone|time\s*zone|clock)\b/i;
 
+/** Weather / forecast lookups — owned by weather-slot, not Places. */
+export const WEATHER_QUERY_RE =
+  /\b(?:weather|forecast|temperature|sunrise|sunset|humidity|wind|rain|snow|uv|météo|meteo|prévisions?|previsions?|previsioni|temps|température|tiempo|clima|pronóstico|pronostico|temperatura|погода|прогноз|метео|wetter|vorhersage|tempo|previsão)\b/i;
+
 /** Leading topic word before "in …" that signals a non-place query. */
 export const NON_PLACE_IN_LEAD_RE =
-  /^(?:time|timezone|time\s*zone|clock|weather|forecast|temperature|translate|translation|convert|converter|currency|currencies|exchange|stock|stocks|bitcoin|crypto|define|definition|meaning|synonym|antonym|pronunciation|etymology|speed\s*tests?|speedtest|stopwatch|countdown|until|news|wiki|wikipedia|lyrics|recipe|recipes|calculator|calc|calculate|graph|plot|math|tip|tips|gratuity|unit|units|chart|charts|price|prices|history|sports|score|scores|sunrise|sunset|moon|uv|humidity|wind|rain|snow|video|videos|youtube|movie|movies|show|shows|book|books|pdf|download|install|error|fix|tutorial|course|benchmark|review|vs|password|qr|jellyfin|meilisearch|reddit|tmdb|color|colour|hex|rgb|hsl)\b/i;
+  /^(?:time|timezone|time\s*zone|clock|weather|forecast|météo|meteo|prévisions?|previsions?|previsioni|temps|température|temperature|tiempo|clima|pronóstico|pronostico|погода|прогноз|метео|wetter|vorhersage|tempo|previsão|translate|translation|convert|converter|currency|currencies|exchange|stock|stocks|bitcoin|crypto|define|definition|meaning|synonym|antonym|pronunciation|etymology|speed\s*tests?|speedtest|stopwatch|countdown|until|news|wiki|wikipedia|lyrics|recipe|recipes|calculator|calc|calculate|graph|plot|math|tip|tips|gratuity|unit|units|chart|charts|price|prices|history|sports|score|scores|sunrise|sunset|moon|uv|humidity|wind|rain|snow|video|videos|youtube|movie|movies|show|shows|book|books|pdf|download|install|error|fix|tutorial|course|benchmark|review|vs|password|qr|jellyfin|meilisearch|reddit|tmdb|color|colour|hex|rgb|hsl)\b/i;
 
 /** Category or explicit place-seeking wording before a geographic "in …" phrase. */
 const CATEGORY_IN_LOCATION_RE =
@@ -34,7 +38,8 @@ export const PLACE_TOPIC_INFO_RE =
 
 const UTILITY_SINGLE_WORDS = new Set([
   "speedtest", "speed", "stopwatch", "timer", "countdown", "metronome", "weather",
-  "forecast", "until", "currency", "convert", "converter", "calculator", "calc",
+  "forecast", "meteo", "météo", "prevision", "previsions", "prévision", "prévisions",
+  "until", "currency", "convert", "converter", "calculator", "calc",
   "calculate", "define", "definition", "translate", "translation", "unit", "units",
   "stocks", "stock", "coinflip", "yesno", "dice", "history", "sports", "tmdb",
   "reddit", "minesweeper", "snake", "tictactoe", "graph", "plot", "math", "tip",
@@ -267,6 +272,7 @@ export function isUtilityPluginQuery(query) {
   const lower = q.toLowerCase();
 
   if (UTILITY_QUERY_RE.test(lower)) return true;
+  if (WEATHER_QUERY_RE.test(lower)) return true;
   if (NON_PLACE_IN_LEAD_RE.test(lower)) return true;
   if (TIMEZONE_QUERY_RE.test(lower) && /\bin\b/i.test(lower)) return true;
   if (hasNumericConversionPattern(lower)) return true;

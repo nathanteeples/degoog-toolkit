@@ -12,7 +12,7 @@ const URL_OR_CODE_RE =
 const GAME_QUERY_RE =
   /\b(tic[\s-]?tac[\s-]?toe|tictactoe|minesweeper|play\s+snake|snake\s+game|solitaire|sudoku|wordle|chess|checkers|pong|pacman)\b/i;
 const NON_PLACE_TOPIC_RE =
-  /\b(tutorial|course|book|pdf|lyrics|chords|movie|show|cast|season|episode|news|wiki|definition|meaning|synonym|pronunciation|translate|weather|forecast|stock|chart|price|convert|calculator|history|biography|photo|image|wallpaper|video|youtube|song|album|recipe|ingredients|cooking|github|docs|documentation|install|download|error|linux|macos|windows|npm|python|javascript|typescript|react|angular|vue|svelte|docker|api|json|regex|hooks?|framework|library|theory|equation|formula|dosage|diagnosis|symptoms?|treatment|medication)\b/i;
+  /\b(tutorial|course|book|pdf|lyrics|chords|movie|show|cast|season|episode|news|wiki|definition|meaning|synonym|pronunciation|translate|weather|forecast|météo|meteo|prévisions?|previsions?|previsioni|temps|température|tiempo|clima|pronóstico|pronostico|погода|прогноз|метео|wetter|vorhersage|tempo|previsão|stock|chart|price|convert|calculator|history|biography|photo|image|wallpaper|video|youtube|song|album|recipe|ingredients|cooking|github|docs|documentation|install|download|error|linux|macos|windows|npm|python|javascript|typescript|react|angular|vue|svelte|docker|api|json|regex|hooks?|framework|library|theory|equation|formula|dosage|diagnosis|symptoms?|treatment|medication)\b/i;
 const PRODUCT_QUERY_RE =
   /\b(ketchup|mustard|mayo|mayonnaise|sauce|soda|amazon|ebay|buy|order|shipping|coupon|deals?|cheap|prices?|iphone|android|laptop|tablet|gpu|cpu|ram|ssd|shirt|shoes|sneakers|hoodie|dress|pants|jeans)\b/i;
 const CATEGORY_RE =
