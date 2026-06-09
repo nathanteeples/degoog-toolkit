@@ -153,11 +153,19 @@ function parseQuery(query) {
 }
 
 function isDiceRoll(q) {
-  return /roll\s+(?:a\s+)?(?:die|dice)\b|dice\s+roll|die\s+roll|roll\s+(?:a\s+)?d\d+|\b(d6|d20|d8|d10|d12|d100)\b|\d+\s*-?\s*sided\s+(?:die|dice)/i.test(q);
+  return (
+    /roll\s+(?:a\s+)?(?:die|dice)\b/i.test(q) ||
+    /\bdice\s+roll\b/i.test(q) ||
+    /\bdie\s+roll\b/i.test(q) ||
+    /roll\s+(?:a\s+)?d\d+\b/i.test(q) ||
+    /roll\s+(?:a\s+)?\d+\s*-?\s*sided\s+(?:die|dice)\b/i.test(q) ||
+    /\b(d6|d20|d8|d10|d12|d100)\b/i.test(q) ||
+    /\b\d+\s*-?\s*sided\s+(?:die|dice)\b/i.test(q)
+  );
 }
 
 function isD20Dice(q) {
-  return /\bd20\b|20\s*-?\s*sided/i.test(q);
+  return /\bd20\b/i.test(q) || /\b20\s*-?\s*sided\b/i.test(q);
 }
 
 function renderTemplate(tpl, data) {

@@ -332,6 +332,13 @@ function parseStockQuery(value) {
   const target = cleanupTarget(raw);
   if (!target || isRejectedCompanyTarget(target)) return null;
 
+  const prefixedSymbol = symbolFromSingleToken(target, {
+    allowLowercase: /^\s*(?:stock|stocks|quote|ticker|share|shares)\b/i.test(raw),
+  });
+  if (prefixedSymbol) {
+    return { kind: "symbol", symbol: prefixedSymbol, explicit: true };
+  }
+
   const upperTarget = symbolFromSingleToken(target, { allowLowercase: false });
   if (upperTarget) {
     return { kind: "symbol", symbol: upperTarget, explicit: true };
@@ -763,7 +770,7 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
       asOf: formatYahooTime(
         firstFinite(snapshot?.regularMarketTime, meta.regularMarketTime),
       ),
-      sourceLabel: t("sourceLabel", context),
+      sourceLabel: t("sourceLabel"),
       sourceUrl: `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}`,
       chartPoints,
       chartLabel: chartPoints.length > 2 ? "1D" : "",
@@ -1121,7 +1128,7 @@ function renderSparkline(points, trend, label) {
     .map((point) => Number(point.price))
     .filter(Number.isFinite);
   if (prices.length < 2) {
-    return `<div class="stocks-sparkline-empty">${escapeHtml(t("noChartData", context))}</div>`;
+    return `<div class="stocks-sparkline-empty">${escapeHtml(t("noChartData"))}</div>`;
   }
 
   const width = 320;
