@@ -25,9 +25,10 @@
   var DEFAULT_DURATION_MS = 5 * 60 * 1000;
   var DEFAULT_STOPWATCH_CYCLE_MS = 60 * 1000;
   var MAX_DURATION_MS = 24 * 60 * 60 * 1000;
-  var soundEnabled = false;
+  var soundEnabled = true;
   var currentWidget = null;
   var audioCtx = null;
+  var alarmAudio = null;
 
   var state = {
     mode: "timer",
@@ -170,7 +171,10 @@
         return;
       }
     } else {
+      var prevCycle = Math.floor(state.elapsedMs / state.stopwatchCycleMs);
       state.elapsedMs += delta;
+      var nextCycle = Math.floor(state.elapsedMs / state.stopwatchCycleMs);
+      if (nextCycle > prevCycle) playStopwatchTick();
     }
 
     render();
@@ -258,8 +262,52 @@
     return audioCtx;
   }
 
-  function playBeep() {
-    if (!soundEnabled) return;
+  function resolveAlarmUrl() {
+    if (!currentWidget) return null;
+    var tone = currentWidget.getAttribute("data-alarm-tone") || "";
+    if (!tone || tone === "beep") return null;
+    var raw = currentWidget.getAttribute("data-alarm-sounds");
+    if (!raw) return null;
+    try {
+      var sounds = JSON.parse(raw);
+      for (var i = 0; i < sounds.length; i++) {
+        if (sounds[i].id === tone) return sounds[i].url;
+      }
+    } catch (error) {
+      // Ignore malformed payload.
+    }
+    return null;
+  }
+
+  function stopAlarmAudio() {
+    if (!alarmAudio) return;
+    alarmAudio.pause();
+    alarmAudio.currentTime = 0;
+    alarmAudio = null;
+  }
+
+  /** Short lap tick — stopwatch only, each ring cycle from settings. */
+  function playStopwatchTick() {
+    if (!soundEnabled || state.mode !== "stopwatch") return;
+    try {
+      var ctx = getAudioContext();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 1240;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.45, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.09);
+    } catch (error) {
+      // Audio support is optional.
+    }
+  }
+
+  /** Fallback when no sounds/ tone is selected — timer alarm only. */
+  function playTimerFallbackBeep() {
     try {
       var ctx = getAudioContext();
       [0, 0.18, 0.36].forEach(function (delay) {
@@ -282,20 +330,44 @@
     }
   }
 
-  function startAlarm() {
-    state.alarming = true;
-    playBeep();
-    scheduleAlarm();
+  /** Timer finished — plays selected sounds/ tone (m4a/mp3) or fallback beep. */
+  function playTimerAlarm() {
+    if (!soundEnabled || state.mode !== "timer") return;
+    var url = resolveAlarmUrl();
+    if (url) {
+      try {
+        stopAlarmAudio();
+        alarmAudio = new Audio(url);
+        alarmAudio.addEventListener("ended", function () {
+          if (state.alarming) scheduleTimerAlarm(500);
+        });
+        alarmAudio.play().catch(function () {
+          playTimerFallbackBeep();
+        });
+        return;
+      } catch (error) {
+        // Fall through to the built-in beep.
+      }
+    }
+    playTimerFallbackBeep();
   }
 
-  function scheduleAlarm() {
+  function startAlarm() {
+    if (state.mode !== "timer") return;
+    state.alarming = true;
+    playTimerAlarm();
+    if (!resolveAlarmUrl()) scheduleTimerAlarm(1400);
+  }
+
+  function scheduleTimerAlarm(delayMs) {
     if (state.alarmTimerId || !state.alarming) return;
+    if (alarmAudio && !alarmAudio.paused && !alarmAudio.ended) return;
     state.alarmTimerId = window.setTimeout(function () {
       state.alarmTimerId = 0;
       if (!state.alarming) return;
-      playBeep();
-      scheduleAlarm();
-    }, 1400);
+      playTimerAlarm();
+      if (!resolveAlarmUrl()) scheduleTimerAlarm(1400);
+    }, delayMs || 1400);
   }
 
   function stopAlarm() {
@@ -303,6 +375,7 @@
       window.clearTimeout(state.alarmTimerId);
       state.alarmTimerId = 0;
     }
+    stopAlarmAudio();
     state.alarming = false;
   }
 
@@ -430,7 +503,7 @@
         break;
       case "toggle-sound":
         soundEnabled = !soundEnabled;
-        if (state.alarming) playBeep();
+        if (state.alarming) playTimerAlarm();
         render();
         break;
     }

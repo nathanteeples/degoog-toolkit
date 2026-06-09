@@ -5,6 +5,8 @@
   data-mode="{{mode}}"
   data-autostart="{{autostart}}"
   data-stopwatch-cycle-seconds="{{stopwatch_cycle_seconds}}"
+  data-alarm-tone="{{alarm_tone}}"
+  data-alarm-sounds="{{alarm_sounds_json}}"
   data-t-timer="{{ t:plugin-stopwatch.timer }}"
   data-t-stopwatch="{{ t:plugin-stopwatch.stopwatch }}"
   data-t-sound-off="{{ t:plugin-stopwatch.soundOff }}"
@@ -72,9 +74,9 @@
       class="timer-icon-btn"
       type="button"
       data-timer-action="toggle-sound"
-      aria-label="{{ t:plugin-stopwatch.soundOff }}"
-      aria-pressed="false"
-      title="{{ t:plugin-stopwatch.soundOff }}"
+      aria-label="{{ t:plugin-stopwatch.soundOn }}"
+      aria-pressed="true"
+      title="{{ t:plugin-stopwatch.soundOn }}"
     >
       <svg
         width="17"

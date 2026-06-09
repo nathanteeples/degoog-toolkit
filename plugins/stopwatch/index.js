@@ -1,12 +1,22 @@
+import { readdir, readFile } from "fs/promises";
+import { join, basename } from "path";
+
 let template = "";
 
 const DEFAULT_TIMER_SECONDS = 5 * 60;
 const DEFAULT_STOPWATCH_CYCLE_SECONDS = 60;
 const MAX_DURATION_SECONDS = 24 * 60 * 60;
 const STOPWATCH_CYCLE_OPTIONS = new Set(["60", "300", "3600"]);
+const SOUNDS_DIR = "sounds";
+const AUDIO_FILE_RX = /\.(m4a|mp3|wav|ogg|aac)$/i;
 
 let enabled = true;
 let stopwatchCycleSeconds = DEFAULT_STOPWATCH_CYCLE_SECONDS;
+let pluginDir = "";
+let pluginRouteBase = "";
+/** @type {{ id: string, file: string, label: string }[]} */
+let alarmSounds = [];
+let alarmTone = "";
 
 const COMMAND_PREFIX_RX = /^!(?<command>timer|stopwatch|countdown|minuteur|compte\s+à\s+rebours|temporizador|chronomètre|cronómetro)\b\s*/i;
 const TIMER_KEYWORD_RX = /\b(?:timer|countdown|count\s+down|minuteur|compte\s+à\s+rebours|temporizador)\b/i;
@@ -63,9 +73,105 @@ const settingsSchema = [
     type: "select",
     options: ["60", "300", "3600"],
     default: String(DEFAULT_STOPWATCH_CYCLE_SECONDS),
-    description: "Seconds represented by one full stopwatch progress ring.",
+    description:
+      "Seconds per stopwatch progress ring. A short tick plays each time a ring completes.",
+  },
+  {
+    key: "alarmTone",
+    label: "Timer alarm tone",
+    type: "select",
+    options: ["beep"],
+    default: "beep",
+    description:
+      "Tone when a timer reaches zero (not stopwatch). Add .m4a or .mp3 files to the plugin sounds/ folder.",
   },
 ];
+
+function setPluginRouteBase(ctx) {
+  if (ctx?.apiBase) {
+    pluginRouteBase = ctx.apiBase;
+  } else if (typeof ctx?.routeUrl === "function") {
+    pluginRouteBase = ctx.routeUrl();
+  } else {
+    const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
+    const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
+    const prefix = ["", "api", "plugin"].join("/");
+    pluginRouteBase = folder
+      ? `${prefix}/${encodeURIComponent(folder)}`
+      : `${prefix}/stopwatch`;
+  }
+}
+
+function labelFromFilename(file) {
+  return file.replace(/\.[^.]+$/, "");
+}
+
+async function scanAlarmSounds(dir) {
+  const soundsPath = join(dir, SOUNDS_DIR);
+  try {
+    const entries = await readdir(soundsPath);
+    return entries
+      .filter((file) => AUDIO_FILE_RX.test(file))
+      .sort((a, b) => a.localeCompare(b))
+      .map((file) => ({
+        id: file,
+        file,
+        label: labelFromFilename(file),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function syncAlarmToneSchema() {
+  const field = settingsSchema.find((item) => item.key === "alarmTone");
+  if (!field) return;
+
+  if (alarmSounds.length) {
+    field.options = alarmSounds.map((sound) => sound.id);
+    field.default = alarmSounds[0].id;
+    if (!field.options.includes(alarmTone)) {
+      alarmTone = alarmSounds[0].id;
+    }
+  } else {
+    field.options = ["beep"];
+    field.default = "beep";
+    if (alarmTone !== "beep") alarmTone = "beep";
+  }
+}
+
+function soundUrl(file) {
+  return `${pluginRouteBase}/sounds/file?f=${encodeURIComponent(file)}`;
+}
+
+function alarmSoundsPayload() {
+  return alarmSounds.map((sound) => ({
+    id: sound.id,
+    label: sound.label,
+    url: soundUrl(sound.file),
+  }));
+}
+
+function escAttr(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
+function audioContentType(file) {
+  const lower = file.toLowerCase();
+  if (lower.endsWith(".m4a") || lower.endsWith(".aac")) return "audio/mp4";
+  if (lower.endsWith(".wav")) return "audio/wav";
+  if (lower.endsWith(".ogg")) return "audio/ogg";
+  return "audio/mpeg";
+}
+
+function resolveSoundFile(requested) {
+  const file = basename(String(requested || ""));
+  if (!file || !AUDIO_FILE_RX.test(file)) return null;
+  return alarmSounds.some((sound) => sound.file === file) ? file : null;
+}
 
 function clampDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return null;
@@ -157,7 +263,7 @@ function parseRequest(input) {
       autostart:
         timerDuration !== null ||
         /\b(?:start|run|countdown|count\s+down|lancer|iniciar|minuteur|compte\s+à\s+rebours|temporizador)\b/i.test(
-          original
+          original,
         ),
     };
   }
@@ -171,14 +277,28 @@ function configureSettings(settings) {
   stopwatchCycleSeconds = STOPWATCH_CYCLE_OPTIONS.has(nextCycle)
     ? Number(nextCycle)
     : DEFAULT_STOPWATCH_CYCLE_SECONDS;
+
+  const requestedTone = String(settings?.alarmTone || "").trim();
+  if (requestedTone === "beep" && alarmSounds.length) {
+    alarmTone = alarmSounds[0].id;
+  } else if (alarmSounds.some((sound) => sound.id === requestedTone)) {
+    alarmTone = requestedTone;
+  } else if (alarmSounds.length) {
+    alarmTone = alarmSounds[0].id;
+  } else {
+    alarmTone = "beep";
+  }
 }
 
-function renderTemplate(request, context) {
+function renderTemplate(request) {
+  const soundsJson = JSON.stringify(alarmSoundsPayload());
   return (template || "")
     .replaceAll("{{duration_seconds}}", String(request.durationSeconds))
     .replaceAll("{{mode}}", request.mode)
     .replaceAll("{{autostart}}", request.autostart ? "true" : "false")
-    .replaceAll("{{stopwatch_cycle_seconds}}", String(stopwatchCycleSeconds));
+    .replaceAll("{{stopwatch_cycle_seconds}}", String(stopwatchCycleSeconds))
+    .replaceAll("{{alarm_tone}}", escAttr(alarmTone))
+    .replaceAll("{{alarm_sounds_json}}", escAttr(soundsJson));
 }
 
 export const slot = {
@@ -192,9 +312,15 @@ export const slot = {
   settingsSchema,
 
   async init(ctx) {
+    pluginDir = typeof ctx?.dir === "string" ? ctx.dir : "";
+    setPluginRouteBase(ctx);
     template = ctx?.template || "";
     if (!template && typeof ctx?.readFile === "function") {
       template = await ctx.readFile("template.html");
+    }
+    if (pluginDir) {
+      alarmSounds = await scanAlarmSounds(pluginDir);
+      syncAlarmToneSchema();
     }
   },
 
@@ -214,10 +340,55 @@ export const slot = {
 
     return {
       title: "",
-      html: renderTemplate(request, context),
+      html: renderTemplate(request),
     };
   },
 };
+
+export const routes = [
+  {
+    method: "get",
+    path: "sounds/list",
+    handler: async () =>
+      new Response(JSON.stringify(alarmSoundsPayload()), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      }),
+  },
+  {
+    method: "get",
+    path: "sounds/file",
+    handler: async (req) => {
+      const url = new URL(req.url);
+      const file = resolveSoundFile(url.searchParams.get("f"));
+      if (!file || !pluginDir) {
+        return new Response("Not found", {
+          status: 404,
+          headers: { "Cache-Control": "no-store" },
+        });
+      }
+
+      try {
+        const bytes = await readFile(join(pluginDir, SOUNDS_DIR, file));
+        return new Response(bytes, {
+          status: 200,
+          headers: {
+            "Content-Type": audioContentType(file),
+            "Cache-Control": "public, max-age=86400",
+          },
+        });
+      } catch {
+        return new Response("Not found", {
+          status: 404,
+          headers: { "Cache-Control": "no-store" },
+        });
+      }
+    },
+  },
+];
 
 export const slotPlugin = slot;
 export default slot;
