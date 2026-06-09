@@ -20,8 +20,35 @@ const escapeHtml = (str) => {
 const escapeAttr = (str) =>
   escapeHtml(str).replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 
+function getSearchBarForInput(input) {
+  if (!input) return null;
+  return input.closest(".search-bar, .results-search-bar");
+}
+
+/** True when the bar should show the empty-field history list (focused, not typing). */
+function shouldShowHistory(input) {
+  if (!input || input.value.trim() !== "") return false;
+  if (document.activeElement === input) return true;
+  const bar = getSearchBarForInput(input);
+  return (
+    bar instanceof HTMLElement &&
+    document.activeElement instanceof Node &&
+    bar.contains(document.activeElement)
+  );
+}
+
+function hideHistoryDropdown(dropdown) {
+  if (!dropdown) return;
+  dropdown.style.display = "none";
+  dropdown.parentElement?.classList.remove("ac-open");
+}
+
 function renderHistoryDropdown(entries, input, dropdown) {
   if (!dropdown || !input) return;
+  if (!shouldShowHistory(input)) {
+    hideHistoryDropdown(dropdown);
+    return;
+  }
   dropdown.innerHTML = entries
     .map(
       (item) =>
@@ -32,14 +59,12 @@ function renderHistoryDropdown(entries, input, dropdown) {
         </div>`,
     )
     .join("");
-  dropdown.style.display = entries.length ? "block" : "none";
-  if (dropdown.parentElement) {
-    if (entries.length) {
-      dropdown.parentElement.classList.add("ac-open");
-    } else {
-      dropdown.parentElement.classList.remove("ac-open");
-    }
+  if (!entries.length) {
+    hideHistoryDropdown(dropdown);
+    return;
   }
+  dropdown.style.display = "block";
+  dropdown.parentElement?.classList.add("ac-open");
 
   dropdown.querySelectorAll(".ac-item--history").forEach((el) => {
     const textEl = el.querySelector(".ac-item-text");
@@ -51,10 +76,7 @@ function renderHistoryDropdown(entries, input, dropdown) {
       textEl.addEventListener("mousedown", (e) => {
         e.preventDefault();
         input.value = entry;
-        dropdown.style.display = "none";
-        if (dropdown.parentElement) {
-          dropdown.parentElement.classList.remove("ac-open");
-        }
+        hideHistoryDropdown(dropdown);
         const form = input.closest("form");
         if (form) {
           form.requestSubmit
@@ -95,7 +117,7 @@ function fetchAndShowHistory(input, dropdown) {
     .then((list) => {
       const arr = Array.isArray(list) ? list : [];
       _historyListCache = arr;
-      if (input.value.trim() === "") {
+      if (shouldShowHistory(input)) {
         renderHistoryDropdown(arr, input, dropdown);
       }
     })
@@ -172,10 +194,7 @@ function getDropdownForInput(input) {
 }
 
 function submitHistoryInput(input, dropdown) {
-  dropdown.style.display = "none";
-  if (dropdown.parentElement) {
-    dropdown.parentElement.classList.remove("ac-open");
-  }
+  hideHistoryDropdown(dropdown);
   const form = input.closest("form");
   if (form) {
     form.requestSubmit
@@ -239,6 +258,37 @@ function initSearchHistory() {
     if (!hasUserInteracted) return;
     paintCachedHistoryIfAny(input, dropdown);
     fetchAndShowHistory(input, dropdown);
+  });
+
+  // Dismiss immediately on outside click (core AC waits 300ms on blur).
+  document.addEventListener(
+    "mousedown",
+    (e) => {
+      if (!(e.target instanceof Node)) return;
+      for (const id of ["search-input", "results-search-input"]) {
+        const input = document.getElementById(id);
+        const dropdown = getDropdownForInput(input);
+        const bar = getSearchBarForInput(input);
+        if (!input || !dropdown || !bar) continue;
+        if (dropdown.style.display === "none") continue;
+        if (bar.contains(e.target)) continue;
+        hideHistoryDropdown(dropdown);
+      }
+    },
+    true,
+  );
+
+  document.addEventListener("focusout", (e) => {
+    const bar =
+      e.target instanceof Element
+        ? e.target.closest(".search-bar, .results-search-bar")
+        : null;
+    if (!bar) return;
+    requestAnimationFrame(() => {
+      if (bar.contains(document.activeElement)) return;
+      const dropdown = bar.querySelector(".ac-dropdown");
+      if (dropdown instanceof HTMLElement) hideHistoryDropdown(dropdown);
+    });
   });
 
   // When the field is cleared while focused (e.g. backspace), show history without blur/refocus.
