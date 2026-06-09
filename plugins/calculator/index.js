@@ -1,4 +1,8 @@
 import exprEvalModule from "./vendor/expr-eval.min.cjs";
+import {
+  readSlotPosition,
+  shouldRenderSlotForContext,
+} from "./slot-position.js";
 
 const exprEval = exprEvalModule?.Parser
   ? exprEvalModule
@@ -8,6 +12,7 @@ const Parser = exprEval.Parser;
 let calcEnabled = true;
 let templateHtml = "";
 let parserBundle = "";
+let selectedSlotPosition = "knowledge-panel";
 
 const DEFAULT_ANGLE_MODE = "rad";
 const MAX_QUERY_LENGTH = 220;
@@ -55,12 +60,7 @@ function factorial(value) {
   if (value > 170) return Infinity;
   let result = 1;
   for (let i = 2; i <= value; i += 1) result *= i;
-  return result
-    .replaceAll("{{t_rad}}", t("rad", context))
-    .replaceAll("{{t_deg}}", t("deg", context))
-    .replaceAll("{{t_ans}}", t("ans", context))
-    .replaceAll("{{t_clear}}", t("clear", context))
-    .replaceAll("{{t_enter}}", t("enter", context));
+  return result;
 }
 
 function createParser(angleMode = DEFAULT_ANGLE_MODE) {
@@ -373,8 +373,8 @@ export const slot = {
   description:
     "Scientific calculator with safe expression parsing and graphing for x expressions.",
   isClientExposed: false,
-  position: "above-results",
-  slotPositions: ["above-results"],
+  position: "knowledge-panel",
+  slotPositions: ["knowledge-panel", "above-results"],
   settingsSchema: [
     {
       key: "enabled",
@@ -395,6 +395,7 @@ export const slot = {
 
   configure(settings) {
     calcEnabled = settings?.enabled !== false && settings?.enabled !== "false";
+    selectedSlotPosition = readSlotPosition(settings, "knowledge-panel");
   },
 
   trigger(query) {
@@ -402,6 +403,10 @@ export const slot = {
   },
 
   async execute(query, context) {
+    if (!shouldRenderSlotForContext(context, selectedSlotPosition)) {
+      return { html: "" };
+    }
+
     const intent = getIntent(query);
     const expression = stripEquationPrefix(intent.expression).trim();
 

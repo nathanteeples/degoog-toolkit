@@ -116,6 +116,8 @@
   display: block;
   width: 100%;
   height: 100%;
+  touch-action: none;
+  cursor: grab;
   border: 1px solid color-mix(in srgb, var(--border-light, #dadce0) 72%, transparent);
   border-radius: 12px;
   background:
@@ -125,6 +127,10 @@
       transparent 42%
     ),
     var(--bg, #fff);
+}
+
+.calc-graph-canvas--dragging {
+  cursor: grabbing;
 }
 
 .calc-graph-zoom-controls {

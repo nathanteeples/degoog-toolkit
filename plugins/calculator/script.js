@@ -320,9 +320,13 @@
       lastGraphAnalysis: null,
       xMin: -10,
       xMax: 10,
+      yMin: undefined,
+      yMax: undefined,
+      yNeedsAutoFit: true,
       hoverX: null,
       hoverPx: null,
       lastGraphExpr: null,
+      pointer: null,
     };
     states.set(root, state);
     return state;
@@ -349,6 +353,9 @@
           if (state.lastGraphExpr !== state.expr) {
             state.xMin = -10;
             state.xMax = 10;
+            state.yMin = undefined;
+            state.yMax = undefined;
+            state.yNeedsAutoFit = true;
             state.hoverX = null;
             state.hoverPx = null;
             state.lastGraphExpr = state.expr;
@@ -565,6 +572,25 @@
     }
   }
 
+  function computeAutoYBounds(finiteY) {
+    finiteY.sort(function (a, b) {
+      return a - b;
+    });
+    var yMin = finiteY[Math.floor(finiteY.length * 0.05)];
+    var yMax = finiteY[Math.floor(finiteY.length * 0.95)];
+
+    if (yMin === yMax) {
+      yMin -= 1;
+      yMax += 1;
+    }
+
+    yMin = Math.min(yMin, 0);
+    yMax = Math.max(yMax, 0);
+
+    var yPad = (yMax - yMin) * 0.12 || 1;
+    return { yMin: yMin - yPad, yMax: yMax + yPad };
+  }
+
   function drawGraph(root, state, analysis) {
     var graph = root.querySelector("[data-calc-graph]");
     var label = root.querySelector("[data-calc-graph-label]");
@@ -620,23 +646,15 @@
       return;
     }
 
-    finiteY.sort(function (a, b) {
-      return a - b;
-    });
-    var yMin = finiteY[Math.floor(finiteY.length * 0.05)];
-    var yMax = finiteY[Math.floor(finiteY.length * 0.95)];
-
-    if (yMin === yMax) {
-      yMin -= 1;
-      yMax += 1;
+    if (state.yNeedsAutoFit || state.yMin === undefined || state.yMax === undefined) {
+      var autoBounds = computeAutoYBounds(finiteY);
+      state.yMin = autoBounds.yMin;
+      state.yMax = autoBounds.yMax;
+      state.yNeedsAutoFit = false;
     }
 
-    yMin = Math.min(yMin, 0);
-    yMax = Math.max(yMax, 0);
-
-    var yPad = (yMax - yMin) * 0.12 || 1;
-    yMin -= yPad;
-    yMax += yPad;
+    var yMin = state.yMin;
+    var yMax = state.yMax;
 
     function sx(x) {
       return ((x - xMin) / (xMax - xMin)) * width;
@@ -988,13 +1006,7 @@
     ctx.font = "10px system-ui, -apple-system, sans-serif";
     ctx.textBaseline = "middle";
 
-    var yZeroPx = sy(0);
-    var xLabelY = yZeroPx + 3;
-    if (xLabelY < 12) {
-      xLabelY = 12;
-    } else if (xLabelY > height - 15) {
-      xLabelY = height - 15;
-    }
+    var xLabelY = height - 12;
 
     for (var i = 0; i <= 4; i += 1) {
       var xVal = xMin + ((xMax - xMin) / 4) * i;
@@ -1070,8 +1082,57 @@
 
     var canvas = root.querySelector("[data-calc-canvas]");
     if (canvas) {
-      canvas.addEventListener("mousemove", function (event) {
+      canvas.addEventListener("pointerdown", function (event) {
+        if (!state.lastGraphAnalysis || event.button !== 0) return;
+        canvas.setPointerCapture(event.pointerId);
+        state.pointer = {
+          id: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          dragging: false,
+          xMin: state.xMin,
+          xMax: state.xMax,
+          yMin: state.yMin,
+          yMax: state.yMax,
+        };
+      });
+
+      canvas.addEventListener("pointermove", function (event) {
         if (!state.lastGraphAnalysis) return;
+
+        if (state.pointer && state.pointer.id === event.pointerId) {
+          var dragDx = event.clientX - state.pointer.startX;
+          var dragDy = event.clientY - state.pointer.startY;
+          if (
+            !state.pointer.dragging &&
+            (Math.abs(dragDx) > 3 || Math.abs(dragDy) > 3)
+          ) {
+            state.pointer.dragging = true;
+            state.yNeedsAutoFit = false;
+            canvas.classList.add("calc-graph-canvas--dragging");
+          }
+
+          if (state.pointer.dragging) {
+            var dragRect = canvas.getBoundingClientRect();
+            var dragWidth = canvas.clientWidth || dragRect.width;
+            var dragHeight = canvas.clientHeight || dragRect.height;
+            if (dragWidth <= 0 || dragHeight <= 0) return;
+
+            var xSpan = state.pointer.xMax - state.pointer.xMin;
+            var ySpan = state.pointer.yMax - state.pointer.yMin;
+            state.xMin = state.pointer.xMin - (dragDx / dragWidth) * xSpan;
+            state.xMax = state.pointer.xMax - (dragDx / dragWidth) * xSpan;
+            state.yMin = state.pointer.yMin + (dragDy / dragHeight) * ySpan;
+            state.yMax = state.pointer.yMax + (dragDy / dragHeight) * ySpan;
+            state.hoverX = null;
+            state.hoverPx = null;
+            drawGraph(root, state, state.lastGraphAnalysis);
+            return;
+          }
+        }
+
+        if (state.pointer && state.pointer.dragging) return;
+
         var rect = canvas.getBoundingClientRect();
         var mx = event.clientX - rect.left;
         var width = canvas.clientWidth || rect.width;
@@ -1082,7 +1143,21 @@
         state.hoverPx = mx;
         drawGraph(root, state, state.lastGraphAnalysis);
       });
+
+      function endPointerDrag(event) {
+        if (!state.pointer || state.pointer.id !== event.pointerId) return;
+        if (canvas.hasPointerCapture(event.pointerId)) {
+          canvas.releasePointerCapture(event.pointerId);
+        }
+        canvas.classList.remove("calc-graph-canvas--dragging");
+        state.pointer = null;
+      }
+
+      canvas.addEventListener("pointerup", endPointerDrag);
+      canvas.addEventListener("pointercancel", endPointerDrag);
+
       canvas.addEventListener("mouseleave", function () {
+        if (state.pointer && state.pointer.dragging) return;
         if (state.hoverX !== null) {
           state.hoverX = null;
           state.hoverPx = null;
@@ -1149,6 +1224,9 @@
     } else if (action === "reset") {
       state.xMin = -10;
       state.xMax = 10;
+      state.yMin = undefined;
+      state.yMax = undefined;
+      state.yNeedsAutoFit = true;
     }
     drawGraph(root, state, state.lastGraphAnalysis);
   }

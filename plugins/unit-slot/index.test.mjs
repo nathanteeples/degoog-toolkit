@@ -13,20 +13,23 @@ test("loads and renders standard unit conversions", async () => {
 
   const output = await slot.execute("100 lb to kg", {
     tab: "all",
-    results: [],
   });
 
   assert.match(output.html, /data-from="lb"/);
   assert.match(output.html, /data-to="kg"/);
 });
 
+test("renders on main slot path by default (above-results)", async () => {
+  assert.equal(slot.trigger("12 ft to in"), true);
+  const output = await slot.execute("12 ft to in", { tab: "all" });
+  assert.match(output.html, /data-from="ft"/);
+  assert.match(output.html, /data-to="in"/);
+});
+
 test("opens a default conversion for launcher queries", async () => {
   for (const query of ["unit converter", "convert units", "!unit"]) {
     assert.equal(slot.trigger(query), true);
-    const output = await slot.execute(query, {
-      tab: "all",
-      results: [],
-    });
+    const output = await slot.execute(query, { tab: "all" });
     assert.match(output.html, /data-from="m"/);
     assert.match(output.html, /data-to="ft"/);
   }
@@ -40,10 +43,7 @@ test("renders comma-formatted and small length conversions", async () => {
 
   for (const [query, from, to, result] of cases) {
     assert.equal(slot.trigger(query), true, query);
-    const output = await slot.execute(query, {
-      tab: "all",
-      results: [],
-    });
+    const output = await slot.execute(query, { tab: "all" });
     assert.match(output.html, new RegExp(`data-from="${from}"`), query);
     assert.match(output.html, new RegExp(`data-to="${to}"`), query);
     assert.match(output.html, new RegExp(`data-result="${result}"`), query);

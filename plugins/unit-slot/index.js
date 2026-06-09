@@ -515,10 +515,12 @@ const TriggerGuard = {
   }
 };
 
-let selectedSlotPosition = "at-a-glance";
+const DEFAULT_SLOT_POSITION = "above-results";
+
+let selectedSlotPosition = DEFAULT_SLOT_POSITION;
 
 function configureSlotSettings(settings = {}) {
-  selectedSlotPosition = readSlotPosition(settings, "at-a-glance");
+  selectedSlotPosition = readSlotPosition(settings, DEFAULT_SLOT_POSITION);
 }
 
 // ── Slot export ───────────────────────────────────────────────
@@ -528,8 +530,8 @@ export const slot = {
   description:
     "Unit converter for length, mass, volume, temperature, and more. Supports fuzzy natural queries like '25.4oz toml' or '!unit 100c f'.",
   isClientExposed: false,
-  position: "at-a-glance",
-  slotPositions: ["at-a-glance", "above-results", "knowledge-panel"],
+  position: DEFAULT_SLOT_POSITION,
+  slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],
   settingsSchema: [
     {
       key: "debugMode",

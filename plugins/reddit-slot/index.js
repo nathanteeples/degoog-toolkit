@@ -6,6 +6,9 @@ let restrictSubreddit = "";
 let showMode = "keyword";
 let pluginFetch = (...args) => fetch(...args);
 
+/** Reddit requires a descriptive User-Agent; bare bot names often get 403. */
+const REDDIT_USER_AGENT = "web:degoog-toolkit:v1.0.12 (by /u/SoPat712)";
+
 function isUtilityQuery(q) {
   return /\b(weather|forecast|погода|метео|temperature|humidity|wind|rain|snow|translate|translation|convert|currency|calculator|calculate|math|stopwatch|timer|countdown|coinflip|coin-flip|yesno|yes-no|tip|tips|gratuity|gratuities|stocks?)\b/i.test(q);
 }
@@ -56,8 +59,11 @@ export const slot = {
     },
   ],
 
-  init(ctx) {
-    template = ctx.template;
+  async init(ctx) {
+    template = ctx?.template || "";
+    if (!template && typeof ctx?.readFile === "function") {
+      template = await ctx.readFile("template.html");
+    }
     if (typeof ctx?.fetch === "function") {
       pluginFetch = (...args) => ctx.fetch(...args);
     }
@@ -87,152 +93,245 @@ export const slot = {
 
   async execute(query, context) {
     try {
+      const results = Array.isArray(context?.results) ? context.results : [];
+
       if (showMode === "top10") {
-        const results = context?.results;
-        if (!Array.isArray(results)) return { html: "" };
-        const topResults = results.slice(0, 10);
-        const hasReddit = topResults.some(r => {
-          const url = typeof r?.url === "string" ? r.url : "";
-          return url.includes("reddit.com");
-        });
+        const hasReddit = results.slice(0, 10).some((r) => isRedditUrl(r?.url));
         if (!hasReddit) return { html: "" };
       }
 
-      // Strip "reddit" keyword from the actual search query
       const cleanQuery = query.replace(/\breddit\b/gi, "").trim();
       const searchQuery = cleanQuery.length > 1 ? cleanQuery : query.trim();
-      const encoded = encodeURIComponent(searchQuery);
-
-      let searchUrl;
-      if (restrictSubreddit) {
-        searchUrl = `https://www.reddit.com/r/${encodeURIComponent(restrictSubreddit)}/search.json?q=${encoded}&sort=relevance&limit=10&type=link&restrict_sr=1`;
-      } else {
-        searchUrl = `https://www.reddit.com/search.json?q=${encoded}&sort=relevance&limit=10&type=link`;
-      }
 
       const doFetch =
         typeof context?.fetch === "function"
           ? (...args) => context.fetch(...args)
           : pluginFetch;
 
-      const searchRes = await doFetch(searchUrl, {
-        headers: { "User-Agent": "degoog-reddit-slot/1.0" },
-      });
-
-      if (!searchRes.ok) return { html: "" };
-
-      const searchData = await searchRes.json();
-      const posts = searchData?.data?.children;
-      if (!posts || posts.length === 0) return { html: "" };
-
-      const filtered = posts.filter((p) => {
-        if (filterNsfw && p.data.over_18) return false;
-        if (p.data.score < minScore) return false;
-        return true;
-      });
-
-      if (filtered.length === 0) return { html: "" };
-
-      const stopWords = new Set([
-        "a","an","the","is","are","was","were","be","been","being",
-        "have","has","had","do","does","did","will","would","could",
-        "should","may","might","shall","can","need","dare","ought",
-        "what","how","why","when","where","who","which","that","this",
-        "i","you","he","she","we","they","it","me","him","her","us",
-        "them","my","your","his","its","our","their","and","or","but",
-        "if","in","on","at","to","for","of","with","by","from","about",
-        "per","day","daily","each","every","normal","much","many","some",
-      ]);
-
-      const queryWords = searchQuery
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, " ")
-        .split(/\s+/)
-        .filter((w) => w.length > 2 && !stopWords.has(w));
-
-      const scored = filtered.map((p) => {
-        const title = p.data.title.toLowerCase();
-        const selftext = (p.data.selftext || "").toLowerCase().slice(0, 300);
-        const combined = title + " " + selftext;
-        let score = 0;
-        for (const word of queryWords) {
-          if (combined.includes(word)) score += title.includes(word) ? 2 : 1;
-        }
-        score += Math.min(p.data.num_comments / 5000, 0.5);
-        return { data: p.data, score };
-      });
-
-      scored.sort((a, b) => b.score - a.score);
-      const post = scored[0].data;
-
-      const commentsUrl = `https://www.reddit.com/r/${post.subreddit}/comments/${post.id}.json?limit=15&depth=1&sort=top`;
-      const commentsRes = await doFetch(commentsUrl, {
-        headers: { "User-Agent": "degoog-reddit-slot/1.0" },
-      });
-
-      let comments = [];
-      if (commentsRes.ok) {
-        const commentsData = await commentsRes.json();
-        const rawComments = commentsData?.[1]?.data?.children || [];
-        comments = rawComments
-          .filter(
-            (c) =>
-              c.kind === "t1" &&
-              c.data.body &&
-              c.data.body !== "[deleted]" &&
-              c.data.body !== "[removed]" &&
-              !c.data.stickied &&
-              c.data.score > 0
-          )
-          .sort((a, b) => b.data.score - a.data.score)
-          .slice(0, maxComments)
-          .map((c) => ({
-            author: c.data.author,
-            body: c.data.body.length > 180 ? c.data.body.slice(0, 177) + "…" : c.data.body,
-            score: c.data.score,
-            url: `https://reddit.com${c.data.permalink}`,
-          }));
+      const apiCard = await _fetchCardFromRedditApi(searchQuery, doFetch);
+      if (apiCard) {
+        return { html: _renderCard(apiCard) };
       }
 
-      const postTitle = post.title.length > 100 ? post.title.slice(0, 97) + "…" : post.title;
-      const postUrl = `https://reddit.com${post.permalink}`;
-      const subreddit = post.subreddit_name_prefixed;
-      const postScore = post.score >= 1000 ? (post.score / 1000).toFixed(1) + "k" : post.score;
-      const numComments = post.num_comments >= 1000 ? (post.num_comments / 1000).toFixed(1) + "k" : post.num_comments;
+      const fallback = _pickCardFromSearchResults(results, searchQuery, restrictSubreddit);
+      if (fallback) {
+        return { html: _renderCard(fallback) };
+      }
 
-      const commentCards = comments.map((c) => {
-        const scoreStr = c.score >= 1000 ? (c.score / 1000).toFixed(1) + "k" : c.score;
-        return `
-          <a class="rslot-comment" href="${c.url}" target="_blank" rel="noopener noreferrer">
-            <div class="rslot-comment-header">
-              <span class="rslot-comment-author">u/${escapeHtml(c.author)}</span>
-              <span class="rslot-comment-score">▲ ${scoreStr}</span>
-            </div>
-            <p class="rslot-comment-body">${escapeHtml(c.body)}</p>
-          </a>`;
-      }).join("");
-
-      // 1 or 2 → two columns max; 3 or 4 → two rows of two
-      const gridCols = comments.length === 1 ? "1fr" : "1fr 1fr";
-
-      const html = template
-        .replace("{{subreddit}}", escapeHtml(subreddit))
-        .replace("{{post_title}}", escapeHtml(postTitle))
-        .replace("{{post_url}}", postUrl)
-        .replace("{{post_score}}", postScore)
-        .replace("{{post_comments}}", numComments)
-        .replace("{{post_subreddit}}", escapeHtml(subreddit))
-        .replace("{{comment_cards}}", commentCards)
-        .replace("{{grid_cols}}", gridCols);
-
-      return { html };
-    } catch (err) {
+      return { html: "" };
+    } catch {
       return { html: "" };
     }
   },
 };
 
 export default slot;
+
+function isRedditUrl(url) {
+  return typeof url === "string" && /reddit\.com/i.test(url);
+}
+
+function parseRedditPostUrl(url) {
+  if (!isRedditUrl(url)) return null;
+  const m = String(url).match(/reddit\.com\/r\/([^/]+)\/comments\/([^/?#]+)/i);
+  if (!m) return null;
+  return {
+    subreddit: m[1],
+    postId: m[2],
+    subredditPrefixed: `r/${m[1]}`,
+    postUrl: `https://www.reddit.com/r/${m[1]}/comments/${m[2]}/`,
+  };
+}
+
+const QUERY_STOP_WORDS = new Set([
+  "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+  "have", "has", "had", "do", "does", "did", "will", "would", "could",
+  "should", "may", "might", "shall", "can", "need", "dare", "ought",
+  "what", "how", "why", "when", "where", "who", "which", "that", "this",
+  "i", "you", "he", "she", "we", "they", "it", "me", "him", "her", "us",
+  "them", "my", "your", "his", "its", "our", "their", "and", "or", "but",
+  "if", "in", "on", "at", "to", "for", "of", "with", "by", "from", "about",
+  "per", "day", "daily", "each", "every", "normal", "much", "many", "some",
+]);
+
+function queryWords(searchQuery) {
+  return String(searchQuery || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !QUERY_STOP_WORDS.has(w));
+}
+
+function scoreTextMatch(searchQuery, title, body = "") {
+  const words = queryWords(searchQuery);
+  const titleLower = String(title || "").toLowerCase();
+  const combined = `${titleLower} ${String(body || "").toLowerCase()}`;
+  let score = 0;
+  for (const word of words) {
+    if (combined.includes(word)) score += titleLower.includes(word) ? 2 : 1;
+  }
+  return score;
+}
+
+async function _redditFetch(doFetch, url) {
+  return doFetch(url, {
+    headers: { "User-Agent": REDDIT_USER_AGENT },
+  });
+}
+
+async function _fetchCardFromRedditApi(searchQuery, doFetch) {
+  const encoded = encodeURIComponent(searchQuery);
+  const searchUrl = restrictSubreddit
+    ? `https://www.reddit.com/r/${encodeURIComponent(restrictSubreddit)}/search.json?q=${encoded}&sort=relevance&limit=10&type=link&restrict_sr=1`
+    : `https://www.reddit.com/search.json?q=${encoded}&sort=relevance&limit=10&type=link`;
+
+  const searchRes = await _redditFetch(doFetch, searchUrl);
+  if (!searchRes.ok) return null;
+
+  const searchData = await searchRes.json();
+  const posts = searchData?.data?.children;
+  if (!Array.isArray(posts) || posts.length === 0) return null;
+
+  const filtered = posts.filter((p) => {
+    if (filterNsfw && p.data.over_18) return false;
+    if (p.data.score < minScore) return false;
+    return true;
+  });
+  if (filtered.length === 0) return null;
+
+  const scored = filtered.map((p) => ({
+    data: p.data,
+    score:
+      scoreTextMatch(searchQuery, p.data.title, p.data.selftext) +
+      Math.min(p.data.num_comments / 5000, 0.5),
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  const post = scored[0].data;
+
+  const comments = await _fetchComments(doFetch, post.subreddit, post.id);
+  return {
+    subreddit: post.subreddit_name_prefixed,
+    postTitle: post.title,
+    postUrl: `https://reddit.com${post.permalink}`,
+    postScore: post.score,
+    numComments: post.num_comments,
+    comments,
+  };
+}
+
+async function _fetchComments(doFetch, subreddit, postId) {
+  const commentsUrl =
+    `https://www.reddit.com/r/${subreddit}/comments/${postId}.json` +
+    `?limit=15&depth=1&sort=top`;
+  const commentsRes = await _redditFetch(doFetch, commentsUrl);
+  if (!commentsRes.ok) return [];
+
+  const commentsData = await commentsRes.json();
+  const rawComments = commentsData?.[1]?.data?.children || [];
+  return rawComments
+    .filter(
+      (c) =>
+        c.kind === "t1" &&
+        c.data.body &&
+        c.data.body !== "[deleted]" &&
+        c.data.body !== "[removed]" &&
+        !c.data.stickied &&
+        c.data.score > 0,
+    )
+    .sort((a, b) => b.data.score - a.data.score)
+    .slice(0, maxComments)
+    .map((c) => ({
+      author: c.data.author,
+      body: c.data.body.length > 180 ? `${c.data.body.slice(0, 177)}…` : c.data.body,
+      score: c.data.score,
+      url: `https://reddit.com${c.data.permalink}`,
+    }));
+}
+
+function _pickCardFromSearchResults(results, searchQuery, subredditFilter) {
+  const candidates = [];
+
+  for (const result of results) {
+    const url = typeof result?.url === "string" ? result.url : "";
+    const parsed = parseRedditPostUrl(url);
+    if (!parsed) continue;
+    if (subredditFilter && parsed.subreddit.toLowerCase() !== subredditFilter.toLowerCase()) {
+      continue;
+    }
+
+    const title = String(result.title || "").trim();
+    const snippet = String(result.snippet || "").trim();
+    const score = scoreTextMatch(searchQuery, title, snippet);
+    candidates.push({ parsed, title, snippet, score, url: parsed.postUrl });
+  }
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => b.score - a.score);
+  const best = candidates[0];
+  const postTitle = best.title.length > 100 ? `${best.title.slice(0, 97)}…` : best.title;
+
+  const comments = [];
+  if (best.snippet) {
+    comments.push({
+      author: "preview",
+      body: best.snippet.length > 180 ? `${best.snippet.slice(0, 177)}…` : best.snippet,
+      score: null,
+      url: best.url,
+      preview: true,
+    });
+  }
+
+  return {
+    subreddit: best.parsed.subredditPrefixed,
+    postTitle,
+    postUrl: best.url,
+    postScore: null,
+    numComments: null,
+    comments,
+  };
+}
+
+function _formatCount(value) {
+  if (value == null || !Number.isFinite(value)) return "—";
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  return String(value);
+}
+
+function _renderCard(card) {
+  if (!template) return "";
+
+  const postTitle =
+    card.postTitle.length > 100 ? `${card.postTitle.slice(0, 97)}…` : card.postTitle;
+  const comments = Array.isArray(card.comments) ? card.comments : [];
+
+  const commentCards = comments
+    .map((c) => {
+      const scoreStr = c.score == null ? "" : `▲ ${_formatCount(c.score)}`;
+      const authorLabel = c.preview ? "Search preview" : `u/${escapeHtml(c.author)}`;
+      return `
+          <a class="rslot-comment${c.preview ? " rslot-comment-preview" : ""}" href="${c.url}" target="_blank" rel="noopener noreferrer">
+            <div class="rslot-comment-header">
+              <span class="rslot-comment-author">${authorLabel}</span>
+              ${scoreStr ? `<span class="rslot-comment-score">${scoreStr}</span>` : ""}
+            </div>
+            <p class="rslot-comment-body">${escapeHtml(c.body)}</p>
+          </a>`;
+    })
+    .join("");
+
+  const gridCols = comments.length <= 1 ? "1fr" : "1fr 1fr";
+
+  return template
+    .replace("{{subreddit}}", escapeHtml(card.subreddit))
+    .replace("{{post_title}}", escapeHtml(postTitle))
+    .replace("{{post_url}}", card.postUrl)
+    .replace("{{post_score}}", _formatCount(card.postScore))
+    .replace("{{post_comments}}", _formatCount(card.numComments))
+    .replace("{{post_subreddit}}", escapeHtml(card.subreddit))
+    .replace("{{comment_cards}}", commentCards)
+    .replace("{{grid_cols}}", gridCols);
+}
 
 function escapeHtml(str) {
   if (typeof str !== "string") return "";

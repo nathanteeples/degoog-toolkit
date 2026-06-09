@@ -22,14 +22,14 @@
       "path": "plugins/calculator",
       "name": "Calculator",
       "description": "Scientific calculator with safe expression parsing, interactive keypad, and local canvas graphing for x expressions.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.13",
+      "version": "1.0.14",
       "type": "slot"
     },
     {
       "path": "plugins/unit-slot",
       "name": "Unit Converter",
       "description": "Unit converter for length, mass, volume, temperature, area, and speed. Supports fuzzy natural queries like '25.4oz toml' or '!unit 100c f'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.2.31",
+      "version": "1.2.32",
       "type": "slot"
     },
     {
@@ -134,7 +134,7 @@
       "path": "plugins/reddit-slot",
       "name": "Reddit",
       "description": "Shows the top Reddit post and top comments above search results.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "type": "slot"
     },
     {

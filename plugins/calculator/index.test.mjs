@@ -12,3 +12,11 @@ test("loads the parser and executes calculator queries", async () => {
   const output = await slot.execute("2+2", { lang: "en-US" });
   assert.match(output.html, /data-result="4"/);
 });
+
+test("at-a-glance position only renders on glance API path", async () => {
+  slot.configure({ slotPosition: "at-a-glance" });
+  const main = await slot.execute("2+2", {});
+  assert.equal(main.html, "");
+  const glance = await slot.execute("2+2", { results: [] });
+  assert.match(glance.html, /data-result="4"/);
+});
