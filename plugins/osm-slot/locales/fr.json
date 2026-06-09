@@ -25,7 +25,7 @@
       },
       "defaultRadius": {
         "label": "Rayon de recherche",
-        "description": "Rayon de recherche en milles (miles)."
+        "description": "Distance maximale pour les résultats à proximité. La valeur par défaut est de 10 miles."
       },
       "resultsCount": {
         "label": "Nombre de résultats",

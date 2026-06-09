@@ -11,7 +11,7 @@ function t(key, context) {
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.6.4";
+const PLUGIN_VERSION = "4.6.5";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -83,7 +83,7 @@ function _configure(s) {
     defaultLon: s?.defaultLon || "",
     defaultLocationLabel: s?.defaultLocationLabel || "Home",
     useBrowserGeolocation: s?.useBrowserGeolocation === true || s?.useBrowserGeolocation === "true",
-    defaultRadius: s?.defaultRadius || "25",
+    defaultRadius: s?.defaultRadius || "10",
     resultsCount: s?.resultsCount || "5",
     distanceUnit: s?.distanceUnit || "miles",
     customTileUrl: s?.customTileUrl || "",
@@ -154,9 +154,9 @@ export const slot = {
       key: "defaultRadius",
       label: "Search radius",
       type: "select",
-      options: ["5", "10", "25", "50"],
-      default: "25",
-      description: "Search radius in miles.",
+      options: ["2", "5", "10", "15", "25", "50"],
+      default: "10",
+      description: "Maximum distance for nearby results. Defaults to 10 miles.",
     },
     {
       key: "resultsCount",
@@ -615,7 +615,7 @@ function _hereGeocodeLabel(item, fallback) {
 const POI_HINT_RADIUS_MILES = 5;
 
 function _effectiveSearchRadiusMiles(plan) {
-  const configured = parseInt(_settings.defaultRadius || "25", 10);
+  const configured = parseInt(_settings.defaultRadius || "10", 10);
   if (plan?.placeHint && _looksLikePoiGeocodeHint(plan.placeHint)) {
     return Math.min(configured, POI_HINT_RADIUS_MILES);
   }
@@ -1702,7 +1702,7 @@ function _classifyPlaceQuery(rawQuery) {
   return {
     mode: intent.mode,
     confidence:
-      intent.mode === "global" || (intent.kind === "business" && intent.confidence === "verify")
+      intent.mode === "global" || intent.kind === "business"
         ? "name"
         : "any",
     text: intent.searchText,
@@ -1881,6 +1881,9 @@ function _nameMatchScore(query, name) {
 
 function _isConfidentNameMatchForPlan(plan, query, place, radiusMeters) {
   if (!place) return false;
+  if (_isShortSingleTokenQuery(query)) {
+    return _hasExactShortNameOrBrandMatch(query, place);
+  }
   const nameScore = _nameMatchScore(query, place.name);
   const brandScore = place.brandName ? _nameMatchScore(query, place.brandName) : 0;
   const score = Math.max(nameScore, brandScore);
@@ -1893,6 +1896,9 @@ function _isConfidentNameMatchForPlan(plan, query, place, radiusMeters) {
 // be nearby and cover most meaningful query tokens.
 function _isConfidentNameMatch(query, place, radiusMeters) {
   if (!place) return false;
+  if (_isShortSingleTokenQuery(query)) {
+    return _hasExactShortNameOrBrandMatch(query, place);
+  }
   const nameScore = _nameMatchScore(query, place.name);
   const brandScore = place.brandName ? _nameMatchScore(query, place.brandName) : 0;
   const score = Math.max(nameScore, brandScore);
@@ -1911,6 +1917,25 @@ function _isConfidentNameMatch(query, place, radiusMeters) {
     return true;
   }
   return false;
+}
+
+function _isShortSingleTokenQuery(query) {
+  const normalized = _normalizeMatchText(query);
+  return Boolean(normalized && !normalized.includes(" ") && normalized.length <= 5);
+}
+
+function _hasExactShortNameOrBrandMatch(query, place) {
+  const normalizedQuery = _normalizeMatchText(query);
+  if (!normalizedQuery) return false;
+  return [place?.name, place?.brandName]
+    .filter(Boolean)
+    .some((name) => {
+      const normalizedName = _normalizeMatchText(name);
+      return (
+        normalizedName === normalizedQuery ||
+        normalizedName.startsWith(`${normalizedQuery} `)
+      );
+    });
 }
 
 function _meaningfulQueryTokenCoverage(query, candidateNames) {

@@ -25,7 +25,7 @@
       },
       "defaultRadius": {
         "label": "Search radius",
-        "description": "Search radius in miles."
+        "description": "Maximum distance for nearby results. Defaults to 10 miles."
       },
       "resultsCount": {
         "label": "Results count",

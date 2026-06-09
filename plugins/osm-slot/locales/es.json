@@ -25,7 +25,7 @@
       },
       "defaultRadius": {
         "label": "Radio de búsqueda",
-        "description": "Radio de búsqueda en millas."
+        "description": "Distancia máxima para resultados cercanos. El valor predeterminado es 10 millas."
       },
       "resultsCount": {
         "label": "Cantidad de resultados",
