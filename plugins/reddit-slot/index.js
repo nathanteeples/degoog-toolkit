@@ -7,7 +7,7 @@ let showMode = "keyword";
 let pluginFetch = (...args) => fetch(...args);
 
 /** Reddit requires a descriptive User-Agent; bare bot names often get 403. */
-const REDDIT_USER_AGENT = "web:degoog-toolkit:v1.0.13 (by /u/SoPat712)";
+const REDDIT_USER_AGENT = "web:degoog-toolkit:v1.0.14 (by /u/SoPat712)";
 
 function isUtilityQuery(q) {
   return /\b(weather|forecast|погода|метео|temperature|humidity|wind|rain|snow|translate|translation|convert|currency|calculator|calculate|math|stopwatch|timer|countdown|coinflip|coin-flip|yesno|yes-no|tip|tips|gratuity|gratuities|stocks?)\b/i.test(q);
@@ -261,7 +261,7 @@ function _renderErrorCard(status, searchQuery) {
     <div class="rslot-error">
       <span class="rslot-error-code">${escapeHtml(statusCode)}</span>
       <p class="rslot-error-title">Reddit blocked this request</p>
-      <p class="rslot-error-body">Reddit's public JSON API returned HTTP ${escapeHtml(statusCode)} from this server. That usually means datacenter or VPS IPs are blocked — not a missing API key.</p>
+      <p class="rslot-error-body">Reddit's public JSON API returned HTTP ${escapeHtml(statusCode)} from this server.</p>
       <a class="rslot-error-link" href="${searchHref}" target="_blank" rel="noopener noreferrer">Search “${queryLabel}” on reddit.com</a>
     </div>
   </div>

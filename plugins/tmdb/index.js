@@ -1117,6 +1117,7 @@ const _buildRatingsHtml = (opts, ctx) => {
     voteAverage,
     voteCount,
     imdb,
+    imdbHref,
     rottenTomatoes,
     letterboxdHref,
     jellyfinHref,
@@ -1146,12 +1147,18 @@ const _buildRatingsHtml = (opts, ctx) => {
       const scoreInner = m
         ? `<span class="tmdb-rating-score">${_esc(m[1])}</span><span class="tmdb-rating-unit">\u202f/10</span>`
         : `<span class="tmdb-rating-score">${_esc(rawImdb)}</span>`;
-      parts.push(
-        `<div class="tmdb-rating-item">` +
-          `<span class="tmdb-rating-badge tmdb-rating-badge--imdb">IMDb</span>` +
-          scoreInner +
-          `</div>`,
-      );
+      const imdbInner =
+        `<span class="tmdb-rating-badge tmdb-rating-badge--imdb">IMDb</span>` +
+        scoreInner;
+      if (imdbHref) {
+        parts.push(
+          `<a href="${_esc(imdbHref)}" target="_blank" rel="noopener" class="tmdb-rating-item tmdb-rating-item--link">` +
+            imdbInner +
+            `</a>`,
+        );
+      } else {
+        parts.push(`<div class="tmdb-rating-item">${imdbInner}</div>`);
+      }
     }
   }
 
@@ -1194,6 +1201,9 @@ const _buildRatingsHtml = (opts, ctx) => {
   return `<div class="tmdb-ratings">${parts.join("")}</div>`;
 };
 
+const _imdbHref = (imdbId) =>
+  imdbId ? `https://www.imdb.com/title/${imdbId}/` : null;
+
 const _renderMovie = (
   details,
   credits,
@@ -1201,6 +1211,7 @@ const _renderMovie = (
   jellyfinItem,
   omdbRatings,
   trailerVideo,
+  imdbId,
   ctx,
 ) => {
   const title = _esc(details.title || details.name || "");
@@ -1242,6 +1253,7 @@ const _renderMovie = (
       voteAverage: details.vote_average,
       voteCount: details.vote_count,
       imdb: omdbRatings?.imdb,
+      imdbHref: _imdbHref(imdbId),
       rottenTomatoes: omdbRatings?.rottenTomatoes,
       letterboxdHref: `https://letterboxd.com/tmdb/${details.id}/`,
       jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
@@ -1305,7 +1317,7 @@ const _renderMovie = (
   );
 };
 
-const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, ctx) => {
+const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, imdbId, ctx) => {
   const name = _esc(details.name || "");
   const year = _esc((details.first_air_date || "").slice(0, 4));
   const overview = details.overview || "";
@@ -1348,6 +1360,7 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, ctx) => 
       voteAverage: details.vote_average,
       voteCount: details.vote_count,
       imdb: omdbRatings?.imdb,
+      imdbHref: _imdbHref(imdbId),
       rottenTomatoes: omdbRatings?.rottenTomatoes,
       letterboxdHref: null,
       jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
@@ -1464,6 +1477,7 @@ const _buildMoviePanel = async (id, ctx) => {
       jellyfinItem,
       omdbRatings,
       _pickTrailerVideo(videos),
+      ext?.imdb_id,
       ctx,
     ),
   };
@@ -1514,6 +1528,7 @@ const _buildTvPanel = async (id, ctx) => {
       images,
       jellyfinItem,
       omdbRatings,
+      ext?.imdb_id,
       ctx,
     ),
   };
