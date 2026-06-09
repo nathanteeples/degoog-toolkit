@@ -3,78 +3,86 @@ import test from "node:test";
 import { analyzePlaceIntent } from "./intent-engine.mjs";
 
 const positiveFixtures = [
-  ["Starbucks", { kind: "business", searchText: "Starbucks" }],
-  ["Walmart", { kind: "business", searchText: "Walmart" }],
-  ["Target", { kind: "business", searchText: "Target" }],
-  ["Kohls near me", { kind: "business", searchText: "Kohls", confidence: "high" }],
-  ["HomeGoods", { kind: "business", searchText: "HomeGoods" }],
-  ["Dollar General", { kind: "business", searchText: "Dollar General" }],
-  ["Tim Hortons", { kind: "business", searchText: "Tim Hortons" }],
-  ["Noodles and Company", { kind: "business", searchText: "Noodles and Company" }],
-  ["Dunkin", { kind: "business", searchText: "Dunkin" }],
-  ["Joe's Pizza", { kind: "business", searchText: "Joe's Pizza" }],
-  ["cafes around Chicago", { kind: "category", searchText: "cafes", locationText: "Chicago" }],
-  ["directions to Eiffel Tower", { kind: "landmark", searchText: "Eiffel Tower", mode: "global" }],
-  ["show me museums close to downtown Boston", {
+  ["Example Coffee", { kind: "business", searchText: "Example Coffee" }],
+  ["Sample Outlet", { kind: "business", searchText: "Sample Outlet" }],
+  ["Demo Outlet", { kind: "business", searchText: "Demo Outlet" }],
+  ["Acme Shop near me", { kind: "business", searchText: "Acme Shop", confidence: "high" }],
+  ["ExampleGoods", { kind: "business", searchText: "ExampleGoods" }],
+  ["Value General", { kind: "business", searchText: "Value General" }],
+  ["Sample Cafe", { kind: "business", searchText: "Sample Cafe" }],
+  ["Noodles and Partners", { kind: "business", searchText: "Noodles and Partners" }],
+  ["Morning Brew", { kind: "business", searchText: "Morning Brew" }],
+  ["Alex's Pizza", { kind: "business", searchText: "Alex's Pizza" }],
+  ["cafes around Example City", {
+    kind: "category",
+    searchText: "cafes",
+    locationText: "Example City",
+  }],
+  ["directions to Example Tower", {
+    kind: "landmark",
+    searchText: "Example Tower",
+    mode: "global",
+  }],
+  ["show me museums close to downtown Sample City", {
     kind: "category",
     searchText: "museums",
-    locationText: "downtown Boston",
+    locationText: "downtown Sample City",
   }],
-  ["Starbucks near Chicago", {
+  ["Example Coffee near Sample City", {
     kind: "business",
-    searchText: "Starbucks",
-    locationText: "Chicago",
+    searchText: "Example Coffee",
+    locationText: "Sample City",
   }],
-  ["Tim Hortons near Broadway", {
+  ["Sample Cafe near Main Avenue", {
     kind: "business",
-    searchText: "Tim Hortons",
-    locationText: "Broadway",
+    searchText: "Sample Cafe",
+    locationText: "Main Avenue",
   }],
-  ["where ulta", { kind: "business", searchText: "ulta", confidence: "high" }],
-  ["kung fu tea near chicago", {
+  ["where acme", { kind: "business", searchText: "acme", confidence: "high" }],
+  ["jade tea near example city", {
     kind: "business",
-    searchText: "kung fu tea",
-    locationText: "chicago",
+    searchText: "jade tea",
+    locationText: "example city",
   }],
-  ["lil sweet treat near rockefeller center", {
+  ["sweet treat near central plaza", {
     kind: "business",
-    searchText: "lil sweet treat",
-    locationText: "rockefeller center",
+    searchText: "sweet treat",
+    locationText: "central plaza",
   }],
-  ["rockefeller center", {
+  ["central plaza", {
     kind: "landmark",
-    searchText: "rockefeller center",
+    searchText: "central plaza",
     mode: "global",
   }],
-  ["kung fu tea", { kind: "business", searchText: "kung fu tea" }],
-  ["ulta near me", { kind: "business", searchText: "ulta", confidence: "high" }],
-  ["where is ulta", { kind: "business", searchText: "ulta", confidence: "high" }],
-  ["where is eiffel tower", {
+  ["jade tea", { kind: "business", searchText: "jade tea" }],
+  ["acme near me", { kind: "business", searchText: "acme", confidence: "high" }],
+  ["where is acme", { kind: "business", searchText: "acme", confidence: "high" }],
+  ["where is example tower", {
     kind: "landmark",
-    searchText: "eiffel tower",
+    searchText: "example tower",
     mode: "global",
   }],
-  ["where is deer path family ymca", {
+  ["where is example family club", {
     kind: "business",
-    searchText: "deer path family ymca",
+    searchText: "example family club",
   }],
-  ["where is deer path ymca", {
+  ["where is example club", {
     kind: "business",
-    searchText: "deer path ymca",
+    searchText: "example club",
   }],
-  ["rockefeller plaza", {
+  ["example plaza", {
     kind: "landmark",
-    searchText: "rockefeller plaza",
+    searchText: "example plaza",
     mode: "global",
   }],
-  ["Tacowala", { kind: "business", searchText: "Tacowala" }],
-  ["RS Pizza Bites", { kind: "business", searchText: "RS Pizza Bites" }],
-  ["IHOP", { kind: "business", searchText: "IHOP" }],
+  ["Acme Tacos", { kind: "business", searchText: "Acme Tacos" }],
+  ["Sample Pizza Bites", { kind: "business", searchText: "Sample Pizza Bites" }],
+  ["ABCD", { kind: "business", searchText: "ABCD" }],
   ["doctor near me", { kind: "category", searchText: "doctor", confidence: "high" }],
   ["pizza open near me", { kind: "category", searchText: "pizza", confidence: "high" }],
-  ["chipotle", { kind: "business", searchText: "chipotle" }],
-  ["pancheros", { kind: "business", searchText: "pancheros" }],
-  ["starbucks", { kind: "business", searchText: "starbucks" }],
+  ["acme foods", { kind: "business", searchText: "acme foods" }],
+  ["sample kitchen", { kind: "business", searchText: "sample kitchen" }],
+  ["example coffee", { kind: "business", searchText: "example coffee" }],
 ];
 
 for (const [query, expected] of positiveFixtures) {
@@ -89,10 +97,10 @@ for (const [query, expected] of positiveFixtures) {
 }
 
 for (const query of [
-  "time in Tokyo",
+  "time in Example City",
   "pizza calories and nutrition",
   "where to buy ketchup",
-  "weather Chicago",
+  "weather Example City",
   "react hooks",
   "python list comprehension",
   "play minesweeper",
@@ -100,16 +108,16 @@ for (const query of [
   "concrete crack near pool",
   "crack near pool",
   "dog near fence",
-  "concrete crack near Chicago",
-  "HomeGoods near pool",
+  "concrete crack near Example City",
+  "ExampleGoods near pool",
   "restaurants near pool",
   "coffee near pool",
   "crack in concrete near pool",
   "speedtest",
   "speed test",
-  "time in japan",
-  "what time in tokyo",
-  "weather in rome",
+  "time in Test Region",
+  "what time in Example City",
+  "weather in Sample Town",
   "until christmas",
   "stopwatch",
   "countdown",

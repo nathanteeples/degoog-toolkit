@@ -3,15 +3,18 @@ import test from "node:test";
 import slot, { testNameResultRelevance } from "./index.js";
 
 const MILE = 1609.34;
+const TEST_LAT = "0";
+const TEST_LON = "0";
+const TEST_LOCATION_LABEL = "Test Center";
 
 test("rejects distant partial chain matches", () => {
   assert.equal(
     testNameResultRelevance(
-      "jack and coke",
+      "alpha and beta",
       {
-        name: "Janie and Jack",
-        brandName: "Janie and Jack",
-        ontologyId: "chain:example",
+        name: "Alpha and Company",
+        brandName: "Alpha and Company",
+        ontologyId: "chain:alpha-company",
         distanceMeters: 11.4 * MILE,
       },
       25 * MILE,
@@ -23,11 +26,11 @@ test("rejects distant partial chain matches", () => {
 test("rejects nearby partial matches missing meaningful query tokens", () => {
   assert.equal(
     testNameResultRelevance(
-      "jack and coke",
+      "alpha and beta",
       {
-        name: "Janie and Jack",
-        brandName: "Janie and Jack",
-        ontologyId: "chain:example",
+        name: "Alpha and Company",
+        brandName: "Alpha and Company",
+        ontologyId: "chain:alpha-company",
         distanceMeters: 2 * MILE,
       },
       25 * MILE,
@@ -39,9 +42,9 @@ test("rejects nearby partial matches missing meaningful query tokens", () => {
 test("keeps strong exact business matches throughout the radius", () => {
   assert.equal(
     testNameResultRelevance(
-      "Walmart",
+      "Example Market",
       {
-        name: "Walmart",
+        name: "Example Market",
         brandName: null,
         ontologyId: null,
         distanceMeters: 14 * MILE,
@@ -55,11 +58,11 @@ test("keeps strong exact business matches throughout the radius", () => {
 test("allows nearby branded fuzzy matches with full token coverage", () => {
   assert.equal(
     testNameResultRelevance(
-      "Home Goods",
+      "Sample Goods",
       {
-        name: "HomeGoods",
-        brandName: "HomeGoods",
-        ontologyId: "chain:homegoods",
+        name: "SampleGoods",
+        brandName: "SampleGoods",
+        ontologyId: "chain:sample-goods",
         distanceMeters: 3.8 * MILE,
       },
       25 * MILE,
@@ -86,9 +89,9 @@ test("requires whole-token matches for short bare business names", () => {
     testNameResultRelevance(
       "goog",
       {
-        name: "Good Guy Vapes",
-        brandName: "Good Guy Vapes",
-        ontologyId: "chain:good-guy-vapes",
+        name: "Good Goods Market",
+        brandName: "Good Goods Market",
+        ontologyId: "chain:good-goods-market",
         distanceMeters: 2.8 * MILE,
       },
       25 * MILE,
@@ -97,11 +100,11 @@ test("requires whole-token matches for short bare business names", () => {
   );
   assert.equal(
     testNameResultRelevance(
-      "IHOP",
+      "ABCD",
       {
-        name: "IHOP",
-        brandName: "IHOP",
-        ontologyId: "chain:ihop",
+        name: "ABCD",
+        brandName: "ABCD",
+        ontologyId: "chain:abcd",
         distanceMeters: 4 * MILE,
       },
       10 * MILE,
@@ -110,11 +113,11 @@ test("requires whole-token matches for short bare business names", () => {
   );
   assert.equal(
     testNameResultRelevance(
-      "ulta",
+      "acme",
       {
-        name: "Ulta Beauty",
-        brandName: "Ulta Beauty",
-        ontologyId: "chain:ulta-beauty",
+        name: "Acme Market",
+        brandName: "Acme Market",
+        ontologyId: "chain:acme-market",
         distanceMeters: 3 * MILE,
       },
       10 * MILE,
@@ -134,16 +137,16 @@ test("defaults nearby searches to a 10 mile radius", () => {
 test("uses the 10 mile radius when no saved radius exists", async () => {
   slot.configure({
     hereApiKey: "test-key",
-    defaultLat: "40.494628",
-    defaultLon: "-74.799765",
-    defaultLocationLabel: "Home",
+    defaultLat: TEST_LAT,
+    defaultLon: TEST_LON,
+    defaultLocationLabel: TEST_LOCATION_LABEL,
     resultsCount: "5",
     useOsmGeocoder: false,
     useBrowserGeolocation: false,
   });
 
   let requestedRadius = "";
-  const result = await slot.execute("Starbucks", {
+  const result = await slot.execute("Example Coffee near me", {
     fetch: async (url) => {
       requestedRadius = new URL(url).searchParams.get("in") || "";
       return {
@@ -162,9 +165,9 @@ test("uses the 10 mile radius when no saved radius exists", async () => {
 test("renders empty HTML when HERE only returns distant partial matches", async () => {
   slot.configure({
     hereApiKey: "test-key",
-    defaultLat: "40.494628",
-    defaultLon: "-74.799765",
-    defaultLocationLabel: "Home",
+    defaultLat: TEST_LAT,
+    defaultLon: TEST_LON,
+    defaultLocationLabel: TEST_LOCATION_LABEL,
     defaultRadius: "25",
     resultsCount: "5",
     useOsmGeocoder: false,
@@ -173,24 +176,24 @@ test("renders empty HTML when HERE only returns distant partial matches", async 
 
   const hereItems = [
     {
-      id: "janie-bridgewater",
-      title: "Janie and Jack",
-      position: { lat: 40.5864, lng: -74.61871 },
+      id: "alpha-company-west",
+      title: "Alpha and Company",
+      position: { lat: 0.1, lng: 0.1 },
       distance: 11.4 * MILE,
-      chains: [{ id: "chain:janie-and-jack", name: "Janie and Jack" }],
-      address: { label: "400 Commons Way, Bridgewater, NJ" },
+      chains: [{ id: "chain:alpha-company", name: "Alpha and Company" }],
+      address: { label: "100 Example Street, Example City" },
     },
     {
-      id: "janie-chicago",
-      title: "Janie and Jack",
-      position: { lat: 40.31497, lng: -74.66039 },
+      id: "alpha-company-east",
+      title: "Alpha and Company",
+      position: { lat: -0.1, lng: -0.1 },
       distance: 14.4 * MILE,
-      chains: [{ id: "chain:janie-and-jack", name: "Janie and Jack" }],
-      address: { label: "3535 N Broadway, Chicago, IL" },
+      chains: [{ id: "chain:alpha-company", name: "Alpha and Company" }],
+      address: { label: "200 Sample Avenue, Sample Town" },
     },
   ];
 
-  const result = await slot.execute("jack and coke", {
+  const result = await slot.execute("alpha and beta", {
     fetch: async () => ({
       ok: true,
       status: 200,
@@ -206,31 +209,31 @@ for (const [query, item] of [
   [
     "aapl",
     {
-      id: "aap-piscataway",
+      id: "aap-example",
       title: "Aap",
-      position: { lat: 40.55, lng: -74.45 },
+      position: { lat: 0.2, lng: 0.2 },
       distance: 18.8 * MILE,
-      address: { label: "Piscataway, NJ 08854-3839" },
+      address: { label: "300 Placeholder Road, Example City" },
     },
   ],
   [
     "goog",
     {
-      id: "good-guy-vapes",
-      title: "Good Guy Vapes",
-      position: { lat: 40.51, lng: -74.82 },
+      id: "good-goods-market",
+      title: "Good Goods Market",
+      position: { lat: 0.03, lng: 0.03 },
       distance: 2.8 * MILE,
-      chains: [{ id: "chain:good-guy-vapes", name: "Good Guy Vapes" }],
-      address: { label: "Flemington, NJ 08822-1600" },
+      chains: [{ id: "chain:good-goods-market", name: "Good Goods Market" }],
+      address: { label: "400 Test Boulevard, Sample Town" },
     },
   ],
 ]) {
   test(`does not render unrelated HERE result for ${query}`, async () => {
     slot.configure({
       hereApiKey: "test-key",
-      defaultLat: "40.494628",
-      defaultLon: "-74.799765",
-      defaultLocationLabel: "Home",
+      defaultLat: TEST_LAT,
+      defaultLon: TEST_LON,
+      defaultLocationLabel: TEST_LOCATION_LABEL,
       defaultRadius: "25",
       resultsCount: "5",
       useOsmGeocoder: false,

@@ -23,8 +23,8 @@ test("geocodes and caches a matching feature", async () => {
     fetch: async (url, init) => {
       calls.push({ url, init });
       return response([{
-        geometry: { coordinates: [-74.6597, 40.3497] },
-        properties: { geocoding: { label: "Chicago, Illinois, United States", type: "city" } },
+        geometry: { coordinates: [0.25, 0.5] },
+        properties: { geocoding: { label: "Example City, Test Region", type: "city" } },
       }]);
     },
     cache: {
@@ -36,8 +36,8 @@ test("geocodes and caches a matching feature", async () => {
     },
   });
 
-  const first = await geocoder.geocode("Chicago");
-  const second = await geocoder.geocode("Chicago");
+  const first = await geocoder.geocode("Example City");
+  const second = await geocoder.geocode("Example City");
   assert.equal(first.source, "nominatim");
   assert.equal(second.cached, true);
   assert.equal(calls.length, 1);
@@ -67,17 +67,17 @@ test("serializes requests and enforces one second spacing", async () => {
       clock += ms;
     },
     fetch: async (url) => response([{
-      geometry: { coordinates: [-74, 40] },
+      geometry: { coordinates: [0.25, 0.5] },
       properties: {
         geocoding: {
-          label: `${new URL(url).searchParams.get("q")}, New Jersey`,
+          label: `${new URL(url).searchParams.get("q")}, Test Region`,
           type: "city",
         },
       },
     }]),
   });
 
-  await Promise.all([geocoder.geocode("Chicago"), geocoder.geocode("Evanston")]);
+  await Promise.all([geocoder.geocode("Example City"), geocoder.geocode("Sample Town")]);
   assert.deepEqual(sleeps, [1000]);
 });
 
@@ -87,6 +87,5 @@ test("returns null on provider failure", async () => {
       throw new Error("offline");
     },
   });
-  assert.equal(await geocoder.geocode("Chicago"), null);
+  assert.equal(await geocoder.geocode("Example City"), null);
 });
-

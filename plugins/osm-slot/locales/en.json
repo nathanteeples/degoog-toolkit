@@ -17,7 +17,7 @@
       },
       "defaultLocationLabel": {
         "label": "Default location label",
-        "description": "Label shown in the card header, e.g. 'Home' or 'Chicago, IL'."
+        "description": "Label shown in the card header, e.g. 'Home' or 'Example City'."
       },
       "useBrowserGeolocation": {
         "label": "Ask browser for precise location",

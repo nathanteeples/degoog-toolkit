@@ -17,7 +17,7 @@
       },
       "defaultLocationLabel": {
         "label": "Etiqueta de ubicación predeterminada",
-        "description": "Etiqueta que se muestra en el encabezado de la tarjeta, por ejemplo, 'Inicio' o 'Chicago, IL'."
+        "description": "Etiqueta que se muestra en el encabezado de la tarjeta, por ejemplo, 'Inicio' o 'Ciudad de ejemplo'."
       },
       "useBrowserGeolocation": {
         "label": "Solicitar ubicación precisa al navegador",

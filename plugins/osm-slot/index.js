@@ -11,7 +11,7 @@ function t(key, context) {
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.6.5";
+const PLUGIN_VERSION = "4.6.6";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -117,7 +117,7 @@ export const slot = {
       required: true,
       secret: true,
       description:
-        "Required. Powers place search (/discover, /browse) and city geocoding for queries like 'near Chicago' (/geocode). Free tier includes generous monthly Geocoding & Search requests — get a key at developer.here.com.",
+        "Required. Powers place search (/discover, /browse) and city geocoding for queries like 'near Example City' (/geocode). Free tier includes generous monthly Geocoding & Search requests — get a key at developer.here.com.",
     },
     {
       key: "defaultLat",
@@ -140,7 +140,7 @@ export const slot = {
       label: "Default location label",
       type: "text",
       default: "Home",
-      description: "Label shown in the card header, e.g. 'Home/Work/Chicago, IL'.",
+      description: "Label shown in the card header, e.g. 'Home/Work/Example City'.",
     },
     {
       key: "useBrowserGeolocation",
@@ -358,7 +358,7 @@ export const routes = [
 
         // Coordinate resolution, in priority order:
         //   1. Precise browser coords from "Use my location".
-        //   2. Explicit "near Chicago" (etc.) geocoded via HERE Geocoding API.
+        //   2. Explicit "near Example City" geocoded via HERE Geocoding API.
         //   3. Server-side IP geolocation.
         //   4. Configured default location.
         let latNum = parseFloat(body.lat);
@@ -1059,7 +1059,7 @@ async function _resolveSearchLocation(plan, doFetch, apiStatus) {
 
 /**
  * HERE discover often misses YMCA branches unless "Family" appears in the query
- * (e.g. "deer path ymca" -> Deer Path Park; "deer path family ymca" -> YMCA).
+ * (e.g. "example family club" should outrank "Example Park").
  * Only expands when YMCA is paired with other name tokens — bare "ymca" stays put.
  */
 function _expandHereQuery(query) {
@@ -1814,7 +1814,7 @@ function _alignTokenScore(qTokens, nTokens) {
 }
 
 // 0..1 fuzzy similarity between a query and a place name — token alignment plus
-// character-level Levenshtein so "deer path ymca" beats "deer path park".
+// character-level Levenshtein so the intended business beats a partial place match.
 function _fuzzyNameMatchScore(query, name) {
   const q = _normalizeMatchText(query);
   const n = _normalizeMatchText(name);
