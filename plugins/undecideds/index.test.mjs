@@ -13,12 +13,10 @@ test("keeps dice trigger word boundaries", () => {
   assert.equal(slot.trigger("roll d20foo"), false);
 });
 
-test("does not classify 120-sided dice as d20", async () => {
-  const output = await slot.execute("120 sided dice", {
-    tab: "all",
-    results: [],
-  });
-
-  assert.match(output.html, /data-mode="dice"/);
-  assert.match(output.html, /data-die-type="d6"/);
+test("rejects unsupported and incidental dice text", () => {
+  assert.equal(slot.trigger("120 sided dice"), false);
+  assert.equal(slot.trigger("roll d8"), false);
+  assert.equal(slot.trigger("price of d6 stock"), false);
+  assert.equal(slot.trigger("roll a 6 sided die"), true);
+  assert.equal(slot.trigger("roll a 20 sided die"), true);
 });

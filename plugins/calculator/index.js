@@ -1,4 +1,4 @@
-import exprEvalModule from "./vendor/expr-eval.min.js";
+import exprEvalModule from "./vendor/expr-eval.min.cjs";
 
 const exprEval = exprEvalModule?.Parser
   ? exprEvalModule
@@ -387,7 +387,7 @@ export const slot = {
   async init(ctx) {
     if (ctx?.readFile) {
       templateHtml = await ctx.readFile("template.html");
-      parserBundle = await ctx.readFile("vendor/expr-eval.min.js");
+      parserBundle = await ctx.readFile("vendor/expr-eval.min.cjs");
     } else {
       templateHtml = ctx?.template || templateHtml;
     }
@@ -401,7 +401,7 @@ export const slot = {
     return calcEnabled && shouldTrigger(query);
   },
 
-  async execute(query) {
+  async execute(query, context) {
     const intent = getIntent(query);
     const expression = stripEquationPrefix(intent.expression).trim();
 

@@ -2,7 +2,7 @@ let template = "";
 function t(key) {
   return `{{ t:plugin-unit-slot.${key} }}`;
 }
-import convert from "./convert-units.cjs.js";
+import convert from "./convert-units.cjs";
 import {
   hasNumericConversionPattern,
   isInformationalQuestion,
@@ -86,6 +86,8 @@ const UNIT_REGEX = new RegExp(
 );
 
 const COMMAND_PREFIX_RE = /^!(unit|convert|conv)\b/i;
+const CONVERTER_LAUNCHER_RE =
+  /^(?:(?:unit|measurement)\s+convert(?:er|or)|unit\s+conversion|convert\s+units?|conversion\s+calculator)\s*[?!.,;:]*$/i;
 const GLUED_CONNECTORS = ["into", "to", "in"];
 
 const COMPACT_ALIASES = new Map();
@@ -108,6 +110,12 @@ function parseQuery(query) {
     .replace(/(\d)([a-z]+)/gi, "$1 $2");
 
   const explicitCommand = COMMAND_PREFIX_RE.test(q);
+  if (
+    CONVERTER_LAUNCHER_RE.test(q) ||
+    /^!(?:unit|convert|conv)\s*[?!.,;:]*$/i.test(q)
+  ) {
+    return { amount: 1, from: "m", to: "ft", measure: "length" };
+  }
   const hasConversionIntent = explicitCommand || hasNaturalConversionIntent(q);
   if (!explicitCommand && isCountdownDateQuery(q)) return null;
 

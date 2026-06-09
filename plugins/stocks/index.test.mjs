@@ -8,27 +8,27 @@ function yahooFetch(url) {
 
   if (parsed.pathname.endsWith("/v1/finance/search")) {
     const query = parsed.searchParams.get("q") || "";
-    const symbol =
-      query.toLowerCase() === "apple" ? "AAPL" : query.toUpperCase();
-    const quotes =
-      query.toLowerCase() === "aapl"
-        ? [
-            {
-              symbol: "IEWQ.SW",
-              quoteType: "ETF",
-              shortname: "IVZ NASDAQ-100 EW Acc",
-              longname: "AAPL Sep 2026 150.000 put",
-              exchange: "EBS",
-            },
-          ]
-        : [
-            {
-              symbol,
-              quoteType: "EQUITY",
-              shortname: symbol === "AAPL" ? "Apple Inc." : "Alphabet Inc.",
-              exchange: "NMS",
-            },
-          ];
+    const normalized = query.toLowerCase();
+    const quotes = normalized === "alphabet"
+      ? [{
+          symbol: "GOOGL",
+          quoteType: "EQUITY",
+          shortname: "Alphabet Inc.",
+          exchange: "NMS",
+        }]
+      : normalized === "acme robotics"
+        ? [{
+            symbol: "ACMEX.SW",
+            quoteType: "ETF",
+            shortname: "Unrelated Robotics Fund",
+            exchange: "EBS",
+          }]
+        : [{
+            symbol: query.toUpperCase(),
+            quoteType: "EQUITY",
+            shortname: `${query.toUpperCase()} Holdings`,
+            exchange: "NMS",
+          }];
     return Promise.resolve(
       Response.json({
         quotes,
@@ -83,16 +83,52 @@ function yahooFetch(url) {
   throw new Error(`Unexpected URL: ${url}`);
 }
 
-test("renders quotes for explicit stock queries and Yahoo result hints", async () => {
+test("uses matching Yahoo quote results as general instrument evidence", async () => {
   const cases = [
-    ["stock aapl", []],
-    ["aapl stock", []],
-    ["apple stock", []],
-    ["stock apple", []],
-    ["goog", [{ url: "https://finance.yahoo.com/quote/GOOG/" }]],
+    [
+      "aapl stock",
+      "AAPL",
+      [{
+        url: "https://finance.yahoo.com/quote/AAPL/",
+        title: "Apple Inc. (AAPL) Stock Price, News, Quote & History",
+        snippet: "Find the latest Apple Inc. stock quote and company information.",
+      }],
+    ],
+    [
+      "alphabet stock",
+      "GOOG",
+      [{
+        url: "https://finance.yahoo.com/quote/GOOG/",
+        title: "Alphabet Inc. (GOOG) Stock Price, News, Quote & History",
+        snippet: "Find the latest Alphabet Inc. stock quote and company information.",
+      }],
+    ],
+    [
+      "acme robotics stock",
+      "ACME",
+      [
+        {
+          url: "https://finance.yahoo.com/quote/ACME/",
+          title: "Acme Robotics Inc. (ACME) Stock Price, News, Quote & History",
+          snippet: "Find the latest Acme Robotics stock quote and company information.",
+        },
+        {
+          url: "https://finance.yahoo.com/quote/ACMEX.SW/",
+          title: "Acme Robotics Fund (ACMEX.SW)",
+        },
+      ],
+    ],
+    [
+      "goog",
+      "GOOG",
+      [{
+        url: "https://finance.yahoo.com/quote/GOOG/",
+        title: "Alphabet Inc. (GOOG) Stock Price, News, Quote & History",
+      }],
+    ],
   ];
 
-  for (const [query, results] of cases) {
+  for (const [query, expectedSymbol, results] of cases) {
     assert.equal(slot.trigger(query), true);
     const output = await slot.execute(query, {
       tab: "all",
@@ -100,9 +136,33 @@ test("renders quotes for explicit stock queries and Yahoo result hints", async (
       fetch: yahooFetch,
     });
     assert.match(output.html, /stocks-card/);
-    if (query.includes("aapl")) {
-      assert.match(output.html, />AAPL</);
-      assert.doesNotMatch(output.html, /IEWQ\.SW/);
-    }
+    assert.match(output.html, new RegExp(`>${expectedSymbol}<`));
   }
+});
+
+test("does not let an unrelated Yahoo result override an explicit ticker", async () => {
+  const output = await slot.execute("MSFT stock", {
+    tab: "all",
+    results: [{
+      url: "https://finance.yahoo.com/quote/AAPL/",
+      title: "Apple Inc. (AAPL) Stock Price, News, Quote & History",
+    }],
+    fetch: yahooFetch,
+  });
+
+  assert.match(output.html, />MSFT</);
+  assert.doesNotMatch(output.html, />AAPL</);
+});
+
+test("does not treat a partial company-name match as stock evidence", async () => {
+  const output = await slot.execute("app", {
+    tab: "all",
+    results: [{
+      url: "https://finance.yahoo.com/quote/AAPL/",
+      title: "Apple Inc. (AAPL) Stock Price, News, Quote & History",
+    }],
+    fetch: yahooFetch,
+  });
+
+  assert.deepEqual(output, { html: "" });
 });

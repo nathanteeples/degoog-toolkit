@@ -11,7 +11,7 @@ function t(key, context) {
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.6.6";
+const PLUGIN_VERSION = "4.6.7";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -238,6 +238,10 @@ export const slot = {
 
   async execute(query, context) {
     // Defense-in-depth. Never trust trigger alone.
+    if (_shouldYieldToFinanceResult(query, context?.results)) {
+      return { html: "" };
+    }
+
     const plan = _classifyPlaceQuery(query);
     if (!plan) {
       return { html: "" };
@@ -324,6 +328,37 @@ export const slot = {
 };
 
 export default slot;
+
+function _shouldYieldToFinanceResult(query, results) {
+  if (!Array.isArray(results)) return false;
+
+  const normalizedQuery = String(query || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\$/, "")
+    .replace(/[?!.,;:]+$/g, "");
+  if (!/^[a-z][a-z0-9.-]{0,11}$/.test(normalizedQuery)) return false;
+
+  return results.slice(0, 3).some((result) => {
+    try {
+      const url = new URL(String(result?.url || ""));
+      if (url.hostname.toLowerCase().replace(/^www\./, "") !== "finance.yahoo.com") {
+        return false;
+      }
+
+      const parts = url.pathname.split("/").filter(Boolean);
+      const quoteIndex = parts.findIndex(
+        (part) => part.toLowerCase() === "quote",
+      );
+      if (quoteIndex === -1) return false;
+      const symbol = decodeURIComponent(parts[quoteIndex + 1] || "")
+        .toLowerCase();
+      return symbol === normalizedQuery;
+    } catch {
+      return false;
+    }
+  });
+}
 
 /* ------------------------------------------------------------------ */
 /* Routes                                                              */

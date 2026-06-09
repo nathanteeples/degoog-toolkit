@@ -269,6 +269,7 @@ export function isUtilityPluginQuery(query) {
   if (UTILITY_QUERY_RE.test(lower)) return true;
   if (NON_PLACE_IN_LEAD_RE.test(lower)) return true;
   if (TIMEZONE_QUERY_RE.test(lower) && /\bin\b/i.test(lower)) return true;
+  if (hasNumericConversionPattern(lower)) return true;
 
   const tokens = lower.split(/\s+/).filter(Boolean);
   if (tokens.length === 1) {

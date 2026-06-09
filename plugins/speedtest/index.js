@@ -3,7 +3,7 @@ let debugMode = false;
 
 
 const PLUGIN_NAME = "Speedtest";
-const PLUGIN_VERSION = "1.5.18";
+const PLUGIN_VERSION = "1.5.21";
 const PLUGIN_DESCRIPTION =
   "Minimal internet speed test with selectable servers, latency, download-first flow, and a circular gauge.";
 
@@ -14,14 +14,6 @@ const debugModeSetting = {
   default: false,
   description:
     "Show Speedtest debug details for troubleshooting server behavior and measurement output.",
-};
-
-const naturalLanguageSetting = {
-  key: "naturalLanguage",
-  label: "Natural language",
-  type: "toggle",
-  default: true,
-  description: "Allow this command to run when your query matches one of its phrases.",
 };
 
 function escapeHtml(value) {
@@ -58,18 +50,15 @@ function renderCardHtml(context) {
 // keeps Settings to one row.
 //
 // Trigger choice:
-// degoog core owns the built-in `speedtest` trigger and skips later duplicate
-// primary triggers. Use `speed` as the collision-free Store plugin trigger.
-// Natural-language phrases such as "run a speedtest" still route here.
+// This plugin owns `speedtest` when the operator disables degoog's built-in
+// command. Keep `speed` as the guaranteed fallback alias.
 //
 // Natural language:
 //   • `naturalLanguagePhrases` below drives CLIENT-SIDE prefix matching
 //     ("speed test", "run a speedtest", "how fast is internet", ...).
 //     The matched phrase is stripped before `execute()` runs.
 //   • degoog injects its native per-command Natural language setting
-//     because this command declares `naturalLanguagePhrases`. This plugin
-//     declares the same field explicitly so fresh installs default it on;
-//     degoog skips injection when the schema already has this key.
+//     because this command declares `naturalLanguagePhrases`.
 //   • Trailing / mid-query phrases ("my internet speed", "how fast is
 //     my connection today") do NOT fire — those would require a slot,
 //     which would re-introduce the duplicate-row problem.
@@ -86,8 +75,8 @@ const command = {
   name: PLUGIN_NAME,
   description: PLUGIN_DESCRIPTION,
   isClientExposed: true,
-  trigger: "speed",
-  aliases: ["speed-test", "networkspeed", "internetspeed"],
+  trigger: "speedtest",
+  aliases: ["speed", "speed-test", "networkspeed", "internetspeed"],
   naturalLanguagePhrases: [
     "speedtest",
     "speed test",
@@ -116,7 +105,7 @@ const command = {
     "measure my internet",
     "measure internet speed",
   ],
-  settingsSchema: [debugModeSetting, naturalLanguageSetting],
+  settingsSchema: [debugModeSetting],
 
   async init(ctx) {
     await loadTemplate(ctx);

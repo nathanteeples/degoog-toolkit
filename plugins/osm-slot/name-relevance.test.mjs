@@ -252,3 +252,31 @@ for (const [query, item] of [
     assert.deepEqual(result, { html: "" });
   });
 }
+
+test("yields to an exact Yahoo Finance result before place lookup", async () => {
+  slot.configure({
+    hereApiKey: "test-key",
+    defaultLat: TEST_LAT,
+    defaultLon: TEST_LON,
+    defaultLocationLabel: TEST_LOCATION_LABEL,
+    defaultRadius: "10",
+    resultsCount: "5",
+    useOsmGeocoder: false,
+    useBrowserGeolocation: false,
+  });
+
+  let fetchCalled = false;
+  const result = await slot.execute("goog", {
+    results: [{
+      url: "https://finance.yahoo.com/quote/GOOG/",
+      title: "Example Holdings (GOOG) Stock Price",
+    }],
+    fetch: async () => {
+      fetchCalled = true;
+      throw new Error("place lookup should not run");
+    },
+  });
+
+  assert.equal(fetchCalled, false);
+  assert.deepEqual(result, { html: "" });
+});

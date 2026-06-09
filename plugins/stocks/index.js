@@ -214,8 +214,13 @@ export const slot = {
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
 
-    const request =
-      parseStockQuery(query) || parseYahooResultRequest(context?.results);
+    const parsedRequest = parseStockQuery(query);
+    const resultRequest = parseYahooResultRequest(
+      context?.results,
+      query,
+      parsedRequest,
+    );
+    const request = resultRequest || parsedRequest;
     if (!request) return { html: "" };
 
     const doFetch =
@@ -354,17 +359,109 @@ function shouldConsiderResultHints(value) {
   return true;
 }
 
-function parseYahooResultRequest(results) {
+function parseYahooResultRequest(results, query, parsedRequest) {
   if (!Array.isArray(results)) return null;
 
-  for (const result of results.slice(0, 10)) {
+  const rawQuery = String(query || "").trim();
+  const cleanedQuery = cleanupTarget(rawQuery) || rawQuery;
+  const normalizedTarget = normalizeCompanyName(
+    parsedRequest?.target || cleanedQuery,
+  );
+  const querySymbol =
+    parsedRequest?.kind === "symbol"
+      ? parsedRequest.symbol
+      : symbolFromSingleToken(cleanedQuery, {
+          allowLowercase: true,
+          allowAmbiguous: true,
+        });
+  const candidates = [];
+
+  results.slice(0, 10).forEach((result, index) => {
     const symbol = extractYahooFinanceSymbol(result?.url);
-    if (symbol) {
-      return { kind: "symbol", symbol, explicit: false, source: "result" };
-    }
+    if (!symbol) return;
+
+    const score = scoreYahooResultHint({
+      result,
+      index,
+      symbol,
+      querySymbol,
+      normalizedTarget,
+      parsedRequest,
+    });
+    if (score > 0) candidates.push({ symbol, score });
+  });
+
+  candidates.sort((a, b) => b.score - a.score);
+  const best = candidates[0];
+  return best && best.score >= 100
+    ? {
+        kind: "symbol",
+        symbol: best.symbol,
+        explicit: false,
+        source: "result",
+      }
+    : null;
+}
+
+function scoreYahooResultHint({
+  result,
+  index,
+  symbol,
+  querySymbol,
+  normalizedTarget,
+  parsedRequest,
+}) {
+  const normalizedSymbol = String(symbol || "").toUpperCase();
+  const normalizedQuerySymbol = String(querySymbol || "").toUpperCase();
+
+  if (
+    parsedRequest?.kind === "symbol" &&
+    normalizedSymbol !== String(parsedRequest.symbol || "").toUpperCase()
+  ) {
+    return 0;
   }
 
-  return null;
+  const resultText = normalizeCompanyName(
+    [
+      result?.title,
+      result?.snippet,
+      result?.description,
+      result?.content,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+  let score = Math.max(0, 40 - index * 4);
+
+  if (normalizedQuerySymbol && normalizedSymbol === normalizedQuerySymbol) {
+    score += 300;
+  }
+  if (
+    normalizedTarget &&
+    (
+      resultText === normalizedTarget ||
+      containsNormalizedPhrase(resultText, normalizedTarget)
+    )
+  ) {
+    score += 180;
+  } else if (
+    normalizedTarget &&
+    containsAllWords(resultText, normalizedTarget)
+  ) {
+    score += 100;
+  }
+
+  if (
+    resultText &&
+    new RegExp(
+      `(?:^|[^A-Z0-9])${escapeRegExp(normalizedSymbol)}(?:[^A-Z0-9]|$)`,
+      "i",
+    ).test(resultText)
+  ) {
+    score += 30;
+  }
+
+  return score;
 }
 
 async function handleChartRoute(request) {
@@ -1358,6 +1455,15 @@ function containsAllWords(haystack, needle) {
   if (!haystack || !needle) return false;
   const haystackWords = new Set(haystack.split(" "));
   return needle.split(" ").every((word) => haystackWords.has(word));
+}
+
+function containsNormalizedPhrase(haystack, needle) {
+  if (!haystack || !needle) return false;
+  return ` ${haystack} `.includes(` ${needle} `);
+}
+
+function escapeRegExp(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function toNumber(value) {
