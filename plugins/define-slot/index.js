@@ -1,4 +1,5 @@
 import {
+  finalizeSlotHtml,
   readSlotPosition,
   shouldRenderSlotForContext,
 } from "./slot-position.js";
@@ -203,6 +204,10 @@ const FALLBACK_TEMPLATE = `
   <div class="dslot-source">Data: <a href="https://dictionaryapi.dev/" target="_blank" rel="noopener">dictionaryapi.dev</a> · Related: <a href="https://www.powerthesaurus.org/" target="_blank" rel="noopener">Power Thesaurus</a></div>
 </div>`;
 
+function finishSlot(context, html) {
+  return { html: finalizeSlotHtml(html, context, selectedSlotPosition) };
+}
+
 export const slot = {
   id: "define-slot",
   name: "Dictionary",
@@ -301,7 +306,7 @@ export const slot = {
       );
 
       if (hasRenderableEntry(entry)) {
-        return { html: renderEntry(entry, parsed.intent) };
+        return finishSlot(context, renderEntry(entry, parsed.intent));
       }
     }
 
@@ -315,11 +320,11 @@ export const slot = {
       antonyms: relatedTerms.antonyms,
     };
     if (hasRenderableEntry(relatedOnlyEntry)) {
-      return { html: renderEntry(relatedOnlyEntry, parsed.intent) };
+      return finishSlot(context, renderEntry(relatedOnlyEntry, parsed.intent));
     }
 
     if (parsed.explicit && result.status === "not-found") {
-      return { html: renderEmpty(parsed.word) };
+      return finishSlot(context, renderEmpty(parsed.word));
     }
 
     return { html: "" };

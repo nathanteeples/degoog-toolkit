@@ -14,3 +14,16 @@ export function shouldRenderSlotForContext(context, selectedSlotPosition) {
   }
   return !isGlanceRequest;
 }
+
+/** #at-a-glance receives raw plugin HTML (no results-slot-panel shell). */
+export function finalizeSlotHtml(html, context, selectedSlotPosition) {
+  const content = String(html ?? "");
+  if (!content.trim()) return content;
+  if (
+    selectedSlotPosition === "at-a-glance" &&
+    Array.isArray(context?.results)
+  ) {
+    return `<div class="glance-box">${content}</div>`;
+  }
+  return content;
+}

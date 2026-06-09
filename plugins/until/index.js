@@ -1,5 +1,6 @@
 import chronoEn from "./vendor/chrono-node/dist/cjs/locales/en/index.js";
 import {
+  finalizeSlotHtml,
   readSlotPosition,
   shouldRenderSlotForContext,
 } from "./slot-position.js";
@@ -196,7 +197,7 @@ export const slot = {
         ? { title: "", html: USAGE_HTML }
         : { title: "", html: "" };
     }
-    return renderUntil(parsed, new Date());
+    return renderUntil(parsed, new Date(), context);
   },
 };
 
@@ -824,7 +825,10 @@ function renderUntil(parsed, now, context) {
     .split("{{details_html}}")
     .join(renderDetails(absMs, context));
 
-  return { title: "", html };
+  return {
+    title: "",
+    html: finalizeSlotHtml(html, context, selectedSlotPosition),
+  };
 }
 
 function formatPrimary(absMs, requestedUnit, context) {

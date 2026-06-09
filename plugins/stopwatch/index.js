@@ -1,4 +1,5 @@
 import {
+  finalizeSlotHtml,
   readSlotPosition,
   shouldRenderSlotForContext,
 } from "./slot-position.js";
@@ -225,7 +226,11 @@ export const slot = {
 
     return {
       title: "",
-      html: renderTemplate(request, context),
+      html: finalizeSlotHtml(
+        renderTemplate(request, context),
+        context,
+        selectedSlotPosition,
+      ),
     };
   },
 };

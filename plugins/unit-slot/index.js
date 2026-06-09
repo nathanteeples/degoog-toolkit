@@ -9,6 +9,7 @@ import {
   isUnitConversionIn,
 } from "./query-guards.js";
 import {
+  finalizeSlotHtml,
   readSlotPosition,
   shouldRenderSlotForContext,
 } from "./slot-position.js";
@@ -530,7 +531,7 @@ export const slot = {
   description:
     "Unit converter for length, mass, volume, temperature, and more. Supports fuzzy natural queries like '25.4oz toml' or '!unit 100c f'.",
   isClientExposed: false,
-  position: DEFAULT_SLOT_POSITION,
+  position: "at-a-glance",
   slotPositions: ["above-results", "at-a-glance", "knowledge-panel"],
   settingsSchema: [
     {
@@ -611,7 +612,9 @@ export const slot = {
       .split("{{measure}}")
       .join(measure);
 
-    return { html };
+    return {
+      html: finalizeSlotHtml(html, context, selectedSlotPosition),
+    };
   },
 };
 

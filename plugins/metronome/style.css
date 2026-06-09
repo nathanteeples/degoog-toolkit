@@ -29,6 +29,13 @@
   display: none;
 }
 
+#at-a-glance > .glance-box,
+.glance-box:has(.metro-card) {
+  padding: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
 /* Layout details */
 .metro-card *,
 .metro-card *::before,

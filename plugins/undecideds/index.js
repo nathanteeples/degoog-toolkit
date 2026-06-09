@@ -1,4 +1,4 @@
-import { readSlotPosition, shouldRenderSlotForContext } from "./slot-position.js";
+import { readSlotPosition, finalizeSlotHtml, shouldRenderSlotForContext } from "./slot-position.js";
 
 let template = "";
 let selectedSlotPosition = "at-a-glance";
@@ -115,7 +115,13 @@ export const slot = {
       yesno_ticker: "waiting"
     };
 
-    return { html: renderTemplate(template || FALLBACK_TEMPLATE, data) };
+    return {
+      html: finalizeSlotHtml(
+        renderTemplate(template || FALLBACK_TEMPLATE, data),
+        context,
+        selectedSlotPosition,
+      ),
+    };
   }
 };
 

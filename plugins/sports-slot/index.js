@@ -1,4 +1,5 @@
 import {
+  finalizeSlotHtml,
   readSlotPosition,
   shouldRenderSlotForContext,
 } from "./slot-position.js";
@@ -3133,18 +3134,26 @@ export const slot = {
     }
 
     try {
-      return await executeSportsQuery(query, context);
+      const output = await executeSportsQuery(query, context);
+      return {
+        ...output,
+        html: finalizeSlotHtml(output.html, context, selectedSlotPosition),
+      };
     } catch (error) {
       const parsed = parseQuery(query);
       const message =
         error instanceof Error ? error.message : "Unknown provider error";
       return {
         title: PLUGIN_NAME,
-        html: renderEmptyCard(
-          parsed?.sport || "soccer",
-          PLUGIN_NAME,
-          t("providerFailed"),
-          message,
+        html: finalizeSlotHtml(
+          renderEmptyCard(
+            parsed?.sport || "soccer",
+            PLUGIN_NAME,
+            t("providerFailed"),
+            message,
+          ),
+          context,
+          selectedSlotPosition,
         ),
       };
     }

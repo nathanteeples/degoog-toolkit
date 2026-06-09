@@ -12,15 +12,19 @@
     user-select: none;
 }
 
-#at-a-glance .results-slot-panel:has(.timer-widget) {
+#at-a-glance .results-slot-panel:has(.timer-widget),
+#at-a-glance > .glance-box:has(.timer-widget) {
     overflow: hidden;
 }
 
-#at-a-glance .results-slot-panel:has(.timer-widget) .results-slot-panel-body {
+#at-a-glance .results-slot-panel:has(.timer-widget) .results-slot-panel-body,
+#at-a-glance > .glance-box:has(.timer-widget) {
     padding: 0;
+    width: 100%;
 }
 
-#at-a-glance .results-slot-panel:has(.timer-widget) .timer-widget {
+#at-a-glance .results-slot-panel:has(.timer-widget) .timer-widget,
+#at-a-glance > .glance-box .timer-widget {
     max-width: none;
 }
 
