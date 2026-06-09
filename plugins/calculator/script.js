@@ -664,9 +664,8 @@
       return height - ((y - yMin) / (yMax - yMin)) * height;
     }
 
-    drawGrid(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, gridColor);
-    drawAxes(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, axisColor);
-    drawLabels(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, textColor, axisColor);
+    drawGrid(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, gridColor, axisColor);
+    drawLabels(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, textColor);
 
     var featurePoints = getGraphFeatures(points, analysis, state, xMin, xMax, yMin, yMax);
 
@@ -952,29 +951,69 @@
     return { x: x, y: 0 };
   }
 
-  function drawGrid(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, color) {
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-
-    for (var i = 0; i <= 4; i += 1) {
-      var x = xMin + ((xMax - xMin) / 4) * i;
-      var px = sx(x);
-      ctx.moveTo(px, 0);
-      ctx.lineTo(px, height);
-
-      var y = yMin + ((yMax - yMin) / 4) * i;
-      var py = sy(y);
-      ctx.moveTo(0, py);
-      ctx.lineTo(width, py);
-    }
-
-    ctx.stroke();
+  function niceTickStep(span, targetCount) {
+    if (!Number.isFinite(span) || span <= 0) return 1;
+    var rough = span / Math.max(targetCount, 2);
+    var pow = Math.pow(10, Math.floor(Math.log10(rough)));
+    if (!Number.isFinite(pow) || pow === 0) return 1;
+    var norm = rough / pow;
+    var niceNorm = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+    return niceNorm * pow;
   }
 
-  function drawAxes(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, color) {
+  function roundTick(value, step) {
+    if (!Number.isFinite(value)) return value;
+    var decimals = Math.max(0, -Math.floor(Math.log10(Math.abs(step))) + 1);
+    return parseFloat(value.toFixed(Math.min(decimals + 2, 12)));
+  }
+
+  function buildAxisTicks(min, max, targetCount) {
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min >= max) return [];
+    var step = niceTickStep(max - min, targetCount);
+    if (step <= 0) return [];
+
+    var ticks = [];
+    var start = roundTick(Math.ceil(min / step - 1e-10) * step, step);
+    var value = start;
+    var guard = 0;
+
+    while (value <= max + step * 0.01 && guard < 500) {
+      if (value >= min - step * 0.01) ticks.push(value);
+      value = roundTick(value + step, step);
+      guard += 1;
+    }
+
+    return ticks;
+  }
+
+  function drawGrid(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, gridColor, axisColor) {
+    var xTicks = buildAxisTicks(xMin, xMax, 5);
+    var yTicks = buildAxisTicks(yMin, yMax, 5);
+
     ctx.beginPath();
-    ctx.strokeStyle = color;
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+
+    xTicks.forEach(function (x) {
+      if (Math.abs(x) < 1e-12) return;
+      var px = sx(x);
+      if (px < 0 || px > width) return;
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, height);
+    });
+
+    yTicks.forEach(function (y) {
+      if (Math.abs(y) < 1e-12) return;
+      var py = sy(y);
+      if (py < 0 || py > height) return;
+      ctx.moveTo(0, py);
+      ctx.lineTo(width, py);
+    });
+
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.strokeStyle = axisColor;
     ctx.lineWidth = 1.25;
 
     if (xMin < 0 && xMax > 0) {
@@ -1001,53 +1040,38 @@
     return parseFloat(value.toFixed(4)).toString();
   }
 
-  function drawLabels(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, textColor, axisColor) {
+  function drawLabels(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, textColor) {
+    var xTicks = buildAxisTicks(xMin, xMax, 5);
+    var yTicks = buildAxisTicks(yMin, yMax, 5);
+
     ctx.fillStyle = textColor;
     ctx.font = "10px system-ui, -apple-system, sans-serif";
     ctx.textBaseline = "middle";
 
     var xLabelY = height - 12;
-
-    for (var i = 0; i <= 4; i += 1) {
-      var xVal = xMin + ((xMax - xMin) / 4) * i;
+    xTicks.forEach(function (xVal) {
       var px = sx(xVal);
-      var labelText = formatLabel(xVal);
+      if (px < 8 || px > width - 8) return;
 
-      if (i === 0) {
-        ctx.textAlign = "left";
-        px += 3;
-      } else if (i === 4) {
-        ctx.textAlign = "right";
-        px -= 3;
-      } else {
-        ctx.textAlign = "center";
-      }
-      ctx.fillText(labelText, px, xLabelY);
+      ctx.textAlign = px < width * 0.1 ? "left" : px > width * 0.9 ? "right" : "center";
+      ctx.fillText(formatLabel(xVal), px, xLabelY);
+    });
+
+    var yLabelX = 8;
+    if (xMin < 0 && xMax > 0) {
+      var xZeroPx = sx(0);
+      if (xZeroPx >= 24 && xZeroPx <= width - 48) yLabelX = xZeroPx + 5;
     }
 
-    var xZeroPx = sx(0);
-    var yLabelX = xZeroPx + 5;
-    if (yLabelX < 5) {
-      yLabelX = 5;
-    } else if (yLabelX > width - 45) {
-      yLabelX = width - 45;
-    }
-
-    for (var j = 0; j <= 4; j += 1) {
-      var yVal = yMin + ((yMax - yMin) / 4) * j;
+    yTicks.forEach(function (yVal) {
       var py = sy(yVal);
+      if (py < 10 || py > height - 10) return;
 
-      if (py < 10) py = 10;
-      if (py > height - 10) py = height - 10;
+      if (Math.abs(yVal) < 1e-10 && yLabelX <= 12) return;
 
-      if (Math.abs(yVal) < 1e-10 && Math.abs(xZeroPx - yLabelX) < 10) {
-        continue;
-      }
-
-      var labelText = formatLabel(yVal);
       ctx.textAlign = "left";
-      ctx.fillText(labelText, yLabelX, py);
-    }
+      ctx.fillText(formatLabel(yVal), yLabelX, py);
+    });
   }
 
   function drawRoundedRect(ctx, x, y, w, h, r) {
