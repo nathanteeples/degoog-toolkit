@@ -25,6 +25,8 @@
   var DEFAULT_DURATION_MS = 5 * 60 * 1000;
   var DEFAULT_STOPWATCH_CYCLE_MS = 60 * 1000;
   var MAX_DURATION_MS = 24 * 60 * 60 * 1000;
+  /** Wall-clock sync interval (RAF pauses in background tabs). */
+  var TICK_INTERVAL_MS = 250;
   var soundEnabled = true;
   var currentWidget = null;
   var audioCtx = null;
@@ -39,8 +41,13 @@
     stopwatchCycleMs: DEFAULT_STOPWATCH_CYCLE_MS,
     running: false,
     alarming: false,
-    rafId: 0,
-    lastFrameTime: 0,
+    intervalId: 0,
+    /** Timer: wall-clock instant when countdown reaches zero. */
+    deadlineMs: 0,
+    /** Stopwatch: wall-clock instant matching elapsedMs === 0 at start. */
+    epochMs: 0,
+    /** Last completed stopwatch ring (for lap ticks after background catch-up). */
+    lastStopwatchCycle: 0,
     alarmTimerId: 0,
   };
 
@@ -154,67 +161,92 @@
     updateSoundButton();
   }
 
-  function tick(now) {
-    state.rafId = 0;
+  function nowMs() {
+    return Date.now();
+  }
+
+  function clearTickDriver() {
+    if (state.intervalId) {
+      window.clearInterval(state.intervalId);
+      state.intervalId = 0;
+    }
+  }
+
+  /** Derive timer/stopwatch position from wall clock (survives background throttling). */
+  function syncFromWallClock() {
     if (!state.running) return;
 
-    if (!state.lastFrameTime) state.lastFrameTime = now;
-    var delta = Math.max(0, Math.min(now - state.lastFrameTime, 1000));
-    state.lastFrameTime = now;
-
     if (state.mode === "timer") {
-      state.remainingMs = Math.max(0, state.remainingMs - delta);
-      if (state.remainingMs <= 0) {
+      var remaining = Math.max(0, state.deadlineMs - nowMs());
+      state.remainingMs = remaining;
+      if (remaining <= 0) {
         state.running = false;
-        state.lastFrameTime = 0;
+        clearTickDriver();
         startAlarm();
         render();
         return;
       }
     } else {
-      var prevCycle = Math.floor(state.elapsedMs / state.stopwatchCycleMs);
-      state.elapsedMs += delta;
-      var nextCycle = Math.floor(state.elapsedMs / state.stopwatchCycleMs);
+      var elapsed = Math.max(0, nowMs() - state.epochMs);
+      var prevCycle = state.lastStopwatchCycle;
+      var nextCycle = Math.floor(elapsed / state.stopwatchCycleMs);
+      state.elapsedMs = elapsed;
+      state.lastStopwatchCycle = nextCycle;
       if (nextCycle > prevCycle) playStopwatchTick();
     }
 
     render();
-    requestTick();
   }
 
-  function requestTick() {
-    if (!state.rafId) state.rafId = requestAnimationFrame(tick);
+  function startTickDriver() {
+    clearTickDriver();
+    syncFromWallClock();
+    if (!state.running) return;
+    state.intervalId = window.setInterval(syncFromWallClock, TICK_INTERVAL_MS);
   }
 
-  function cancelTick() {
-    if (state.rafId) {
-      cancelAnimationFrame(state.rafId);
-      state.rafId = 0;
+  function armWallClockAnchors() {
+    if (state.mode === "timer") {
+      if (state.remainingMs <= 0) state.remainingMs = state.durationMs;
+      state.deadlineMs = nowMs() + state.remainingMs;
+      state.epochMs = 0;
+      state.lastStopwatchCycle = 0;
+      return;
     }
-    state.lastFrameTime = 0;
+    state.deadlineMs = 0;
+    state.epochMs = nowMs() - state.elapsedMs;
+    state.lastStopwatchCycle = Math.floor(
+      state.elapsedMs / state.stopwatchCycleMs,
+    );
+  }
+
+  function clearWallClockAnchors() {
+    state.deadlineMs = 0;
+    state.epochMs = 0;
+    state.lastStopwatchCycle = 0;
   }
 
   function start() {
     if (state.running) return;
     stopAlarm();
-    if (state.mode === "timer" && state.remainingMs <= 0) {
-      state.remainingMs = state.durationMs;
-    }
+    armWallClockAnchors();
     state.running = true;
-    state.lastFrameTime = 0;
+    startTickDriver();
     render();
-    requestTick();
   }
 
   function pause() {
+    if (!state.running) return;
+    syncFromWallClock();
     state.running = false;
-    cancelTick();
+    clearTickDriver();
     render();
   }
 
   function reset() {
     pause();
     stopAlarm();
+    clearWallClockAnchors();
     if (state.mode === "timer") {
       state.remainingMs = state.durationMs;
     } else {
@@ -228,6 +260,7 @@
     if (state.mode === mode) return;
     pause();
     stopAlarm();
+    clearWallClockAnchors();
     state.mode = mode;
     if (mode === "timer") {
       state.remainingMs = state.durationMs;
@@ -480,7 +513,7 @@
 
   function initFromWidget(w) {
     stopAlarm();
-    cancelTick();
+    clearTickDriver();
     currentWidget = w;
 
     var durationSeconds = readSecondsAttr(
@@ -502,7 +535,7 @@
     state.stopwatchCycleMs = clampMs(cycleSeconds * 1000) || DEFAULT_STOPWATCH_CYCLE_MS;
     state.running = false;
     state.alarming = false;
-    state.lastFrameTime = 0;
+    clearWallClockAnchors();
 
     restoreStoredAlarmTone();
     render();
@@ -571,6 +604,20 @@
   }
 
   document.addEventListener("click", handleClick);
+
+  document.addEventListener("visibilitychange", function () {
+    if (!state.running) return;
+    syncFromWallClock();
+  });
+
+  window.addEventListener("focus", function () {
+    if (!state.running) return;
+    syncFromWallClock();
+  });
+
+  window.addEventListener("pageshow", function (event) {
+    if (event.persisted && state.running) syncFromWallClock();
+  });
 
   var observer = new MutationObserver(checkWidget);
   observer.observe(document.body, { childList: true, subtree: true });
