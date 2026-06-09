@@ -8,17 +8,30 @@ function yahooFetch(url) {
 
   if (parsed.pathname.endsWith("/v1/finance/search")) {
     const query = parsed.searchParams.get("q") || "";
-    const symbol = query.toLowerCase() === "apple" ? "AAPL" : query.toUpperCase();
+    const symbol =
+      query.toLowerCase() === "apple" ? "AAPL" : query.toUpperCase();
+    const quotes =
+      query.toLowerCase() === "aapl"
+        ? [
+            {
+              symbol: "IEWQ.SW",
+              quoteType: "ETF",
+              shortname: "IVZ NASDAQ-100 EW Acc",
+              longname: "AAPL Sep 2026 150.000 put",
+              exchange: "EBS",
+            },
+          ]
+        : [
+            {
+              symbol,
+              quoteType: "EQUITY",
+              shortname: symbol === "AAPL" ? "Apple Inc." : "Alphabet Inc.",
+              exchange: "NMS",
+            },
+          ];
     return Promise.resolve(
       Response.json({
-        quotes: [
-          {
-            symbol,
-            quoteType: "EQUITY",
-            shortname: symbol === "AAPL" ? "Apple Inc." : "Alphabet Inc.",
-            exchange: "NMS",
-          },
-        ],
+        quotes,
       }),
     );
   }
@@ -73,7 +86,9 @@ function yahooFetch(url) {
 test("renders quotes for explicit stock queries and Yahoo result hints", async () => {
   const cases = [
     ["stock aapl", []],
+    ["aapl stock", []],
     ["apple stock", []],
+    ["stock apple", []],
     ["goog", [{ url: "https://finance.yahoo.com/quote/GOOG/" }]],
   ];
 
@@ -85,5 +100,9 @@ test("renders quotes for explicit stock queries and Yahoo result hints", async (
       fetch: yahooFetch,
     });
     assert.match(output.html, /stocks-card/);
+    if (query.includes("aapl")) {
+      assert.match(output.html, />AAPL</);
+      assert.doesNotMatch(output.html, /IEWQ\.SW/);
+    }
   }
 });

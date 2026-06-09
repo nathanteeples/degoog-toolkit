@@ -332,11 +332,9 @@ function parseStockQuery(value) {
   const target = cleanupTarget(raw);
   if (!target || isRejectedCompanyTarget(target)) return null;
 
-  const prefixedSymbol = symbolFromSingleToken(target, {
-    allowLowercase: /^\s*(?:stock|stocks|quote|ticker|share|shares)\b/i.test(raw),
-  });
-  if (prefixedSymbol) {
-    return { kind: "symbol", symbol: prefixedSymbol, explicit: true };
+  const contextualSymbol = symbolFromStockTarget(target);
+  if (contextualSymbol) {
+    return { kind: "symbol", symbol: contextualSymbol, explicit: true };
   }
 
   const upperTarget = symbolFromSingleToken(target, { allowLowercase: false });
@@ -490,6 +488,20 @@ function symbolFromSingleToken(value, options = {}) {
   if (!/^[A-Za-z][A-Za-z0-9.-]{0,11}$/.test(cleaned)) return "";
   if (!options.allowLowercase && cleaned !== cleaned.toUpperCase()) return "";
   return normalizeSymbol(cleaned, options);
+}
+
+function symbolFromStockTarget(value) {
+  const cleaned = String(value || "")
+    .trim()
+    .replace(/^\$/, "")
+    .replace(/[?!.,;:]+$/g, "");
+  if (!cleaned || COMPANY_ALIASES.has(normalizeWords(cleaned))) return "";
+
+  const isUppercase = cleaned === cleaned.toUpperCase();
+  const hasExchangeSeparator = /[.-]/.test(cleaned);
+  if (!isUppercase && cleaned.length > 5 && !hasExchangeSeparator) return "";
+
+  return symbolFromSingleToken(cleaned, { allowLowercase: true });
 }
 
 function normalizeSymbol(value, options = {}) {
