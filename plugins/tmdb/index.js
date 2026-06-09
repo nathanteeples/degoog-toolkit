@@ -344,8 +344,7 @@ const _tmdb = async (path, ctx) => {
   return res.json();
 };
 
-// OMDb (Open Movie Database) — optional; IMDb + Rotten Tomatoes for movies.
-// RT Tomatometer scores are not licensed for TV series in OMDb (legal limitation).
+// OMDb (Open Movie Database) — optional; IMDb + Rotten Tomatoes (movies) via TMDB IMDb id.
 const _omdbFetch = async (query, ctx) => {
   if (!omdbApiKey) return null;
   try {
@@ -377,20 +376,6 @@ const _rottenTomatoesSearchHref = (data) => {
   if (!title) return null;
   const year = (data?.Year || "").trim();
   const query = year && year !== "N/A" ? `${title} ${year}` : title;
-  return `https://www.rottentomatoes.com/search?search=${encodeURIComponent(query)}`;
-};
-
-const _rottenTomatoesSearchHrefFromDetails = (details, mediaType) => {
-  const title =
-    mediaType === "tv"
-      ? (details?.name || details?.original_name || "").trim()
-      : (details?.title || details?.original_title || "").trim();
-  if (!title) return null;
-  const year =
-    mediaType === "tv"
-      ? (details?.first_air_date || "").slice(0, 4)
-      : (details?.release_date || "").slice(0, 4);
-  const query = year ? `${title} ${year}` : title;
   return `https://www.rottentomatoes.com/search?search=${encodeURIComponent(query)}`;
 };
 
@@ -1175,7 +1160,6 @@ const _buildRatingsHtml = (opts, ctx) => {
     imdbHref,
     rottenTomatoes,
     rottenTomatoesHref,
-    rottenTomatoesLinkOnly,
     letterboxdHref,
     jellyfinHref,
   } = opts;
@@ -1227,23 +1211,12 @@ const _buildRatingsHtml = (opts, ctx) => {
         `<span class="tmdb-rating-score tmdb-rating-score--rt">${_esc(rt)}</span>`;
       parts.push(wrapLink(rtInner, rottenTomatoesHref));
     }
-  } else if (rottenTomatoesLinkOnly && rottenTomatoesHref) {
-    parts.push(
-      wrapLink(
-        `<span class="tmdb-rating-badge tmdb-rating-badge--rt">Tomatometer</span>` +
-          `<span class="tmdb-rating-external">Open \u2192</span>`,
-        rottenTomatoesHref,
-        "",
-        ` title="${_esc(t("rtTvTooltip", ctx))}"`,
-      ),
-    );
   }
 
   if (letterboxdHref) {
     parts.push(
       wrapLink(
-        `<span class="tmdb-rating-badge tmdb-rating-badge--letterboxd">Letterboxd</span>` +
-          `<span class="tmdb-rating-external">Open \u2192</span>`,
+        `<span class="tmdb-rating-badge tmdb-rating-badge--letterboxd">Letterboxd</span>`,
         letterboxdHref,
         "",
         ` title="${_esc(t("letterboxdTooltip", ctx))}"`,
@@ -1427,12 +1400,6 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, imdbId, 
     ? `<div class="tmdb-subtitle">${_esc(subtitleParts.join(" \u00b7 "))}</div>`
     : "";
 
-  const rtSearchHref = _rottenTomatoesSearchHrefFromDetails(details, "tv");
-  const hasRtScore = Boolean(
-    omdbRatings?.rottenTomatoes &&
-      String(omdbRatings.rottenTomatoes).trim().toUpperCase() !== "N/A",
-  );
-
   const ratingsHtml = _buildRatingsHtml(
     {
       voteAverage: details.vote_average,
@@ -1441,8 +1408,7 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, imdbId, 
       imdb: omdbRatings?.imdb,
       imdbHref: _imdbHref(imdbId),
       rottenTomatoes: omdbRatings?.rottenTomatoes,
-      rottenTomatoesHref: omdbRatings?.rottenTomatoesHref || rtSearchHref,
-      rottenTomatoesLinkOnly: !hasRtScore && Boolean(rtSearchHref),
+      rottenTomatoesHref: omdbRatings?.rottenTomatoesHref,
       letterboxdHref: null,
       jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
     },
@@ -1827,7 +1793,7 @@ export const slot = {
       secret: true,
       placeholder: "Free key at omdbapi.com",
       description:
-        "Optional. When set, loads IMDb ratings for movies and TV. Rotten Tomatoes Tomatometer scores come from OMDb for movies only — OMDb does not license RT data for TV series. TV panels show a Tomatometer link to Rotten Tomatoes search instead. Free key: https://www.omdbapi.com/apikey.aspx. Letterboxd links are for films only.",
+        "Optional. When set, loads IMDb ratings for movies and TV, and Rotten Tomatoes Tomatometer for movies (OMDb does not supply RT scores for TV). Free key: https://www.omdbapi.com/apikey.aspx. Letterboxd links are for films only.",
     },
   ],
 
