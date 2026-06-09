@@ -298,23 +298,46 @@
     }
   }
 
-  // Place mines ensuring the first clicked cell and its neighbors are safe
-  function placeMines(startRow, startCol) {
+  function isStartArea(row, col, startRow, startCol) {
+    return Math.abs(row - startRow) <= 1 && Math.abs(col - startCol) <= 1;
+  }
+
+  function getNeighbors(row, col) {
+    const neighbors = [];
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nr = row + dr;
+        const nc = col + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+          neighbors.push({ row: nr, col: nc });
+        }
+      }
+    }
+    return neighbors;
+  }
+
+  function clearMines() {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        board[r][c].isMine = false;
+        board[r][c].neighborMines = 0;
+      }
+    }
+  }
+
+  function placeMinesRandom(startRow, startCol) {
+    clearMines();
     let minesPlaced = 0;
     while (minesPlaced < mineCount) {
       const r = Math.floor(Math.random() * rows);
       const c = Math.floor(Math.random() * cols);
-
-      // Do not place a mine on the first clicked cell or its immediate 8 neighbors
-      const isStartArea = Math.abs(r - startRow) <= 1 && Math.abs(c - startCol) <= 1;
-
-      if (!board[r][c].isMine && !isStartArea) {
+      if (!board[r][c].isMine && !isStartArea(r, c, startRow, startCol)) {
         board[r][c].isMine = true;
         minesPlaced++;
       }
     }
 
-    // Calculate neighbors
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         if (!board[r][c].isMine) {
@@ -322,6 +345,80 @@
         }
       }
     }
+  }
+
+  // Basic constraint propagation: flag remaining mines or reveal safe neighbors.
+  function isSolvableWithoutGuessing(startRow, startCol) {
+    const revealed = Array.from({ length: rows }, () => Array(cols).fill(false));
+    const flagged = Array.from({ length: rows }, () => Array(cols).fill(false));
+
+    function floodReveal(row, col) {
+      if (row < 0 || row >= rows || col < 0 || col >= cols) return false;
+      if (revealed[row][col] || flagged[row][col] || board[row][col].isMine) return false;
+
+      revealed[row][col] = true;
+      let changed = true;
+      if (board[row][col].neighborMines === 0) {
+        for (const n of getNeighbors(row, col)) {
+          if (floodReveal(n.row, n.col)) changed = true;
+        }
+      }
+      return changed;
+    }
+
+    floodReveal(startRow, startCol);
+
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (!revealed[r][c]) continue;
+
+          const neighbors = getNeighbors(r, c);
+          let flaggedCount = 0;
+          const hidden = [];
+
+          for (const n of neighbors) {
+            if (flagged[n.row][n.col]) flaggedCount++;
+            else if (!revealed[n.row][n.col]) hidden.push(n);
+          }
+
+          const minesLeft = board[r][c].neighborMines - flaggedCount;
+          if (hidden.length === 0) continue;
+
+          if (minesLeft === hidden.length) {
+            for (const n of hidden) {
+              if (!flagged[n.row][n.col]) {
+                flagged[n.row][n.col] = true;
+                changed = true;
+              }
+            }
+          } else if (minesLeft === 0) {
+            for (const n of hidden) {
+              if (floodReveal(n.row, n.col)) changed = true;
+            }
+          }
+        }
+      }
+    }
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (!board[r][c].isMine && !revealed[r][c]) return false;
+      }
+    }
+    return true;
+  }
+
+  // Retry random layouts until basic logic can finish the board from the first click.
+  function placeMines(startRow, startCol) {
+    const maxAttempts = 80;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      placeMinesRandom(startRow, startCol);
+      if (isSolvableWithoutGuessing(startRow, startCol)) return;
+    }
+    placeMinesRandom(startRow, startCol);
   }
 
   function countNeighborMines(row, col) {

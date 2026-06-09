@@ -409,8 +409,11 @@
 
       const matchSym = el.sym.toLowerCase() === cleanQuery;
       const matchNum = String(el.num) === cleanQuery;
-      const matchName = el.name.toLowerCase().includes(cleanQuery);
-      const matchCat = (CATEGORY_NAMES[el.cat] || el.cat).toLowerCase().includes(cleanQuery);
+      const matchName = cleanQuery.length >= 2
+        && (el.name.toLowerCase().startsWith(cleanQuery)
+          || el.name.toLowerCase().split(/\s+/).some((word) => word.startsWith(cleanQuery)));
+      const catName = (CATEGORY_NAMES[el.cat] || el.cat).toLowerCase();
+      const matchCat = cleanQuery.length >= 3 && catName.startsWith(cleanQuery);
 
       if (matchSym || matchNum || matchName || matchCat) {
         cell.classList.remove("dimmed");

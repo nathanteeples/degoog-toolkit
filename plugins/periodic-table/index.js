@@ -18,25 +18,55 @@ const ELEMENT_NAMES = new Set([
   "nihonium", "flerovium", "moscovium", "livermorium", "tennessine", "oganesson"
 ]);
 
+const ELEMENT_SYMBOLS = new Set(
+  "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og"
+    .split(" ")
+    .map((sym) => sym.toLowerCase())
+);
+
+function resolveElementToken(token) {
+  const t = String(token || "").trim().toLowerCase();
+  if (!t) return null;
+  if (ELEMENT_NAMES.has(t)) return t;
+  if (ELEMENT_SYMBOLS.has(t)) return t;
+  if (/^\d{1,3}$/.test(t)) {
+    const num = Number(t);
+    if (num >= 1 && num <= 118) return t;
+  }
+  return null;
+}
+
+function isPeriodicTableQuery(query) {
+  const q = String(query || "").trim();
+  if (!q) return false;
+  if (/^(?:!periodic(?:\s+table)?|!elements|!chemistry|!ptable|ptable)$/i.test(q)) {
+    return true;
+  }
+  return /\b(?:periodic\s+table(?:\s+of\s+elements)?|elements\s+table)\b/i.test(q);
+}
+
 function parseElementQuery(query) {
   const q = String(query || "").trim().toLowerCase();
   if (!q) return null;
 
-  // 1. Exact element names
-  if (ELEMENT_NAMES.has(q)) {
-    return q;
+  const ptableElement = q.match(/^(?:!)?ptable\s+(.+)$/i);
+  if (ptableElement) {
+    return resolveElementToken(ptableElement[1]);
   }
 
-  // 2. Prefix / Suffix queries: "element gold", "fe element", etc.
   const elementMatch = q.match(/^(?:element\s+([a-z0-9]+)|([a-z0-9]+)\s+element)$/i);
   if (elementMatch) {
-    return elementMatch[1] || elementMatch[2];
+    return resolveElementToken(elementMatch[1] || elementMatch[2]);
   }
 
-  // 3. Queries like: "atomic number 79", "atomic mass oxygen", etc.
-  const statsMatch = q.match(/^(?:atomic\s+(?:number|mass|weight)\s+([a-z0-9]+))$/i);
+  const atomicNumMatch = q.match(/^atomic\s+number\s+(\d{1,3})$/i);
+  if (atomicNumMatch) {
+    return resolveElementToken(atomicNumMatch[1]);
+  }
+
+  const statsMatch = q.match(/^atomic\s+(?:mass|weight)\s+([a-z0-9]+)$/i);
   if (statsMatch) {
-    return statsMatch[1];
+    return resolveElementToken(statsMatch[1]);
   }
 
   return null;
@@ -74,22 +104,16 @@ export const slot = {
 
   trigger(query) {
     if (!enabled) return false;
-    
-    // Main periodic table triggers
-    if (/^(?:!periodic|!elements|!chemistry|!ptable|\b(?:periodic\s+table(?:\s+of\s+elements)?|elements\s+table)\b)/i.test(query)) {
-      return true;
-    }
-
-    // Direct element queries
+    if (isPeriodicTableQuery(query)) return true;
     return Boolean(parseElementQuery(query));
   },
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { title: "", html: "" };
-    
+
     const parsedElement = parseElementQuery(query) || "";
     const html = (template || "").replaceAll("{{default_element}}", parsedElement);
-    
+
     return {
       title: "",
       html,

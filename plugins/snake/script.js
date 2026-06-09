@@ -69,13 +69,30 @@
   function resumeAudioContext() {
     var ctx = getAudioContext();
     if (!ctx) return null;
-    if (audioCtx.state === "suspended") {
-      var resumePromise = audioCtx.resume();
+    if (ctx.state === "suspended") {
+      var resumePromise = ctx.resume();
       if (resumePromise && typeof resumePromise.catch === "function") {
         resumePromise.catch(function () {});
       }
     }
-    return audioCtx;
+    return ctx;
+  }
+
+  function withRunningAudioContext(run) {
+    var ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === "running") {
+      run(ctx);
+      return;
+    }
+    var resumed = ctx.resume();
+    if (resumed && typeof resumed.then === "function") {
+      resumed.then(function () {
+        if (ctx.state === "running") run(ctx);
+      }).catch(function () {});
+      return;
+    }
+    if (ctx.state === "running") run(ctx);
   }
 
   function primeAudio() {
@@ -142,21 +159,20 @@
   function playMoveSound() {
     if (!state.soundEnabled) return;
     try {
-      var ctx = resumeAudioContext();
-      if (!ctx || ctx.state !== "running") return;
-
-      var osc = ctx.createOscillator();
-      var gain = ctx.createGain();
-      var now = ctx.currentTime;
-      osc.type = "square";
-      osc.frequency.setValueAtTime(520, now);
-      osc.frequency.exponentialRampToValueAtTime(360, now + 0.025);
-      gain.gain.setValueAtTime(0.04, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.03);
+      withRunningAudioContext(function (ctx) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        var now = ctx.currentTime;
+        osc.type = "square";
+        osc.frequency.setValueAtTime(560, now);
+        osc.frequency.exponentialRampToValueAtTime(420, now + 0.012);
+        gain.gain.setValueAtTime(0.035, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.014);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.016);
+      });
     } catch (e) {
       // Audio not supported
     }
@@ -370,11 +386,22 @@
 
     state.directionQueue.push({ x: dir.x, y: dir.y });
     state.nextDirection = state.directionQueue[0] || state.direction;
-    playMoveSound();
+    requestAnimationFrame(playMoveSound);
+  }
+
+  function focusWidget() {
+    if (currentWidget && typeof currentWidget.focus === "function") {
+      try {
+        currentWidget.focus({ preventScroll: true });
+      } catch (e) {
+        currentWidget.focus();
+      }
+    }
   }
 
   function startGame() {
     primeAudio();
+    focusWidget();
     resetGame();
     state.playing = true;
     lastTime = performance.now();
@@ -498,7 +525,7 @@
     if (collision) {
       var now = performance.now();
       if (state.collisionGraceUntil === 0) {
-        state.collisionGraceUntil = now + Math.max(28, state.speedMs * 0.5);
+        state.collisionGraceUntil = now + Math.max(14, state.speedMs * 0.28);
         return;
       }
       if (now < state.collisionGraceUntil) {
@@ -718,9 +745,18 @@
     updateBoardSizeButtons(currentWidget);
   }
 
+  function isTypingTarget(target) {
+    if (!target || typeof target.closest !== "function") return false;
+    if (target.isContentEditable) return true;
+    var tag = target.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+  }
+
   function handleKeyDown(event) {
     if (!currentWidget) return;
-    resumeAudioContext();
+    if (isTypingTarget(event.target)) return;
+    if (!state.playing && !event.target.closest("[data-snake-widget]")) return;
+    primeAudio();
     
     // Always intercept spacebar for pause/resume if game is running/playing
     if (event.key === " " && state.playing && !state.gameOver) {
@@ -796,6 +832,10 @@
     var w = event.target.closest("[data-snake-widget]");
     if (!w) return;
     if (w !== currentWidget) initFromWidget(w);
+    if (event.target.closest(".snake-game-wrap, .snake-dpad, #snake-pause-btn")) {
+      focusWidget();
+      primeAudio();
+    }
 
     var startBtn = event.target.closest("#snake-start-btn");
     var restartBtn = event.target.closest("#snake-restart-btn");
@@ -862,7 +902,8 @@
     if (w !== currentWidget) initFromWidget(w);
 
     event.preventDefault();
-    resumeAudioContext();
+    primeAudio();
+    focusWidget();
     setDirection(dir);
   }
 
@@ -892,7 +933,7 @@
   }
 
   // Event Listeners
-  document.addEventListener("keydown", handleKeyDown);
+  document.addEventListener("keydown", handleKeyDown, true);
   document.addEventListener("pointerdown", handlePointerDown);
   document.addEventListener("click", handleClick);
   document.addEventListener("fullscreenchange", handleFullscreenChange);

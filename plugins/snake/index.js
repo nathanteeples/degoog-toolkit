@@ -82,7 +82,7 @@ function parseSnakeQuery(query) {
 
 function renderSnakeCard(context) {
   // Slightly slower defaults for better control, especially on touch devices.
-  const speedMsMap = { "Easy": 185, "Normal": 130, "Hard": 95 };
+  const speedMsMap = { "Easy": 155, "Normal": 105, "Hard": 78 };
   const initialSpeedMs = speedMsMap[initialSpeed] || 130;
   const board = resolveBoardPreset(boardSize);
   const cellPx = boardCellPx(board.cols, board.rows);
