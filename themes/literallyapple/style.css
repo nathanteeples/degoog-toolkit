@@ -252,23 +252,6 @@ body {
     letter-spacing: -0.01em;
 }
 
-body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-        radial-gradient(ellipse 70% 45% at 16% -6%, rgba(0, 122, 255, 0.07), transparent 52%),
-        radial-gradient(ellipse 55% 38% at 92% 4%, rgba(88, 86, 214, 0.05), transparent 48%),
-        var(--bg);
-}
-
-/* Results page: flat charcoal canvas like the reference SERP (no mesh wash). */
-body:has(#results-page)::before {
-    display: none;
-}
-
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     :root {
         --la-surface: var(--la-surface-read);
