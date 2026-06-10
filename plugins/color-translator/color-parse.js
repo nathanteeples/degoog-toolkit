@@ -184,6 +184,179 @@ function splitParenArgs(inner) {
   return { parts, alpha };
 }
 
+function stripColorIntentPrefix(query) {
+  return String(query || "")
+    .trim()
+    .replace(/^!(?:color-translator|color|translate-color)\s+/i, "")
+    .replace(/^color\s+/i, "")
+    .trim();
+}
+
+/** Slot trigger only: whole query must be an exact named color or literal value. */
+function tryParseExactColor(rawQuery, originalQuery) {
+  const trimmed = rawQuery.trim();
+  if (!trimmed) return null;
+  const q = trimmed.toLowerCase();
+  const orig = (originalQuery || rawQuery).trim().toLowerCase();
+  const hadIntentPrefix = /^!(?:color-translator|color|translate-color)\s+/i.test(orig)
+    || /^color\s+/i.test(orig);
+
+  const namedHex = lookupNamedColor(trimmed);
+  if (namedHex) {
+    return parseHex(namedHex);
+  }
+
+  const hexMatch = q.match(/^#?([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+  if (hexMatch) {
+    const rawHex = hexMatch[1];
+    const startsWithHash = q.startsWith("#");
+    const isLongBareHex = (rawHex.length === 6 || rawHex.length === 8)
+      && /[a-f]/i.test(rawHex)
+      && /\d/.test(rawHex);
+    if (startsWithHash || hadIntentPrefix || isLongBareHex) {
+      return parseHex(rawHex);
+    }
+  }
+
+  const parenRgb = q.match(/^rgba?\(\s*([^)]+)\)$/i);
+  if (parenRgb) {
+    const { parts, alpha } = splitParenArgs(parenRgb[1]);
+    if (parts.length >= 3) {
+      const r = parseComponent(parts[0], 255);
+      const g = parseComponent(parts[1], 255);
+      const b = parseComponent(parts[2], 255);
+      const a = alpha !== null ? alpha : (parts.length > 3 ? parseAlpha(parts[3]) : 1);
+      const result = rgbResult(r, g, b, a ?? 1);
+      if (result) return result;
+    }
+  }
+
+  const parenHsl = q.match(/^hsla?\(\s*([^)]+)\)$/i);
+  if (parenHsl) {
+    const { parts, alpha } = splitParenArgs(parenHsl[1]);
+    if (parts.length >= 3) {
+      const h = parseFloat(parts[0]);
+      const s = parseFloat(parts[1]);
+      const l = parseFloat(parts[2]);
+      const a = alpha !== null ? alpha : (parts.length > 3 ? parseAlpha(parts[3]) : 1);
+      if (!Number.isNaN(h) && !Number.isNaN(s) && !Number.isNaN(l) && a !== null && !Number.isNaN(a)) {
+        const [r, g, b] = hslToRgb(h, s, l);
+        return { r, g, b, a: clamp(a, 0, 1) };
+      }
+    }
+  }
+
+  const parenHsb = q.match(/^hs[bv]a?\(\s*([^)]+)\)$/i);
+  if (parenHsb) {
+    const { parts, alpha } = splitParenArgs(parenHsb[1]);
+    if (parts.length >= 3) {
+      const h = parseFloat(parts[0]);
+      const s = parseFloat(parts[1]);
+      const b = parseFloat(parts[2]);
+      const a = alpha !== null ? alpha : (parts.length > 3 ? parseAlpha(parts[3]) : 1);
+      if (!Number.isNaN(h) && !Number.isNaN(s) && !Number.isNaN(b) && a !== null && !Number.isNaN(a)) {
+        const [r, g, bVal] = hsbToRgb(h, s, b);
+        return { r, g, b: bVal, a: clamp(a, 0, 1) };
+      }
+    }
+  }
+
+  const parenCmyk = q.match(/^(?:device-)?cmyk\(\s*([^)]+)\)$/i);
+  if (parenCmyk) {
+    const { parts } = splitParenArgs(parenCmyk[1]);
+    const parsed = rgbFromCmykParts(parts);
+    if (parsed) return parsed;
+  }
+
+  const objcRgbMatch = q.match(/^(?:ui|ns)color\s+colorwith(?:calibrated|device)?red\s*:\s*([0-9.]+)\s+green\s*:\s*([0-9.]+)\s+blue\s*:\s*([0-9.]+)(?:\s+alpha\s*:\s*([0-9.]+))?$/i);
+  if (objcRgbMatch) {
+    const r = Math.round(parseFloat(objcRgbMatch[1]) * 255);
+    const g = Math.round(parseFloat(objcRgbMatch[2]) * 255);
+    const b = Math.round(parseFloat(objcRgbMatch[3]) * 255);
+    const a = objcRgbMatch[4] !== undefined ? parseFloat(objcRgbMatch[4]) : 1;
+    return rgbResult(r, g, b, a);
+  }
+
+  const objcHsbMatch = q.match(/^(?:ui|ns)color\s+colorwith(?:calibrated|device)?hue\s*:\s*([0-9.]+)\s+saturation\s*:\s*([0-9.]+)\s+brightness\s*:\s*([0-9.]+)(?:\s+alpha\s*:\s*([0-9.]+))?$/i);
+  if (objcHsbMatch) {
+    const h = parseFloat(objcHsbMatch[1]) * 360;
+    const s = parseFloat(objcHsbMatch[2]) * 100;
+    const b = parseFloat(objcHsbMatch[3]) * 100;
+    const a = objcHsbMatch[4] !== undefined ? parseFloat(objcHsbMatch[4]) : 1;
+    const [r, g, bVal] = hsbToRgb(h, s, b);
+    return { r, g, b: bVal, a: clamp(a, 0, 1) };
+  }
+
+  const spaceRgbMatch = q.match(/^rgba?\s+([0-9.]+%?)\s+([0-9.]+%?)\s+([0-9.]+%?)(?:\s*\/\s*([0-9.]+%?))?(?:\s+([0-9.]+))?$/i);
+  if (spaceRgbMatch) {
+    const r = parseComponent(spaceRgbMatch[1], 255);
+    const g = parseComponent(spaceRgbMatch[2], 255);
+    const b = parseComponent(spaceRgbMatch[3], 255);
+    let a = 1;
+    if (spaceRgbMatch[4] !== undefined) {
+      a = parseAlpha(spaceRgbMatch[4]) ?? 1;
+    } else if (spaceRgbMatch[5] !== undefined) {
+      a = parseFloat(spaceRgbMatch[5]);
+    }
+    const result = rgbResult(r, g, b, a);
+    if (result) return result;
+  }
+
+  const spaceHslMatch = q.match(/^hsla?\s+([0-9.]+)\s+([0-9.]+%?)\s+([0-9.]+%?)(?:\s*\/\s*([0-9.]+%?))?(?:\s+([0-9.]+))?$/i);
+  if (spaceHslMatch) {
+    const h = parseFloat(spaceHslMatch[1]);
+    const s = parseFloat(spaceHslMatch[2]);
+    const l = parseFloat(spaceHslMatch[3]);
+    let a = 1;
+    if (spaceHslMatch[4] !== undefined) {
+      a = parseAlpha(spaceHslMatch[4]) ?? 1;
+    } else if (spaceHslMatch[5] !== undefined) {
+      a = parseFloat(spaceHslMatch[5]);
+    }
+    if (!Number.isNaN(h) && !Number.isNaN(s) && !Number.isNaN(l) && !Number.isNaN(a)) {
+      const [r, g, b] = hslToRgb(h, s, l);
+      return { r, g, b, a: clamp(a, 0, 1) };
+    }
+  }
+
+  const spaceHsbMatch = q.match(/^hs[bv]a?\s+([0-9.]+)\s+([0-9.]+%?)\s+([0-9.]+%?)(?:\s*\/\s*([0-9.]+%?))?(?:\s+([0-9.]+))?$/i);
+  if (spaceHsbMatch) {
+    const h = parseFloat(spaceHsbMatch[1]);
+    const s = parseFloat(spaceHsbMatch[2]);
+    const b = parseFloat(spaceHsbMatch[3]);
+    let a = 1;
+    if (spaceHsbMatch[4] !== undefined) {
+      a = parseAlpha(spaceHsbMatch[4]) ?? 1;
+    } else if (spaceHsbMatch[5] !== undefined) {
+      a = parseFloat(spaceHsbMatch[5]);
+    }
+    if (!Number.isNaN(h) && !Number.isNaN(s) && !Number.isNaN(b) && !Number.isNaN(a)) {
+      const [r, g, bVal] = hsbToRgb(h, s, b);
+      return { r, g, b: bVal, a: clamp(a, 0, 1) };
+    }
+  }
+
+  const spaceCmykMatch = q.match(/^(?:device-)?cmyk\s+([0-9.]+)%?\s+([0-9.]+)%?\s+([0-9.]+)%?\s+([0-9.]+)%?$/i);
+  if (spaceCmykMatch) {
+    const parsed = rgbFromCmykParts([
+      spaceCmykMatch[1],
+      spaceCmykMatch[2],
+      spaceCmykMatch[3],
+      spaceCmykMatch[4]
+    ]);
+    if (parsed) return parsed;
+  }
+
+  return null;
+}
+
+export function parseColorForTrigger(query) {
+  if (!query || !String(query).trim()) return null;
+  const stripped = stripColorIntentPrefix(query);
+  if (!stripped) return null;
+  return tryParseExactColor(stripped, query);
+}
+
 function tryParseSingleColor(rawQuery, originalQuery) {
   let q = rawQuery.trim().toLowerCase();
   if (!q) return null;

@@ -1,4 +1,4 @@
-import { parseColor } from "./color-parse.js";
+import { parseColor, parseColorForTrigger } from "./color-parse.js";
 import { HEX_TO_NAME } from "./named-colors.js";
 
 let template = "";
@@ -493,12 +493,12 @@ export const slot = {
   },
 
   trigger(query) {
-    return Boolean(parseColor(query));
+    return Boolean(parseColorForTrigger(query));
   },
 
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { title: "", html: "" };
-    const color = parseColor(query);
+    const color = parseColorForTrigger(query);
     if (!color) return { title: "", html: "" };
     return renderColorCard(color, context);
   }
