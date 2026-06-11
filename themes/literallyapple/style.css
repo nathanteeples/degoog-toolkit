@@ -759,6 +759,53 @@ body {
     background: var(--la-fill-secondary);
 }
 
+/* Image search filters (requires #image-filters-bar in search.html). */
+#image-filters-bar {
+    display: none;
+}
+
+.degoog-img-filter-bar {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.25rem 0 0.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+}
+
+.degoog-img-filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.degoog-img-filter-select-wrap {
+    flex-shrink: 0;
+}
+
+.degoog-img-filter-select-wrap .degoog-input {
+    width: auto;
+    min-width: 8rem;
+    appearance: none;
+    -webkit-appearance: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--la-fill-tertiary);
+    border: 1px solid transparent;
+    border-radius: var(--la-radius-pill);
+    padding: 6px 2rem 6px 12px;
+    cursor: pointer;
+    transition: background var(--la-duration) var(--la-ease);
+}
+
+.degoog-img-filter-select-wrap .degoog-input:hover {
+    background: var(--la-fill-secondary);
+}
+
+.degoog-img-filter-select-wrap .degoog-input:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}
+
 .sidebar-accordion-body:has(.wiki-card),
 .sidebar-accordion-body:has(.kp-title),
 .sidebar-accordion-body:has(.kp-description),
@@ -1357,6 +1404,172 @@ body {
 .video-grid .video-card {
     margin-bottom: 0;
     min-width: 0;
+}
+
+/*
+ * Images / videos: shared horizontal gutter, left-aligned engine pills,
+ * and image filter bar aligned with the grid (not logo-offset web padding).
+ */
+#results-page:is(
+        :has(#results-tabs .results-tab[data-type="images"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="images"][aria-selected="true"]
+        ),
+        :has(#results-tabs .results-tab[data-type="videos"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="videos"][aria-selected="true"]
+        ),
+        :has(#results-list .image-card),
+        :has(#results-list .video-card)
+    ) {
+    --theme-media-inline-gutter: 0.75rem;
+}
+
+#results-page:is(
+        :has(#results-tabs .results-tab[data-type="images"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="images"][aria-selected="true"]
+        ),
+        :has(#results-tabs .results-tab[data-type="videos"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="videos"][aria-selected="true"]
+        ),
+        :has(#results-list .image-card),
+        :has(#results-list .video-card)
+    )
+    #results-tabs,
+#results-page:is(
+        :has(#results-tabs .results-tab[data-type="images"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="images"][aria-selected="true"]
+        ),
+        :has(#results-tabs .results-tab[data-type="videos"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="videos"][aria-selected="true"]
+        ),
+        :has(#results-list .image-card),
+        :has(#results-list .video-card)
+    )
+    #results-meta,
+#results-page:is(
+        :has(#results-tabs .results-tab[data-type="images"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="images"][aria-selected="true"]
+        ),
+        :has(#results-tabs .results-tab[data-type="videos"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="videos"][aria-selected="true"]
+        ),
+        :has(#results-list .image-card),
+        :has(#results-list .video-card)
+    )
+    #image-filters-bar,
+#results-page:is(
+        :has(#results-tabs .results-tab[data-type="images"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="images"][aria-selected="true"]
+        ),
+        :has(#results-tabs .results-tab[data-type="videos"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="videos"][aria-selected="true"]
+        ),
+        :has(#results-list .image-card),
+        :has(#results-list .video-card)
+    )
+    #results-layout {
+    padding-inline-start: var(--theme-media-inline-gutter);
+    padding-inline-end: var(--theme-media-inline-gutter);
+}
+
+#results-page:is(
+        :has(#results-tabs .results-tab[data-type="images"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="images"][aria-selected="true"]
+        ),
+        :has(#results-tabs .results-tab[data-type="videos"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="videos"][aria-selected="true"]
+        ),
+        :has(#results-list .image-card),
+        :has(#results-list .video-card)
+    )
+    #results-meta
+    .media-engine-bar {
+    flex: 1 1 auto;
+    flex-basis: auto;
+    justify-content: flex-start;
+    order: 1;
+    min-width: 0;
+    padding-top: 0;
+}
+
+#results-page:is(
+        :has(#results-tabs .results-tab[data-type="images"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="images"][aria-selected="true"]
+        ),
+        :has(#results-tabs .results-tab[data-type="videos"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="videos"][aria-selected="true"]
+        ),
+        :has(#results-list .image-card),
+        :has(#results-list .video-card)
+    )
+    #results-meta
+    .results-meta-stats {
+    order: 2;
+}
+
+@media (min-width: 768px) {
+    #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-tabs .results-tab[data-type="videos"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="videos"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card),
+            :has(#results-list .video-card)
+        ) {
+        --theme-media-inline-gutter: 1.25rem;
+    }
+
+    #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-tabs .results-tab[data-type="videos"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="videos"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card),
+            :has(#results-list .video-card)
+        )
+        #results-meta {
+        flex-wrap: wrap;
+        max-width: none;
+    }
 }
 
 /* Mobile: single column, no custom offsets */
