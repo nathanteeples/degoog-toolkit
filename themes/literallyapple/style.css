@@ -1372,6 +1372,46 @@ body {
         width: auto;
         max-width: 26.25rem;
     }
+
+    /*
+     * Media loading / preview closed: span the full content width. The images
+     * flex row keeps #media-preview-panel in the flow; core gives it
+     * flex-shrink: 0 and a sticky column that can reserve ~26.25rem even at
+     * width: 0 when inner markup is present — skeleton shimmers stop short of
+     * the future preview column until the panel opens.
+     */
+    #results-page:has(#results-layout.media-mode)
+        #results-layout:not(:has(#media-preview-panel.open)) {
+        display: block;
+        max-width: none;
+        width: 100%;
+    }
+
+    #results-page:has(#results-layout.media-mode)
+        #results-layout:not(:has(#media-preview-panel.open))
+        #results-main {
+        width: 100%;
+        max-width: none;
+    }
+
+    #results-page:has(#results-layout.media-mode)
+        #media-preview-panel:not(.open) {
+        display: none !important;
+        position: absolute !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        overflow: hidden !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    #results-page:has(#results-layout.media-mode) .skeleton-image-grid,
+    #results-page:has(#results-layout.media-mode) .skeleton-video-grid {
+        width: 100%;
+        max-width: none;
+        box-sizing: border-box;
+    }
 }
 
 /*
