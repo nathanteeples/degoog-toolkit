@@ -666,7 +666,190 @@ function getLgTranslation(key) {
     tryBind();
 })();
 
-/* ── 6. Translate settings gear title ───────────────────────────────────── */
+/* ── 6. Collapsible sidebar panels (theme setting) ─────────────────────── */
+(function () {
+    var MODE_ATTR = "data-sidebar-panels";
+    var SEARCHING_ATTR = "data-lg-sidebar-searching";
+    var USER_ATTR = "data-lg-sidebar-user";
+
+    function getMode() {
+        var raw = document.documentElement.getAttribute(MODE_ATTR) || "collapsed";
+        if (raw === "open" || raw === "collapsed" || raw === "collapse-on-complete") {
+            return raw;
+        }
+        return "collapsed";
+    }
+
+    function isThemeEnabled() {
+        return document.documentElement.hasAttribute(MODE_ATTR);
+    }
+
+    function sidebarRoot() {
+        return document.getElementById("results-sidebar");
+    }
+
+    function getAccordions(root) {
+        return Array.prototype.slice.call(root.querySelectorAll(".sidebar-accordion"));
+    }
+
+    function isSearching() {
+        if (document.documentElement.hasAttribute(SEARCHING_ATTR)) return true;
+        var meta = document.getElementById("results-meta");
+        return !!(meta && /streaming/i.test(meta.textContent || ""));
+    }
+
+    function shouldAccordionBeOpen(mode, searching) {
+        if (mode === "open") return true;
+        if (mode === "collapsed") return false;
+        if (mode === "collapse-on-complete") return searching;
+        return false;
+    }
+
+    function syncAccordion(accordion) {
+        if (accordion.hasAttribute(USER_ATTR)) return;
+        accordion.classList.toggle(
+            "open",
+            shouldAccordionBeOpen(getMode(), isSearching()),
+        );
+    }
+
+    function syncAll() {
+        if (!isThemeEnabled()) return;
+        var root = sidebarRoot();
+        if (!root) return;
+        getAccordions(root).forEach(syncAccordion);
+    }
+
+    function scheduleSync() {
+        window.requestAnimationFrame(function () {
+            window.requestAnimationFrame(syncAll);
+        });
+    }
+
+    function markSearching() {
+        document.documentElement.setAttribute(SEARCHING_ATTR, "1");
+        scheduleSync();
+    }
+
+    function markComplete() {
+        document.documentElement.removeAttribute(SEARCHING_ATTR);
+        scheduleSync();
+    }
+
+    function clearUserOverrides() {
+        var root = sidebarRoot();
+        if (!root) return;
+        getAccordions(root).forEach(function (accordion) {
+            accordion.removeAttribute(USER_ATTR);
+        });
+    }
+
+    function onSearchStart() {
+        clearUserOverrides();
+        markSearching();
+    }
+
+    function nodeStartsSearch(node) {
+        if (!node || node.nodeType !== 1) return false;
+        if (node.classList) {
+            if (
+                node.classList.contains("skeleton-results") ||
+                node.classList.contains("skeleton-card") ||
+                node.classList.contains("skeleton-sidebar") ||
+                node.classList.contains("streaming-engine-panel")
+            ) {
+                return true;
+            }
+        }
+        if (node.querySelector) {
+            return !!node.querySelector(
+                ".skeleton-results, .skeleton-card, .skeleton-sidebar, .streaming-engine-panel",
+            );
+        }
+        return false;
+    }
+
+    function bindSidebar(root) {
+        if (!root || root.hasAttribute("data-lg-sidebar-bound")) return;
+        root.setAttribute("data-lg-sidebar-bound", "1");
+
+        root.addEventListener("click", function (event) {
+            var target = event.target;
+            if (!target || typeof target.closest !== "function") return;
+            var toggle = target.closest(".sidebar-accordion-toggle");
+            if (!toggle || !root.contains(toggle)) return;
+            var accordion = toggle.closest(".sidebar-accordion");
+            if (!accordion) return;
+            window.requestAnimationFrame(function () {
+                accordion.setAttribute(USER_ATTR, "1");
+            });
+        });
+
+        new MutationObserver(function () {
+            scheduleSync();
+        }).observe(root, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class"],
+        });
+    }
+
+    function observeSearchLifecycle() {
+        var resultsList = document.getElementById("results-list");
+        if (resultsList) {
+            new MutationObserver(function (mutations) {
+                var started = mutations.some(function (mutation) {
+                    for (var i = 0; i < mutation.addedNodes.length; i++) {
+                        if (nodeStartsSearch(mutation.addedNodes[i])) return true;
+                    }
+                    return false;
+                });
+                if (started) onSearchStart();
+            }).observe(resultsList, { childList: true, subtree: true });
+        }
+
+        var meta = document.getElementById("results-meta");
+        if (meta) {
+            new MutationObserver(function () {
+                var text = meta.textContent || "";
+                if (/streaming/i.test(text)) {
+                    markSearching();
+                } else if (text.trim()) {
+                    markComplete();
+                }
+            }).observe(meta, { childList: true, characterData: true, subtree: true });
+        }
+
+        window.addEventListener("degoog-results-ready", markComplete);
+
+        var searchBtn = document.getElementById("results-search-btn");
+        if (searchBtn) searchBtn.addEventListener("click", onSearchStart);
+
+        var searchInput = document.getElementById("results-search-input");
+        if (searchInput) {
+            searchInput.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") onSearchStart();
+            });
+        }
+    }
+
+    function init() {
+        if (!isThemeEnabled()) return;
+        var root = sidebarRoot();
+        if (root) bindSidebar(root);
+        observeSearchLifecycle();
+        scheduleSync();
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
+})();
+
+/* ── 7. Translate settings gear title ───────────────────────────────────── */
 (function () {
     function translateSettingsGear() {
         var settingsEl = document.getElementById("nav-settings-results");

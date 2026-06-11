@@ -627,6 +627,21 @@ var {
     padding: 0;
 }
 
+/* Collapsible sidebar accordions on all viewports (theme setting via data-sidebar-panels). */
+html[data-sidebar-panels] #results-sidebar .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
+    display: flex;
+}
+
+@media (min-width: 768px) {
+    html[data-sidebar-panels] #results-sidebar .sidebar-accordion:not(.open) .sidebar-accordion-body {
+        display: none;
+    }
+
+    html[data-sidebar-panels] #results-sidebar .sidebar-accordion.open .sidebar-accordion-body {
+        display: block;
+    }
+}
+
 /* Results sidebar: strip core panel border/shadow; card rows match examples/LiterallyGoogle. */
 #results-sidebar .sidebar-panel {
     border: none !important;

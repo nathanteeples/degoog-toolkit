@@ -3,6 +3,24 @@
   "author": "SoPat712",
   "description": "Apple-inspired liquid glass theme with translucent materials, capsule controls, and full-width plugin slots.",
   "css": "style.css",
+  "settingsSchema": [
+    {
+      "key": "sidebarPanels",
+      "label": "Sidebar panels",
+      "description": "Default state for Engine Performance, People also search for, and knowledge panels in the results sidebar.",
+      "type": "select",
+      "options": ["collapsed", "open", "collapse-on-complete"],
+      "optionLabels": [
+        "Collapsed always",
+        "Open always",
+        "Open during search, then collapse when complete"
+      ],
+      "default": "collapsed"
+    }
+  ],
+  "dataAttrsFromSettings": {
+    "sidebarPanels": "sidebar-panels"
+  },
   "html": {
     "layout": "layout.html",
     "search": "search.html",

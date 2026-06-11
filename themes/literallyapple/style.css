@@ -773,6 +773,21 @@ body {
     padding: 0;
 }
 
+/* Collapsible sidebar accordions on all viewports (theme setting via data-sidebar-panels). */
+html[data-sidebar-panels] #results-sidebar .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
+    display: flex;
+}
+
+@media (min-width: 768px) {
+    html[data-sidebar-panels] #results-sidebar .sidebar-accordion:not(.open) .sidebar-accordion-body {
+        display: none;
+    }
+
+    html[data-sidebar-panels] #results-sidebar .sidebar-accordion.open .sidebar-accordion-body {
+        display: block;
+    }
+}
+
 .engine-stat-row {
     background: transparent;
     border-radius: 0;
