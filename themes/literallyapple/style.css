@@ -917,7 +917,10 @@ html[data-related-searches-desktop]
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
     background: var(--la-card);
     border: 1px solid var(--border-light);
-    border-radius: var(--la-radius-lg);
+    border-start-start-radius: var(--la-radius-lg);
+    border-start-end-radius: var(--la-radius-lg);
+    border-end-start-radius: 4px;
+    border-end-end-radius: 4px;
     box-sizing: border-box;
     width: 100%;
 }

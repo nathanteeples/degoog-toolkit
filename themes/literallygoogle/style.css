@@ -768,7 +768,10 @@ html[data-related-searches-desktop]
 #results-sidebar .sidebar-accordion.streaming-engine-panel
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
     background: var(--bg-light);
-    border-radius: 4px;
+    border-start-start-radius: 1rem;
+    border-start-end-radius: 1rem;
+    border-end-start-radius: 4px;
+    border-end-end-radius: 4px;
     box-sizing: border-box;
     width: 100%;
 }
