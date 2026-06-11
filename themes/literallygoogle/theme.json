@@ -6,8 +6,8 @@
   "settingsSchema": [
     {
       "key": "sidebarPanelsMobile",
-      "label": "Sidebar panels (mobile)",
-      "description": "Engine Performance, People also search for, and knowledge panels on narrow screens.",
+      "label": "Engine Performance (mobile)",
+      "description": "Default open/closed state for the Engine Performance sidebar panel on narrow screens.",
       "type": "select",
       "options": ["collapsed", "open", "collapse-on-complete"],
       "optionLabels": [
@@ -19,8 +19,8 @@
     },
     {
       "key": "sidebarPanelsDesktop",
-      "label": "Sidebar panels (desktop)",
-      "description": "Same sidebar panels on laptop and desktop widths.",
+      "label": "Engine Performance (desktop)",
+      "description": "Default open/closed state for the Engine Performance sidebar panel on laptop and desktop.",
       "type": "select",
       "options": ["collapsed", "open", "collapse-on-complete"],
       "optionLabels": [

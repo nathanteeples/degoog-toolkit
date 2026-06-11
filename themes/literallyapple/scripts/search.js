@@ -666,7 +666,7 @@ function getLaTranslation(key) {
     tryBind();
 })();
 
-/* ── 6. Collapsible sidebar panels (theme setting) ─────────────────────── */
+/* ── 6. Engine Performance panel collapse (theme setting) ──────────────── */
 (function () {
     var MODE_ATTR_MOBILE = "data-sidebar-panels-mobile";
     var MODE_ATTR_DESKTOP = "data-sidebar-panels-desktop";
@@ -702,8 +702,16 @@ function getLaTranslation(key) {
         return document.getElementById("results-sidebar");
     }
 
-    function getAccordions(root) {
-        return Array.prototype.slice.call(root.querySelectorAll(".sidebar-accordion"));
+    function isEnginePerformancePanel(accordion) {
+        if (!accordion || !accordion.classList) return false;
+        if (accordion.classList.contains("streaming-engine-panel")) return true;
+        return !!accordion.querySelector(".engine-stat-row");
+    }
+
+    function getEnginePerformancePanels(root) {
+        return Array.prototype.slice
+            .call(root.querySelectorAll(".sidebar-accordion"))
+            .filter(isEnginePerformancePanel);
     }
 
     function isSearching() {
@@ -731,7 +739,7 @@ function getLaTranslation(key) {
         if (!isThemeEnabled()) return;
         var root = sidebarRoot();
         if (!root) return;
-        getAccordions(root).forEach(syncAccordion);
+        getEnginePerformancePanels(root).forEach(syncAccordion);
     }
 
     function scheduleSync() {
@@ -753,7 +761,7 @@ function getLaTranslation(key) {
     function clearUserOverrides() {
         var root = sidebarRoot();
         if (!root) return;
-        getAccordions(root).forEach(function (accordion) {
+        getEnginePerformancePanels(root).forEach(function (accordion) {
             accordion.removeAttribute(USER_ATTR);
         });
     }
@@ -793,7 +801,7 @@ function getLaTranslation(key) {
             var toggle = target.closest(".sidebar-accordion-toggle");
             if (!toggle || !root.contains(toggle)) return;
             var accordion = toggle.closest(".sidebar-accordion");
-            if (!accordion) return;
+            if (!accordion || !isEnginePerformancePanel(accordion)) return;
             window.requestAnimationFrame(function () {
                 accordion.setAttribute(USER_ATTR, "1");
             });
