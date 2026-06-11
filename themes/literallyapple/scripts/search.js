@@ -812,14 +812,8 @@ function getLaTranslation(key) {
     }
 
     function syncRelatedAccordion(accordion) {
-        var shouldOpen = getRelatedMode() === "open";
-        if (shouldOpen) {
-            accordion.removeAttribute(USER_ATTR_RELATED);
-            accordion.classList.add("open");
-            return;
-        }
         if (accordion.hasAttribute(USER_ATTR_RELATED)) return;
-        accordion.classList.remove("open");
+        accordion.classList.toggle("open", getRelatedMode() === "open");
     }
 
     function syncKnowledgePanel(accordion) {
@@ -892,24 +886,23 @@ function getLaTranslation(key) {
         if (!root || root.hasAttribute("data-lg-sidebar-bound")) return;
         root.setAttribute("data-lg-sidebar-bound", "1");
 
-        root.addEventListener("click", function (event) {
-            var target = event.target;
-            if (!target || typeof target.closest !== "function") return;
-            var toggle = target.closest(".sidebar-accordion-toggle");
-            if (!toggle || !root.contains(toggle)) return;
-            var accordion = toggle.closest(".sidebar-accordion");
-            if (!accordion) return;
-            window.requestAnimationFrame(function () {
+        root.addEventListener(
+            "click",
+            function (event) {
+                var target = event.target;
+                if (!target || typeof target.closest !== "function") return;
+                var toggle = target.closest(".sidebar-accordion-toggle");
+                if (!toggle || !root.contains(toggle)) return;
+                var accordion = toggle.closest(".sidebar-accordion");
+                if (!accordion) return;
                 if (isEnginePerformancePanel(accordion)) {
                     accordion.setAttribute(USER_ATTR_ENGINE, "1");
-                } else if (
-                    isRelatedSearchesPanel(accordion) &&
-                    getRelatedMode() !== "open"
-                ) {
+                } else if (isRelatedSearchesPanel(accordion)) {
                     accordion.setAttribute(USER_ATTR_RELATED, "1");
                 }
-            });
-        });
+            },
+            true,
+        );
 
         new MutationObserver(function (mutations) {
             var relatedAdded = mutations.some(function (mutation) {

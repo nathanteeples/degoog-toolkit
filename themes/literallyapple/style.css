@@ -809,16 +809,21 @@ body {
     }
 }
 
-/* People also search for — collapsible on desktop (data-related-searches-desktop). */
-html[data-related-searches-mobile="open"]
-    #results-sidebar
-    .sidebar-accordion:has(.related-search-link)
-    .sidebar-accordion-body,
-html[data-related-searches-desktop="open"]
-    #results-sidebar
-    .sidebar-accordion:has(.related-search-link)
-    .sidebar-accordion-body {
-    display: block !important;
+/* People also search for — respect .open on mobile and desktop. */
+@media (max-width: 767px) {
+    html[data-related-searches-mobile]
+        #results-sidebar
+        .sidebar-accordion:has(.related-search-link):not(.open)
+        .sidebar-accordion-body {
+        display: none;
+    }
+
+    html[data-related-searches-mobile]
+        #results-sidebar
+        .sidebar-accordion:has(.related-search-link).open
+        .sidebar-accordion-body {
+        display: block;
+    }
 }
 
 @media (min-width: 768px) {
@@ -829,18 +834,18 @@ html[data-related-searches-desktop="open"]
         display: flex;
     }
 
-    html[data-related-searches-desktop="collapsed"]
+    html[data-related-searches-desktop]
         #results-sidebar
         .sidebar-accordion:has(.related-search-link):not(.open)
         .sidebar-accordion-body {
         display: none;
     }
 
-    html[data-related-searches-desktop="open"]
+    html[data-related-searches-desktop]
         #results-sidebar
-        .sidebar-accordion:has(.related-search-link)
-        .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
-        display: flex;
+        .sidebar-accordion:has(.related-search-link).open
+        .sidebar-accordion-body {
+        display: block;
     }
 }
 
