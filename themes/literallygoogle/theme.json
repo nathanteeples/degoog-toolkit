@@ -44,8 +44,8 @@
       "label": "People also search for (desktop)",
       "description": "Default open or collapsed state for the related searches sidebar panel on laptop and desktop.",
       "type": "select",
-      "options": ["collapsed", "open"],
-      "optionLabels": ["Collapsed", "Open"],
+      "options": ["open", "collapsed"],
+      "optionLabels": ["Open", "Collapsed"],
       "default": "open"
     }
   ],

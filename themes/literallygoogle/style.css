@@ -664,6 +664,17 @@ var {
 }
 
 /* People also search for — collapsible on desktop (data-related-searches-desktop). */
+html[data-related-searches-mobile="open"]
+    #results-sidebar
+    .sidebar-accordion:has(.related-search-link)
+    .sidebar-accordion-body,
+html[data-related-searches-desktop="open"]
+    #results-sidebar
+    .sidebar-accordion:has(.related-search-link)
+    .sidebar-accordion-body {
+    display: block !important;
+}
+
 @media (min-width: 768px) {
     html[data-related-searches-desktop]
         #results-sidebar
@@ -672,18 +683,18 @@ var {
         display: flex;
     }
 
-    html[data-related-searches-desktop]
+    html[data-related-searches-desktop="collapsed"]
         #results-sidebar
         .sidebar-accordion:has(.related-search-link):not(.open)
         .sidebar-accordion-body {
         display: none;
     }
 
-    html[data-related-searches-desktop]
+    html[data-related-searches-desktop="open"]
         #results-sidebar
-        .sidebar-accordion:has(.related-search-link).open
-        .sidebar-accordion-body {
-        display: block;
+        .sidebar-accordion:has(.related-search-link)
+        .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
+        display: flex;
     }
 }
 

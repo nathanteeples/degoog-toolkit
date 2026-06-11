@@ -761,10 +761,43 @@ function getLgTranslation(key) {
         return raw === "open" ? "open" : "collapsed";
     }
 
+    function getMetaText() {
+        var meta = document.getElementById("results-meta");
+        return meta ? meta.textContent || "" : "";
+    }
+
+    function isMetaStreaming(text) {
+        return /streaming/i.test(text);
+    }
+
+    function isMetaSearching(text) {
+        return /^searching/i.test(text.trim());
+    }
+
+    function isMetaComplete(text) {
+        if (!text.trim() || isMetaStreaming(text) || isMetaSearching(text)) {
+            return false;
+        }
+        return /results/i.test(text) && /seconds?\)/i.test(text);
+    }
+
     function isSearching() {
         if (document.documentElement.hasAttribute(SEARCHING_ATTR)) return true;
-        var meta = document.getElementById("results-meta");
-        return !!(meta && /streaming/i.test(meta.textContent || ""));
+        return isMetaStreaming(getMetaText());
+    }
+
+    function sidebarMutationHasRelated(nodes) {
+        for (var i = 0; i < nodes.length; i++) {
+            var node = nodes[i];
+            if (node.nodeType !== 1) continue;
+            if (node.classList && node.classList.contains("related-search-link")) {
+                return true;
+            }
+            if (node.querySelector && node.querySelector(".related-search-link")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     function shouldEngineBeOpen(mode, searching) {
@@ -806,6 +839,7 @@ function getLgTranslation(key) {
         window.requestAnimationFrame(function () {
             window.requestAnimationFrame(syncAll);
         });
+        window.setTimeout(syncAll, 0);
     }
 
     function markSearching() {
@@ -877,8 +911,17 @@ function getLgTranslation(key) {
             });
         });
 
-        new MutationObserver(function () {
+        new MutationObserver(function (mutations) {
+            var relatedAdded = mutations.some(function (mutation) {
+                return sidebarMutationHasRelated(
+                    Array.prototype.slice.call(mutation.addedNodes),
+                );
+            });
             scheduleSync();
+            if (relatedAdded && getRelatedMode() === "open") {
+                window.setTimeout(syncAll, 0);
+                window.setTimeout(syncAll, 50);
+            }
         }).observe(root, {
             childList: true,
             subtree: true,
@@ -904,10 +947,10 @@ function getLgTranslation(key) {
         var meta = document.getElementById("results-meta");
         if (meta) {
             new MutationObserver(function () {
-                var text = meta.textContent || "";
-                if (/streaming/i.test(text)) {
+                var text = getMetaText();
+                if (isMetaStreaming(text) || isMetaSearching(text)) {
                     markSearching();
-                } else if (text.trim()) {
+                } else if (isMetaComplete(text)) {
                     markComplete();
                 }
             }).observe(meta, { childList: true, characterData: true, subtree: true });
