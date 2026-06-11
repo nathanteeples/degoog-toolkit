@@ -763,10 +763,20 @@ html[data-related-searches-desktop]
     margin-bottom: 2px;
 }
 
-.engine-stat-row:last-child {
+.engine-stat-row:first-child,
+.related-search-link:first-child {
+    border-start-start-radius: 4px;
+    border-start-end-radius: 4px;
+}
+
+.engine-stat-row:last-child:not(:only-child) {
     margin-bottom: 0;
     border-end-end-radius: 12px;
     border-end-start-radius: 12px;
+}
+
+.engine-stat-row:only-child {
+    margin-bottom: 0;
 }
 
 .related-search-link {
@@ -779,10 +789,14 @@ html[data-related-searches-desktop]
     border-radius: 4px;
 }
 
-.related-search-link:last-child {
+.related-search-link:last-child:not(:only-child) {
     margin-bottom: 0;
     border-end-start-radius: 12px;
     border-end-end-radius: 12px;
+}
+
+.related-search-link:only-child {
+    margin-bottom: 0;
 }
 
 body {
