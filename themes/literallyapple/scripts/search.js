@@ -779,8 +779,14 @@ function getLaTranslation(key) {
     }
 
     function syncRelatedAccordion(accordion) {
+        var shouldOpen = getRelatedMode() === "open";
+        if (shouldOpen) {
+            accordion.removeAttribute(USER_ATTR_RELATED);
+            accordion.classList.add("open");
+            return;
+        }
         if (accordion.hasAttribute(USER_ATTR_RELATED)) return;
-        accordion.classList.toggle("open", getRelatedMode() === "open");
+        accordion.classList.remove("open");
     }
 
     function syncKnowledgePanel(accordion) {
@@ -862,7 +868,10 @@ function getLaTranslation(key) {
             window.requestAnimationFrame(function () {
                 if (isEnginePerformancePanel(accordion)) {
                     accordion.setAttribute(USER_ATTR_ENGINE, "1");
-                } else if (isRelatedSearchesPanel(accordion)) {
+                } else if (
+                    isRelatedSearchesPanel(accordion) &&
+                    getRelatedMode() !== "open"
+                ) {
                     accordion.setAttribute(USER_ATTR_RELATED, "1");
                 }
             });
