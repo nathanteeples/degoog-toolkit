@@ -770,10 +770,20 @@ html[data-related-searches-desktop]
     background: var(--bg-light);
     border-start-start-radius: 1rem;
     border-start-end-radius: 1rem;
-    border-end-start-radius: 4px;
-    border-end-end-radius: 4px;
+    border-end-start-radius: 1rem;
+    border-end-end-radius: 1rem;
     box-sizing: border-box;
     width: 100%;
+}
+
+#results-sidebar .sidebar-accordion:has(.engine-stat-row).open
+    > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
+#results-sidebar .sidebar-accordion:has(.related-search-link).open
+    > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
+#results-sidebar .sidebar-accordion.streaming-engine-panel.open
+    > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
+    border-end-start-radius: 4px;
+    border-end-end-radius: 4px;
 }
 
 .engine-stat-row {

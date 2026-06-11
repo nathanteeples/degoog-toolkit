@@ -919,10 +919,26 @@ html[data-related-searches-desktop]
     border: 1px solid var(--border-light);
     border-start-start-radius: var(--la-radius-lg);
     border-start-end-radius: var(--la-radius-lg);
-    border-end-start-radius: 4px;
-    border-end-end-radius: 4px;
+    border-end-start-radius: var(--la-radius-lg);
+    border-end-end-radius: var(--la-radius-lg);
     box-sizing: border-box;
     width: 100%;
+}
+
+#results-page
+    #results-sidebar
+    .sidebar-accordion:has(.engine-stat-row).open
+    > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
+#results-page
+    #results-sidebar
+    .sidebar-accordion:has(.related-search-link).open
+    > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
+#results-page
+    #results-sidebar
+    .sidebar-accordion.streaming-engine-panel.open
+    > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
+    border-end-start-radius: 4px;
+    border-end-end-radius: 4px;
 }
 
 .engine-stat-row {
