@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir } from "fs/promises";
+import { randomUUID } from "node:crypto";
+import { readFile, writeFile, mkdir, rename } from "fs/promises";
 import { join } from "path";
 
 const CLOCK_ICON =
@@ -30,10 +31,20 @@ const _loadHistory = async () => {
   try {
     const raw = await readFile(HISTORY_PATH, "utf-8");
     const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    await _saveHistory([]);
-    return [];
+    if (!Array.isArray(data)) {
+      const error = new TypeError("Search history data must be an array");
+      error.code = "INVALID_HISTORY";
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    if (error instanceof SyntaxError || error?.code === "INVALID_HISTORY") {
+      const backupPath = `${HISTORY_PATH}.corrupt-${Date.now()}`;
+      await rename(HISTORY_PATH, backupPath).catch(() => {});
+      return [];
+    }
+    throw error;
   }
 };
 
@@ -130,7 +141,7 @@ const command = {
         const timeStr = _esc(ts);
         const searchUrl = `/search?q=${encodeURIComponent(item.entry ?? "")}`;
         const deleteUrl = `${pluginRouteBase}/delete?id=${encodeURIComponent(item.id)}&return=bang`;
-        return `<div class="result-item"><div class="result-body"><div class="result-url-row"><span class="result-favicon result-favicon--clock">${CLOCK_ICON}</span><cite class="result-cite">${timeStr}</cite><a href="${_esc(deleteUrl)}" class="history-delete-btn" aria-label="Delete">${TRASH_ICON}</a></div><a class="result-title" href="${_esc(searchUrl)}">${entry}</a></div></div>`;
+        return `<div class="result-item"><div class="result-body"><div class="result-url-row"><span class="result-favicon result-favicon--clock">${CLOCK_ICON}</span><cite class="result-cite">${timeStr}</cite><form class="history-delete-form" method="post" action="${_esc(deleteUrl)}"><button type="submit" class="history-delete-btn" aria-label="Delete history entry">${TRASH_ICON}</button></form></div><a class="result-title" href="${_esc(searchUrl)}">${entry}</a></div></div>`;
       })
       .join("");
 
@@ -174,7 +185,11 @@ export const routes = [
       if (!entry) {
         return jsonResponse({ error: "Missing or empty entry" }, 400);
       }
-      if (entry === "!history" || entry.startsWith("!history ")) {
+      const normalizedEntry = entry.toLowerCase();
+      if (
+        normalizedEntry === "!history" ||
+        normalizedEntry.startsWith("!history ")
+      ) {
         return jsonResponse({ error: "Cannot store bang command" }, 400);
       }
       const { id, storedEntry, timestamp } = await _withHistoryWrite(
@@ -193,14 +208,11 @@ export const routes = [
             history.splice(existingIdx, 1);
             history.push({ id, entry: storedEntry, timestamp });
           } else {
-            id =
-              typeof crypto !== "undefined" && crypto.randomUUID
-                ? crypto.randomUUID()
-                : `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            id = randomUUID();
             history.push({ id, entry, timestamp });
-            while (history.length > maxEntries) {
-              history.shift();
-            }
+          }
+          while (history.length > maxEntries) {
+            history.shift();
           }
           return { id, storedEntry, timestamp };
         },
@@ -209,7 +221,7 @@ export const routes = [
     },
   },
   {
-    method: "get",
+    method: "post",
     path: "delete",
     handler: async (req) => {
       const url = new URL(req.url);

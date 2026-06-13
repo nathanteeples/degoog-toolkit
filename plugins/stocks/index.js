@@ -1,6 +1,7 @@
 let templateHtml = "";
 let pluginFetch = (...args) => fetch(...args);
 let quoteCache = null;
+let sparklineSequence = 0;
 
 function t(key) {
   return `{{ t:plugin-stocks.${key} }}`;
@@ -8,6 +9,7 @@ function t(key) {
 
 const PLUGIN_NAME = "Stocks";
 const CACHE_TTL_MS = 60 * 1000;
+const REQUEST_TIMEOUT_MS = 8_000;
 const YAHOO_SEARCH_URL = "https://query1.finance.yahoo.com/v1/finance/search";
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
 const YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart";
@@ -28,6 +30,23 @@ const REQUEST_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (compatible; degoog-stocks/1.0; +https://github.com/SoPat712)",
 };
+
+function createExtensionCache(ctx, namespace, ttlMs) {
+  if (typeof ctx?.useCache === "function") {
+    return ctx.useCache(namespace, ttlMs);
+  }
+  return typeof ctx?.createCache === "function"
+    ? ctx.createCache(ttlMs)
+    : null;
+}
+
+async function cacheGet(cache, key) {
+  return cache ? await cache.get(key) : null;
+}
+
+async function cacheSet(cache, key, value, ttlMs) {
+  if (cache) await cache.set(key, value, ttlMs);
+}
 
 const BANG_PREFIX_RX = /^!(stock|stocks|quote|ticker)\b\s*/i;
 const CASH_TAG_RX = /(?:^|\s)\$([A-Za-z][A-Za-z0-9.-]{0,11})(?=$|\s|[?!.,;:])/;
@@ -184,6 +203,22 @@ const EXCHANGE_LABELS = {
   PNK: "OTC",
 };
 
+async function fetchWithTimeout(doFetch, url, init = {}) {
+  const controller =
+    typeof AbortController === "function" ? new AbortController() : null;
+  const timeout = controller
+    ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    : null;
+  try {
+    return await doFetch(url, {
+      ...init,
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 export const slot = {
   id: "stocks",
   name: PLUGIN_NAME,
@@ -202,9 +237,11 @@ export const slot = {
     if (typeof ctx?.fetch === "function") {
       pluginFetch = (...args) => ctx.fetch(...args);
     }
-    if (typeof ctx?.createCache === "function") {
-      quoteCache = ctx.createCache(CACHE_TTL_MS);
-    }
+    quoteCache = createExtensionCache(
+      ctx,
+      "ext:stocks:quotes",
+      CACHE_TTL_MS,
+    );
   },
 
   trigger(query) {
@@ -255,21 +292,21 @@ export const routes = [
 
 async function getCachedQuote(request, doFetch) {
   const key = `stocks:${request.kind}:${request.symbol || request.target}`;
-  const cached = quoteCache?.get?.(key);
+  const cached = await cacheGet(quoteCache, key);
   if (cached) return cached;
 
   const quote = await resolveQuote(request, doFetch);
-  if (quote) quoteCache?.set?.(key, quote, CACHE_TTL_MS);
+  if (quote) await cacheSet(quoteCache, key, quote, CACHE_TTL_MS);
   return quote;
 }
 
 async function getCachedChartSeries(symbol, period, doFetch) {
   const key = `stocks:chart:${symbol}:${period}`;
-  const cached = quoteCache?.get?.(key);
+  const cached = await cacheGet(quoteCache, key);
   if (cached) return cached;
 
   const chart = await fetchYahooChartSeries(symbol, period, doFetch);
-  if (chart) quoteCache?.set?.(key, chart, CACHE_TTL_MS);
+  if (chart) await cacheSet(quoteCache, key, chart, CACHE_TTL_MS);
   return chart;
 }
 
@@ -679,9 +716,11 @@ async function fetchYahooQuoteSnapshot(symbol, doFetch) {
       symbols: symbol,
       formatted: "false",
     });
-    const response = await doFetch(`${YAHOO_QUOTE_URL}?${params}`, {
-      headers: REQUEST_HEADERS,
-    });
+    const response = await fetchWithTimeout(
+      doFetch,
+      `${YAHOO_QUOTE_URL}?${params}`,
+      { headers: REQUEST_HEADERS },
+    );
     if (!response?.ok) return null;
     const data = await response.json();
     const quote = data?.quoteResponse?.result?.[0];
@@ -700,9 +739,11 @@ async function fetchYahooSearch(query, doFetch) {
       lists_count: "0",
       enableFuzzyQuery: "false",
     });
-    const response = await doFetch(`${YAHOO_SEARCH_URL}?${params}`, {
-      headers: REQUEST_HEADERS,
-    });
+    const response = await fetchWithTimeout(
+      doFetch,
+      `${YAHOO_SEARCH_URL}?${params}`,
+      { headers: REQUEST_HEADERS },
+    );
     if (!response?.ok) return null;
     const data = await response.json();
     return Array.isArray(data?.quotes) ? data.quotes : null;
@@ -749,7 +790,8 @@ async function fetchYahooChart(symbol, searchQuote, doFetch) {
       range: "1d",
       includePrePost: "false",
     });
-    const response = await doFetch(
+    const response = await fetchWithTimeout(
+      doFetch,
       `${YAHOO_CHART_URL}/${encodeURIComponent(symbol)}?${params}`,
       { headers: REQUEST_HEADERS },
     );
@@ -899,7 +941,8 @@ async function fetchYahooChartSeries(symbol, period, doFetch) {
       range: config.range,
       includePrePost: "false",
     });
-    const response = await doFetch(
+    const response = await fetchWithTimeout(
+      doFetch,
       `${YAHOO_CHART_URL}/${encodeURIComponent(symbol)}?${params}`,
       { headers: REQUEST_HEADERS },
     );
@@ -988,9 +1031,11 @@ async function fetchStooqCandidate(stooqSymbol, displaySymbol, searchQuote, doFe
       h: "",
       e: "csv",
     });
-    const response = await doFetch(`${STOOQ_QUOTE_URL}?${params}`, {
-      headers: REQUEST_HEADERS,
-    });
+    const response = await fetchWithTimeout(
+      doFetch,
+      `${STOOQ_QUOTE_URL}?${params}`,
+      { headers: REQUEST_HEADERS },
+    );
     if (!response?.ok) return null;
     const text = await response.text();
     const rows = parseCsv(text);
@@ -1258,6 +1303,7 @@ function renderSparkline(points, trend, label) {
     .join(" ");
   const area = `${path} L ${coords[coords.length - 1][0]} ${padT + chartH} L ${coords[0][0]} ${padT + chartH} Z`;
   const last = coords[coords.length - 1];
+  const gradientId = `stocks-grad-${++sparklineSequence}`;
 
   const gridLinesHtml = [0, 1, 2, 3].map((gi) => {
     const frac = gi / 3;
@@ -1271,13 +1317,13 @@ function renderSparkline(points, trend, label) {
   return `
     <svg class="stocks-sparkline stocks-sparkline-${trend}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" role="img" aria-label="Price sparkline">
       <defs>
-        <linearGradient id="stocks-grad" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="var(--stocks-line)" stop-opacity="0.3"></stop>
           <stop offset="100%" stop-color="var(--stocks-line)" stop-opacity="0"></stop>
         </linearGradient>
       </defs>
       ${gridLinesHtml}
-      <path class="stocks-sparkline-area" d="${area}" fill="url(#stocks-grad)"></path>
+      <path class="stocks-sparkline-area" d="${area}" fill="url(#${gradientId})"></path>
       <path class="stocks-sparkline-line" d="${path}"></path>
       <circle class="stocks-sparkline-dot" cx="${last[0]}" cy="${last[1]}" r="3"></circle>
     </svg>

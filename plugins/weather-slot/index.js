@@ -1,6 +1,27 @@
+import { isInformationalQuestion } from "./query-guards.js";
+
 let template = "";
 let externalFetch = (...args) => fetch(...args);
-import { isInformationalQuestion } from "./query-guards.js";
+let weatherCache = null;
+const FETCH_TIMEOUT_MS = 8000;
+const FORECAST_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function createExtensionCache(ctx, namespace, ttlMs) {
+  if (typeof ctx?.useCache === "function") {
+    return ctx.useCache(namespace, ttlMs);
+  }
+  return typeof ctx?.createCache === "function"
+    ? ctx.createCache(ttlMs)
+    : null;
+}
+
+async function cacheGet(cache, key) {
+  return cache ? await cache.get(key) : null;
+}
+
+async function cacheSet(cache, key, value, ttlMs) {
+  if (cache) await cache.set(key, value, ttlMs);
+}
 
 const settings = {
   // Default to imperial units for brand-new installs. Existing saved
@@ -248,6 +269,11 @@ const slotDef = {
     if (typeof ctx?.fetch === "function") {
       externalFetch = (...args) => ctx.fetch(...args);
     }
+    weatherCache = createExtensionCache(
+      ctx,
+      "ext:weather-slot:responses",
+      FORECAST_CACHE_TTL_MS,
+    );
   },
 
   trigger(query) {
@@ -389,18 +415,30 @@ const slotDef = {
         typeof context?.fetch === "function"
           ? (...args) => context.fetch(...args)
           : externalFetch;
-      const geoRes = await doFetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(targetCity)}&format=json&limit=5&addressdetails=1`,
-        {
-          headers: {
-            "User-Agent": "degoog-weather-slot/1.1",
-            "Accept-Language": context?.lang || "en",
+      const geoCacheKey = `geo:${(context?.lang || "en").toLowerCase()}:${targetCity.toLowerCase()}`;
+      let geoData = await cacheGet(weatherCache, geoCacheKey);
+      if (!geoData) {
+        const geoRes = await _fetchWithTimeout(
+          doFetch,
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(targetCity)}&format=json&limit=5&addressdetails=1`,
+          {
+            headers: {
+              "User-Agent": "degoog-weather-slot/1.1",
+              "Accept-Language": context?.lang || "en",
+            },
           },
-        },
-      );
-      if (!geoRes.ok) return { html: "" };
-
-      const geoData = await geoRes.json();
+        );
+        if (!geoRes.ok) return { html: "" };
+        geoData = await geoRes.json();
+        if (Array.isArray(geoData) && geoData.length) {
+          await cacheSet(
+            weatherCache,
+            geoCacheKey,
+            geoData,
+            24 * 60 * 60 * 1000,
+          );
+        }
+      }
       if (!geoData?.length) {
         return { html: "<p>City not found.</p>" };
       }
@@ -499,9 +537,21 @@ const slotDef = {
         `&precipitation_unit=${settings.precipUnit}` +
         `&timezone=auto&forecast_days=7`;
 
-      const wxRes = await doFetch(url);
-      if (!wxRes.ok) return { html: "" };
-      const wx = await wxRes.json();
+      const forecastCacheKey = [
+        "forecast",
+        lat.toFixed(4),
+        lon.toFixed(4),
+        settings.units,
+        settings.windUnit,
+        settings.precipUnit,
+      ].join(":");
+      let wx = await cacheGet(weatherCache, forecastCacheKey);
+      if (!wx) {
+        const wxRes = await _fetchWithTimeout(doFetch, url);
+        if (!wxRes.ok) return { html: "" };
+        wx = await wxRes.json();
+        await cacheSet(weatherCache, forecastCacheKey, wx);
+      }
       const utcOffsetSeconds = Number.isFinite(wx.utc_offset_seconds)
         ? wx.utc_offset_seconds
         : 0;
@@ -823,6 +873,16 @@ export default slotDef;
 
 function _pick(value, allowed, fallback) {
   return allowed.includes(value) ? value : fallback;
+}
+
+async function _fetchWithTimeout(fetcher, url, init = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetcher(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function _convertPressure(hpa, unit) {

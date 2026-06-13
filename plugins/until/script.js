@@ -27,7 +27,14 @@
   function startCard(card) {
     if (card.__untilTimer) return;
 
-    const update = () => updateCard(card);
+    const update = () => {
+      if (!card.isConnected) {
+        window.clearInterval(card.__untilTimer);
+        card.__untilTimer = null;
+        return;
+      }
+      updateCard(card);
+    };
     update();
     card.__untilTimer = window.setInterval(update, 1000);
   }

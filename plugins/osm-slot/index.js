@@ -11,7 +11,7 @@ function t(key, context) {
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.7.0";
+const PLUGIN_VERSION = "4.7.1";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -19,6 +19,23 @@ let _settings = {};
 let _fetch = (...args) => fetch(...args);
 let _cache = null;
 let _osmProviderIconSvg = "";
+
+function createExtensionCache(ctx, namespace, ttlMs) {
+  if (typeof ctx?.useCache === "function") {
+    return ctx.useCache(namespace, ttlMs);
+  }
+  return typeof ctx?.createCache === "function"
+    ? ctx.createCache(ttlMs)
+    : null;
+}
+
+async function cacheGet(cache, key) {
+  return cache ? await cache.get(key) : null;
+}
+
+async function cacheSet(cache, key, value, ttlMs) {
+  if (cache) await cache.set(key, value, ttlMs);
+}
 let _nominatimGeocoder = null;
 
 const HERE_BROWSE = "https://browse.search.hereapi.com/v1/browse";
@@ -220,10 +237,12 @@ export const slot = {
     if (typeof ctx?.fetch === "function") {
       _fetch = (...args) => ctx.fetch(...args);
     }
-    if (typeof ctx?.createCache === "function") {
-      _cache = ctx.createCache(30 * 60 * 1000); // 30 minutes — repeat queries are free
-      _resetNominatimGeocoder();
-    }
+    _cache = createExtensionCache(
+      ctx,
+      "ext:osm-slot:places",
+      30 * 60 * 1000,
+    );
+    _resetNominatimGeocoder();
     if (typeof ctx?.readFile === "function") {
       ctx
         .readFile("icons/osm-provider.svg")
@@ -844,7 +863,7 @@ async function _geocodeHere(hint, doFetch, apiStatus) {
   }
 
   const cacheKey = `geo:here:v5:${hint.toLowerCase()}`;
-  const cached = _cache?.get(cacheKey);
+  const cached = await cacheGet(_cache, cacheKey);
   if (cached) {
     if (apiStatus) {
       apiStatus.status = "success";
@@ -889,7 +908,7 @@ async function _geocodeHere(hint, doFetch, apiStatus) {
         label: _hereGeocodeLabel(item, hint),
         source: "here-geocode",
       };
-      _cache?.set(cacheKey, out);
+      await cacheSet(_cache, cacheKey, out);
       if (apiStatus) {
         apiStatus.status = "success";
         apiStatus.source = out.source;
@@ -978,7 +997,7 @@ async function _discoverPlaceHintFallback(hint, doFetch, apiStatus) {
       label: (item.title || item.address?.label || hint).trim(),
       source: "here-discover",
     };
-    _cache?.set(`geo:here:v5:${hint.toLowerCase()}`, out);
+    await cacheSet(_cache, `geo:here:v5:${hint.toLowerCase()}`, out);
     if (apiStatus) {
       apiStatus.status = "success";
       apiStatus.source = out.source;
@@ -1147,7 +1166,7 @@ async function _searchHere(query, lat, lon, radiusM, limit, doFetch, apiStatus, 
   // 30 min, so repeated identical/missed queries are free and don't burn the
   // 5,000/month Discover allowance. Only transient network/4xx errors skip the cache.
   const cacheKey = `here:${mode}:${query}:${lat}:${lon}:${radius}:${cappedLimit}`;
-  const cached = _cache?.get(cacheKey);
+  const cached = await cacheGet(_cache, cacheKey);
   if (cached) {
     if (apiStatus?.here) {
       apiStatus.here.status = "success";
@@ -1225,7 +1244,7 @@ async function _searchHere(query, lat, lon, radiusM, limit, doFetch, apiStatus, 
       if (codes) apiStatus.here.categories = codes;
     }
 
-    _cache?.set(cacheKey, out);
+    await cacheSet(_cache, cacheKey, out);
     return out;
   } catch (err) {
     console.error("[places] HERE search failed:", err);

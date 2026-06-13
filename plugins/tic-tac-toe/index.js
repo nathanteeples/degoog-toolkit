@@ -2,6 +2,13 @@ let template = "";
 
 let defaultDifficulty = "impossible";
 let defaultSymbol = "X";
+const VALID_DIFFICULTIES = new Set([
+  "easy",
+  "medium",
+  "hard",
+  "impossible",
+  "pvp",
+]);
 
 const settingsSchema = [
   {
@@ -40,8 +47,10 @@ export const slot = {
   },
 
   configure(settings) {
-    defaultDifficulty = settings?.defaultDifficulty || "impossible";
-    defaultSymbol = settings?.defaultSymbol || "X";
+    defaultDifficulty = VALID_DIFFICULTIES.has(settings?.defaultDifficulty)
+      ? settings.defaultDifficulty
+      : "impossible";
+    defaultSymbol = settings?.defaultSymbol === "O" ? "O" : "X";
   },
 
   trigger(query) {

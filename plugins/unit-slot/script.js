@@ -2801,11 +2801,19 @@ var convertUnits = (() => {
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", scan, { once: true });
   }
+
+  function observeUnitSlots() {
+    new MutationObserver(scan).observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
   if (document.body) {
-    new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
+    observeUnitSlots();
   } else {
-    document.addEventListener("DOMContentLoaded", function () {
-      new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
-    }, { once: true });
+    document.addEventListener("DOMContentLoaded", observeUnitSlots, {
+      once: true,
+    });
   }
 })();

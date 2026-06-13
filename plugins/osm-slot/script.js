@@ -393,6 +393,10 @@
     var startTime = performance.now();
 
     function frame(now) {
+      if (!mapEl.isConnected) {
+        state.zoomAnimFrame = null;
+        return;
+      }
       var t = Math.min(1, (now - startTime) / durationMs);
       var eased = 1 - Math.pow(1 - t, 3);
       state.zoomFloat = _clampZoomFloat(startZoom + (targetZoomFloat - startZoom) * eased);
@@ -452,13 +456,20 @@
 
       if (typeof ResizeObserver === "function") {
         var observer = new ResizeObserver(function () {
+          if (!mapEl.isConnected) {
+            observer.disconnect();
+            return;
+          }
           _renderTiles(mapEl, state);
         });
         observer.observe(mapEl);
+        mapEl._placesResizeObserver = observer;
       } else {
-        window.addEventListener("resize", function () {
+        var resizeHandler = function () {
           _renderTiles(mapEl, state);
-        });
+        };
+        window.addEventListener("resize", resizeHandler);
+        mapEl._placesResizeHandler = resizeHandler;
       }
 
       // Mouse drag helpers
@@ -921,6 +932,40 @@
   _initDirectionsModals();
   _initHoursToggles();
 
+  function _cleanupInteractiveMaps(root) {
+    var maps = [];
+    if (root.matches && root.matches(".places-tile-map")) maps.push(root);
+    if (root.querySelectorAll) {
+      root.querySelectorAll(".places-tile-map").forEach(function (mapEl) {
+        maps.push(mapEl);
+      });
+    }
+    maps.forEach(function (mapEl) {
+      if (mapEl._mapState) _cancelZoomAnim(mapEl._mapState);
+      if (mapEl._placesResizeObserver) {
+        mapEl._placesResizeObserver.disconnect();
+        mapEl._placesResizeObserver = null;
+      }
+      if (mapEl._placesResizeHandler) {
+        window.removeEventListener("resize", mapEl._placesResizeHandler);
+        mapEl._placesResizeHandler = null;
+      }
+    });
+  }
+
+  var initFrame = null;
+  function _scheduleInit() {
+    if (initFrame !== null) return;
+    initFrame = requestAnimationFrame(function () {
+      initFrame = null;
+      _initGeoButtons();
+      _initPlaceCards();
+      _initInteractiveMaps();
+      _initDirectionsModals();
+      _initHoursToggles();
+    });
+  }
+
   // Handle failed tile image retries
   document.addEventListener("error", function (e) {
     if (e.target && e.target.tagName === "IMG" && e.target.classList.contains("places-tile")) {
@@ -932,18 +977,21 @@
         var separator = baseSrc.indexOf("?") !== -1 ? "&" : "?";
         var delay = 1000 * Math.pow(2, retryCount); // Exponential backoff: 1s, 2s, 4s
         setTimeout(function () {
-          img.src = baseSrc + separator + "_retry=" + (retryCount + 1);
+          if (img.isConnected) {
+            img.src = baseSrc + separator + "_retry=" + (retryCount + 1);
+          }
         }, delay);
       }
     }
   }, true);
 
-  var observer = new MutationObserver(function () {
-    _initGeoButtons();
-    _initPlaceCards();
-    _initInteractiveMaps();
-    _initDirectionsModals();
-    _initHoursToggles();
+  var observer = new MutationObserver(function (mutations) {
+    mutations.forEach(function (mutation) {
+      mutation.removedNodes.forEach(function (node) {
+        if (node.nodeType === 1) _cleanupInteractiveMaps(node);
+      });
+    });
+    _scheduleInit();
   });
   observer.observe(document.body, { childList: true, subtree: true });
 })();

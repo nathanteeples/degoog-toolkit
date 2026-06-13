@@ -239,7 +239,21 @@
     }
   }
 
+  function stopAnimationLoop() {
+    if (state.rafId) {
+      cancelAnimationFrame(state.rafId);
+      state.rafId = 0;
+    }
+  }
+
+  function requestAnimationLoop() {
+    if (!state.rafId && state.playing && !state.gameOver && currentWidget?.isConnected) {
+      state.rafId = requestAnimationFrame(tick);
+    }
+  }
+
   function initFromWidget(w) {
+    stopAnimationLoop();
     currentWidget = w;
     var speedAttr = parseInt(w.getAttribute("data-initial-speed"), 10);
     state.speedMs = isNaN(speedAttr) ? 100 : speedAttr;
@@ -250,7 +264,7 @@
     try {
       var saved = localStorage.getItem("degoog-snake-highscore");
       state.highScore = saved ? parseInt(saved, 10) : 0;
-      if (isNaN(state.highScore)) state.highScore = 0;
+      if (isNaN(state.highScore) || state.highScore < 0) state.highScore = 0;
     } catch (e) {
       state.highScore = 0;
     }
@@ -287,29 +301,24 @@
   }
 
   function spawnApple() {
-    var valid = false;
-    var attempts = 0;
-    while (!valid && attempts < 100) {
-      attempts++;
-      var rx = Math.floor(Math.random() * state.gridCols);
-      var ry = Math.floor(Math.random() * state.gridRows);
-      
-      // Check if coordinate is on snake
-      var conflict = false;
-      for (var i = 0; i < state.snake.length; i++) {
-        if (state.snake[i].x === rx && state.snake[i].y === ry) {
-          conflict = true;
-          break;
+    var occupied = new Set(
+      state.snake.map(function (segment) {
+        return segment.x + ":" + segment.y;
+      }),
+    );
+    var openCells = [];
+    for (var row = 0; row < state.gridRows; row++) {
+      for (var col = 0; col < state.gridCols; col++) {
+        if (!occupied.has(col + ":" + row)) {
+          openCells.push({ x: col, y: row });
         }
       }
-      if (!conflict) {
-        state.apple = { x: rx, y: ry };
-        valid = true;
-      }
     }
-    if (!valid) {
+    if (!openCells.length) {
       triggerGameWin();
+      return;
     }
+    state.apple = openCells[Math.floor(Math.random() * openCells.length)];
   }
 
   function spawnParticles(gridX, gridY) {
@@ -414,14 +423,15 @@
       pauseBtn.textContent = getSnTranslation("pause");
     }
 
-    if (state.rafId) cancelAnimationFrame(state.rafId);
-    state.rafId = requestAnimationFrame(tick);
+    stopAnimationLoop();
+    requestAnimationLoop();
     updateUI();
   }
 
   function pauseGame() {
     if (!state.playing || state.gameOver) return;
     state.paused = true;
+    stopAnimationLoop();
     qs("#snake-overlay-paused").classList.remove("snake-hidden");
     var pauseBtn = qs("#snake-pause-btn");
     if (pauseBtn) toggleOverlayOrText(pauseBtn, "resume");
@@ -439,6 +449,7 @@
     var pauseBtn = qs("#snake-pause-btn");
     if (pauseBtn) pauseBtn.textContent = getSnTranslation("pause");
     lastTime = performance.now();
+    requestAnimationLoop();
     updateUI();
   }
 
@@ -446,6 +457,7 @@
     state.playing = false;
     state.gameOver = true;
     state.won = false;
+    stopAnimationLoop();
     playGameOverSound();
     finishHighScore();
 
@@ -470,6 +482,7 @@
     state.playing = false;
     state.gameOver = true;
     state.won = true;
+    stopAnimationLoop();
     playEatSound();
     finishHighScore();
 
@@ -564,9 +577,15 @@
   }
 
   function tick(timestamp) {
-    if (state.gameOver) return;
-    
-    state.rafId = requestAnimationFrame(tick);
+    state.rafId = 0;
+    if (
+      state.gameOver ||
+      !state.playing ||
+      state.paused ||
+      !currentWidget?.isConnected
+    ) {
+      return;
+    }
     
     var elapsed = timestamp - lastTime;
     if (state.playing && !state.paused && elapsed >= state.speedMs) {
@@ -577,6 +596,7 @@
 
     updateParticles();
     drawGame();
+    requestAnimationLoop();
   }
 
   function drawGame() {
@@ -732,7 +752,7 @@
       var onIcon = soundBtn.querySelector(".snake-sound-on");
       var offIcon = soundBtn.querySelector(".snake-sound-off");
       if (onIcon && offIcon) {
-        if (state.soundEnabled) {
+      if (state.soundEnabled) {
           onIcon.classList.remove("snake-hidden");
           offIcon.classList.add("snake-hidden");
         } else {
@@ -740,6 +760,7 @@
           offIcon.classList.remove("snake-hidden");
         }
       }
+      soundBtn.setAttribute("aria-pressed", state.soundEnabled ? "true" : "false");
     }
 
     updateBoardSizeButtons(currentWidget);
@@ -911,10 +932,8 @@
     var w = document.querySelector("[data-snake-widget]");
     if (!w) {
       if (currentWidget && !currentWidget.isConnected) {
-        if (state.rafId) {
-          cancelAnimationFrame(state.rafId);
-          state.rafId = 0;
-        }
+        stopAnimationLoop();
+        state.playing = false;
         currentWidget = null;
       }
       return;

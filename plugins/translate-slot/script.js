@@ -28,7 +28,13 @@
   function stateFor(card) {
     let state = cardState.get(card);
     if (!state) {
-      state = { timer: 0, requestId: 0, controller: null, audio: null };
+      state = {
+        timer: 0,
+        requestId: 0,
+        controller: null,
+        audio: null,
+        audioButton: null,
+      };
       cardState.set(card, state);
     }
     return state;
@@ -203,10 +209,11 @@
 
     if (!text || !language || language === "auto") return;
 
-    if (state.audio) {
-      state.audio.pause();
-      state.audio = null;
+    if (state.audio && state.audioButton === button) {
+      stopAudio(state);
+      return;
     }
+    stopAudio(state);
 
     const url = new URL(pluginApiUrl("tts"), window.location.origin);
     url.searchParams.set("lang", language);
@@ -214,24 +221,31 @@
 
     const audio = new Audio(url.toString());
     state.audio = audio;
+    state.audioButton = button || null;
     button?.setAttribute("aria-pressed", "true");
     button?.classList.add("trc-audio-playing");
     audio.addEventListener("ended", () => {
-      if (state.audio === audio) state.audio = null;
-      button?.setAttribute("aria-pressed", "false");
-      button?.classList.remove("trc-audio-playing");
+      if (state.audio === audio) stopAudio(state);
     });
     audio.addEventListener("error", () => {
-      if (state.audio === audio) state.audio = null;
-      button?.setAttribute("aria-pressed", "false");
-      button?.classList.remove("trc-audio-playing");
+      if (state.audio === audio) stopAudio(state);
       setStatus(card, "failed", tc("speechUnavailable"));
     });
     audio.play().catch(() => {
-      if (state.audio === audio) state.audio = null;
-      button?.setAttribute("aria-pressed", "false");
-      button?.classList.remove("trc-audio-playing");
+      if (state.audio === audio) stopAudio(state);
     });
+  }
+
+  function stopAudio(state) {
+    if (state.audio) {
+      state.audio.pause();
+      state.audio = null;
+    }
+    if (state.audioButton) {
+      state.audioButton.setAttribute("aria-pressed", "false");
+      state.audioButton.classList.remove("trc-audio-playing");
+      state.audioButton = null;
+    }
   }
 
   function syncSwapState(card) {

@@ -12,23 +12,23 @@
         <span class="pt-search-icon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         </span>
-        <input type="text" class="pt-search-input" placeholder="{{ t:plugin-periodic-table.searchPlaceholder }}" data-pt-search>
-        <button class="pt-clear-btn" data-pt-clear-search style="display:none;">&times;</button>
+        <input type="text" class="pt-search-input" placeholder="{{ t:plugin-periodic-table.searchPlaceholder }}" data-pt-search aria-label="{{ t:plugin-periodic-table.searchPlaceholder }}">
+        <button type="button" class="pt-clear-btn" data-pt-clear-search style="display:none;" aria-label="Clear element search">&times;</button>
       </div>
     </div>
 
     <div class="pt-controls">
       <!-- Category Quick Filter Buttons -->
       <div class="pt-filters" data-pt-filters>
-        <button class="pt-filter-btn" data-category="alkali-metal" title="{{ t:plugin-periodic-table.groupAlkali }}">Alkali</button>
-        <button class="pt-filter-btn" data-category="alkaline-earth-metal" title="{{ t:plugin-periodic-table.groupAlkaline }}">Alkaline</button>
-        <button class="pt-filter-btn" data-category="transition-metal" title="{{ t:plugin-periodic-table.groupTransition }}">Transition</button>
-        <button class="pt-filter-btn" data-category="lanthanide" title="{{ t:plugin-periodic-table.groupLanthanide }}">Lanthanides</button>
-        <button class="pt-filter-btn" data-category="actinide" title="{{ t:plugin-periodic-table.groupActinide }}">Actinides</button>
-        <button class="pt-filter-btn" data-category="post-transition-metal" title="{{ t:plugin-periodic-table.groupPostTransition }}">Post-Trans</button>
-        <button class="pt-filter-btn" data-category="metalloid" title="{{ t:plugin-periodic-table.groupMetalloid }}">Metalloid</button>
-        <button class="pt-filter-btn" data-category="reactive-nonmetal" title="{{ t:plugin-periodic-table.groupNonmetal }}">Nonmetal</button>
-        <button class="pt-filter-btn" data-category="noble-gas" title="{{ t:plugin-periodic-table.groupNoble }}">Noble Gas</button>
+        <button type="button" class="pt-filter-btn" data-category="alkali-metal" title="{{ t:plugin-periodic-table.groupAlkali }}">Alkali</button>
+        <button type="button" class="pt-filter-btn" data-category="alkaline-earth-metal" title="{{ t:plugin-periodic-table.groupAlkaline }}">Alkaline</button>
+        <button type="button" class="pt-filter-btn" data-category="transition-metal" title="{{ t:plugin-periodic-table.groupTransition }}">Transition</button>
+        <button type="button" class="pt-filter-btn" data-category="lanthanide" title="{{ t:plugin-periodic-table.groupLanthanide }}">Lanthanides</button>
+        <button type="button" class="pt-filter-btn" data-category="actinide" title="{{ t:plugin-periodic-table.groupActinide }}">Actinides</button>
+        <button type="button" class="pt-filter-btn" data-category="post-transition-metal" title="{{ t:plugin-periodic-table.groupPostTransition }}">Post-Trans</button>
+        <button type="button" class="pt-filter-btn" data-category="metalloid" title="{{ t:plugin-periodic-table.groupMetalloid }}">Metalloid</button>
+        <button type="button" class="pt-filter-btn" data-category="reactive-nonmetal" title="{{ t:plugin-periodic-table.groupNonmetal }}">Nonmetal</button>
+        <button type="button" class="pt-filter-btn" data-category="noble-gas" title="{{ t:plugin-periodic-table.groupNoble }}">Noble Gas</button>
       </div>
 
       <!-- Temperature Simulator -->
@@ -38,13 +38,13 @@
           <span class="pt-temp-value" data-pt-temp-val>298 K (25 °C)</span>
         </div>
         <div class="pt-temp-input-wrap">
-          <input type="range" class="pt-temp-slider" min="0" max="6000" value="298" data-pt-temp-slider>
+          <input type="range" class="pt-temp-slider" min="0" max="6000" value="298" data-pt-temp-slider aria-label="{{ t:plugin-periodic-table.tempSlider }}">
           <div class="pt-temp-presets">
-            <button class="pt-preset-btn" data-temp="0">0 K</button>
-            <button class="pt-preset-btn" data-temp="273">0 °C</button>
-            <button class="pt-preset-btn pt-preset-active" data-temp="298">RT</button>
-            <button class="pt-preset-btn" data-temp="373">100 °C</button>
-            <button class="pt-preset-btn" data-temp="6000">6k K</button>
+            <button type="button" class="pt-preset-btn" data-temp="0">0 K</button>
+            <button type="button" class="pt-preset-btn" data-temp="273">0 °C</button>
+            <button type="button" class="pt-preset-btn pt-preset-active" data-temp="298">RT</button>
+            <button type="button" class="pt-preset-btn" data-temp="373">100 °C</button>
+            <button type="button" class="pt-preset-btn" data-temp="6000">6k K</button>
           </div>
         </div>
       </div>
@@ -89,17 +89,17 @@
   </div>
 
   <!-- Detail Dialog / Modal -->
-  <div class="pt-modal" data-pt-modal style="display:none;">
+  <div class="pt-modal" data-pt-modal style="display:none;" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pt-modal-title">
     <div class="pt-modal-backdrop" data-pt-close-modal></div>
-    <div class="pt-modal-content">
-      <button class="pt-modal-close" data-pt-close-modal>&times;</button>
+    <div class="pt-modal-content" tabindex="-1">
+      <button type="button" class="pt-modal-close" data-pt-close-modal aria-label="Close element details">&times;</button>
       <div class="pt-modal-header">
         <div class="pt-modal-badge" data-modal-badge>
           <span class="pt-modal-num" data-modal-num>6</span>
           <span class="pt-modal-sym" data-modal-sym>C</span>
         </div>
         <div>
-          <h2 class="pt-modal-name" data-modal-name>Carbon</h2>
+          <h2 class="pt-modal-name" id="pt-modal-title" data-modal-name>Carbon</h2>
           <div class="pt-modal-cat" data-modal-cat>Reactive Nonmetal</div>
         </div>
       </div>

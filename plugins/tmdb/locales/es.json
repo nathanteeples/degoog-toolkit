@@ -48,6 +48,9 @@
     "seerrRequest": "Solicitar",
     "seerrPartially": "Parcial",
     "seerrProcessing": "Procesando",
-    "rtAudience": "Audiencia"
+    "rtCritics": "Crítica",
+    "rtAudience": "Audiencia",
+    "openWith": "Abrir con",
+    "openTitle": "Elegir dónde abrir"
   }
 }

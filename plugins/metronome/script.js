@@ -5,6 +5,14 @@
   let currentWidget = null;
   let timerId = null;
   let nextNoteTime = 0.0;
+
+  function query(selector, root) {
+    return (root || currentWidget)?.querySelector(selector) || null;
+  }
+
+  function queryAll(selector, root) {
+    return (root || currentWidget)?.querySelectorAll(selector) || [];
+  }
   
   function getTranslation(key, fallback) {
     var el = currentWidget || document.querySelector(".metro-card");
@@ -25,11 +33,30 @@
   let tapTimes = [];
 
   function initAudio() {
-    if (!audioCtx || audioCtx.state === "closed") {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      markAudioUnavailable();
+      return false;
     }
-    if (audioCtx.state === "suspended") {
-      audioCtx.resume();
+    try {
+      if (!audioCtx || audioCtx.state === "closed") {
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
+      }
+      return true;
+    } catch {
+      markAudioUnavailable();
+      return false;
+    }
+  }
+
+  function markAudioUnavailable() {
+    const playBtn = query("[data-metro-play-btn]");
+    if (playBtn) {
+      playBtn.disabled = true;
+      playBtn.setAttribute("aria-label", "Web Audio is unavailable");
     }
   }
 
@@ -46,24 +73,24 @@
   function updateBpm(newBpm) {
     state.bpm = Math.max(40, Math.min(240, Math.round(newBpm)));
 
-    const display = document.querySelector("[data-metro-bpm-val]");
+    const display = query("[data-metro-bpm-val]");
     if (display) {
       display.textContent = state.bpm;
     }
 
-    const slider = document.querySelector("[data-metro-slider]");
+    const slider = query("[data-metro-slider]");
     if (slider) {
       slider.value = state.bpm;
     }
 
-    const tempoText = document.querySelector("[data-metro-tempo-text]");
+    const tempoText = query("[data-metro-tempo-text]");
     if (tempoText) {
       tempoText.textContent = getTempoMarking(state.bpm);
     }
   }
 
   function updateDotVisibility() {
-    const dots = document.querySelectorAll(".metro-dot");
+    const dots = queryAll(".metro-dot");
     dots.forEach((dot, index) => {
       if (index < state.beatsPerBar) {
         dot.classList.remove("metro-hidden");
@@ -74,9 +101,9 @@
     });
   }
 
-  function pulseVisuals(beatNumber) {
+  function pulseVisuals(beatNumber, widget) {
     // 1. Pulse play/pause button
-    const playBtn = document.querySelector("[data-metro-play-btn]");
+    const playBtn = query("[data-metro-play-btn]", widget);
     if (playBtn) {
       playBtn.classList.remove("pulse");
       void playBtn.offsetWidth; // Force layout reflow to restart animation
@@ -84,7 +111,7 @@
     }
 
     // 2. Pulse beat indicator dots
-    const dots = document.querySelectorAll(".metro-dot");
+    const dots = queryAll(".metro-dot", widget);
     dots.forEach((dot, index) => {
       const idx = parseInt(dot.getAttribute("data-index"), 10);
       if (idx === beatNumber) {
@@ -100,24 +127,26 @@
     });
   }
 
-  function clearVisuals() {
-    const playBtn = document.querySelector("[data-metro-play-btn]");
+  function clearVisuals(widget) {
+    const playBtn = query("[data-metro-play-btn]", widget);
     if (playBtn) {
       playBtn.classList.remove("pulse");
     }
-    const dots = document.querySelectorAll(".metro-dot");
+    const dots = queryAll(".metro-dot", widget);
     dots.forEach(dot => {
       dot.classList.remove("active", "accent");
     });
   }
 
-  function updatePlayBtnState(playing) {
-    const playBtn = document.querySelector("[data-metro-play-btn]");
+  function updatePlayBtnState(playing, widget) {
+    const playBtn = query("[data-metro-play-btn]", widget);
     if (!playBtn) return;
 
     const playIcon = playBtn.querySelector(".metro-play-icon");
     const pauseIcon = playBtn.querySelector(".metro-pause-icon");
+    if (!playIcon || !pauseIcon) return;
 
+    playBtn.setAttribute("aria-pressed", String(playing));
     if (playing) {
       playIcon.classList.add("metro-hidden");
       pauseIcon.classList.remove("metro-hidden");
@@ -160,15 +189,25 @@
     osc.stop(time + 0.06);
 
     // Schedule visual pulsing animation
+    const scheduledWidget = currentWidget;
     const delayMs = Math.max(0, (time - audioCtx.currentTime) * 1000);
     setTimeout(() => {
-      if (!state.isPlaying) return;
-      pulseVisuals(beatNumber);
+      if (
+        !state.isPlaying ||
+        currentWidget !== scheduledWidget ||
+        !scheduledWidget?.isConnected
+      ) {
+        return;
+      }
+      pulseVisuals(beatNumber, scheduledWidget);
     }, delayMs);
   }
 
   function scheduler() {
-    if (!state.isPlaying) return;
+    if (!state.isPlaying || !audioCtx || !currentWidget?.isConnected) {
+      stop();
+      return;
+    }
     while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
       scheduleNote(state.currentBeat, nextNoteTime);
       nextNote();
@@ -177,9 +216,9 @@
   }
 
   function start() {
-    if (state.isPlaying) return;
+    if (state.isPlaying || !currentWidget) return;
 
-    initAudio();
+    if (!initAudio()) return;
     state.isPlaying = true;
     state.currentBeat = 0;
     nextNoteTime = audioCtx.currentTime + 0.05;
@@ -191,18 +230,18 @@
   function stop() {
     if (!state.isPlaying) return;
 
+    const stoppedWidget = currentWidget;
     state.isPlaying = false;
     if (timerId) {
       clearTimeout(timerId);
       timerId = null;
     }
 
-    updatePlayBtnState(false);
-    clearVisuals();
+    updatePlayBtnState(false, stoppedWidget);
+    clearVisuals(stoppedWidget);
   }
 
   function tapTempo() {
-    initAudio();
     const now = performance.now();
 
     // If the last tap was more than 2 seconds ago, reset history
@@ -233,6 +272,7 @@
   function handleControlsClick(event) {
     const card = event.target.closest(".metro-card");
     if (!card) return;
+    activateWidget(card);
 
     // Adjust BPM +/- 1
     const adjustBtn = event.target.closest(".metro-adjust-btn");
@@ -268,6 +308,7 @@
   function handleSliderInput(event) {
     const slider = event.target.closest("[data-metro-slider]");
     if (!slider) return;
+    activateWidget(slider.closest(".metro-card"));
 
     const val = parseInt(slider.value, 10);
     if (!isNaN(val)) {
@@ -278,6 +319,7 @@
   function handleSelectChange(event) {
     const select = event.target.closest("[data-metro-select]");
     if (!select) return;
+    activateWidget(select.closest(".metro-card"));
 
     const val = parseInt(select.value, 10);
     if (!isNaN(val) && val >= 1 && val <= 4) {
@@ -287,28 +329,31 @@
     }
   }
 
+  function activateWidget(card) {
+    if (!card || card === currentWidget) return;
+    if (state.isPlaying) stop();
+
+    currentWidget = card;
+    const defaultBpm = parseInt(card.getAttribute("data-default-bpm"), 10) || 120;
+
+    state.bpm = defaultBpm;
+    state.beatsPerBar = 4;
+    state.currentBeat = 0;
+    tapTimes = [];
+
+    updateBpm(state.bpm);
+    updateDotVisibility();
+    updatePlayBtnState(false);
+  }
+
   function checkWidget() {
     const card = document.querySelector(".metro-card");
     if (!card) {
-      if (state.isPlaying) {
-        stop();
-      }
+      if (state.isPlaying) stop();
       currentWidget = null;
       return;
     }
-
-    if (card !== currentWidget) {
-      currentWidget = card;
-      const defaultBpm = parseInt(card.getAttribute("data-default-bpm"), 10) || 120;
-      
-      state.bpm = defaultBpm;
-      state.beatsPerBar = 4;
-      state.currentBeat = 0;
-
-      updateBpm(state.bpm);
-      updateDotVisibility();
-      updatePlayBtnState(false);
-    }
+    activateWidget(card);
   }
 
   document.addEventListener("click", handleControlsClick);

@@ -3,12 +3,13 @@
 
   var ROOT_SELECTOR = "[data-calc-root]";
   var GRAPH_ZOOM_STEP = 1.15;
-  var FUNCTION_NAMES = "sin|cos|tan|asin|acos|atan|sqrt|log|ln|abs|factorial";
+  var FUNCTION_NAMES =
+    "sin|cos|tan|asin|acos|atan|sinh|cosh|tanh|sqrt|log|ln|abs|exp|floor|ceil|round|sign|min|max|factorial";
   var FUNCTION_SET = FUNCTION_NAMES.split("|").reduce(function (set, name) {
     set[name] = true;
     return set;
   }, {});
-  var SAFE_CHARS_RE = /^[0-9a-zA-Z_\s+\-*/^().!%]+$/;
+  var SAFE_CHARS_RE = /^[0-9a-zA-Z_\s,+\-*/^().!%]+$/;
   var ALLOWED_SYMBOLS = {
     x: true,
     pi: true,
@@ -36,6 +37,8 @@
 
   var states = new WeakMap();
   var parserLoad = null;
+  var graphEngineLoad = null;
+  var graphEngine = null;
   var redrawTimer = 0;
 
   function ensureParser() {
@@ -75,6 +78,28 @@
     });
 
     return parserLoad;
+  }
+
+  function ensureGraphEngine() {
+    if (graphEngine) return Promise.resolve(graphEngine);
+    if (graphEngineLoad) return graphEngineLoad;
+    if (typeof __PLUGIN_ID__ === "undefined") {
+      return Promise.reject(new Error("Missing plugin id"));
+    }
+
+    graphEngineLoad = import(
+      "/api/plugin/" +
+        encodeURIComponent(__PLUGIN_ID__) +
+        "/graph-engine"
+    ).then(function (module) {
+      graphEngine = module;
+      return module;
+    });
+    return graphEngineLoad;
+  }
+
+  function ensureRuntime() {
+    return Promise.all([ensureParser(), ensureGraphEngine()]);
   }
 
   function factorial(value) {
@@ -124,10 +149,20 @@
     parser.unaryOps.atan = function (value) {
       return fromOutputAngle(Math.atan(value));
     };
+    parser.unaryOps.sinh = Math.sinh;
+    parser.unaryOps.cosh = Math.cosh;
+    parser.unaryOps.tanh = Math.tanh;
     parser.unaryOps.sqrt = Math.sqrt;
     parser.unaryOps.log = Math.log10;
     parser.unaryOps.ln = Math.log;
     parser.unaryOps.abs = Math.abs;
+    parser.unaryOps.exp = Math.exp;
+    parser.unaryOps.floor = Math.floor;
+    parser.unaryOps.ceil = Math.ceil;
+    parser.unaryOps.round = Math.round;
+    parser.unaryOps.sign = Math.sign;
+    parser.functions.min = Math.min;
+    parser.functions.max = Math.max;
     parser.functions.factorial = factorial;
 
     return parser;
@@ -218,6 +253,17 @@
       symbols: lowerSymbols,
       hasX: lowerSymbols.indexOf("x") !== -1,
     };
+  }
+
+  function parseGraphSeries(input, angleMode) {
+    if (!graphEngine) throw new Error("Graph engine is unavailable");
+    return graphEngine.splitGraphExpressions(input).map(function (series) {
+      return {
+        expression: series.expression,
+        label: series.label,
+        analysis: parseExpression(series.expression, angleMode),
+      };
+    });
   }
 
   function getUnknownIdentifiers(normalized) {
@@ -315,10 +361,13 @@
       result: root.getAttribute("data-result") || "0",
       ans: parseFloat(root.getAttribute("data-ans")) || 0,
       angleMode: root.getAttribute("data-angle-mode") === "deg" ? "deg" : "rad",
+      forceGraph: root.getAttribute("data-graph-mode") === "true",
+      graphMode: false,
       inverse: false,
       justEvaluated: false,
       lastAnalysis: null,
       lastGraphAnalysis: null,
+      lastGraphSeries: [],
       xMin: -10,
       xMax: 10,
       yMin: undefined,
@@ -337,20 +386,32 @@
     var state = getState(root);
     var expressionEl = root.querySelector("[data-calc-expression]");
     var resultEl = root.querySelector("[data-calc-result]");
+    var modeLabel = root.querySelector("[data-calc-mode-label]");
     var graph = root.querySelector("[data-calc-graph]");
 
     state.lastGraphAnalysis = null;
+    state.lastGraphSeries = [];
+    state.graphMode = false;
 
     if (!state.expr) {
       state.result = state.justEvaluated ? state.result : "0";
     } else {
       try {
-        var analysis = parseExpression(state.expr, state.angleMode);
+        var graphSeries = parseGraphSeries(state.expr, state.angleMode);
+        var analysis = graphSeries[0].analysis;
         state.lastAnalysis = analysis;
 
-        if (analysis.hasX) {
-          state.result = "Graph";
+        if (
+          state.forceGraph ||
+          graphSeries.length > 1 ||
+          graphSeries.some(function (series) {
+            return series.analysis.hasX;
+          })
+        ) {
+          state.result = "";
+          state.graphMode = true;
           state.lastGraphAnalysis = analysis;
+          state.lastGraphSeries = graphSeries;
           if (state.lastGraphExpr !== state.expr) {
             state.xMin = -10;
             state.xMax = 10;
@@ -376,14 +437,23 @@
       }
     }
 
-    if (expressionEl) expressionEl.textContent = state.expr;
+    if (expressionEl && expressionEl.value !== state.expr) {
+      expressionEl.value = state.expr;
+    }
     if (resultEl) {
       resultEl.textContent = state.result;
+      resultEl.hidden = state.graphMode;
       resultEl.classList.toggle("calc-result--compact", state.result.length > 16);
       resultEl.classList.toggle(
         "calc-result--error",
         state.result === "Error" || state.result === "Not a number",
       );
+    }
+    if (modeLabel) {
+      modeLabel.textContent = state.graphMode
+        ? root.getAttribute("data-label-graph") || "Graph"
+        : root.getAttribute("data-label-calculator") || "Calculator";
+      modeLabel.classList.toggle("calc-mode-chip--graph", state.graphMode);
     }
 
     syncButtons(root, state);
@@ -442,10 +512,18 @@
     if (!state.expr) return;
 
     try {
-      var analysis = parseExpression(state.expr, state.angleMode);
-      if (analysis.hasX) {
+      var graphSeries = parseGraphSeries(state.expr, state.angleMode);
+      var analysis = graphSeries[0].analysis;
+      if (
+        state.forceGraph ||
+        graphSeries.length > 1 ||
+        graphSeries.some(function (series) {
+          return series.analysis.hasX;
+        })
+      ) {
         state.lastGraphAnalysis = analysis;
-        state.result = "Graph";
+        state.lastGraphSeries = graphSeries;
+        state.result = "";
         state.justEvaluated = false;
         updateRoot(root);
         return;
@@ -522,6 +600,16 @@
       case "sqrt":
         appendToken(root, state.inverse ? "^2" : "sqrt(");
         break;
+      case "abs":
+      case "exp":
+      case "floor":
+      case "ceil":
+      case "round":
+      case "sinh":
+      case "cosh":
+      case "tanh":
+        appendToken(root, action + "(");
+        break;
       case "factorial":
         appendToken(root, "!");
         break;
@@ -543,6 +631,7 @@
       case "clear":
         state.expr = "";
         state.result = "0";
+        state.forceGraph = false;
         state.justEvaluated = false;
         updateRoot(root);
         break;
@@ -762,15 +851,22 @@
     var samples = Math.max(width || 320, 320);
     var finiteY = [];
 
-    for (var i = 0; i < samples; i += 1) {
-      var x = xMin + (i / (samples - 1)) * (xMax - xMin);
-      try {
-        var y = evaluateParsed(analysis, state, x);
-        if (Number.isFinite(y) && Math.abs(y) < 1e6) finiteY.push(y);
-      } catch (error) {
-        // Skip invalid samples.
+    var seriesList =
+      state.lastGraphSeries && state.lastGraphSeries.length
+        ? state.lastGraphSeries
+        : [{ analysis: analysis }];
+
+    seriesList.forEach(function (series) {
+      for (var i = 0; i < samples; i += 1) {
+        var x = xMin + (i / (samples - 1)) * (xMax - xMin);
+        try {
+          var y = evaluateParsed(series.analysis, state, x);
+          if (Number.isFinite(y) && Math.abs(y) < 1e6) finiteY.push(y);
+        } catch (error) {
+          // Skip invalid samples.
+        }
       }
-    }
+    });
 
     return finiteY;
   }
@@ -789,14 +885,37 @@
     return fitInitialGraphView(state, analysis, size.width, size.height);
   }
 
+  function renderGraphSeriesLabels(root, state) {
+    var container = root.querySelector("[data-calc-graph-labels]");
+    if (!container) return;
+    container.replaceChildren();
+
+    state.lastGraphSeries.forEach(function (series, index) {
+      var chip = document.createElement("span");
+      chip.className = "calc-graph-series-chip";
+      chip.style.setProperty("--calc-series-index", String(index));
+
+      var dot = document.createElement("span");
+      dot.className = "calc-graph-series-dot";
+      dot.setAttribute("aria-hidden", "true");
+
+      var text = document.createElement("span");
+      text.className = "calc-graph-series-label";
+      text.textContent = series.label + " = " + series.expression;
+
+      chip.appendChild(dot);
+      chip.appendChild(text);
+      container.appendChild(chip);
+    });
+  }
+
   function drawGraph(root, state, analysis) {
     var graph = root.querySelector("[data-calc-graph]");
-    var label = root.querySelector("[data-calc-graph-label]");
     var canvas = root.querySelector("[data-calc-canvas]");
     if (!graph || !canvas) return;
 
     graph.hidden = false;
-    if (label) label.textContent = stripEquationPrefix(state.expr);
+    renderGraphSeriesLabels(root, state);
 
     var size = readCanvasSize(canvas);
     var width = size.width;
@@ -814,6 +933,12 @@
     var gridColor = cssVar(style, "--border-light", "rgba(60,64,67,0.18)");
     var axisColor = cssVar(style, "--text-secondary", "#5f6368");
     var lineColor = cssVar(style, "--text-link", "#1a73e8");
+    var lineColors = [
+      cssVar(style, "--calc-graph-1", lineColor),
+      cssVar(style, "--calc-graph-2", "#d93025"),
+      cssVar(style, "--calc-graph-3", "#188038"),
+      cssVar(style, "--calc-graph-4", "#9334e6"),
+    ];
     var textColor = cssVar(style, "--text-secondary", "#5f6368");
     var bgColor = cssVar(style, "--bg-light", "#f8fafd");
     var pointColor = cssVar(style, "--primary", lineColor);
@@ -844,23 +969,33 @@
     }
 
     var samples = Math.max(width, 320);
-    var points = [];
-    var finiteY = [];
-
-    for (var i = 0; i < samples; i += 1) {
-      var x = xMin + (i / (samples - 1)) * (xMax - xMin);
-      var y = NaN;
-      try {
-        y = evaluateParsed(analysis, state, x);
-      } catch (error) {
-        y = NaN;
+    var graphSeries =
+      state.lastGraphSeries && state.lastGraphSeries.length
+        ? state.lastGraphSeries
+        : [{ expression: state.expr, label: "y", analysis: analysis }];
+    var renderedSeries = graphSeries.map(function (series) {
+      var points = [];
+      var finiteCount = 0;
+      for (var i = 0; i < samples; i += 1) {
+        var x = xMin + (i / (samples - 1)) * (xMax - xMin);
+        var y = NaN;
+        try {
+          y = evaluateParsed(series.analysis, state, x);
+        } catch (error) {
+          y = NaN;
+        }
+        var finite = Number.isFinite(y) && Math.abs(y) < 1e6;
+        if (finite) finiteCount += 1;
+        points.push({ x: x, y: y, finite: finite });
       }
-      var finite = Number.isFinite(y) && Math.abs(y) < 1e6;
-      if (finite) finiteY.push(y);
-      points.push({ x: x, y: y, finite: finite });
-    }
+      return { series: series, points: points, finiteCount: finiteCount };
+    });
 
-    if (finiteY.length < 2) {
+    if (
+      !renderedSeries.some(function (series) {
+        return series.finiteCount >= 2;
+      })
+    ) {
       drawCenteredText(ctx, width, height, "No finite values", textColor);
       return;
     }
@@ -876,34 +1011,47 @@
     drawGrid(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, gridColor, axisColor);
     drawLabels(ctx, width, height, xMin, xMax, yMin, yMax, sx, sy, textColor);
 
-    var featurePoints = getGraphFeatures(points, analysis, state, xMin, xMax, yMin, yMax);
-
-    ctx.beginPath();
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 2;
-    var drawing = false;
-    var previousY = null;
+    var primaryPoints = renderedSeries[0].points;
+    var featurePoints = getGraphFeatures(
+      primaryPoints,
+      analysis,
+      state,
+      xMin,
+      xMax,
+      yMin,
+      yMax,
+    );
     var breakDelta = (yMax - yMin) * 0.7;
 
-    points.forEach(function (point) {
-      if (!point.finite) {
-        drawing = false;
-        previousY = null;
-        return;
-      }
+    renderedSeries.forEach(function (rendered, seriesIndex) {
+      ctx.beginPath();
+      ctx.strokeStyle = lineColors[seriesIndex % lineColors.length];
+      ctx.lineWidth = seriesIndex === 0 ? 2.2 : 1.9;
+      var drawing = false;
+      var previousY = null;
 
-      var px = sx(point.x);
-      var py = sy(point.y);
-      if (!drawing || (previousY !== null && Math.abs(point.y - previousY) > breakDelta)) {
-        ctx.moveTo(px, py);
-        drawing = true;
-      } else {
-        ctx.lineTo(px, py);
-      }
-      previousY = point.y;
+      rendered.points.forEach(function (point) {
+        if (!point.finite) {
+          drawing = false;
+          previousY = null;
+          return;
+        }
+
+        var px = sx(point.x);
+        var py = sy(point.y);
+        if (
+          !drawing ||
+          (previousY !== null && Math.abs(point.y - previousY) > breakDelta)
+        ) {
+          ctx.moveTo(px, py);
+          drawing = true;
+        } else {
+          ctx.lineTo(px, py);
+        }
+        previousY = point.y;
+      });
+      ctx.stroke();
     });
-
-    ctx.stroke();
 
     drawFeatureMarkers(ctx, featurePoints, sx, sy, pointColor);
 
@@ -1309,27 +1457,30 @@
     return style.getPropertyValue(name).trim() || fallback;
   }
 
-  function zoomRangeAroundFocus(min, max, focus, factor) {
-    return {
-      min: focus + (min - focus) * factor,
-      max: focus + (max - focus) * factor,
-    };
-  }
-
   function applyGraphZoomFromCenter(state, factor) {
-    if (state.yMin === undefined || state.yMax === undefined) return;
+    if (
+      !graphEngine ||
+      state.yMin === undefined ||
+      state.yMax === undefined
+    ) {
+      return;
+    }
 
     var xMin = state.xMin !== undefined ? state.xMin : -10;
     var xMax = state.xMax !== undefined ? state.xMax : 10;
     var xCenter = (xMin + xMax) / 2;
     var yCenter = (state.yMin + state.yMax) / 2;
-    var xZoom = zoomRangeAroundFocus(xMin, xMax, xCenter, factor);
-    var yZoom = zoomRangeAroundFocus(
-      state.yMin,
-      state.yMax,
-      yCenter,
+    var xZoom = graphEngine.zoomBounds(
+      { min: xMin, max: xMax },
       factor,
+      xCenter,
     );
+    var yZoom = graphEngine.zoomBounds(
+      { min: state.yMin, max: state.yMax },
+      factor,
+      yCenter,
+    );
+    if (!xZoom || !yZoom) return;
 
     var xSpan = xZoom.max - xZoom.min;
     var ySpan = yZoom.max - yZoom.min;
@@ -1353,6 +1504,7 @@
       "pointerdown",
       function (event) {
         if (event.button !== 0) return;
+        if (event.target.closest("input, button, a")) return;
         root.focus({ preventScroll: true });
       },
       { capture: true },
@@ -1360,6 +1512,23 @@
 
     var canvas = root.querySelector("[data-calc-canvas]");
     var graph = root.querySelector("[data-calc-graph]");
+    var expressionInput = root.querySelector("[data-calc-expression]");
+    if (expressionInput) {
+      expressionInput.addEventListener("input", function () {
+        state.expr = expressionInput.value.slice(0, 220);
+        state.justEvaluated = false;
+        updateRoot(root);
+      });
+      expressionInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === "=") {
+          event.preventDefault();
+          commitEquals(root);
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          handleAction(root, "clear");
+        }
+      });
+    }
     if (canvas) {
       canvas.addEventListener("pointerdown", function (event) {
         if (!state.lastGraphAnalysis || event.button !== 0) return;
@@ -1397,12 +1566,21 @@
             var dragHeight = canvas.clientHeight || dragRect.height;
             if (dragWidth <= 0 || dragHeight <= 0) return;
 
-            var xSpan = state.pointer.xMax - state.pointer.xMin;
-            var ySpan = state.pointer.yMax - state.pointer.yMin;
-            state.xMin = state.pointer.xMin - (dragDx / dragWidth) * xSpan;
-            state.xMax = state.pointer.xMax - (dragDx / dragWidth) * xSpan;
-            state.yMin = state.pointer.yMin + (dragDy / dragHeight) * ySpan;
-            state.yMax = state.pointer.yMax + (dragDy / dragHeight) * ySpan;
+            var panned = graphEngine.panBounds(
+              {
+                xMin: state.pointer.xMin,
+                xMax: state.pointer.xMax,
+                yMin: state.pointer.yMin,
+                yMax: state.pointer.yMax,
+              },
+              dragDx / dragWidth,
+              dragDy / dragHeight,
+            );
+            if (!panned) return;
+            state.xMin = panned.xMin;
+            state.xMax = panned.xMax;
+            state.yMin = panned.yMin;
+            state.yMax = panned.yMax;
             state.hoverX = null;
             state.hoverPx = null;
             drawGraph(root, state, state.lastGraphAnalysis);
@@ -1483,7 +1661,7 @@
   }
 
   function initAll() {
-    ensureParser()
+    ensureRuntime()
       .then(function () {
         document.querySelectorAll(ROOT_SELECTOR).forEach(initRoot);
       })
@@ -1491,7 +1669,7 @@
         document.querySelectorAll(ROOT_SELECTOR).forEach(function (root) {
           var resultEl = root.querySelector("[data-calc-result]");
           if (resultEl) {
-            resultEl.textContent = "Parser unavailable";
+            resultEl.textContent = "Calculator unavailable";
             resultEl.classList.add("calc-result--error");
           }
         });
@@ -1534,7 +1712,7 @@
     if (!button) return;
     event.preventDefault();
 
-    ensureParser().then(function () {
+    ensureRuntime().then(function () {
       var root = button.closest(ROOT_SELECTOR);
       initRoot(root);
       handleAction(root, button.getAttribute("data-calc-action"));
@@ -1595,7 +1773,7 @@
       // Allow typing function names (letters a-z except those already mapped)
       if (/^[a-zA-Z]$/.test(event.key)) {
         event.preventDefault();
-        ensureParser().then(function () {
+        ensureRuntime().then(function () {
           initRoot(root);
           appendToken(root, event.key.toLowerCase());
         });
@@ -1603,7 +1781,7 @@
       return;
     }
     event.preventDefault();
-    ensureParser().then(function () {
+    ensureRuntime().then(function () {
       initRoot(root);
       handleAction(root, action);
     });

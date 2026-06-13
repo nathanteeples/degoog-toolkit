@@ -27,6 +27,7 @@
   
   let timerVal = 0;
   let timerInterval = null;
+  let timerStartedAt = 0;
 
   let widgetEl = null;
 
@@ -40,11 +41,14 @@
   } catch (e) {}
 
   function getAudioContext() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
     if (!audioCtx || audioCtx.state === "closed") {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx = new AudioContextClass();
     }
     if (audioCtx.state === "suspended") {
-      audioCtx.resume();
+      const resumed = audioCtx.resume();
+      if (resumed && typeof resumed.catch === "function") resumed.catch(() => {});
     }
     return audioCtx;
   }
@@ -53,6 +57,7 @@
     if (!soundEnabled) return;
     try {
       const ctx = getAudioContext();
+      if (!ctx) return;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
@@ -71,6 +76,7 @@
     if (!soundEnabled) return;
     try {
       const ctx = getAudioContext();
+      if (!ctx) return;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
@@ -91,6 +97,7 @@
     if (!soundEnabled) return;
     try {
       const ctx = getAudioContext();
+      if (!ctx) return;
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -116,6 +123,7 @@
     if (!soundEnabled) return;
     try {
       const ctx = getAudioContext();
+      if (!ctx) return;
       const now = ctx.currentTime;
       const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
       notes.forEach((freq, idx) => {
@@ -137,6 +145,7 @@
     if (!soundEnabled) return;
     try {
       const ctx = getAudioContext();
+      if (!ctx) return;
       const now = ctx.currentTime;
       const delay = 0.15;
       const notes = [392.00, 311.13, 261.63]; // G4, Eb4, C4
@@ -162,10 +171,12 @@
       const textEl = soundBtn.querySelector(".ms-sound-text");
       if (soundEnabled) {
         soundBtn.classList.remove("ms-muted");
+        soundBtn.setAttribute("aria-pressed", "true");
         if (iconEl) iconEl.textContent = "🔊";
         if (textEl) textEl.textContent = getTranslation("soundOn", "Sound: On");
       } else {
         soundBtn.classList.add("ms-muted");
+        soundBtn.setAttribute("aria-pressed", "false");
         if (iconEl) iconEl.textContent = "🔇";
         if (textEl) textEl.textContent = getTranslation("soundOff", "Sound: Off");
       }
@@ -209,12 +220,13 @@
   function startTimer() {
     stopTimer();
     timerVal = 0;
+    timerStartedAt = Date.now();
     updateDashboard();
     timerInterval = setInterval(() => {
-      timerVal++;
-      if (timerVal > 999) timerVal = 999;
+      timerVal = Math.min(999, Math.floor((Date.now() - timerStartedAt) / 1000));
       updateDashboard();
-    }, 1000);
+      if (timerVal >= 999) stopTimer();
+    }, 250);
   }
 
   function stopTimer() {
@@ -222,11 +234,13 @@
       clearInterval(timerInterval);
       timerInterval = null;
     }
+    timerStartedAt = 0;
   }
 
   // Game Initialization
   function initGame(diff = currentDifficulty) {
     stopTimer();
+    if (!CONFIGS[diff]) diff = "easy";
     currentDifficulty = diff;
     rows = CONFIGS[diff].rows;
     cols = CONFIGS[diff].cols;
@@ -267,6 +281,7 @@
     const flagBtn = qs('[data-ms-action="toggle-flag"]');
     if (flagBtn) {
       const textEl = flagBtn.querySelector(".ms-flag-mode-text");
+      flagBtn.setAttribute("aria-pressed", flaggingMode ? "true" : "false");
       if (flaggingMode) {
         flagBtn.classList.add("ms-flagging");
         if (textEl) textEl.textContent = getTranslation("flagMode", "Flag Mode");
@@ -288,10 +303,13 @@
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const cell = board[r][c];
-        const cellEl = document.createElement("div");
+        const cellEl = document.createElement("button");
+        cellEl.type = "button";
         cellEl.className = "ms-cell ms-unrevealed";
         cellEl.dataset.row = r;
         cellEl.dataset.col = c;
+        cellEl.setAttribute("role", "gridcell");
+        cellEl.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}`);
         
         gridEl.appendChild(cellEl);
       }
@@ -459,10 +477,19 @@
     }
 
     cellEl.className = "ms-cell ms-revealed";
+    cellEl.disabled = true;
     if (cell.neighborMines > 0) {
       cellEl.textContent = cell.neighborMines;
       cellEl.classList.add(`ms-num-${cell.neighborMines}`);
+      cellEl.setAttribute(
+        "aria-label",
+        `Row ${row + 1}, column ${col + 1}: ${cell.neighborMines}`,
+      );
     } else {
+      cellEl.setAttribute(
+        "aria-label",
+        `Row ${row + 1}, column ${col + 1}: empty`,
+      );
       // Reveal neighbors recursively for empty cells
       for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
@@ -492,8 +519,13 @@
     
     if (cell.isFlagged) {
       cellEl.classList.add("ms-flagged");
+      cellEl.setAttribute(
+        "aria-label",
+        `Row ${row + 1}, column ${col + 1}: flagged`,
+      );
     } else {
       cellEl.classList.remove("ms-flagged");
+      cellEl.setAttribute("aria-label", `Row ${row + 1}, column ${col + 1}`);
     }
 
     updateDashboard();
@@ -511,6 +543,7 @@
         const cell = board[r][c];
         const cellEl = qs(`.ms-cell[data-row="${r}"][data-col="${c}"]`);
         if (!cellEl) continue;
+        cellEl.disabled = true;
         
         if (cell.isMine) {
           if (!cell.isRevealed && (r !== explodedRow || c !== explodedCol)) {
@@ -570,21 +603,31 @@
   }
 
   // Set up event listeners
+  function activateWidget(w) {
+    if (!w || w === widgetEl) return;
+    stopTimer();
+    widgetEl = w;
+    const activeDiffEl = w.querySelector(".ms-diff-btn.ms-active");
+    const diff = activeDiffEl?.dataset.difficulty;
+    initGame(CONFIGS[diff] ? diff : "easy");
+  }
+
   function initListeners() {
     document.addEventListener("click", (event) => {
       const w = event.target.closest("[data-ms-widget]");
       if (!w) return;
-      if (w !== widgetEl) {
-        widgetEl = w;
-      }
+      activateWidget(w);
 
       // Difficulty Selector
       const diffBtn = event.target.closest(".ms-diff-btn");
       if (diffBtn && w.contains(diffBtn)) {
         getAudioContext();
         const diff = diffBtn.dataset.difficulty;
+        if (!CONFIGS[diff]) return;
         w.querySelectorAll(".ms-diff-btn").forEach(btn => btn.classList.remove("ms-active"));
+        w.querySelectorAll(".ms-diff-btn").forEach(btn => btn.setAttribute("aria-pressed", "false"));
         diffBtn.classList.add("ms-active");
+        diffBtn.setAttribute("aria-pressed", "true");
         initGame(diff);
         return;
       }
@@ -634,6 +677,7 @@
     document.addEventListener("contextmenu", (event) => {
       const w = event.target.closest("[data-ms-widget]");
       if (!w) return;
+      activateWidget(w);
 
       const cellEl = event.target.closest(".ms-cell");
       if (cellEl && w.contains(cellEl)) {
@@ -649,9 +693,7 @@
     document.addEventListener("mousedown", (event) => {
       const w = event.target.closest("[data-ms-widget]");
       if (!w) return;
-      if (w !== widgetEl) {
-        widgetEl = w;
-      }
+      activateWidget(w);
 
       const cellEl = event.target.closest(".ms-cell");
       if (cellEl && w.contains(cellEl) && !gameOver && !gameWon) {
@@ -666,12 +708,7 @@
     });
 
     document.addEventListener("mouseup", (event) => {
-      const w = document.querySelector("[data-ms-widget]");
-      if (!w) return;
-      if (w !== widgetEl) {
-        widgetEl = w;
-      }
-      
+      if (!widgetEl?.isConnected) return;
       const faceBtn = qs("[data-ms-face]");
       if (faceBtn && !gameOver && !gameWon) {
         faceBtn.textContent = getFaceEmoji();
@@ -689,10 +726,7 @@
       return;
     }
     if (w !== widgetEl) {
-      widgetEl = w;
-      const activeDiffEl = w.querySelector(".ms-diff-btn.ms-active");
-      const diff = activeDiffEl ? activeDiffEl.dataset.difficulty : "easy";
-      initGame(diff);
+      activateWidget(w);
     }
   }
 

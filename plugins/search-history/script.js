@@ -94,10 +94,16 @@ function renderHistoryDropdown(entries, input, dropdown) {
         e.preventDefault();
         e.stopPropagation();
         fetch(`${HISTORY_API}/delete?id=${encodeURIComponent(id)}`, {
-          method: "GET",
+          method: "POST",
         })
+          .then((response) => {
+            if (!response.ok) throw new Error("History deletion failed");
+          })
           .then(() => fetch(HISTORY_LIST_URL))
-          .then((r) => r.json())
+          .then((response) => {
+            if (!response.ok) throw new Error("History refresh failed");
+            return response.json();
+          })
           .then((list) => {
             const arr = Array.isArray(list) ? list : [];
             _historyListCache = arr;
@@ -145,7 +151,13 @@ function prefetchHistoryList() {
 function appendHistory(entry) {
   const q = (entry || "").trim();
   if (!q) return;
-  if (q === "!history" || q.startsWith("!history ")) return;
+  const normalizedQuery = q.toLowerCase();
+  if (
+    normalizedQuery === "!history" ||
+    normalizedQuery.startsWith("!history ")
+  ) {
+    return;
+  }
   const payload = JSON.stringify({ entry: q });
 
   // Prefer sendBeacon: survives the pagehide/navigation that follows

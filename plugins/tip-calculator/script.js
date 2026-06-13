@@ -8,6 +8,14 @@
 
   const qs = selector => currentWidget ? currentWidget.querySelector(selector) : null;
 
+  function cancelAnimations() {
+    Object.keys(activeAnimations).forEach((key) => {
+      if (activeAnimations[key]) cancelAnimationFrame(activeAnimations[key]);
+      activeAnimations[key] = null;
+      currentValues[key] = 0;
+    });
+  }
+
   function formatCurrency(val) {
     if (isNaN(val) || val < 0) val = 0;
     return "$" + val.toLocaleString("en-US", {
@@ -140,7 +148,7 @@
 
   function handleInput(event) {
     const target = event.target;
-    if (!target) return;
+    if (!target || !currentWidget?.contains(target)) return;
 
     const id = target.id;
     if (["tipcalc-bill-input", "tipcalc-tip-input", "tipcalc-tip-slider", "tipcalc-split-input", "tipcalc-split-slider"].includes(id)) {
@@ -150,6 +158,7 @@
   }
 
   function initFromWidget(w) {
+    cancelAnimations();
     currentWidget = w;
     
     const billInput = qs("#tipcalc-bill-input");
@@ -180,7 +189,10 @@
   function checkWidget() {
     const w = document.querySelector("[data-tipcalc-widget]");
     if (!w) {
-      if (currentWidget && !currentWidget.isConnected) currentWidget = null;
+      if (currentWidget && !currentWidget.isConnected) {
+        cancelAnimations();
+        currentWidget = null;
+      }
       return;
     }
     if (w !== currentWidget) initFromWidget(w);

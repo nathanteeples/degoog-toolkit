@@ -122,24 +122,24 @@
     const title = kind === "antonym" ? tAntonyms : tSynonyms;
 
     const tagsHtml = terms.map(term => {
-      const termWord = term.word;
+      const termWord = String(term?.word || "");
       const lookupWord = termWord.trim().toLowerCase().replace(/[^a-z0-9'-]/g, "");
 
       const ratingHtml = term.rating && term.rating !== 0
-        ? `<span class="dslot-rating" title="Power Thesaurus rating">${term.rating}</span>`
+        ? `<span class="dslot-rating" title="Power Thesaurus rating">${escapeHtml(term.rating)}</span>`
         : "";
 
       const partsHtml = term.partsOfSpeech && term.partsOfSpeech.length
-        ? `<span class="dslot-term-meta">${term.partsOfSpeech.join(", ")}</span>`
+        ? `<span class="dslot-term-meta">${term.partsOfSpeech.map(escapeHtml).join(", ")}</span>`
         : "";
 
       const tagsListHtml = term.tags && term.tags.length
-        ? `<span class="dslot-term-tags">${term.tags.slice(0, 3).map(tag => `<span>#${tag}</span>`).join("")}</span>`
+        ? `<span class="dslot-term-tags">${term.tags.slice(0, 3).map(tag => `<span>#${escapeHtml(tag)}</span>`).join("")}</span>`
         : "";
 
       const wordControl = lookupWord
-        ? `<button class="dslot-term-word dslot-tag-button" type="button" data-dslot-lookup="${lookupWord}" aria-label="Look up ${kind} ${termWord}">${termWord}</button>`
-        : `<span class="dslot-term-word">${termWord}</span>`;
+        ? `<button class="dslot-term-word dslot-tag-button" type="button" data-dslot-lookup="${escapeAttr(lookupWord)}" aria-label="Look up ${escapeAttr(kind)} ${escapeAttr(termWord)}">${escapeHtml(termWord)}</button>`
+        : `<span class="dslot-term-word">${escapeHtml(termWord)}</span>`;
 
       return `<span class="dslot-term">
         <span class="dslot-term-main">${wordControl}${ratingHtml}</span>
@@ -148,10 +148,10 @@
     }).join("");
 
     overlay.innerHTML = `
-      <div class="dslot-modal-container">
+      <div class="dslot-modal-container" role="dialog" aria-modal="true" aria-label="${escapeAttr(title)} ${escapeAttr(tFor)} ${escapeAttr(word)}">
         <div class="dslot-modal-header">
-          <div class="dslot-modal-title">${title} ${tFor} <span class="dslot-modal-word">${word}</span></div>
-          <button class="dslot-modal-close" aria-label="${tClose}">&times;</button>
+          <div class="dslot-modal-title">${escapeHtml(title)} ${escapeHtml(tFor)} <span class="dslot-modal-word">${escapeHtml(word)}</span></div>
+          <button class="dslot-modal-close" type="button" aria-label="${escapeAttr(tClose)}">&times;</button>
         </div>
         <div class="dslot-modal-body">
           <div class="dslot-tags-flex">
@@ -164,9 +164,16 @@
     document.body.appendChild(overlay);
 
     const closeBtn = overlay.querySelector(".dslot-modal-close");
+    const previousFocus = document.activeElement;
+    let closed = false;
     const close = () => {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener("keydown", escHandler);
       overlay.classList.add("dslot-modal-closing");
       overlay.addEventListener("animationend", () => overlay.remove(), { once: true });
+      setTimeout(() => overlay.remove(), 300);
+      if (previousFocus instanceof HTMLElement) previousFocus.focus();
     };
     closeBtn.addEventListener("click", close);
     overlay.addEventListener("click", (e) => {
@@ -180,6 +187,20 @@
       }
     };
     document.addEventListener("keydown", escHandler);
+    closeBtn.focus();
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value);
   }
 
   function handleMoreClick(event) {

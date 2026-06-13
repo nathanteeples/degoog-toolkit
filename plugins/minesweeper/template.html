@@ -7,31 +7,31 @@
   <div class="ms-header">
     <div class="ms-title">{{ t:plugin-minesweeper.minesweeper }}</div>
     <div class="ms-difficulty-selector">
-      <button class="ms-diff-btn ms-active" data-difficulty="easy" title="{{ t:plugin-minesweeper.easyTitle }}">{{ t:plugin-minesweeper.easy }}</button>
-      <button class="ms-diff-btn" data-difficulty="medium" title="{{ t:plugin-minesweeper.mediumTitle }}">{{ t:plugin-minesweeper.medium }}</button>
-      <button class="ms-diff-btn" data-difficulty="hard" title="{{ t:plugin-minesweeper.hardTitle }}">{{ t:plugin-minesweeper.hard }}</button>
+      <button type="button" class="ms-diff-btn ms-active" data-difficulty="easy" aria-pressed="true" title="{{ t:plugin-minesweeper.easyTitle }}">{{ t:plugin-minesweeper.easy }}</button>
+      <button type="button" class="ms-diff-btn" data-difficulty="medium" aria-pressed="false" title="{{ t:plugin-minesweeper.mediumTitle }}">{{ t:plugin-minesweeper.medium }}</button>
+      <button type="button" class="ms-diff-btn" data-difficulty="hard" aria-pressed="false" title="{{ t:plugin-minesweeper.hardTitle }}">{{ t:plugin-minesweeper.hard }}</button>
     </div>
   </div>
 
   <div class="ms-dashboard">
     <div class="ms-counter" data-ms-mines-display title="{{ t:plugin-minesweeper.minesRemaining }}">010</div>
-    <button class="ms-face-btn" data-ms-face title="{{ t:plugin-minesweeper.restartGame }}">🙂</button>
+    <button type="button" class="ms-face-btn" data-ms-face title="{{ t:plugin-minesweeper.restartGame }}">🙂</button>
     <div class="ms-timer" data-ms-timer-display title="{{ t:plugin-minesweeper.timeElapsed }}">000</div>
   </div>
 
   <div class="ms-grid-container">
-    <div class="ms-grid" data-ms-grid></div>
+    <div class="ms-grid" data-ms-grid role="grid" aria-label="{{ t:plugin-minesweeper.minesweeper }}"></div>
   </div>
 
   <div class="ms-controls">
-    <button class="ms-control-btn" data-ms-action="toggle-flag" title="{{ t:plugin-minesweeper.flagModeTitle }}">
+    <button type="button" class="ms-control-btn" data-ms-action="toggle-flag" aria-pressed="false" title="{{ t:plugin-minesweeper.flagModeTitle }}">
       <span class="ms-flag-mode-icon">🚩</span>
       <span class="ms-flag-mode-text">{{ t:plugin-minesweeper.revealMode }}</span>
     </button>
-    <button class="ms-control-btn" data-ms-action="toggle-sound" title="{{ t:plugin-minesweeper.soundTitle }}">
+    <button type="button" class="ms-control-btn" data-ms-action="toggle-sound" aria-pressed="true" title="{{ t:plugin-minesweeper.soundTitle }}">
       <span class="ms-sound-icon">🔊</span>
       <span class="ms-sound-text">{{ t:plugin-minesweeper.soundOn }}</span>
     </button>
-    <button class="ms-control-btn" data-ms-action="reset" title="{{ t:plugin-minesweeper.resetBoardTitle }}">{{ t:plugin-minesweeper.reset }}</button>
+    <button type="button" class="ms-control-btn" data-ms-action="reset" title="{{ t:plugin-minesweeper.resetBoardTitle }}">{{ t:plugin-minesweeper.reset }}</button>
   </div>
 </div>

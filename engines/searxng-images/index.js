@@ -7,7 +7,6 @@ const TIME_RANGE_MAP = {
 };
 
 const DEFAULT_CATEGORIES = "images";
-const REQUEST_TIMEOUT_MS = 10000;
 const SAFE_SEARCH_VALUES = new Set(["0", "1", "2"]);
 
 function normalizeBaseUrl(value) {
@@ -121,27 +120,28 @@ class SearXNGImagesEngine {
 
     const url = `${this.baseUrl}/search?${params}`;
     const doFetch = context?.fetch ?? fetch;
-    const controller =
-      typeof AbortController === "function" ? new AbortController() : null;
-    let timeoutId = null;
+    const response = await doFetch(url, {
+      headers: { Accept: "application/json" },
+    });
+
+    if (typeof context?.sentinel === "function") {
+      context.sentinel(response, this.name);
+    } else if (!response.ok) {
+      throw new Error(`${this.name} upstream returned HTTP ${response.status}`);
+    }
 
     try {
-      if (controller) {
-        timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-      }
-      const response = await doFetch(url, {
-        headers: { Accept: "application/json" },
-        ...(controller ? { signal: controller.signal } : {}),
-      });
-
-      if (!response.ok) return [];
-
       const data = await response.json();
       return Array.isArray(data?.results) ? mapResults(data.results) : [];
-    } catch {
-      return [];
-    } finally {
-      if (timeoutId !== null) clearTimeout(timeoutId);
+    } catch (error) {
+      if (typeof context?.engineError === "function") {
+        throw context.engineError(
+          "parse_error",
+          `${this.name} upstream returned invalid JSON`,
+          { httpStatus: response.status, engine: this.name },
+        );
+      }
+      throw error;
     }
   }
 }

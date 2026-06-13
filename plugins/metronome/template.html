@@ -11,11 +11,11 @@
       </svg>
       <span>{{ t:plugin-metronome.metronome }}</span>
     </div>
-    <div class="metro-tempo-text" data-metro-tempo-text>Moderato</div>
+    <div class="metro-tempo-text" data-metro-tempo-text aria-live="polite">Moderato</div>
   </div>
 
   <div class="metro-display-section">
-    <div class="metro-dots-container" data-metro-dots>
+    <div class="metro-dots-container" data-metro-dots aria-hidden="true">
       <div class="metro-dot" data-index="0"></div>
       <div class="metro-dot" data-index="1"></div>
       <div class="metro-dot" data-index="2"></div>
@@ -23,14 +23,14 @@
     </div>
 
     <div class="metro-bpm-container">
-      <span class="metro-bpm-val" data-metro-bpm-val>{{default_bpm}}</span>
+      <span class="metro-bpm-val" data-metro-bpm-val aria-live="polite">{{default_bpm}}</span>
       <span class="metro-bpm-unit">BPM</span>
     </div>
   </div>
 
   <div class="metro-controls">
     <div class="metro-slider-group">
-      <button class="metro-btn metro-adjust-btn" data-action="decrement" aria-label="{{ t:plugin-metronome.decreaseTempo }}">
+      <button type="button" class="metro-btn metro-adjust-btn" data-action="decrement" aria-label="{{ t:plugin-metronome.decreaseTempo }}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
@@ -46,7 +46,7 @@
         aria-label="{{ t:plugin-metronome.tempoSlider }}"
       />
       
-      <button class="metro-btn metro-adjust-btn" data-action="increment" aria-label="{{ t:plugin-metronome.increaseTempo }}">
+      <button type="button" class="metro-btn metro-adjust-btn" data-action="increment" aria-label="{{ t:plugin-metronome.increaseTempo }}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -55,7 +55,7 @@
     </div>
 
     <div class="metro-action-group">
-      <button class="metro-play-btn" data-metro-play-btn aria-label="{{ t:plugin-metronome.play }}">
+      <button type="button" class="metro-play-btn" data-metro-play-btn aria-label="{{ t:plugin-metronome.play }}" aria-pressed="false">
         <svg class="metro-play-icon" width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
           <polygon points="8 5 19 12 8 19 8 5"></polygon>
         </svg>
@@ -69,16 +69,18 @@
 
   <div class="metro-footer">
     <div class="metro-footer-item">
-      <label for="metro-beats-select" class="metro-label">{{ t:plugin-metronome.beatsPerBar }}</label>
-      <select id="metro-beats-select" class="metro-select" data-metro-select>
+      <label class="metro-label">
+        <span>{{ t:plugin-metronome.beatsPerBar }}</span>
+        <select class="metro-select" data-metro-select>
         <option value="1">1</option>
         <option value="2">2</option>
         <option value="3">3</option>
         <option value="4" selected>4</option>
-      </select>
+        </select>
+      </label>
     </div>
 
-    <button class="metro-btn metro-tap-btn" data-metro-tap-btn>
+    <button type="button" class="metro-btn metro-tap-btn" data-metro-tap-btn>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       </svg>

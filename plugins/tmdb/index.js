@@ -19,6 +19,11 @@ const JELLYFIN_LOGO =
   "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@refs/heads/main/svg/jellyfin.svg";
 const SEERR_LOGO =
   "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@refs/heads/main/svg/overseerr.svg";
+const SIMPLE_ICONS_BASE = "https://cdn.simpleicons.org";
+const TMDB_LOGO = `${SIMPLE_ICONS_BASE}/themoviedatabase`;
+const IMDB_LOGO = `${SIMPLE_ICONS_BASE}/imdb`;
+const ROTTEN_TOMATOES_LOGO = `${SIMPLE_ICONS_BASE}/rottentomatoes`;
+const LETTERBOXD_LOGO = `${SIMPLE_ICONS_BASE}/letterboxd/00E054`;
 
 const SEERR_STATUS_KEYS = {
   1: "seerrRequest",
@@ -30,6 +35,7 @@ const SEERR_STATUS_KEYS = {
 const ASSET_PROXY_HOSTS = new Set([
   "image.tmdb.org",
   "cdn.jsdelivr.net",
+  "cdn.simpleicons.org",
   "i.ytimg.com",
   "img.youtube.com",
 ]);
@@ -801,8 +807,8 @@ const _buildImageCombo = (poster, bd1, bd2) => {
     return (
       `<img src="${_esc(src)}" alt="" loading="lazy" ` +
       `class="tmdb-combo-img ${cls}" data-tmdb-modal-src="${_esc(src)}" ` +
-      `role="button" tabindex="0" aria-label="View image" ` +
-      `onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'tmdb-combo-placeholder'}))">`
+      `data-tmdb-image-fallback="combo" role="button" tabindex="0" ` +
+      `aria-label="View image">`
     );
   };
 
@@ -881,7 +887,7 @@ const _buildCastStrip = (cast, ctx) => {
       const character = c.character ? _esc(c.character) : "";
       const photoUrl = _imgUrl(c.profile_path, "w185", ctx);
       const imgHtml = photoUrl
-        ? `<img src="${_esc(photoUrl)}" alt="" loading="lazy" class="tmdb-cast-photo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        ? `<img src="${_esc(photoUrl)}" alt="" loading="lazy" class="tmdb-cast-photo" data-tmdb-image-fallback="cast">`
         : "";
       const initial = _esc((c.name || "").trim().charAt(0).toUpperCase());
       const fallback = `<span class="tmdb-cast-initial"${imgHtml ? ' style="display:none"' : ""}>${initial}</span>`;
@@ -1127,26 +1133,55 @@ const _wrapTabs = (tabs) => {
   const tabButtons = tabs
     .map(
       (t, i) =>
-        `<button class="tmdb-tab-btn${i === 0 ? " tmdb-tab-btn--active" : ""}" ` +
-        `onclick="(function(btn){` +
-        `btn.closest('.tmdb-tabs').querySelectorAll('.tmdb-tab-btn').forEach(function(b){b.classList.remove('tmdb-tab-btn--active')});` +
-        `btn.classList.add('tmdb-tab-btn--active');` +
-        `btn.closest('.tmdb-tabs').querySelectorAll('.tmdb-tab-panel').forEach(function(p,j){p.style.display=j===${i}?'block':'none'})` +
-        `})(this)">${_esc(t.label)}</button>`,
+        `<button type="button" role="tab" ` +
+        `class="tmdb-tab-btn${i === 0 ? " tmdb-tab-btn--active" : ""}" ` +
+        `data-tmdb-tab-index="${i}" aria-selected="${i === 0 ? "true" : "false"}">` +
+        `${_esc(t.label)}</button>`,
     )
     .join("");
   const tabPanels = tabs
     .map(
       (t, i) =>
-        `<div class="tmdb-tab-panel"${i !== 0 ? ' style="display:none"' : ""}>${t.panel}</div>`,
+        `<div class="tmdb-tab-panel" role="tabpanel"${i !== 0 ? " hidden" : ""}>${t.panel}</div>`,
     )
     .join("");
-  return `<div class="tmdb-tabs"><div class="tmdb-tab-bar">${tabButtons}</div>${tabPanels}</div>`;
+  return `<div class="tmdb-tabs"><div class="tmdb-tab-bar" role="tablist">${tabButtons}</div>${tabPanels}</div>`;
 };
+
+export const testWrapTabs = _wrapTabs;
+
+const _buildServiceChoices = (services, ctx) =>
+  services
+    .filter((service) => service?.href)
+    .map((service) => ({
+      id: service.id,
+      name: service.name,
+      href: service.href,
+      icon: _proxiedAssetUrl(service.icon, ctx),
+    }));
+
+const _buildTitleButton = (titleHtml, titleText, services, ctx) => {
+  const choices = _buildServiceChoices(services, ctx);
+  const serializedChoices = _esc(JSON.stringify(choices));
+  return (
+    `<button type="button" class="tmdb-title-link" data-tmdb-service-picker ` +
+    `data-tmdb-services="${serializedChoices}" ` +
+    `data-tmdb-picker-title="${_esc(titleText)}" ` +
+    `data-tmdb-picker-heading="${_esc(t("openWith", ctx))}" ` +
+    `aria-haspopup="dialog" aria-label="${_esc(`${t("openTitle", ctx)} ${titleText}`)}">` +
+    titleHtml +
+    `<svg class="tmdb-title-picker-icon" viewBox="0 0 20 20" aria-hidden="true">` +
+    `<path d="m7 5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>` +
+    `</svg>` +
+    `</button>`
+  );
+};
+
+export const testBuildServiceChoices = _buildServiceChoices;
 
 // ── Entity Renderers ──────────────────────────────────────────────────────────
 
-const _renderPerson = (details, images, credits, ctx) => {
+const _renderPerson = (details, images, credits, imdbId, ctx) => {
   const name = _esc(details.name || "");
   const knownFor = _esc(details.known_for_department || "");
   const birthday = _esc(details.birthday || "");
@@ -1162,8 +1197,8 @@ const _renderPerson = (details, images, credits, ctx) => {
       return (
         `<div class="tmdb-person-photo">` +
         `<img src="${src}" alt="" loading="lazy" class="tmdb-person-photo-img" ` +
-        `data-tmdb-modal-src="${fullSrc}" role="button" tabindex="0" aria-label="View image" ` +
-        `onerror="this.closest('.tmdb-person-photo').style.display='none'">` +
+        `data-tmdb-modal-src="${fullSrc}" data-tmdb-image-fallback="person" ` +
+        `role="button" tabindex="0" aria-label="View image">` +
         `</div>`
       );
     })
@@ -1181,7 +1216,7 @@ const _renderPerson = (details, images, credits, ctx) => {
   const bioHtml = bioExcerpt
     ? `<p class="tmdb-plot">${_esc(bioExcerpt)}</p>`
     : "";
-  const tmdbHref = _esc(`https://www.themoviedb.org/person/${details.id}`);
+  const tmdbHref = `https://www.themoviedb.org/person/${details.id}`;
 
   const overviewPanel =
     `<div class="tmdb-overview">` +
@@ -1218,9 +1253,27 @@ const _renderPerson = (details, images, credits, ctx) => {
 
   const nameHeader =
     `<div class="tmdb-panel-header">` +
-    `<a href="${tmdbHref}" target="_blank" rel="noopener" class="tmdb-title-link">` +
-    `<h3 class="tmdb-title">${name}</h3>` +
-    `</a>` +
+    `<h3 class="tmdb-title">` +
+    _buildTitleButton(
+      `<span class="tmdb-title-text">${name}</span>`,
+      details.name || "",
+      [
+        {
+          id: "tmdb",
+          name: "TMDB",
+          href: tmdbHref,
+          icon: TMDB_LOGO,
+        },
+        {
+          id: "imdb",
+          name: "IMDb",
+          href: imdbId ? `https://www.imdb.com/name/${imdbId}/` : null,
+          icon: IMDB_LOGO,
+        },
+      ],
+      ctx,
+    ) +
+    `</h3>` +
     `</div>`;
 
   return (
@@ -1249,6 +1302,21 @@ const _buildRatingsHtml = (opts, ctx) => {
   } = opts;
 
   const parts = [];
+  const validScore = (value) => {
+    if (value == null) return "";
+    const score = String(value).trim();
+    return score && score.toUpperCase() !== "N/A" ? score : "";
+  };
+  const logo = (source, modifier, fallback) => {
+    const src = _proxiedAssetUrl(source, ctx);
+    if (src) {
+      return (
+        `<img class="tmdb-rating-logo tmdb-rating-logo--${modifier}" ` +
+        `src="${_esc(src)}" alt="" width="18" height="18" loading="lazy">`
+      );
+    }
+    return `<span class="tmdb-rating-logo-fallback tmdb-rating-logo-fallback--${modifier}" aria-hidden="true">${_esc(fallback)}</span>`;
+  };
 
   const wrapLink = (inner, href, extraClass, extraAttrs) => {
     if (!href) return `<div class="tmdb-rating-item${extraClass || ""}"${extraAttrs || ""}>${inner}</div>`;
@@ -1267,53 +1335,85 @@ const _buildRatingsHtml = (opts, ctx) => {
         ? ` title="${_esc(`${voteCount.toLocaleString(ctx?.lang || "en-US")} ${t("tmdbVotes", ctx)}`)}"`
         : "";
     const tmdbInner =
-      `<span class="tmdb-rating-badge tmdb-rating-badge--tmdb">TMDB</span>` +
+      logo(TMDB_LOGO, "tmdb", "TMDB") +
       `<span class="tmdb-rating-score">${score}</span>` +
       `<span class="tmdb-rating-unit">\u202f/10</span>`;
-    parts.push(wrapLink(tmdbInner, tmdbHref, "", voteTitle));
+    parts.push(
+      wrapLink(
+        tmdbInner,
+        tmdbHref,
+        " tmdb-rating-item--tmdb",
+        ` aria-label="${_esc(`TMDB ${score} / 10`)}"${voteTitle}`,
+      ),
+    );
   }
 
-  if (imdb) {
-    const rawImdb = String(imdb).trim();
-    if (rawImdb.toUpperCase() !== "N/A") {
-      const m = rawImdb.match(/^([\d.]+)\s*\/\s*10$/i);
-      const scoreInner = m
-        ? `<span class="tmdb-rating-score">${_esc(m[1])}</span><span class="tmdb-rating-unit">\u202f/10</span>`
-        : `<span class="tmdb-rating-score">${_esc(rawImdb)}</span>`;
-      const imdbInner =
-        `<span class="tmdb-rating-badge tmdb-rating-badge--imdb">IMDb</span>` +
-        scoreInner;
-      parts.push(wrapLink(imdbInner, imdbHref));
-    }
+  const imdbScore = validScore(imdb);
+  if (imdbScore) {
+    const match = imdbScore.match(/^([\d.]+)\s*\/\s*10$/i);
+    const displayedScore = match ? match[1] : imdbScore;
+    const scoreInner =
+      `<span class="tmdb-rating-score">${_esc(displayedScore)}</span>` +
+      (match ? `<span class="tmdb-rating-unit">\u202f/10</span>` : "");
+    parts.push(
+      wrapLink(
+        logo(IMDB_LOGO, "imdb", "IMDb") + scoreInner,
+        imdbHref,
+        " tmdb-rating-item--imdb",
+        ` aria-label="${_esc(`IMDb ${imdbScore}`)}"`,
+      ),
+    );
   }
 
-  if (rottenTomatoes) {
-    const rt = String(rottenTomatoes).trim();
-    if (rt.toUpperCase() !== "N/A") {
-      const rtInner =
-        `<span class="tmdb-rating-badge tmdb-rating-badge--rt">Tomatometer</span>` +
-        `<span class="tmdb-rating-score tmdb-rating-score--rt">${_esc(rt)}</span>`;
-      parts.push(wrapLink(rtInner, rottenTomatoesHref));
+  const criticScore = validScore(rottenTomatoes);
+  const audienceScore = validScore(rottenTomatoesAudience);
+  if (criticScore || audienceScore) {
+    const rtSegments = [];
+    const rtLabels = [];
+    if (criticScore) {
+      rtSegments.push(
+        `<span class="tmdb-rating-segment tmdb-rating-segment--critic">` +
+          `<span class="tmdb-sr-only">${t("rtCritics", ctx)}</span>` +
+          `<span class="tmdb-rating-score tmdb-rating-score--rt">${_esc(criticScore)}</span>` +
+          `</span>`,
+      );
+      rtLabels.push(`${t("rtCritics", ctx)} ${criticScore}`);
     }
-  }
-
-  if (rottenTomatoesAudience) {
-    const rta = String(rottenTomatoesAudience).trim();
-    if (rta.toUpperCase() !== "N/A") {
-      const rtaInner =
-        `<span class="tmdb-rating-badge tmdb-rating-badge--rt-audience">${t("rtAudience", ctx)}</span>` +
-        `<span class="tmdb-rating-score tmdb-rating-score--rt-audience">${_esc(rta)}</span>`;
-      parts.push(wrapLink(rtaInner, rottenTomatoesAudienceHref));
+    if (criticScore && audienceScore) {
+      rtSegments.push(`<span class="tmdb-rating-divider" aria-hidden="true"></span>`);
     }
+    if (audienceScore) {
+      rtSegments.push(
+        `<span class="tmdb-rating-segment tmdb-rating-segment--audience">` +
+          `<span class="tmdb-rating-audience-icon" aria-hidden="true">` +
+            `<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">` +
+              `<path d="M5.5 8.5h9l-1 8h-7z"></path>` +
+              `<path d="M7 8.5a2.25 2.25 0 1 1 3-2.12A2.25 2.25 0 1 1 13 8.5"></path>` +
+            `</svg>` +
+          `</span>` +
+          `<span class="tmdb-sr-only">${t("rtAudience", ctx)}</span>` +
+          `<span class="tmdb-rating-score tmdb-rating-score--rt-audience">${_esc(audienceScore)}</span>` +
+          `</span>`,
+      );
+      rtLabels.push(`${t("rtAudience", ctx)} ${audienceScore}`);
+    }
+    parts.push(
+      wrapLink(
+        logo(ROTTEN_TOMATOES_LOGO, "rt", "RT") + rtSegments.join(""),
+        rottenTomatoesHref || rottenTomatoesAudienceHref,
+        " tmdb-rating-item--rt",
+        ` aria-label="${_esc(rtLabels.join(", "))}" title="${_esc(rtLabels.join(" \u00B7 "))}"`,
+      ),
+    );
   }
 
   if (letterboxdHref) {
     parts.push(
       wrapLink(
-        `<span class="tmdb-rating-badge tmdb-rating-badge--letterboxd">Letterboxd</span>`,
+        logo(LETTERBOXD_LOGO, "letterboxd", "LB"),
         letterboxdHref,
-        "",
-        ` title="${_esc(t("letterboxdTooltip", ctx))}"`,
+        " tmdb-rating-item--letterboxd",
+        ` aria-label="Letterboxd" title="${_esc(t("letterboxdTooltip", ctx))}"`,
       ),
     );
   }
@@ -1325,11 +1425,10 @@ const _buildRatingsHtml = (opts, ctx) => {
       : "";
     parts.push(
       wrapLink(
-        jellyfinIcon +
-          `<span class="tmdb-rating-badge tmdb-rating-badge--jellyfin">Jellyfin</span>`,
+        jellyfinIcon,
         jellyfinHref,
         " tmdb-rating-item--jellyfin",
-        ` aria-label="Open in Jellyfin"`,
+        ` aria-label="Open in Jellyfin" title="Jellyfin"`,
       ),
     );
   }
@@ -1337,17 +1436,16 @@ const _buildRatingsHtml = (opts, ctx) => {
   if (seerrHref) {
     const seerrLogo = _proxiedAssetUrl(SEERR_LOGO, ctx);
     const seerrIcon = seerrLogo
-      ? `<img class="tmdb-rating-seerr-icon" src="${_esc(seerrLogo)}" alt="" width="18" height="18" loading="lazy">`
+      ? `<img class="tmdb-rating-logo tmdb-rating-logo--seerr" src="${_esc(seerrLogo)}" alt="" width="18" height="18" loading="lazy">`
       : "";
     const statusLabel = t(seerrStatus || "seerrRequest", ctx);
     parts.push(
       wrapLink(
         seerrIcon +
-          `<span class="tmdb-rating-badge tmdb-rating-badge--seerr">${t("seerr", ctx)}</span>` +
           `<span class="tmdb-rating-seerr-status">${_esc(statusLabel)}</span>`,
         seerrHref,
         " tmdb-rating-item--seerr",
-        ` aria-label="Open in Seerr"`,
+        ` aria-label="${_esc(`${t("seerr", ctx)} ${statusLabel}`)}" title="${_esc(t("seerr", ctx))}"`,
       ),
     );
   }
@@ -1355,6 +1453,8 @@ const _buildRatingsHtml = (opts, ctx) => {
   if (parts.length === 0) return "";
   return `<div class="tmdb-ratings">${parts.join("")}</div>`;
 };
+
+export const testBuildRatingsHtml = _buildRatingsHtml;
 
 const _imdbHref = (imdbId) =>
   imdbId ? `https://www.imdb.com/title/${imdbId}/` : null;
@@ -1446,6 +1546,43 @@ const _renderMovie = (
   const castSection = _buildCastSection(credits?.cast || [], ctx);
 
   const labelText = `${title}${year ? ` (${year})` : ""}`;
+  const titleButton = _buildTitleButton(
+    `<span class="tmdb-title-text">${title}</span>`,
+    details.title || details.name || "",
+    [
+      {
+        id: "tmdb",
+        name: "TMDB",
+        href: tmdbHref,
+        icon: TMDB_LOGO,
+      },
+      {
+        id: "imdb",
+        name: "IMDb",
+        href: _imdbHref(imdbId),
+        icon: IMDB_LOGO,
+      },
+      {
+        id: "letterboxd",
+        name: "Letterboxd",
+        href: `https://letterboxd.com/tmdb/${details.id}/`,
+        icon: LETTERBOXD_LOGO,
+      },
+      {
+        id: "jellyfin",
+        name: "Jellyfin",
+        href: _jellyfinHrefForItem(jellyfinItem),
+        icon: JELLYFIN_LOGO,
+      },
+      {
+        id: "seerr",
+        name: t("seerr", ctx),
+        href: omdbRatings?.seerrHref,
+        icon: SEERR_LOGO,
+      },
+    ],
+    ctx,
+  );
 
   return (
     `<div class="tmdb-panel" data-tmdb-label="${labelText}">` +
@@ -1453,9 +1590,7 @@ const _renderMovie = (
     `<div class="tmdb-header-primary">` +
     `<div class="tmdb-header-title-row">` +
     `<h3 class="tmdb-title">` +
-    `<a href="${tmdbHref}" target="_blank" rel="noopener" class="tmdb-title-link">` +
-    `<span class="tmdb-title-text">${title}</span>` +
-    `</a>` +
+    titleButton +
     (year ? `<span class="tmdb-year">(${year})</span>` : "") +
     `</h3>` +
     `</div>` +
@@ -1553,15 +1688,44 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, imdbId, 
     `<div class="tmdb-tv-main">` + tvHeroBlock + castSection + `</div>`;
 
   const tvMainHeroOnly = `<div class="tmdb-tv-main">` + tvHeroBlock + `</div>`;
+  const titleButton = _buildTitleButton(
+    `<span class="tmdb-title-text">${name}</span>`,
+    details.name || "",
+    [
+      {
+        id: "tmdb",
+        name: "TMDB",
+        href: tmdbHref,
+        icon: TMDB_LOGO,
+      },
+      {
+        id: "imdb",
+        name: "IMDb",
+        href: _imdbHref(imdbId),
+        icon: IMDB_LOGO,
+      },
+      {
+        id: "jellyfin",
+        name: "Jellyfin",
+        href: _jellyfinHrefForItem(jellyfinItem),
+        icon: JELLYFIN_LOGO,
+      },
+      {
+        id: "seerr",
+        name: t("seerr", ctx),
+        href: omdbRatings?.seerrHref,
+        icon: SEERR_LOGO,
+      },
+    ],
+    ctx,
+  );
 
   const tvHeaderBlock =
     `<div class="tmdb-header">` +
     `<div class="tmdb-header-primary">` +
     `<div class="tmdb-header-title-row">` +
     `<h3 class="tmdb-title">` +
-    `<a href="${tmdbHref}" target="_blank" rel="noopener" class="tmdb-title-link">` +
-    `<span class="tmdb-title-text">${name}</span>` +
-    `</a>` +
+    titleButton +
     (year ? `<span class="tmdb-year">(${year})</span>` : "") +
     `</h3>` +
     `</div>` +
@@ -1734,15 +1898,16 @@ const _buildTvPanel = async (id, ctx) => {
 };
 
 const _buildPersonPanel = async (id, ctx) => {
-  const [details, images, credits] = await Promise.all([
+  const [details, images, credits, ext] = await Promise.all([
     _tmdb(`person/${id}`, ctx),
     _tmdb(`person/${id}/images`, ctx),
     _tmdb(`person/${id}/combined_credits`, ctx),
+    _tmdb(`person/${id}/external_ids`, ctx),
   ]);
   if (!details) return null;
   return {
     title: details.name || "Actor",
-    html: _renderPerson(details, images, credits, ctx),
+    html: _renderPerson(details, images, credits, ext?.imdb_id || null, ctx),
   };
 };
 

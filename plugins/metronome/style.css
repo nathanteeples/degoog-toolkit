@@ -285,6 +285,9 @@
 }
 
 .metro-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.85rem;
   color: var(--text-secondary, #5f6368);
   font-weight: 500;

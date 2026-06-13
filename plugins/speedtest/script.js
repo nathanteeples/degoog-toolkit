@@ -1,6 +1,6 @@
 (() => {
   const CARD_SELECTOR = ".speedtest-card[data-speedtest-card]";
-  const CLIENT_PLUGIN_VERSION = "1.5.13";
+  const CLIENT_PLUGIN_VERSION = "1.5.25";
 
   const SP_LANG_DICT = {
     en: {
@@ -1526,6 +1526,17 @@
     appendDebugEvent(card, "Cancelled by user.");
   }
 
+  function disposeCard(card) {
+    const run = card?._speedtestRun;
+    if (run) run.abort();
+    card._speedtestRun = null;
+    card.dataset.speedtestRunning = "false";
+    if (card._speedtestFrame) {
+      window.cancelAnimationFrame(card._speedtestFrame);
+      card._speedtestFrame = null;
+    }
+  }
+
   function buildAssessment(downloadMbps) {
     const speed = Number(downloadMbps) || 0;
 
@@ -2640,6 +2651,11 @@
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
+        mutation.removedNodes.forEach((node) => {
+          if (!(node instanceof HTMLElement)) return;
+          if (node.matches(CARD_SELECTOR)) disposeCard(node);
+          node.querySelectorAll?.(CARD_SELECTOR).forEach(disposeCard);
+        });
         mutation.addedNodes.forEach((node) => {
           if (!(node instanceof HTMLElement)) {
             return;

@@ -171,9 +171,13 @@
     row: arr[10],
     col: arr[11]
   }));
+  const ELEMENT_BY_NUMBER = new Map(
+    ELEMENTS.map((element) => [element.num, element]),
+  );
 
   let currentWidget = null;
   let activeCategoryFilter = null;
+  let lastFocusedElement = null;
 
   function widget() {
     return document.querySelector("[data-pt-widget]");
@@ -287,6 +291,7 @@
   function showElementModal(el) {
     const modal = qs("[data-pt-modal]");
     if (!modal) return;
+    lastFocusedElement = document.activeElement;
 
     modal.querySelector("[data-modal-badge]").style.borderColor = `var(--pt-${el.cat})`;
     modal.querySelector("[data-modal-num]").textContent = el.num;
@@ -304,12 +309,17 @@
     modal.querySelector("[data-modal-desc]").textContent = getElementDescription(el);
 
     modal.style.display = "flex";
+    modal.setAttribute("aria-hidden", "false");
+    modal.querySelector(".pt-modal-content")?.focus();
   }
 
   function hideModal() {
     const modal = qs("[data-pt-modal]");
     if (modal) {
       modal.style.display = "none";
+      modal.setAttribute("aria-hidden", "true");
+      if (lastFocusedElement?.isConnected) lastFocusedElement.focus();
+      lastFocusedElement = null;
     }
   }
 
@@ -317,7 +327,7 @@
     const elements = currentWidget.querySelectorAll(".pt-element[data-num]");
     elements.forEach(cell => {
       const num = parseInt(cell.getAttribute("data-num"), 10);
-      const el = ELEMENTS.find(e => e.num === num);
+      const el = ELEMENT_BY_NUMBER.get(num);
       if (!el) return;
 
       const simState = getSimulatedState(el, tempK);
@@ -331,7 +341,7 @@
     const activeNum = qs("[data-dd-num]");
     if (activeNum) {
       const num = parseInt(activeNum.textContent, 10);
-      const el = ELEMENTS.find(e => e.num === num);
+      const el = ELEMENT_BY_NUMBER.get(num);
       if (el) updateDetailDisplay(el);
     }
   }
@@ -343,8 +353,10 @@
     filterButtons.forEach(btn => {
       if (btn.getAttribute("data-category") === category) {
         btn.classList.add("active");
+        btn.setAttribute("aria-pressed", "true");
       } else {
         btn.classList.remove("active");
+        btn.setAttribute("aria-pressed", "false");
       }
     });
 
@@ -363,7 +375,7 @@
         return;
       }
 
-      const el = ELEMENTS.find(e => e.num === num);
+      const el = ELEMENT_BY_NUMBER.get(num);
       if (!el) return;
 
       if (!category || el.cat === category) {
@@ -404,7 +416,7 @@
         return;
       }
 
-      const el = ELEMENTS.find(e => e.num === num);
+      const el = ELEMENT_BY_NUMBER.get(num);
       if (!el) return;
 
       const matchSym = el.sym.toLowerCase() === cleanQuery;
@@ -462,11 +474,16 @@
 
     // Dynamically inject elements
     ELEMENTS.forEach(el => {
-      const cell = document.createElement("div");
+      const cell = document.createElement("button");
+      cell.type = "button";
       cell.className = `pt-element ${el.cat}`;
       cell.style.gridColumn = el.col;
       cell.style.gridRow = el.row;
       cell.setAttribute("data-num", el.num);
+      cell.setAttribute(
+        "aria-label",
+        `${el.name}, symbol ${el.sym}, atomic number ${el.num}`,
+      );
 
       cell.innerHTML = `
         <span class="pt-element-num">${el.num}</span>
@@ -551,6 +568,7 @@
 
     // Filters click
     w.querySelectorAll("[data-category]").forEach(btn => {
+      btn.setAttribute("aria-pressed", "false");
       btn.addEventListener("click", () => {
         const cat = btn.getAttribute("data-category");
         if (activeCategoryFilter === cat) {
@@ -588,18 +606,6 @@
     }
   }
 
-  function handleDocumentClick(e) {
-    const w = widget();
-    if (!w) {
-      cleanupWidget();
-      return;
-    }
-    if (w !== currentWidget) {
-      cleanupWidget();
-      initFromWidget(w);
-    }
-  }
-
   function checkWidget() {
     const w = widget();
     if (!w) {
@@ -612,8 +618,9 @@
     }
   }
 
-  // Bind events
-  document.addEventListener("click", handleDocumentClick);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hideModal();
+  });
 
   // MutationObserver triggers when the search results page renders the plugin slot
   const observer = new MutationObserver(checkWidget);

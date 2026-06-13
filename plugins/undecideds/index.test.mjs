@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { slot } from "./index.js";
+import { slot, testNormalizeRange } from "./index.js";
 
 slot.init({
   template:
@@ -19,4 +19,13 @@ test("rejects unsupported and incidental dice text", () => {
   assert.equal(slot.trigger("price of d6 stock"), false);
   assert.equal(slot.trigger("roll a 6 sided die"), true);
   assert.equal(slot.trigger("roll a 20 sided die"), true);
+});
+
+test("normalizes, swaps, and bounds number ranges", () => {
+  assert.deepEqual(testNormalizeRange(10, -5), { min: -5, max: 10 });
+  assert.deepEqual(testNormalizeRange("-99999999999", "99999999999"), {
+    min: -1_000_000_000,
+    max: 1_000_000_000,
+  });
+  assert.deepEqual(testNormalizeRange("invalid", ""), { min: 1, max: 100 });
 });

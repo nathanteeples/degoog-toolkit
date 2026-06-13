@@ -2,6 +2,8 @@
   "use strict";
 
   const activeAnimations = new WeakMap();
+  const MAX_ABS_NUMBER = 1_000_000_000;
+  const UINT32_RANGE = 0x100000000;
 
   function getT(key) {
     const attrName = "data-t-" + key.replace(/([A-Z])/g, "-$1").toLowerCase();
@@ -108,7 +110,7 @@
     if (!btn || !coin) return;
 
     btn.addEventListener("click", () => {
-      const result = Math.random() < 0.5 ? "heads" : "tails";
+      const result = randomInt(2) === 0 ? "heads" : "tails";
       animateCoinFlip(slot, result);
     });
 
@@ -677,9 +679,9 @@
 
       const targetRot = getFaceTargetRotation(faceNormals[faceIdx]);
 
-      const initRx = (4 + Math.random() * 3) * Math.PI * 2;
-      const initRy = (5 + Math.random() * 3) * Math.PI * 2;
-      const initRz = (3 + Math.random() * 2) * Math.PI * 2;
+      const initRx = (4 + randomUnit() * 3) * Math.PI * 2;
+      const initRy = (5 + randomUnit() * 3) * Math.PI * 2;
+      const initRz = (3 + randomUnit() * 2) * Math.PI * 2;
 
       const startTime = Date.now();
 
@@ -722,28 +724,18 @@
     const btn = slot.querySelector("[data-num-pick-btn]");
     const roller = slot.querySelector("[data-number-roller-container]");
 
-    if (!btn || !roller) return;
+    if (!minInput || !maxInput || !btn || !roller) return;
 
     // Render initial boxed number
     const initialVal = roller.dataset.initialVal || "42";
     renderStaticNumber(roller, initialVal);
 
     btn.addEventListener("click", () => {
-      let min = parseInt(minInput.value, 10);
-      let max = parseInt(maxInput.value, 10);
+      const { min, max } = normalizeRange(minInput.value, maxInput.value);
+      minInput.value = String(min);
+      maxInput.value = String(max);
 
-      if (isNaN(min)) min = 1;
-      if (isNaN(max)) max = 100;
-
-      if (min > max) {
-        const temp = min;
-        min = max;
-        max = temp;
-        minInput.value = min;
-        maxInput.value = max;
-      }
-
-      const result = Math.floor(Math.random() * (max - min + 1)) + min;
+      const result = min + randomInt(max - min + 1);
       rollNumber(slot, result, min, max);
     });
   }
@@ -858,7 +850,7 @@
     if (!btn) return;
 
     btn.addEventListener("click", () => {
-      const result = Math.random() < 0.5 ? "yes" : "no";
+      const result = randomInt(2) === 0 ? "yes" : "no";
       spinYesNoWheel(slot, result);
     });
   }
@@ -896,7 +888,7 @@
           getT("outlookNotGood"),
           getT("absolutelyNot")
         ];
-    const finalMsg = slot._autoYesnoMsg || msgList[Math.floor(Math.random() * msgList.length)];
+    const finalMsg = slot._autoYesnoMsg || msgList[randomInt(msgList.length)];
 
     if (prefersReducedMotion()) {
       title.textContent = finalMsg;
@@ -910,10 +902,10 @@
     // YES: 0, 2, 4, 6
     // NO: 1, 3, 5, 7
     const slices = result === "yes" ? [0, 2, 4, 6] : [1, 3, 5, 7];
-    const s = slices[Math.floor(Math.random() * slices.length)];
+    const s = slices[randomInt(slices.length)];
     
     // Add random slice offset of +- 14deg so it does not land perfectly on center line
-    const offset = (Math.random() * 28) - 14;
+    const offset = (randomInt(2801) - 1400) / 100;
     
     // Keep angle positive and accumulate to ensure spinning forward
     const baseSpins = 4 * 360;
@@ -1037,10 +1029,32 @@
     const limit = Math.max(1, Math.floor(max));
     if (window.crypto && window.crypto.getRandomValues) {
       const bucket = new Uint32Array(1);
-      window.crypto.getRandomValues(bucket);
+      const cutoff = UINT32_RANGE - (UINT32_RANGE % limit);
+      do {
+        window.crypto.getRandomValues(bucket);
+      } while (bucket[0] >= cutoff);
       return bucket[0] % limit;
     }
     return Math.floor(Math.random() * limit);
+  }
+
+  function randomUnit() {
+    return randomInt(1_000_000) / 1_000_000;
+  }
+
+  function normalizeRange(min, max) {
+    let normalizedMin = clampInteger(min, 1);
+    let normalizedMax = clampInteger(max, 100);
+    if (normalizedMin > normalizedMax) {
+      [normalizedMin, normalizedMax] = [normalizedMax, normalizedMin];
+    }
+    return { min: normalizedMin, max: normalizedMax };
+  }
+
+  function clampInteger(value, fallback) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(-MAX_ABS_NUMBER, Math.min(MAX_ABS_NUMBER, parsed));
   }
 
   function prefersReducedMotion() {

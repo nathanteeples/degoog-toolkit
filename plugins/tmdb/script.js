@@ -82,8 +82,169 @@
     modalImg.src = "";
   }
 
+  // ── Service chooser ──────────────────────────────────────────────────────────
+  let serviceModalOverlay = null;
+  let serviceModalTitle = null;
+  let serviceModalList = null;
+  let serviceModalTrigger = null;
+
+  function safeExternalUrl(value) {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" || url.protocol === "http:"
+        ? url.href
+        : "";
+    } catch {
+      return "";
+    }
+  }
+
+  function createServiceModal() {
+    if (serviceModalOverlay) return;
+
+    serviceModalOverlay = document.createElement("div");
+    serviceModalOverlay.className = "tmdb-service-modal-overlay";
+
+    const dialog = document.createElement("div");
+    dialog.className = "tmdb-service-modal";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-labelledby", "tmdb-service-modal-title");
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "tmdb-service-modal-close";
+    closeBtn.type = "button";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.textContent = "\u00d7";
+    closeBtn.addEventListener("click", closeServiceModal);
+
+    const heading = document.createElement("div");
+    heading.className = "tmdb-service-modal-heading";
+
+    serviceModalTitle = document.createElement("h2");
+    serviceModalTitle.id = "tmdb-service-modal-title";
+    serviceModalTitle.className = "tmdb-service-modal-title";
+
+    const subtitle = document.createElement("p");
+    subtitle.className = "tmdb-service-modal-subtitle";
+    subtitle.setAttribute("data-tmdb-service-modal-subtitle", "");
+
+    heading.appendChild(serviceModalTitle);
+    heading.appendChild(subtitle);
+
+    serviceModalList = document.createElement("div");
+    serviceModalList.className = "tmdb-service-modal-list";
+
+    dialog.appendChild(closeBtn);
+    dialog.appendChild(heading);
+    dialog.appendChild(serviceModalList);
+    serviceModalOverlay.appendChild(dialog);
+    document.body.appendChild(serviceModalOverlay);
+
+    serviceModalOverlay.addEventListener("click", function (event) {
+      if (event.target === serviceModalOverlay) closeServiceModal();
+    });
+  }
+
+  function openServiceModal(trigger) {
+    let services = [];
+    try {
+      services = JSON.parse(trigger.getAttribute("data-tmdb-services") || "[]");
+    } catch {
+      return;
+    }
+
+    const validServices = services
+      .map(function (service) {
+        return {
+          name: String(service?.name || ""),
+          href: safeExternalUrl(service?.href),
+          icon: String(service?.icon || ""),
+        };
+      })
+      .filter(function (service) {
+        return service.name && service.href;
+      });
+    if (!validServices.length) return;
+
+    createServiceModal();
+    serviceModalTrigger = trigger;
+    serviceModalList.replaceChildren();
+
+    serviceModalTitle.textContent =
+      trigger.getAttribute("data-tmdb-picker-heading") || "Open with";
+    const subtitle = serviceModalOverlay.querySelector(
+      "[data-tmdb-service-modal-subtitle]",
+    );
+    if (subtitle) {
+      subtitle.textContent =
+        trigger.getAttribute("data-tmdb-picker-title") || "";
+    }
+
+    validServices.forEach(function (service) {
+      const option = document.createElement("a");
+      option.className = "tmdb-service-option";
+      option.href = service.href;
+      option.target = "_blank";
+      option.rel = "noopener";
+
+      const iconWrap = document.createElement("span");
+      iconWrap.className = "tmdb-service-option-icon";
+      if (service.icon) {
+        const icon = document.createElement("img");
+        icon.src = service.icon;
+        icon.alt = "";
+        icon.width = 24;
+        icon.height = 24;
+        icon.loading = "lazy";
+        iconWrap.appendChild(icon);
+      } else {
+        iconWrap.textContent = service.name.slice(0, 1).toUpperCase();
+      }
+
+      const label = document.createElement("span");
+      label.className = "tmdb-service-option-label";
+      label.textContent = service.name;
+
+      const arrow = document.createElement("span");
+      arrow.className = "tmdb-service-option-arrow";
+      arrow.setAttribute("aria-hidden", "true");
+      arrow.textContent = "\u2197";
+
+      option.appendChild(iconWrap);
+      option.appendChild(label);
+      option.appendChild(arrow);
+      option.addEventListener("click", function () {
+        window.setTimeout(closeServiceModal, 0);
+      });
+      serviceModalList.appendChild(option);
+    });
+
+    serviceModalOverlay.classList.add("tmdb-service-modal--visible");
+    document.body.style.overflow = "hidden";
+    const firstOption = serviceModalList.querySelector(".tmdb-service-option");
+    if (firstOption) firstOption.focus();
+  }
+
+  function closeServiceModal() {
+    if (!serviceModalOverlay) return;
+    serviceModalOverlay.classList.remove("tmdb-service-modal--visible");
+    document.body.style.overflow = "";
+    if (serviceModalTrigger?.isConnected) serviceModalTrigger.focus();
+    serviceModalTrigger = null;
+  }
+
   // Esc key handler
   document.addEventListener("keydown", function (e) {
+    if (
+      e.key === "Escape" &&
+      serviceModalOverlay &&
+      serviceModalOverlay.classList.contains("tmdb-service-modal--visible")
+    ) {
+      e.preventDefault();
+      closeServiceModal();
+      return;
+    }
     if (
       e.key === "Escape" &&
       modalOverlay &&
@@ -628,6 +789,34 @@
       const target = e.target;
       if (!target || !target.closest) return;
 
+      const tabButton = target.closest("[data-tmdb-tab-index]");
+      if (tabButton) {
+        const tabs = tabButton.closest(".tmdb-tabs");
+        const selectedIndex = Number(
+          tabButton.getAttribute("data-tmdb-tab-index"),
+        );
+        if (!tabs || !Number.isInteger(selectedIndex)) return;
+
+        e.preventDefault();
+        tabs.querySelectorAll(".tmdb-tab-btn").forEach(function (button, index) {
+          const selected = index === selectedIndex;
+          button.classList.toggle("tmdb-tab-btn--active", selected);
+          button.setAttribute("aria-selected", selected ? "true" : "false");
+        });
+        tabs.querySelectorAll(".tmdb-tab-panel").forEach(function (panel, index) {
+          panel.hidden = index !== selectedIndex;
+        });
+        return;
+      }
+
+      const servicePicker = target.closest("[data-tmdb-service-picker]");
+      if (servicePicker) {
+        e.preventDefault();
+        e.stopPropagation();
+        openServiceModal(servicePicker);
+        return;
+      }
+
       // Image modal trigger
       const imgEl = target.closest("[data-tmdb-modal-src]");
       if (imgEl) {
@@ -706,6 +895,35 @@
       navigate(root, type, id, name);
     },
     false,
+  );
+
+  document.addEventListener(
+    "error",
+    function (event) {
+      const image = event.target;
+      if (
+        !image ||
+        image.tagName !== "IMG" ||
+        !image.hasAttribute("data-tmdb-image-fallback")
+      ) {
+        return;
+      }
+
+      const fallback = image.getAttribute("data-tmdb-image-fallback");
+      if (fallback === "combo") {
+        const placeholder = document.createElement("div");
+        placeholder.className = "tmdb-combo-placeholder";
+        image.replaceWith(placeholder);
+      } else if (fallback === "cast") {
+        image.hidden = true;
+        const initial = image.nextElementSibling;
+        if (initial) initial.style.display = "flex";
+      } else if (fallback === "person") {
+        const photo = image.closest(".tmdb-person-photo");
+        if (photo) photo.hidden = true;
+      }
+    },
+    true,
   );
 
   // Keyboard accessibility: Enter/Space on a focused nav element activates it.

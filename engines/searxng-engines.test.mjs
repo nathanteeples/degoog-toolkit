@@ -80,6 +80,11 @@ for (const engineCase of ENGINE_CASES) {
     assert.equal(requestUrl.searchParams.get("language"), "en-US");
     assert.equal(requestUrl.searchParams.get("time_range"), "week");
     assert.equal(requestInit.headers.Accept, "application/json");
+    assert.equal(
+      Object.hasOwn(requestInit, "signal"),
+      false,
+      "degoog must be allowed to inject its cancellation signal",
+    );
     assert.deepEqual(results, [
       {
         title: "Example",
@@ -108,4 +113,92 @@ for (const engineCase of ENGINE_CASES) {
     assert.deepEqual(results, []);
     assert.equal(fetchCalls, 0);
   });
+
+  test(`${engineCase.type} engine reports HTTP failures through sentinel`, async () => {
+    const module = await import(engineCase.path);
+    const engine = new module.default();
+    const failure = new Error("rate limited");
+    let sentinelCall;
+
+    await assert.rejects(
+      engine.executeSearch("test query", 1, "any", {
+        fetch: async () => ({ ok: false, status: 429 }),
+        sentinel(response, engineName) {
+          sentinelCall = { response, engineName };
+          throw failure;
+        },
+      }),
+      failure,
+    );
+
+    assert.equal(sentinelCall.response.status, 429);
+    assert.equal(sentinelCall.engineName, engine.name);
+  });
+
+  test(`${engineCase.type} engine reports invalid JSON as a parse error`, async () => {
+    const module = await import(engineCase.path);
+    const engine = new module.default();
+    const parseFailure = new Error("parse failure");
+    let engineErrorCall;
+
+    await assert.rejects(
+      engine.executeSearch("test query", 1, "any", {
+        fetch: async () => ({
+          ok: true,
+          status: 200,
+          async json() {
+            throw new SyntaxError("invalid json");
+          },
+        }),
+        engineError(status, message, options) {
+          engineErrorCall = { status, message, options };
+          return parseFailure;
+        },
+      }),
+      parseFailure,
+    );
+
+    assert.equal(engineErrorCall.status, "parse_error");
+    assert.equal(engineErrorCall.options.httpStatus, 200);
+    assert.equal(engineErrorCall.options.engine, engine.name);
+  });
+
+  test(`${engineCase.type} engine propagates network failures`, async () => {
+    const module = await import(engineCase.path);
+    const engine = new module.default();
+    const networkFailure = new Error("connection refused");
+
+    await assert.rejects(
+      engine.executeSearch("test query", 1, "any", {
+        fetch: async () => {
+          throw networkFailure;
+        },
+      }),
+      networkFailure,
+    );
+  });
 }
+
+test("engines leave result caching to degoog search orchestration", async () => {
+  const module = await import("./searxng-search/index.js");
+  const engine = new module.default();
+  let fetchCalls = 0;
+
+  engine.configure({ baseUrl: "https://search.example.test" });
+  const context = {
+    fetch: async () => {
+      fetchCalls += 1;
+      return {
+        ok: true,
+        async json() {
+          return { results: [] };
+        },
+      };
+    },
+  };
+
+  await engine.executeSearch("same query", 1, "any", context);
+  await engine.executeSearch("same query", 1, "any", context);
+
+  assert.equal(fetchCalls, 2);
+});

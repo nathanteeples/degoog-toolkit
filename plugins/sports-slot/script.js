@@ -2,6 +2,7 @@
   const PANEL_SELECTOR = ".sports-slot[data-sports-query]";
   const PLUGIN_API_BASE = `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
   const REFRESH_ENDPOINT = `${PLUGIN_API_BASE}/refresh`;
+  const REFRESH_TIMEOUT_MS = 12_000;
 
   function formatClock(seconds) {
     const safe = Math.max(0, Number(seconds) || 0);
@@ -98,6 +99,12 @@
       button.textContent = "Refreshing...";
     }
 
+    const controller =
+      typeof AbortController === "function" ? new AbortController() : null;
+    const timeout = controller
+      ? window.setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS)
+      : null;
+
     try {
       const response = await fetch(
         `${REFRESH_ENDPOINT}?query=${encodeURIComponent(query)}`,
@@ -105,8 +112,12 @@
           headers: {
             Accept: "application/json",
           },
+          ...(controller ? { signal: controller.signal } : {}),
         }
       );
+      if (!response.ok) {
+        throw new Error(`Refresh failed (${response.status})`);
+      }
       const data = await response.json();
       const cooldownMs = Number(data.retryAfterMs) || refreshMs || 0;
 
@@ -127,6 +138,7 @@
     } catch {
       panel.dataset.nextRefreshAt = String(Date.now() + refreshMs);
     } finally {
+      if (timeout) window.clearTimeout(timeout);
       panel.dataset.refreshing = "false";
       if (document.body.contains(panel)) {
         updateRefreshButton(panel);

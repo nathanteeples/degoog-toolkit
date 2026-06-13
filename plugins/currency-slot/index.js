@@ -1,5 +1,3 @@
-let template = "";
-let externalFetch = (...args) => fetch(...args);
 import {
   buildCurrencyAliasIndex,
   parseCurrencyQuery,
@@ -10,10 +8,16 @@ import {
   isInformationalQuestion,
 } from "./query-guards.js";
 
+let template = "";
+let externalFetch = (...args) => fetch(...args);
+let currencyCache = null;
 
 const FRANKFURTER_BASE = "https://api.frankfurter.dev/v2";
 const COINGECKO_SIMPLE_PRICE =
   "https://api.coingecko.com/api/v3/simple/price";
+const FETCH_TIMEOUT_MS = 8_000;
+const RATE_CACHE_TTL_MS = 5 * 60_000;
+const HISTORY_CACHE_TTL_MS = 15 * 60_000;
 const CRYPTO_CODES = new Set(["BTC", "ETH"]);
 const AMBIGUOUS_WORD_CODES = new Set(["ALL", "TRY", "MAD", "TOP"]);
 const COIN_IDS = {
@@ -21,6 +25,23 @@ const COIN_IDS = {
   ETH: "ethereum",
 };
 const HISTORY_PERIODS = new Set(["1", "5", "30", "365", "1825", "max"]);
+
+function createExtensionCache(ctx, namespace, ttlMs) {
+  if (typeof ctx?.useCache === "function") {
+    return ctx.useCache(namespace, ttlMs);
+  }
+  return typeof ctx?.createCache === "function"
+    ? ctx.createCache(ttlMs)
+    : null;
+}
+
+async function cacheGet(cache, key) {
+  return cache ? await cache.get(key) : null;
+}
+
+async function cacheSet(cache, key, value, ttlMs) {
+  if (cache) await cache.set(key, value, ttlMs);
+}
 
 // ── Static currency data (server-side display only) ───────────
 const CURRENCIES = {
@@ -490,12 +511,18 @@ async function _fetchJson(url, init = {}) {
     Accept: "application/json",
     ...(init.headers || {}),
   };
+  const controller =
+    typeof AbortController === "function" ? new AbortController() : null;
+  const timeout = controller
+    ? setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+    : null;
 
   let response;
   try {
     response = await externalFetch(url, {
       ...init,
       headers,
+      ...(controller ? { signal: controller.signal } : {}),
     });
   } catch (error) {
     return {
@@ -504,6 +531,8 @@ async function _fetchJson(url, init = {}) {
       error: "Provider request failed",
       data: null,
     };
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 
   let data = null;
@@ -522,7 +551,7 @@ async function _fetchJson(url, init = {}) {
 }
 
 async function _fetchFiatRates(base, quotes) {
-  const quoteList = [...new Set(quotes)].filter(Boolean);
+  const quoteList = [...new Set(quotes)].filter(Boolean).sort();
   if (!base || quoteList.length === 0) {
     return {
       ok: false,
@@ -530,6 +559,10 @@ async function _fetchFiatRates(base, quotes) {
       error: "Missing currency pair",
     };
   }
+
+  const cacheKey = `fiat:${base}:${quoteList.join(",")}`;
+  const cached = await cacheGet(currencyCache, cacheKey);
+  if (cached) return cached;
 
   const url = new URL(`${FRANKFURTER_BASE}/rates`);
   url.searchParams.set("base", base);
@@ -560,7 +593,9 @@ async function _fetchFiatRates(base, quotes) {
     if (quote && Number.isFinite(rate) && rate > 0) rates[quote] = rate;
   }
 
-  return { ok: true, rates };
+  const result = { ok: true, rates };
+  await cacheSet(currencyCache, cacheKey, result, RATE_CACHE_TTL_MS);
+  return result;
 }
 
 async function _fetchConversionRate(from, to) {
@@ -579,6 +614,10 @@ async function _fetchConversionRate(from, to) {
       provider: "local",
     };
   }
+
+  const cacheKey = `rate:${from}:${to}`;
+  const cached = await cacheGet(currencyCache, cacheKey);
+  if (cached) return cached;
 
   const fromIsCrypto = CRYPTO_CODES.has(from);
   const toIsCrypto = CRYPTO_CODES.has(to);
@@ -606,11 +645,13 @@ async function _fetchConversionRate(from, to) {
       };
     }
 
-    return {
+    const result = {
       ok: true,
       rate,
       provider: "frankfurter",
     };
+    await cacheSet(currencyCache, cacheKey, result, RATE_CACHE_TTL_MS);
+    return result;
   }
 
   const cryptoCode = fromIsCrypto ? from : to;
@@ -647,11 +688,13 @@ async function _fetchConversionRate(from, to) {
     };
   }
 
-  return {
+  const result = {
     ok: true,
     rate: fromIsCrypto ? price : 1 / price,
     provider: "coingecko",
   };
+  await cacheSet(currencyCache, cacheKey, result, RATE_CACHE_TTL_MS);
+  return result;
 }
 
 async function _handleRateRoute(request) {
@@ -733,36 +776,42 @@ async function _handleHistoryRoute(request) {
       );
     }
 
-    const response = await _fetchJson(_buildHistoryUrl(from, to, days));
-    if (!response.ok) {
-      return _jsonResponse(
-        {
-          ok: false,
-          status: 502,
-          error:
-            response.error || `Exchange rate provider returned ${response.status}`,
-        },
-        502,
-      );
-    }
+    const cacheKey = `history:${from}:${to}:${days}`;
+    let data = await cacheGet(currencyCache, cacheKey);
+    if (!data) {
+      const response = await _fetchJson(_buildHistoryUrl(from, to, days));
+      if (!response.ok) {
+        return _jsonResponse(
+          {
+            ok: false,
+            status: 502,
+            error:
+              response.error ||
+              `Exchange rate provider returned ${response.status}`,
+          },
+          502,
+        );
+      }
 
-    if (!Array.isArray(response.data)) {
-      return _jsonResponse(
-        {
-          ok: false,
-          status: 502,
-          error: "Exchange rate provider returned an unexpected response",
-        },
-        502,
-      );
-    }
+      if (!Array.isArray(response.data)) {
+        return _jsonResponse(
+          {
+            ok: false,
+            status: 502,
+            error: "Exchange rate provider returned an unexpected response",
+          },
+          502,
+        );
+      }
 
-    const data = response.data
-      .map((entry) => ({
-        date: String(entry?.date || ""),
-        rate: Number(entry?.rate),
-      }))
-      .filter((entry) => entry.date && Number.isFinite(entry.rate));
+      data = response.data
+        .map((entry) => ({
+          date: String(entry?.date || ""),
+          rate: Number(entry?.rate),
+        }))
+        .filter((entry) => entry.date && Number.isFinite(entry.rate));
+      await cacheSet(currencyCache, cacheKey, data, HISTORY_CACHE_TTL_MS);
+    }
 
     return _jsonResponse({
       ok: true,
@@ -831,6 +880,11 @@ export const slot = {
     if (typeof ctx?.fetch === "function") {
       externalFetch = (...args) => ctx.fetch(...args);
     }
+    currencyCache = createExtensionCache(
+      ctx,
+      "ext:currency-slot:rates",
+      RATE_CACHE_TTL_MS,
+    );
   },
 
   configure(settings) {

@@ -1,6 +1,7 @@
 (function () {
   let hexToName = {};
   let hexToNamePromise = null;
+  const PARSE_CACHE_MAX_ENTRIES = 100;
 
   function pluginBase() {
     const id = typeof __PLUGIN_ID__ !== "undefined" ? __PLUGIN_ID__ : "color-translator";
@@ -148,6 +149,9 @@
   function parseHex(hex) {
     let r, g, b, a = 1;
     const cleanHex = hex.startsWith('#') ? hex.slice(1) : hex;
+    if (!/^(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(cleanHex)) {
+      return null;
+    }
     if (cleanHex.length === 3) {
       r = parseInt(cleanHex[0] + cleanHex[0], 16);
       g = parseInt(cleanHex[1] + cleanHex[1], 16);
@@ -185,7 +189,11 @@
       if (!res.ok) return null;
       const parsed = await res.json();
       if (!parsed || parsed.r === undefined) return null;
+      parseCache.delete(key);
       parseCache.set(key, parsed);
+      while (parseCache.size > PARSE_CACHE_MAX_ENTRIES) {
+        parseCache.delete(parseCache.keys().next().value);
+      }
       return parsed;
     } catch {
       return null;
@@ -360,6 +368,7 @@
       document.addEventListener('mouseup', onEnd);
       document.addEventListener('touchmove', onMove, { passive: false });
       document.addEventListener('touchend', onEnd);
+      document.addEventListener('touchcancel', onEnd);
       
       e.preventDefault();
     }
@@ -376,6 +385,7 @@
       document.removeEventListener('mouseup', onEnd);
       document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
     }
 
     wheel.addEventListener('mousedown', onStart);
@@ -523,13 +533,15 @@
     });
 
     let inputParseTimer = null;
+    let parseSequence = 0;
     for (const [type, input] of Object.entries(inputs)) {
       input.addEventListener('input', () => {
         clearTimeout(inputParseTimer);
+        const sequence = ++parseSequence;
         const value = input.value;
         inputParseTimer = setTimeout(async () => {
           const parsed = await fetchParsedColor(value);
-          if (parsed) {
+          if (sequence === parseSequence && parsed && card.isConnected) {
             updateColorFromRgb(parsed.r, parsed.g, parsed.b, parsed.a, parsed.sourceCmyk);
             updateUI(input);
           }
@@ -537,7 +549,9 @@
       });
       input.addEventListener('blur', () => {
         clearTimeout(inputParseTimer);
+        const sequence = ++parseSequence;
         fetchParsedColor(input.value).then((parsed) => {
+          if (sequence !== parseSequence || !card.isConnected) return;
           if (parsed) {
             updateColorFromRgb(parsed.r, parsed.g, parsed.b, parsed.a, parsed.sourceCmyk);
           }
@@ -552,7 +566,7 @@
         const textToCopy = btn.getAttribute("data-copy");
         if (!textToCopy) return;
 
-        navigator.clipboard.writeText(textToCopy).then(() => {
+        copyText(textToCopy).then(() => {
           btn.classList.add("copied");
           setTimeout(() => {
             btn.classList.remove("copied");
@@ -566,6 +580,22 @@
     updateUI();
   }
 
+  async function copyText(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    if (!copied) throw new Error("Copy failed");
+  }
+
   function boot() {
     ensureHexToName().finally(init);
   }
@@ -576,8 +606,22 @@
     boot();
   }
 
-  const observer = new MutationObserver(() => {
-    ensureHexToName().finally(init);
+  let initScheduled = false;
+  const observer = new MutationObserver((mutations) => {
+    const hasRelevantNode = mutations.some((mutation) =>
+      Array.from(mutation.addedNodes).some(
+        (node) =>
+          node instanceof HTMLElement &&
+          (node.matches("[data-color-translator-card]") ||
+            node.querySelector?.("[data-color-translator-card]")),
+      ),
+    );
+    if (!hasRelevantNode || initScheduled) return;
+    initScheduled = true;
+    queueMicrotask(() => {
+      initScheduled = false;
+      ensureHexToName().finally(init);
+    });
   });
   observer.observe(document.documentElement, {
     childList: true,

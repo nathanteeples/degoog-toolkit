@@ -55,7 +55,7 @@ export function createNominatimGeocoder(options = {}) {
     const normalized = String(query || "").trim().replace(/\s+/g, " ");
     if (!normalized || typeof doFetch !== "function") return null;
     const key = `geo:nominatim:v1:${endpoint}:${normalized.toLowerCase()}`;
-    const cached = cache?.get(key);
+    const cached = cache ? await cache.get(key) : null;
     if (cached !== undefined && cached !== null) {
       return cached.empty ? null : { ...cached, cached: true };
     }
@@ -100,11 +100,11 @@ export function createNominatimGeocoder(options = {}) {
       const data = await response.json();
       const picked = pickFeature(data?.features, normalized);
       if (!picked) {
-        cache?.set(key, { empty: true }, NEGATIVE_TTL_MS);
+        if (cache) await cache.set(key, { empty: true }, NEGATIVE_TTL_MS);
         return null;
       }
       const result = { ...picked, source: "nominatim" };
-      cache?.set(key, result, POSITIVE_TTL_MS);
+      if (cache) await cache.set(key, result, POSITIVE_TTL_MS);
       return result;
     } catch {
       return null;

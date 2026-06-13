@@ -13,8 +13,11 @@
     typeof __PLUGIN_ID__ === "undefined"
       ? ""
       : `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
+  const CHART_CACHE_TTL_MS = 60_000;
+  const REQUEST_TIMEOUT_MS = 8_000;
   const chartCache = new Map();
   const chartInFlight = new Map();
+  let gradientSequence = 0;
 
   function chartKey(symbol, period) {
     return `${symbol}|${period}`;
@@ -84,16 +87,32 @@
 
   async function fetchChart(symbol, period) {
     const key = chartKey(symbol, period);
-    if (chartCache.has(key)) return chartCache.get(key);
+    const cached = chartCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.payload;
+    chartCache.delete(key);
     if (chartInFlight.has(key)) return chartInFlight.get(key);
 
     const request = (async () => {
-      const response = await fetch(chartUrl(symbol, period));
-      if (!response.ok) return null;
-      const payload = await response.json();
-      if (!payload?.ok || !Array.isArray(payload.points)) return null;
-      chartCache.set(key, payload);
-      return payload;
+      const controller =
+        typeof AbortController === "function" ? new AbortController() : null;
+      const timeout = controller
+        ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+        : null;
+      try {
+        const response = await fetch(chartUrl(symbol, period), {
+          ...(controller ? { signal: controller.signal } : {}),
+        });
+        if (!response.ok) return null;
+        const payload = await response.json();
+        if (!payload?.ok || !Array.isArray(payload.points)) return null;
+        chartCache.set(key, {
+          payload,
+          expiresAt: Date.now() + CHART_CACHE_TTL_MS,
+        });
+        return payload;
+      } finally {
+        if (timeout) clearTimeout(timeout);
+      }
     })();
 
     chartInFlight.set(key, request);
@@ -195,7 +214,8 @@
 
     const defs = document.createElementNS(svgNS, "defs");
     const grad = document.createElementNS(svgNS, "linearGradient");
-    grad.setAttribute("id", "stocks-grad");
+    const gradientId = `stocks-grad-${++gradientSequence}`;
+    grad.setAttribute("id", gradientId);
     grad.setAttribute("x1", "0");
     grad.setAttribute("y1", "0");
     grad.setAttribute("x2", "0");
@@ -266,7 +286,7 @@
     const areaEl = document.createElementNS(svgNS, "path");
     areaEl.setAttribute("d", area);
     areaEl.setAttribute("class", "stocks-sparkline-area");
-    areaEl.setAttribute("fill", "url(#stocks-grad)");
+    areaEl.setAttribute("fill", `url(#${gradientId})`);
     svg.appendChild(areaEl);
 
     const lineEl = document.createElementNS(svgNS, "path");
@@ -415,6 +435,7 @@
     const stats = card.querySelector(".stocks-chart-stats");
     const symbol = chart?.dataset.symbol || card.dataset.symbol || "";
     if (!chart || !body || !symbol || !PLUGIN_API_BASE) return;
+    let requestId = 0;
 
     chart.querySelectorAll(".stocks-period").forEach((button) => {
       button.setAttribute(
@@ -422,10 +443,12 @@
         button.classList.contains("stocks-period--active") ? "true" : "false",
       );
       button.addEventListener("click", async () => {
+        const activeRequestId = ++requestId;
         const period = button.dataset.period || "1d";
         setActivePeriod(chart, period);
         setLoading(body, stats, period);
         const payload = await fetchChart(symbol, period);
+        if (activeRequestId !== requestId || !card.isConnected) return;
         if (!payload) {
           setEmpty(body, stats);
           return;
@@ -437,10 +460,11 @@
 
     // Silently fetch and render the active period on load to enable hover
     (async () => {
+      const activeRequestId = ++requestId;
       const activeBtn = chart.querySelector(".stocks-period--active");
       const period = activeBtn ? activeBtn.dataset.period : "1d";
       const payload = await fetchChart(symbol, period);
-      if (payload) {
+      if (activeRequestId === requestId && card.isConnected && payload) {
         card._lastPayload = payload;
         renderChart(chart, body, stats, payload);
       }

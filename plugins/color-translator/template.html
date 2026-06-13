@@ -12,22 +12,22 @@
 
       <!-- Color Picker section -->
       <div class="clrtr-picker-section">
-        <div class="clrtr-wheel" data-clrtr-wheel>
+        <div class="clrtr-wheel" data-clrtr-wheel aria-hidden="true">
           <div class="clrtr-wheel-marker" data-clrtr-wheel-marker></div>
         </div>
         
         <div class="clrtr-sliders">
           <div class="clrtr-slider-row">
             <span class="clrtr-slider-label">{{ t:plugin-color-translator.hue }}</span>
-            <input type="range" min="0" max="360" value="0" class="clrtr-slider clrtr-hue-slider" data-clrtr-slider="hue">
+            <input type="range" min="0" max="360" value="0" class="clrtr-slider clrtr-hue-slider" data-clrtr-slider="hue" aria-label="{{ t:plugin-color-translator.hue }}">
           </div>
           <div class="clrtr-slider-row">
             <span class="clrtr-slider-label">{{ t:plugin-color-translator.lightness }}</span>
-            <input type="range" min="0" max="100" value="50" class="clrtr-slider clrtr-lightness-slider" data-clrtr-slider="lightness">
+            <input type="range" min="0" max="100" value="50" class="clrtr-slider clrtr-lightness-slider" data-clrtr-slider="lightness" aria-label="{{ t:plugin-color-translator.lightness }}">
           </div>
           <div class="clrtr-slider-row">
             <span class="clrtr-slider-label">{{ t:plugin-color-translator.alpha }}</span>
-            <input type="range" min="0" max="1" step="0.01" value="1" class="clrtr-slider clrtr-opacity-slider" data-clrtr-slider="opacity">
+            <input type="range" min="0" max="1" step="0.01" value="1" class="clrtr-slider clrtr-opacity-slider" data-clrtr-slider="opacity" aria-label="{{ t:plugin-color-translator.alpha }}">
           </div>
         </div>
       </div>

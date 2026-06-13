@@ -1,5 +1,21 @@
 /* ── Currency Slot – Minimal Theme ──────────────────── */
 
+.results-slot-panel:has(> .results-slot-panel-body > .cxs-wrap.slot-full-width) {
+    max-width: none;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+
+.results-slot-panel:has(> .results-slot-panel-body > .cxs-wrap.slot-full-width)
+    > .results-slot-panel-body {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+}
+
 .cxs-wrap {
     container-type: inline-size;
     margin-bottom: 12px;
@@ -766,26 +782,12 @@
 }
 
 .cxs-chart-fill {
-    fill: url(#cxs-grad);
     opacity: 0.15;
 }
 
 .cxs-chart-dot {
     fill: var(--primary);
     r: 4;
-}
-
-.cxs-chart-tooltip {
-    position: absolute;
-    background: var(--bg-light);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 0.78rem;
-    pointer-events: none;
-    white-space: nowrap;
-    z-index: 5;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Chart grid & axes ─────────────────────────────────────── */
@@ -837,7 +839,7 @@
     position: absolute;
     background: var(--bg-light);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--theme-radius-sm, 8px);
     padding: 8px 12px;
     font-size: 0.8rem;
     pointer-events: none;

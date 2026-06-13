@@ -25,6 +25,7 @@ const SHARED_RADIUS_TOKENS = {
 const SHARED_COLOR_TOKENS = [
   "--primary",
   "--primary-hover",
+  "--primary-rgb",
   "--danger",
   "--warning",
   "--success",
@@ -39,6 +40,14 @@ const SHARED_COLOR_TOKENS = [
   "--text-link-visited",
   "--text-cite",
   "--text-snippet",
+  "--search-bar-bg",
+  "--search-bar-bg-hover",
+  "--search-bar-focused",
+  "--search-bar-icon",
+  "--btn-bg",
+  "--btn-text",
+  "--overlay-bg",
+  "--white",
 ];
 
 function normalizeThemeScript(source) {

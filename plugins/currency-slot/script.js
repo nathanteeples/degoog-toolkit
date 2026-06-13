@@ -1,6 +1,4 @@
 (function () {
-  const HISTORY_PERIODS = [1, 5, 30, 365, 1825, "max"];
-
   const CUR_LANG_DICT = {
     en: {
       low: "Low",
@@ -25,6 +23,7 @@
   const historyInFlight = new Map();
   let currencySearchByCode = null;
   let currencySearchLoadPromise = null;
+  let chartGradientSequence = 0;
 
   async function ensureCurrencySearchIndex() {
     if (currencySearchByCode) return currencySearchByCode;
@@ -678,7 +677,6 @@
     const chartStats = wrap.querySelector("#cxs-chart-stats");
     const chartTitle = wrap.querySelector("#cxs-chart-title");
     let currentDays = 30;
-    let prefetchTimer = null;
     let chartRequestId = 0;
 
     function getChartStatsPlaceholder() {
@@ -697,20 +695,6 @@
       if (chartStats) chartStats.innerHTML = getChartStatsPlaceholder();
     }
 
-    function prefetchHistory(from, to, activeDays) {
-      const periods = HISTORY_PERIODS.filter((p) => p !== activeDays);
-      for (const period of periods) {
-        fetchHistory(from, to, period);
-      }
-    }
-
-    function schedulePrefetch() {
-      if (prefetchTimer) clearTimeout(prefetchTimer);
-      prefetchTimer = setTimeout(() => {
-        prefetchHistory(fromCode, toCode, currentDays);
-      }, 60);
-    }
-
     async function loadChart(days) {
       currentDays = days;
       const requestId = ++chartRequestId;
@@ -720,7 +704,6 @@
       const data = await fetchHistory(activeFrom, activeTo, days);
       if (requestId !== chartRequestId) return;
       renderChart(chartBody, chartStats, data, activeFrom, activeTo, days);
-      schedulePrefetch();
     }
 
     wrap.querySelectorAll(".cxs-period").forEach((btn) => {
@@ -896,7 +879,14 @@
     /* gradient def */
     var defs = svgEl("defs");
     var grad = svgEl("linearGradient");
-    setAttrs(grad, { id: "cxs-grad", x1: "0", y1: "0", x2: "0", y2: "1" });
+    var gradientId = "cxs-grad-" + ++chartGradientSequence;
+    setAttrs(grad, {
+      id: gradientId,
+      x1: "0",
+      y1: "0",
+      x2: "0",
+      y2: "1",
+    });
     var stop1 = svgEl("stop");
     setAttrs(stop1, {
       offset: "0%",
@@ -988,7 +978,7 @@
     setAttrs(fillEl, {
       d: areaPath,
       class: "cxs-chart-fill",
-      fill: "url(#cxs-grad)",
+      fill: "url(#" + gradientId + ")",
     });
     svg.appendChild(fillEl);
 

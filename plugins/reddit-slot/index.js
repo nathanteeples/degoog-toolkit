@@ -5,9 +5,29 @@ let minScore = 1;
 let restrictSubreddit = "";
 let showMode = "keyword";
 let pluginFetch = (...args) => fetch(...args);
+let redditCache = null;
 
 /** Reddit requires a descriptive User-Agent; bare bot names often get 403. */
-const REDDIT_USER_AGENT = "web:degoog-toolkit:v1.0.14 (by /u/SoPat712)";
+const REDDIT_USER_AGENT = "web:degoog-toolkit:v1.0.15 (by /u/SoPat712)";
+const FETCH_TIMEOUT_MS = 8000;
+const CACHE_TTL_MS = 2 * 60 * 1000;
+
+function createExtensionCache(ctx, namespace, ttlMs) {
+  if (typeof ctx?.useCache === "function") {
+    return ctx.useCache(namespace, ttlMs);
+  }
+  return typeof ctx?.createCache === "function"
+    ? ctx.createCache(ttlMs)
+    : null;
+}
+
+async function cacheGet(cache, key) {
+  return cache ? await cache.get(key) : null;
+}
+
+async function cacheSet(cache, key, value) {
+  if (cache) await cache.set(key, value);
+}
 
 function isUtilityQuery(q) {
   return /\b(weather|forecast|погода|метео|temperature|humidity|wind|rain|snow|translate|translation|convert|currency|calculator|calculate|math|stopwatch|timer|countdown|coinflip|coin-flip|yesno|yes-no|tip|tips|gratuity|gratuities|stocks?)\b/i.test(q);
@@ -67,6 +87,11 @@ export const slot = {
     if (typeof ctx?.fetch === "function") {
       pluginFetch = (...args) => ctx.fetch(...args);
     }
+    redditCache = createExtensionCache(
+      ctx,
+      "ext:reddit-slot:cards",
+      CACHE_TTL_MS,
+    );
   },
 
   configure(settings) {
@@ -80,9 +105,13 @@ export const slot = {
     filterNsfw = settings?.filterNsfw !== false && settings?.filterNsfw !== "false";
 
     const ms = parseInt(settings?.minScore ?? "1", 10);
-    minScore = Number.isFinite(ms) ? ms : 1;
+    minScore = Number.isFinite(ms) ? Math.max(0, ms) : 1;
 
-    restrictSubreddit = (settings?.restrictSubreddit ?? "").trim().replace(/^r\//, "");
+    restrictSubreddit = (settings?.restrictSubreddit ?? "")
+      .trim()
+      .replace(/^\/?r\//i, "")
+      .replace(/[^a-z0-9_]/gi, "")
+      .slice(0, 50);
   },
 
   trigger(query) {
@@ -160,12 +189,29 @@ function scoreTextMatch(searchQuery, title, body = "") {
 }
 
 async function _redditFetch(doFetch, url) {
-  return doFetch(url, {
-    headers: { "User-Agent": REDDIT_USER_AGENT },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await doFetch(url, {
+      headers: { "User-Agent": REDDIT_USER_AGENT },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function _fetchCardFromRedditApi(searchQuery, doFetch) {
+  const cacheKey = [
+    searchQuery.toLowerCase(),
+    restrictSubreddit.toLowerCase(),
+    filterNsfw ? "safe" : "all",
+    minScore,
+    maxComments,
+  ].join("\u001f");
+  const cached = await cacheGet(redditCache, cacheKey);
+  if (cached) return cached;
+
   const encoded = encodeURIComponent(searchQuery);
   const searchUrl = restrictSubreddit
     ? `https://www.reddit.com/r/${encodeURIComponent(restrictSubreddit)}/search.json?q=${encoded}&sort=relevance&limit=10&type=link&restrict_sr=1`
@@ -197,7 +243,7 @@ async function _fetchCardFromRedditApi(searchQuery, doFetch) {
   const post = scored[0].data;
 
   const comments = await _fetchComments(doFetch, post.subreddit, post.id);
-  return {
+  const result = {
     card: {
       subreddit: post.subreddit_name_prefixed,
       postTitle: post.title,
@@ -207,11 +253,13 @@ async function _fetchCardFromRedditApi(searchQuery, doFetch) {
       comments,
     },
   };
+  await cacheSet(redditCache, cacheKey, result);
+  return result;
 }
 
 async function _fetchComments(doFetch, subreddit, postId) {
   const commentsUrl =
-    `https://www.reddit.com/r/${subreddit}/comments/${postId}.json` +
+    `https://www.reddit.com/r/${encodeURIComponent(subreddit)}/comments/${encodeURIComponent(postId)}.json` +
     `?limit=15&depth=1&sort=top`;
   const commentsRes = await _redditFetch(doFetch, commentsUrl);
   if (!commentsRes.ok) return [];
@@ -279,7 +327,7 @@ function _renderCard(card) {
     .map((c) => {
       const scoreStr = `▲ ${_formatCount(c.score)}`;
       return `
-          <a class="rslot-comment" href="${c.url}" target="_blank" rel="noopener noreferrer">
+          <a class="rslot-comment" href="${escapeHtml(c.url)}" target="_blank" rel="noopener noreferrer">
             <div class="rslot-comment-header">
               <span class="rslot-comment-author">u/${escapeHtml(c.author)}</span>
               <span class="rslot-comment-score">${scoreStr}</span>
@@ -294,7 +342,7 @@ function _renderCard(card) {
   return template
     .replace("{{subreddit}}", escapeHtml(card.subreddit))
     .replace("{{post_title}}", escapeHtml(postTitle))
-    .replace("{{post_url}}", card.postUrl)
+    .replace("{{post_url}}", escapeHtml(card.postUrl))
     .replace("{{post_score}}", _formatCount(card.postScore))
     .replace("{{post_comments}}", _formatCount(card.numComments))
     .replace("{{post_subreddit}}", escapeHtml(card.subreddit))

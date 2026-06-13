@@ -8,6 +8,7 @@ const DICTIONARY_API_BASE =
   "https://api.dictionaryapi.dev/api/v2/entries/en";
 const POWER_THESAURUS_API_URL = "https://api.powerthesaurus.org";
 const POWER_THESAURUS_WEB_URL = "https://www.powerthesaurus.org";
+const FETCH_TIMEOUT_MS = 8000;
 const AUDIO_HOSTS = new Set([
   "api.dictionaryapi.dev",
   "ssl.gstatic.com",
@@ -57,6 +58,23 @@ const POWER_PARTS_OF_SPEECH = new Map([
 ]);
 
 const POWER_USER_AGENT = "Degoog-Define-Slot/1.0";
+
+function createExtensionCache(ctx, namespace, ttlMs) {
+  if (typeof ctx?.useCache === "function") {
+    return ctx.useCache(namespace, ttlMs);
+  }
+  return typeof ctx?.createCache === "function"
+    ? ctx.createCache(ttlMs)
+    : null;
+}
+
+async function cacheGet(cache, key) {
+  return cache ? await cache.get(key) : null;
+}
+
+async function cacheSet(cache, key, value, ttlMs) {
+  if (cache) await cache.set(key, value, ttlMs);
+}
 
 const WORD_CAPTURE = "([A-Za-z](?:[A-Za-z'-]{0,46}[A-Za-z])?)";
 const LOOKUP_WORD_RE = /^[A-Za-z](?:[A-Za-z'-]{0,46}[A-Za-z])?$/;
@@ -228,7 +246,7 @@ export const slot = {
     {
       key: "maxRelatedTerms",
       label: "Synonyms/antonyms per group",
-      type: "number",
+      type: "text",
       default: "4",
       placeholder: "4",
       description: "Maximum number of synonyms and antonyms to show in each group. Use 1-12.",
@@ -241,9 +259,11 @@ export const slot = {
     if (typeof ctx?.fetch === "function") {
       pluginFetch = (...args) => ctx.fetch(...args);
     }
-    if (typeof ctx?.createCache === "function") {
-      dictionaryCache = ctx.createCache(6 * 60 * 60 * 1000);
-    }
+    dictionaryCache = createExtensionCache(
+      ctx,
+      "ext:define-slot:lookups",
+      6 * 60 * 60 * 1000,
+    );
   },
 
   configure(nextSettings) {
@@ -334,7 +354,7 @@ export const routes = [
       }
 
       try {
-        const response = await pluginFetch(source, {
+        const response = await fetchWithTimeout(pluginFetch, source, {
           headers: { Accept: "audio/*,*/*;q=0.1" },
         });
 
@@ -427,21 +447,22 @@ function readBoundedInteger(value, fallback, min, max) {
 
 async function lookupDictionary(word, context) {
   const cacheKey = `en:${word}`;
-  const cached = dictionaryCache?.get(cacheKey);
+  const cached = await cacheGet(dictionaryCache, cacheKey);
   if (cached) return cached;
 
   const fetcher =
     typeof context?.fetch === "function" ? (...args) => context.fetch(...args) : pluginFetch;
 
   try {
-    const response = await fetcher(
+    const response = await fetchWithTimeout(
+      fetcher,
       `${DICTIONARY_API_BASE}/${encodeURIComponent(word)}`,
       { headers: { Accept: "application/json" } },
     );
 
     if (response.status === 404) {
       const result = { status: "not-found", data: null };
-      dictionaryCache?.set(cacheKey, result, 30 * 60 * 1000);
+      await cacheSet(dictionaryCache, cacheKey, result, 30 * 60 * 1000);
       return result;
     }
 
@@ -453,7 +474,7 @@ async function lookupDictionary(word, context) {
     }
 
     const result = { status: "ok", data };
-    dictionaryCache?.set(cacheKey, result);
+    await cacheSet(dictionaryCache, cacheKey, result);
     return result;
   } catch {
     return { status: "error", data: null };
@@ -510,7 +531,7 @@ function normalizeDictionaryData(data, requestedWord) {
 
 async function lookupPowerThesaurus(word, context) {
   const cacheKey = `power:${word}`;
-  const cached = dictionaryCache?.get(cacheKey);
+  const cached = await cacheGet(dictionaryCache, cacheKey);
   if (cached) return cached;
 
   const fetcher =
@@ -533,7 +554,7 @@ async function lookupPowerThesaurus(word, context) {
   const ttl = result.synonyms.length || result.antonyms.length
     ? 12 * 60 * 60 * 1000
     : 15 * 60 * 1000;
-  dictionaryCache?.set(cacheKey, result, ttl);
+  await cacheSet(dictionaryCache, cacheKey, result, ttl);
   return result;
 }
 
@@ -594,7 +615,7 @@ async function fetchPowerThesaurusList(termId, kind, fetcher) {
 }
 
 async function postPowerThesaurus(fetcher, payload) {
-  const response = await fetcher(POWER_THESAURUS_API_URL, {
+  const response = await fetchWithTimeout(fetcher, POWER_THESAURUS_API_URL, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -625,7 +646,7 @@ async function lookupPowerThesaurusWeb(word, fetcher) {
 
 async function fetchPowerThesaurusWebList(word, kind, fetcher) {
   const url = buildPowerTermUrl(word, kind);
-  const response = await fetcher(url, {
+  const response = await fetchWithTimeout(fetcher, url, {
     headers: {
       Accept: "text/html,application/xhtml+xml",
       "User-Agent": POWER_USER_AGENT,
@@ -974,6 +995,16 @@ function normalizeAudioUrl(value) {
     return isKnownAudioPath ? url.toString() : "";
   } catch {
     return "";
+  }
+}
+
+async function fetchWithTimeout(fetcher, url, init = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetcher(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

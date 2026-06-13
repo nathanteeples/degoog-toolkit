@@ -1,4 +1,7 @@
+import { randomInt as cryptoRandomInt } from "node:crypto";
+
 let template = "";
+const MAX_ABS_NUMBER = 1_000_000_000;
 
 const YES_MESSAGES = [
   "Absolutely!",
@@ -65,19 +68,15 @@ export const slot = {
 
     const parsed = parseQuery(query) || { mode: "coin" };
     const { mode, dieType = "d6", min = 1, max = 100 } = parsed;
-    
-    let numMin = min;
-    let numMax = max;
-    if (numMin > numMax) [numMin, numMax] = [numMax, numMin];
+    const { min: numMin, max: numMax } = normalizeRange(min, max);
 
-    const coinResult = Math.random() < 0.5 ? "heads" : "tails";
-    const diceResultD6 = Math.floor(Math.random() * 6) + 1;
-    const diceResultD20 = Math.floor(Math.random() * 20) + 1;
-    const numResult = Math.floor(Math.random() * (numMax - numMin + 1)) + numMin;
-    const yesnoResult = Math.random() < 0.5 ? "yes" : "no";
-    const yesnoMsg = (yesnoResult === "yes" ? YES_MESSAGES : NO_MESSAGES)[
-      Math.floor(Math.random() * (yesnoResult === "yes" ? YES_MESSAGES.length : NO_MESSAGES.length))
-    ];
+    const coinResult = secureRandomInt(2) === 0 ? "heads" : "tails";
+    const diceResultD6 = secureRandomInt(6) + 1;
+    const diceResultD20 = secureRandomInt(20) + 1;
+    const numResult = numMin + secureRandomInt(numMax - numMin + 1);
+    const yesnoResult = secureRandomInt(2) === 0 ? "yes" : "no";
+    const yesnoMessages = yesnoResult === "yes" ? YES_MESSAGES : NO_MESSAGES;
+    const yesnoMsg = yesnoMessages[secureRandomInt(yesnoMessages.length)];
 
     const data = {
       active_tab: mode,
@@ -142,6 +141,27 @@ function parseQuery(query) {
   return null;
 }
 
+function normalizeRange(min, max) {
+  let normalizedMin = clampInteger(min, 1);
+  let normalizedMax = clampInteger(max, 100);
+  if (normalizedMin > normalizedMax) {
+    [normalizedMin, normalizedMax] = [normalizedMax, normalizedMin];
+  }
+  return { min: normalizedMin, max: normalizedMax };
+}
+
+function clampInteger(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(-MAX_ABS_NUMBER, Math.min(MAX_ABS_NUMBER, parsed));
+}
+
+function secureRandomInt(maxExclusive) {
+  const limit = Math.floor(maxExclusive);
+  if (!Number.isSafeInteger(limit) || limit < 1) return 0;
+  return cryptoRandomInt(limit);
+}
+
 function isDiceRoll(q) {
   return (
     /^(?:please\s+)?(?:roll\s+)?(?:a\s+)?(?:die|dice)(?:\s+roll)?$/i.test(q) ||
@@ -169,3 +189,5 @@ function esc(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+export { normalizeRange as testNormalizeRange };

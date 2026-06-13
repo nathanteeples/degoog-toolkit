@@ -5,10 +5,12 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.2.6";
+const PLUGIN_VERSION = "0.2.14";
 const PLUGIN_DESCRIPTION =
   "Shows live sports scores, schedules, and standings for soccer, NFL, NBA, and MLB above search results.";
 const BALLDONTLIE_FREE_REFRESH_MS = 12_000;
+const PROVIDER_TIMEOUT_MS = 10_000;
+const REFRESH_CACHE_MAX_ENTRIES = 100;
 const UPCOMING_ONLY_WINDOW_MS = 12 * 60 * 60 * 1000;
 const EMBEDDED_TIMESTAMP_PATTERN =
   /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?\b/g;
@@ -1795,11 +1797,35 @@ function _balldontlieHeaders() {
 }
 
 async function fetchJson(url, options = {}) {
-  const response = await pluginFetch(url, options);
+  const response = await fetchWithTimeout(url, options);
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText}`);
   }
   return response.json();
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = PROVIDER_TIMEOUT_MS) {
+  const controller =
+    typeof AbortController === "function" ? new AbortController() : null;
+  const timeout = controller
+    ? setTimeout(() => controller.abort(), timeoutMs)
+    : null;
+  try {
+    return await pluginFetch(url, {
+      ...options,
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+function setRefreshCache(key, value) {
+  refreshCache.delete(key);
+  refreshCache.set(key, value);
+  while (refreshCache.size > REFRESH_CACHE_MAX_ENTRIES) {
+    refreshCache.delete(refreshCache.keys().next().value);
+  }
 }
 
 async function getBalldontlieTeams(sport) {
@@ -3002,18 +3028,19 @@ async function handleRefreshRoute(request) {
   }
 
   try {
-    const result = await executeSportsQuery(query, req.context);
+    const result = await executeSportsQuery(query, request.context);
     const html = result.html || "";
-    refreshCache.set(key, {
+    const fetchedAt = Date.now();
+    setRefreshCache(key, {
       html,
-      fetchedAt: now,
+      fetchedAt,
     });
 
     return jsonResponse({
       html,
       cached: false,
       retryAfterMs: minIntervalMs,
-      fetchedAt: now,
+      fetchedAt,
     });
   } catch (error) {
     return jsonResponse(
@@ -3057,12 +3084,15 @@ async function handleLogoRoute(request) {
   }
 
   try {
-    const response = await pluginFetch(remoteUrl, {
-      headers: {
-        Accept:
-          "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    const response = await fetchWithTimeout(
+      remoteUrl,
+      {
+        headers: {
+          Accept:
+            "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        },
       },
-    });
+    );
 
     if (!response.ok) {
       return new Response("Not found", { status: 404 });

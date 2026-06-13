@@ -14,6 +14,24 @@ const FETCH_TIMEOUT_MS = 9000;
 const DEFAULT_LIBRETRANSLATE_URL = "https://libretranslate.de";
 const DEFAULT_PROVIDER = "google-unofficial";
 const GOOGLE_TTS_URL = "https://translate.google.com/translate_tts";
+const TRANSLATION_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function createExtensionCache(ctx, namespace, ttlMs) {
+  if (typeof ctx?.useCache === "function") {
+    return ctx.useCache(namespace, ttlMs);
+  }
+  return typeof ctx?.createCache === "function"
+    ? ctx.createCache(ttlMs)
+    : null;
+}
+
+async function cacheGet(cache, key) {
+  return cache ? await cache.get(key) : null;
+}
+
+async function cacheSet(cache, key, value) {
+  if (cache) await cache.set(key, value);
+}
 
 const settings = {
   defaultTarget: "en",
@@ -227,9 +245,11 @@ async function initPlugin(ctx) {
   if (typeof ctx?.fetch === "function") {
     externalFetch = (...args) => ctx.fetch(...args);
   }
-  if (typeof ctx?.createCache === "function") {
-    cache = ctx.createCache(5 * 60 * 1000);
-  }
+  cache = createExtensionCache(
+    ctx,
+    "ext:translate-slot:translations",
+    TRANSLATION_CACHE_TTL_MS,
+  );
 }
 
 function configurePlugin(saved) {
@@ -314,11 +334,6 @@ export default slot;
 export const routes = [
   {
     method: "post",
-    path: "translate",
-    handler: handleTranslateRoute,
-  },
-  {
-    method: "get",
     path: "translate",
     handler: handleTranslateRoute,
   },
@@ -459,7 +474,7 @@ async function handleTtsRoute(request) {
     ttsUrl.searchParams.set("tl", providerLanguage(lang, "google-unofficial"));
     ttsUrl.searchParams.set("q", text);
 
-    const response = await externalFetch(ttsUrl.toString(), {
+    const response = await fetchWithTimeout(ttsUrl.toString(), {
       headers: { Accept: "audio/mpeg,audio/*;q=0.8,*/*;q=0.1" },
     });
 
@@ -559,7 +574,7 @@ async function translateWithProvider(providerId, input) {
     providerId === "libretranslate" ? settings.libreTranslateUrl : "",
     input.text,
   ].join("\u001f");
-  const cached = cache?.get(key);
+  const cached = await cacheGet(cache, key);
   if (cached) return cached;
 
   let result;
@@ -577,7 +592,7 @@ async function translateWithProvider(providerId, input) {
     throw new Error("Provider returned an empty translation");
   }
 
-  cache?.set(key, result);
+  await cacheSet(cache, key, result);
   return result;
 }
 
@@ -675,18 +690,22 @@ async function translateLibreTranslate(input) {
 }
 
 async function fetchJson(url, init) {
+  const response = await fetchWithTimeout(url, init);
+  if (!response?.ok) {
+    throw new Error(`HTTP ${response?.status || "error"}`);
+  }
+  return await response.json();
+}
+
+async function fetchWithTimeout(url, init) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const response = await externalFetch(url, {
+    return await externalFetch(url, {
       ...init,
       signal: controller.signal,
     });
-    if (!response?.ok) {
-      throw new Error(`HTTP ${response?.status || "error"}`);
-    }
-    return await response.json();
   } finally {
     clearTimeout(timeout);
   }

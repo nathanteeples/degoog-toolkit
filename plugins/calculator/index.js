@@ -1,4 +1,5 @@
 import exprEvalModule from "./vendor/expr-eval.min.cjs";
+import { splitGraphExpressions } from "./graph-engine.mjs";
 
 const exprEval = exprEvalModule?.Parser
   ? exprEvalModule
@@ -8,18 +9,19 @@ const Parser = exprEval.Parser;
 let calcEnabled = true;
 let templateHtml = "";
 let parserBundle = "";
+let graphEngineBundle = "";
 
 const DEFAULT_ANGLE_MODE = "rad";
 const MAX_QUERY_LENGTH = 220;
 const MATH_FUNCTIONS =
-  "sin|cos|tan|asin|acos|atan|sqrt|log|ln|abs|factorial";
+  "sin|cos|tan|asin|acos|atan|sinh|cosh|tanh|sqrt|log|ln|abs|exp|floor|ceil|round|sign|min|max|factorial";
 const MATH_FUNCTION_SET = new Set(MATH_FUNCTIONS.split("|"));
 const FUNCTION_CALL_RE = new RegExp(`\\b(?:${MATH_FUNCTIONS})\\s*\\(`, "i");
 const EXPLICIT_CALC_RE =
   /^(?:calc|calculator|calculate|compute)\b\s*(?::|=)?\s*(.*)$/i;
 const EXPLICIT_GRAPH_RE = /^(?:graph|plot)\b\s*(?::|=)?\s*(.+)$/i;
 const DATE_LIKE_RE = /^\d{1,4}\s*[-/]\s*\d{1,2}\s*[-/]\s*\d{1,4}$/;
-const SAFE_CHARS_RE = /^[0-9a-zA-Z_\s+\-*/^().!%]+$/;
+const SAFE_CHARS_RE = /^[0-9a-zA-Z_\s,+\-*/^().!%]+$/;
 const ALLOWED_SYMBOLS = new Set(["x", "pi", "e", "ans", "factorial"]);
 
 const PARSER_OPTIONS = {
@@ -41,9 +43,9 @@ const PARSER_OPTIONS = {
 };
 
 const FALLBACK_TEMPLATE = `
-<div class="calc-card" data-calc-root data-initial="{{initial_expr}}" data-result="{{initial_result}}" data-ans="{{ans_value}}" data-angle-mode="${DEFAULT_ANGLE_MODE}">
+<div class="calc-card" data-calc-root data-initial="{{initial_expr}}" data-result="{{initial_result}}" data-ans="{{ans_value}}" data-angle-mode="${DEFAULT_ANGLE_MODE}" data-graph-mode="{{graph_mode}}">
   <div class="calc-display">
-    <div class="calc-expression" data-calc-expression>{{display_expr}}</div>
+    <input class="calc-expression" data-calc-expression value="{{display_expr}}" aria-label="Expression">
     <div class="calc-result" data-calc-result>{{display_result}}</div>
   </div>
 </div>`;
@@ -73,10 +75,20 @@ function createParser(angleMode = DEFAULT_ANGLE_MODE) {
   parser.unaryOps.asin = (value) => fromOutputAngle(Math.asin(value));
   parser.unaryOps.acos = (value) => fromOutputAngle(Math.acos(value));
   parser.unaryOps.atan = (value) => fromOutputAngle(Math.atan(value));
+  parser.unaryOps.sinh = Math.sinh;
+  parser.unaryOps.cosh = Math.cosh;
+  parser.unaryOps.tanh = Math.tanh;
   parser.unaryOps.sqrt = Math.sqrt;
   parser.unaryOps.log = Math.log10;
   parser.unaryOps.ln = Math.log;
   parser.unaryOps.abs = Math.abs;
+  parser.unaryOps.exp = Math.exp;
+  parser.unaryOps.floor = Math.floor;
+  parser.unaryOps.ceil = Math.ceil;
+  parser.unaryOps.round = Math.round;
+  parser.unaryOps.sign = Math.sign;
+  parser.functions.min = Math.min;
+  parser.functions.max = Math.max;
   parser.functions.factorial = factorial;
 
   return parser;
@@ -260,10 +272,6 @@ function getIncompletePreview(input) {
 
   try {
     const evaluated = evaluateExpression(candidate);
-    if (evaluated.hasX) {
-      return { result: "Graph", ans: 0 };
-    }
-
     return {
       result: formatResult(evaluated.value),
       ans: Number.isFinite(evaluated.value) ? evaluated.value : 0,
@@ -315,6 +323,16 @@ function shouldTrigger(query) {
   if (!intent.expression.trim()) return intent.explicit && /^(?:calc|calculator)$/i.test(q);
 
   try {
+    const graphSeries = splitGraphExpressions(intent.expression);
+    if (intent.graph || graphSeries.length > 1) {
+      const analyses = graphSeries.map(({ expression }) =>
+        analyzeExpression(expression),
+      );
+      if (intent.explicit || intent.graph) return analyses.length > 0;
+      return analyses.every((analysis, index) =>
+        isObviousExpression(graphSeries[index].expression, analysis),
+      );
+    }
     const analysis = analyzeExpression(intent.expression);
     if (intent.explicit || intent.graph) return true;
     return isObviousExpression(intent.expression, analysis);
@@ -360,13 +378,24 @@ export const routes = [
         },
       }),
   },
+  {
+    path: "graph-engine",
+    method: "get",
+    handler: async () =>
+      new Response(graphEngineBundle, {
+        headers: {
+          "Content-Type": "text/javascript; charset=utf-8",
+          "Cache-Control": "public, max-age=604800",
+        },
+      }),
+  },
 ];
 
 export const slot = {
   id: "calculator",
   name: "Calculator",
   description:
-    "Scientific calculator with safe expression parsing and graphing for x expressions.",
+    "Scientific calculator with keyboard input and interactive multi-function graphing.",
   isClientExposed: false,
   position: "knowledge-panel",
   slotPositions: ["knowledge-panel", "above-results"],
@@ -383,6 +412,7 @@ export const slot = {
     if (ctx?.readFile) {
       templateHtml = await ctx.readFile("template.html");
       parserBundle = await ctx.readFile("vendor/expr-eval.min.cjs");
+      graphEngineBundle = await ctx.readFile("graph-engine.mjs");
     } else {
       templateHtml = ctx?.template || templateHtml;
     }
@@ -408,19 +438,27 @@ export const slot = {
         display_result: "0",
         ans_value: "0",
         angle_mode: DEFAULT_ANGLE_MODE,
+        graph_mode: "false",
       }, context);
 
       return { title: "", html };
     }
 
     try {
-      const analysis = analyzeExpression(intent.expression);
-      const graphMode = intent.graph || analysis.hasX;
-      let result = "Graph";
+      const graphSeries = splitGraphExpressions(intent.expression);
+      const analyses = graphSeries.map(({ expression: graphExpression }) =>
+        analyzeExpression(graphExpression),
+      );
+      const analysis = analyses[0];
+      const graphMode =
+        intent.graph ||
+        analyses.length > 1 ||
+        analyses.some((candidate) => candidate.hasX);
+      let result = "";
       let ans = 0;
 
       if (!graphMode) {
-        const evaluated = evaluateExpression(intent.expression);
+        const evaluated = evaluateExpression(graphSeries[0]?.expression || intent.expression);
         result = formatResult(evaluated.value);
         ans = Number.isFinite(evaluated.value) ? evaluated.value : 0;
       }
@@ -432,6 +470,7 @@ export const slot = {
         display_result: result,
         ans_value: String(ans),
         angle_mode: DEFAULT_ANGLE_MODE,
+        graph_mode: graphMode ? "true" : "false",
       }, context);
 
       return { title: "", html };
@@ -445,6 +484,7 @@ export const slot = {
           display_result: preview?.result || "0",
           ans_value: String(preview?.ans || 0),
           angle_mode: DEFAULT_ANGLE_MODE,
+          graph_mode: "false",
         }, context);
 
         return { title: "", html };

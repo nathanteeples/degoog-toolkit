@@ -315,6 +315,7 @@
     if (!button) return;
     var active = state.running || state.alarming;
     button.innerHTML = active ? ICON_PAUSE : ICON_PLAY;
+    button.setAttribute("aria-pressed", active ? "true" : "false");
     button.setAttribute("aria-label", active ? getStTranslation("pause") : getStTranslation("start"));
     button.title = active ? getStTranslation("pause") : getStTranslation("start");
   }
@@ -329,10 +330,17 @@
   }
 
   function getAudioContext() {
+    var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
     if (!audioCtx || audioCtx.state === "closed") {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx = new AudioContextClass();
     }
-    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (audioCtx.state === "suspended") {
+      var resumed = audioCtx.resume();
+      if (resumed && typeof resumed.catch === "function") {
+        resumed.catch(function () {});
+      }
+    }
     return audioCtx;
   }
 
@@ -456,7 +464,9 @@
           if (state.alarming) scheduleTimerAlarm(500);
         });
         alarmAudio.play().catch(function () {
+          stopAlarmAudio();
           playTimerFallbackBeep();
+          scheduleTimerAlarm(1400);
         });
         return;
       } catch (error) {
@@ -624,7 +634,18 @@
         break;
       case "toggle-sound":
         soundEnabled = !soundEnabled;
-        if (state.alarming) playTimerAlarm();
+        if (state.alarming) {
+          if (soundEnabled) {
+            playTimerAlarm();
+            if (!resolveAlarmUrl()) scheduleTimerAlarm(1400);
+          } else {
+            if (state.alarmTimerId) {
+              window.clearTimeout(state.alarmTimerId);
+              state.alarmTimerId = 0;
+            }
+            stopAlarmAudio();
+          }
+        }
         render();
         break;
     }

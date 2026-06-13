@@ -2,6 +2,9 @@
   "use strict";
 
   var currentWidget = null;
+  var aiTimerId = null;
+  var gameGeneration = 0;
+  var VALID_DIFFICULTIES = ["easy", "medium", "hard", "impossible", "pvp"];
 
   function getT(key) {
     var attrName = "data-t-" + key.replace(/([A-Z])/g, "-$1").toLowerCase();
@@ -50,14 +53,24 @@
     var key = "degoog-ttt-scores-" + state.difficulty;
     try {
       var saved = localStorage.getItem(key);
-      if (saved) {
-        state.scores = JSON.parse(saved);
-      } else {
-        state.scores = { X: 0, O: 0, ties: 0 };
-      }
+      state.scores = normalizeScores(saved ? JSON.parse(saved) : null);
     } catch (e) {
       state.scores = { X: 0, O: 0, ties: 0 };
     }
+  }
+
+  function normalizeScores(value) {
+    return {
+      X: normalizeScore(value && value.X),
+      O: normalizeScore(value && value.O),
+      ties: normalizeScore(value && value.ties)
+    };
+  }
+
+  function normalizeScore(value) {
+    var score = Number(value);
+    if (!Number.isFinite(score) || score < 0) return 0;
+    return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(score));
   }
 
   function saveScores() {
@@ -81,9 +94,13 @@
       if (state.playerSymbol === "X") {
         btnX.classList.add("ttt-btn-active");
         btnO.classList.remove("ttt-btn-active");
+        btnX.setAttribute("aria-pressed", "true");
+        btnO.setAttribute("aria-pressed", "false");
       } else {
         btnO.classList.add("ttt-btn-active");
         btnX.classList.remove("ttt-btn-active");
+        btnX.setAttribute("aria-pressed", "false");
+        btnO.setAttribute("aria-pressed", "true");
       }
     }
   }
@@ -138,6 +155,8 @@
   }
 
   function resetBoard() {
+    cancelPendingAiMove();
+    gameGeneration++;
     state.board = Array(9).fill(null);
     state.currentPlayer = "X";
     state.gameOver = false;
@@ -149,6 +168,10 @@
         cell.innerHTML = "";
         cell.removeAttribute("disabled");
         cell.classList.remove("ttt-cell-x", "ttt-cell-o");
+        cell.setAttribute(
+          "aria-label",
+          "Cell " + (parseInt(cell.getAttribute("data-index"), 10) + 1)
+        );
       });
 
       var winLine = qs("#ttt-win-line");
@@ -175,8 +198,11 @@
   function initFromWidget(w) {
     currentWidget = w;
 
-    var defaultDifficulty = w.getAttribute("data-default-difficulty") || "impossible";
-    var defaultSymbol = w.getAttribute("data-default-symbol") || "X";
+    var requestedDifficulty = w.getAttribute("data-default-difficulty");
+    var defaultDifficulty = VALID_DIFFICULTIES.indexOf(requestedDifficulty) >= 0
+      ? requestedDifficulty
+      : "impossible";
+    var defaultSymbol = w.getAttribute("data-default-symbol") === "O" ? "O" : "X";
 
     state.difficulty = defaultDifficulty;
     state.playerSymbol = defaultSymbol;
@@ -247,11 +273,25 @@
   }
 
   function triggerAiMove() {
+    cancelPendingAiMove();
     state.isAiThinking = true;
     updateStatus();
 
-    setTimeout(function () {
-      if (state.gameOver || !currentWidget) {
+    var scheduledWidget = currentWidget;
+    var scheduledGeneration = gameGeneration;
+    aiTimerId = setTimeout(function () {
+      aiTimerId = null;
+      if (
+        state.gameOver ||
+        !scheduledWidget ||
+        !scheduledWidget.isConnected ||
+        currentWidget !== scheduledWidget ||
+        gameGeneration !== scheduledGeneration
+      ) {
+        return;
+      }
+
+      if (!currentWidget) {
         state.isAiThinking = false;
         return;
       }
@@ -262,6 +302,14 @@
         makeMove(bestMove);
       }
     }, 450);
+  }
+
+  function cancelPendingAiMove() {
+    if (aiTimerId !== null) {
+      clearTimeout(aiTimerId);
+      aiTimerId = null;
+    }
+    state.isAiThinking = false;
   }
 
   function calculateAiMove() {
@@ -369,6 +417,7 @@
         cell.innerHTML = symbol === "X" ? SVG_X : SVG_O;
         cell.classList.add(symbol === "X" ? "ttt-cell-x" : "ttt-cell-o");
         cell.setAttribute("disabled", "true");
+        cell.setAttribute("aria-label", "Cell " + (index + 1) + ", " + symbol);
       }
     }
 
@@ -398,6 +447,7 @@
   }
 
   function handleDifficultyChange(value) {
+    if (VALID_DIFFICULTIES.indexOf(value) === -1) return;
     if (value === state.difficulty) return;
     state.difficulty = value;
     loadScores();
@@ -405,6 +455,7 @@
   }
 
   function handleSymbolChange(symbol) {
+    if (symbol !== "X" && symbol !== "O") return;
     if (state.difficulty === "pvp") return;
     if (state.playerSymbol === symbol) return;
 
@@ -459,6 +510,8 @@
     var w = widget();
     if (!w) {
       if (currentWidget && !currentWidget.isConnected) {
+        cancelPendingAiMove();
+        gameGeneration++;
         currentWidget = null;
       }
       return;

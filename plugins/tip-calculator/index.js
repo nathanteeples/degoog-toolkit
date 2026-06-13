@@ -1,3 +1,5 @@
+import { parseTipQuery } from "./parse-tip-query.js";
+
 let template = "";
 let enabled = true;
 let defaultTipPercent = 15;
@@ -17,10 +19,8 @@ const settingsSchema = [
     options: ["10", "15", "18", "20", "25"],
     default: "15",
     description: "Default tip percentage to use if not specified in search query.",
-  }
+  },
 ];
-
-import { parseTipQuery } from "./parse-tip-query.js";
 
 export const slot = {
   id: "tip-calculator",
@@ -41,7 +41,13 @@ export const slot = {
   configure(settings) {
     enabled = settings?.enabled !== false && settings?.enabled !== "false";
     defaultTipPercent = parseInt(settings?.defaultTipPercent || "15", 10);
-    if (isNaN(defaultTipPercent) || defaultTipPercent < 0) defaultTipPercent = 15;
+    if (
+      !Number.isFinite(defaultTipPercent) ||
+      defaultTipPercent < 0 ||
+      defaultTipPercent > 100
+    ) {
+      defaultTipPercent = 15;
+    }
   },
 
   trigger(query) {
@@ -53,16 +59,19 @@ export const slot = {
     const request = parseTipQuery(query);
     if (!request) return { title: "", html: "" };
 
-    const billVal = request.bill !== null ? request.bill.toFixed(2) : "50.00";
-    const tipVal = request.tipPercent !== null ? request.tipPercent : defaultTipPercent;
-    const splitVal = request.split !== null ? request.split : 1;
+    const bill = Math.min(Math.max(request.bill ?? 50, 0), 1_000_000_000);
+    const tipPercent = Math.min(
+      Math.max(request.tipPercent ?? defaultTipPercent, 0),
+      1_000,
+    );
+    const split = Math.min(Math.max(request.split ?? 1, 1), 100);
 
     return {
       title: "",
       html: (template || "")
-        .replaceAll("{{bill}}", String(billVal))
-        .replaceAll("{{tip_percent}}", String(tipVal))
-        .replaceAll("{{split}}", String(splitVal)),
+        .replaceAll("{{bill}}", bill.toFixed(2))
+        .replaceAll("{{tip_percent}}", String(tipPercent))
+        .replaceAll("{{split}}", String(split)),
     };
   },
 };

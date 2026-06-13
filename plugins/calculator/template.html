@@ -5,16 +5,32 @@
   data-result="{{initial_result}}"
   data-ans="{{ans_value}}"
   data-angle-mode="{{angle_mode}}"
+  data-graph-mode="{{graph_mode}}"
+  data-label-calculator="{{ t:plugin-calculator.name }}"
+  data-label-graph="{{ t:plugin-calculator.graph }}"
 >
   <div class="calc-display" aria-live="polite">
-    <div class="calc-expression" data-calc-expression>{{display_expr}}</div>
+    <div class="calc-display-head">
+      <span class="calc-mode-chip" data-calc-mode-label>{{ t:plugin-calculator.name }}</span>
+      <span class="calc-keyboard-hint">{{ t:plugin-calculator.keyboardHint }}</span>
+    </div>
+    <input
+      class="calc-expression"
+      data-calc-expression
+      value="{{display_expr}}"
+      aria-label="{{ t:plugin-calculator.expression }}"
+      autocomplete="off"
+      autocapitalize="off"
+      inputmode="text"
+      spellcheck="false"
+    >
     <div class="calc-result" data-calc-result>{{display_result}}</div>
   </div>
 
   <div class="calc-graph" data-calc-graph hidden>
     <div class="calc-graph-head">
       <span class="calc-graph-title">{{ t:plugin-calculator.graph }}</span>
-      <span class="calc-graph-expression">y = <span data-calc-graph-label></span></span>
+      <div class="calc-graph-series" data-calc-graph-labels></div>
     </div>
     <div class="calc-graph-area">
       <canvas class="calc-graph-canvas" data-calc-canvas></canvas>
@@ -24,6 +40,17 @@
         <button class="calc-graph-zoom-btn" data-calc-zoom="reset" title="{{ t:plugin-calculator.resetZoom }}">⟲</button>
       </div>
     </div>
+  </div>
+
+  <div class="calc-function-strip" aria-label="{{ t:plugin-calculator.moreFunctions }}">
+    <button class="calc-function-chip" type="button" data-calc-action="abs">abs</button>
+    <button class="calc-function-chip" type="button" data-calc-action="exp">exp</button>
+    <button class="calc-function-chip" type="button" data-calc-action="floor">floor</button>
+    <button class="calc-function-chip" type="button" data-calc-action="ceil">ceil</button>
+    <button class="calc-function-chip" type="button" data-calc-action="round">round</button>
+    <button class="calc-function-chip" type="button" data-calc-action="sinh">sinh</button>
+    <button class="calc-function-chip" type="button" data-calc-action="cosh">cosh</button>
+    <button class="calc-function-chip" type="button" data-calc-action="tanh">tanh</button>
   </div>
 
   <div class="calc-keypad" aria-label="Calculator keypad">
