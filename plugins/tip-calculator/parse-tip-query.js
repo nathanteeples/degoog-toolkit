@@ -22,7 +22,8 @@ function hasTipIntent(q) {
   return (
     /\b(?:tips?|gratuity|gratuities)\b/i.test(q) ||
     /\b(?:calculator|calculate|calc|compute)\b/i.test(q) ||
-    /\d\s*(?:%|percent|pct)\b/i.test(q)
+    /\d\s*(?:%|percent\b|pct\b)/i.test(q) ||
+    (/\bsplit\b/i.test(q) && (/\d/.test(q) || /\b(?:bill|check|tab|total|meal)\b/i.test(q)))
   );
 }
 
@@ -53,7 +54,7 @@ function extractSplit(q) {
 
 function extractTipPercent(q, split) {
   const percentMatch =
-    q.match(/(\d+(?:\.\d+)?)\s*(?:%|percent|pct)\b/i) ||
+    q.match(/(\d+(?:\.\d+)?)\s*(?:%|percent\b|pct\b)/i) ||
     q.match(/(\d+(?:\.\d+)?)\s*%/i);
   if (percentMatch) {
     const tip = parseFloat(percentMatch[1]);
@@ -87,7 +88,7 @@ function collectNumberTokens(q) {
     const before = q.slice(0, start);
     const after = q.slice(end);
 
-    const isPercent = /^\s*(?:%|percent|pct)\b/i.test(after) || /^\s*%/.test(after);
+    const isPercent = /^\s*(?:%|percent\b|pct\b)/i.test(after) || /^\s*%/.test(after);
     const hasLeadingDollar = /(?:^|[\s(])\$\s*$/.test(before) || /\$\s*$/.test(before);
     const hasTrailingDollar = /^\s*\$/.test(after);
     const preTrim = before.trim();
@@ -219,8 +220,9 @@ export function parseTipQuery(query) {
 
   const hasBillSignal = bill !== null || /\$|\b(?:bill|check|tab|total|meal)\b/i.test(q);
   const hasTipSignal = tipPercent !== null || /\b(?:tip|gratuity|gratuities)\b/i.test(q);
+  const hasSplitSignal = split > 1 || /\b(?:split|divide|divided|among|between)\b/i.test(q);
 
-  if (!explicitCalcKeywords && !TIP_CALCULATOR_RX.test(q) && !(hasBillSignal && hasTipSignal)) {
+  if (!explicitCalcKeywords && !TIP_CALCULATOR_RX.test(q) && !(hasBillSignal && (hasTipSignal || hasSplitSignal))) {
     return null;
   }
 
