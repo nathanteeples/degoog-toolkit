@@ -29,6 +29,28 @@
   display: none;
 }
 
+/* literallygoogle / literallyapple theme support: flatten outer slot shell and add card styling to metro-card */
+#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.metro-card) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+#results-page.degoog-fullwidth-slot-shell .results-slot-panel:has(.metro-card) > .results-slot-panel-body {
+  padding: 0 !important;
+}
+
+#results-page.degoog-fullwidth-slot-shell .metro-card {
+  background: var(--slot-inset-bg, var(--bg-secondary, var(--bg-light, #ffffff))) !important;
+  border: 1px solid var(--slot-inset-border, var(--border-light, #e0e0e0)) !important;
+  border-radius: var(--theme-radius-lg, 16px) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  padding: 20px !important;
+  margin: 0 auto !important;
+  max-width: 600px !important;
+}
+
 /* Layout details */
 .metro-card *,
 .metro-card *::before,
