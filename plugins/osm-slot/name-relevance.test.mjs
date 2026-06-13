@@ -162,6 +162,40 @@ test("uses the 10 mile radius when no saved radius exists", async () => {
   assert.deepEqual(result, { html: "" });
 });
 
+test("keeps routine diagnostics disabled by default", async () => {
+  slot.configure({
+    hereApiKey: "test-key",
+    defaultLat: TEST_LAT,
+    defaultLon: TEST_LON,
+    defaultLocationLabel: TEST_LOCATION_LABEL,
+    resultsCount: "5",
+    useOsmGeocoder: false,
+    useBrowserGeolocation: false,
+  });
+
+  const originalLog = console.log;
+  const messages = [];
+  console.log = (...args) => messages.push(args);
+  try {
+    await slot.execute("Example Coffee near me", {
+      fetch: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ items: [] }),
+        text: async () => "",
+      }),
+    });
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.deepEqual(messages, []);
+  const debugSetting = slot.settingsSchema.find(
+    (field) => field.key === "debugMode",
+  );
+  assert.equal(debugSetting?.default, false);
+});
+
 test("renders empty HTML when HERE only returns distant partial matches", async () => {
   slot.configure({
     hereApiKey: "test-key",

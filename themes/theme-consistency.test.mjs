@@ -1,0 +1,114 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const GOOGLE_STYLE = new URL("./literallygoogle/style.css", import.meta.url);
+const APPLE_STYLE = new URL("./literallyapple/style.css", import.meta.url);
+const GOOGLE_SCRIPT = new URL(
+  "./literallygoogle/scripts/search.js",
+  import.meta.url,
+);
+const APPLE_SCRIPT = new URL(
+  "./literallyapple/scripts/search.js",
+  import.meta.url,
+);
+
+const SHARED_RADIUS_TOKENS = {
+  "--theme-radius-xs": "4px",
+  "--theme-radius-sm": "8px",
+  "--theme-radius-md": "12px",
+  "--theme-radius-lg": "16px",
+  "--theme-radius-xl": "20px",
+  "--theme-radius-search": "24px",
+  "--theme-radius-pill": "999px",
+};
+const SHARED_COLOR_TOKENS = [
+  "--primary",
+  "--primary-hover",
+  "--danger",
+  "--warning",
+  "--success",
+  "--bg",
+  "--bg-light",
+  "--bg-hover",
+  "--border",
+  "--border-light",
+  "--text-primary",
+  "--text-secondary",
+  "--text-link",
+  "--text-link-visited",
+  "--text-cite",
+  "--text-snippet",
+];
+
+function normalizeThemeScript(source) {
+  return source
+    .replaceAll("LiterallyGoogle", "LiterallyTheme")
+    .replaceAll("LiterallyApple", "LiterallyTheme")
+    .replaceAll("LG_LANG_DICT", "THEME_LANG_DICT")
+    .replaceAll("LA_LANG_DICT", "THEME_LANG_DICT")
+    .replaceAll("getLgTranslation", "getThemeTranslation")
+    .replaceAll("getLaTranslation", "getThemeTranslation")
+    .replaceAll("data-lg-pager-enhanced", "data-theme-pager-enhanced")
+    .replaceAll("data-la-pager-enhanced", "data-theme-pager-enhanced");
+}
+
+test("theme behavior bundles stay aligned", async () => {
+  const [googleScript, appleScript] = await Promise.all([
+    readFile(GOOGLE_SCRIPT, "utf8"),
+    readFile(APPLE_SCRIPT, "utf8"),
+  ]);
+
+  assert.equal(
+    normalizeThemeScript(appleScript),
+    normalizeThemeScript(googleScript),
+  );
+});
+
+test("themes expose the same radius scale", async () => {
+  const styles = await Promise.all([
+    readFile(GOOGLE_STYLE, "utf8"),
+    readFile(APPLE_STYLE, "utf8"),
+  ]);
+
+  for (const style of styles) {
+    for (const [token, value] of Object.entries(SHARED_RADIUS_TOKENS)) {
+      assert.match(
+        style,
+        new RegExp(`${token.replaceAll("-", "\\-")}:\\s*${value}`),
+      );
+    }
+  }
+});
+
+test("theme geometry uses the shared radius scale", async () => {
+  const styles = await Promise.all([
+    readFile(GOOGLE_STYLE, "utf8"),
+    readFile(APPLE_STYLE, "utf8"),
+  ]);
+
+  for (const style of styles) {
+    const declarations = style.matchAll(
+      /(?:border-radius|border-(?:start|end)-(?:start|end)-radius):\s*([^;]+)/g,
+    );
+    for (const [, value] of declarations) {
+      assert.match(
+        value.trim(),
+        /^(?:0|50%|var\(--theme-radius-[a-z]+\))(?:\s*!important)?$/,
+      );
+    }
+  }
+});
+
+test("themes expose the same semantic color roles", async () => {
+  const styles = await Promise.all([
+    readFile(GOOGLE_STYLE, "utf8"),
+    readFile(APPLE_STYLE, "utf8"),
+  ]);
+
+  for (const style of styles) {
+    for (const token of SHARED_COLOR_TOKENS) {
+      assert.match(style, new RegExp(`${token.replaceAll("-", "\\-")}:\\s*`));
+    }
+  }
+});

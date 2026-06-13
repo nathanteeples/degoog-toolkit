@@ -11,7 +11,7 @@ function t(key, context) {
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.6.7";
+const PLUGIN_VERSION = "4.7.0";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -89,8 +89,17 @@ function _configure(s) {
     customTileUrl: s?.customTileUrl || "",
     useOsmGeocoder: s?.useOsmGeocoder !== false && s?.useOsmGeocoder !== "false",
     nominatimEndpoint: s?.nominatimEndpoint || NOMINATIM_DEFAULT_ENDPOINT,
+    debugMode: s?.debugMode === true || s?.debugMode === "true",
   };
   _resetNominatimGeocoder();
+}
+
+function _debugLog(...args) {
+  if (_settings.debugMode) console.log(...args);
+}
+
+function _debugWarn(...args) {
+  if (_settings.debugMode) console.warn(...args);
 }
 
 function _resetNominatimGeocoder() {
@@ -198,6 +207,13 @@ export const slot = {
       description:
         "Nominatim-compatible search endpoint. The public service is rate-limited to one request per second; self-hosted endpoints are supported.",
     },
+    {
+      key: "debugMode",
+      label: "Debug mode",
+      type: "toggle",
+      default: false,
+      description: "Log request timing and place-matching diagnostics.",
+    },
   ],
 
   init(ctx) {
@@ -275,12 +291,12 @@ export const slot = {
 
       _attachPlacesDebug(apiStatus, plan, query, q, { lat, lon, label: locationLabel }, radiusMiles);
 
-      console.log(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" (${plan.mode}/${plan.confidence}) at lat=${lat}, lon=${lon}${plan.placeHint ? ` [near ${plan.placeHint}]` : ""} radius=${radiusMiles}mi`);
+      _debugLog(`[Places Server v${PLUGIN_VERSION}] Query: "${q}" (${plan.mode}/${plan.confidence}) at lat=${lat}, lon=${lon}${plan.placeHint ? ` [near ${plan.placeHint}]` : ""} radius=${radiusMiles}mi`);
 
       const places = await _searchHere(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus, { global: isGlobal });
 
       if (places.length === 0) {
-        console.log(`[Places Server v${PLUGIN_VERSION}] No places found from HERE.`);
+        _debugLog(`[Places Server v${PLUGIN_VERSION}] No places found from HERE.`);
         return { html: "" };
       }
 
@@ -306,9 +322,9 @@ export const slot = {
         return { html: "" };
       }
 
-      console.log(`[Places Server v${PLUGIN_VERSION}] Final ${top.length} processed places:`);
+      _debugLog(`[Places Server v${PLUGIN_VERSION}] Final ${top.length} processed places:`);
       top.forEach((p, idx) => {
-        console.log(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source} - Hours: ${p.hours ? JSON.stringify(p.hours) : "None"}`);
+        _debugLog(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source} - Hours: ${p.hours ? JSON.stringify(p.hours) : "None"}`);
       });
 
       const html = _renderCard(
@@ -428,11 +444,11 @@ export const routes = [
             latNum = geo.lat;
             lonNum = geo.lon;
             locationLabel = geo.label || plan.placeHint;
-            console.log(
+            _debugLog(
               `[Places Server] Refresh geocoded "${plan.placeHint}" via ${geo.source}: ${latNum},${lonNum}`,
             );
           } else {
-            console.warn(`[Places Server] Refresh could not geocode "${plan.placeHint}"`);
+            _debugWarn(`[Places Server] Refresh could not geocode "${plan.placeHint}"`);
             return _jsonResponse({ html: "" });
           }
         }
@@ -444,7 +460,7 @@ export const routes = [
             latNum = ipGeo.lat;
             lonNum = ipGeo.lon;
             locationLabel = "your area";
-            console.log(`[Places Server] Refresh resolved via IP geo (${ipGeo.source}): ${latNum},${lonNum}`);
+            _debugLog(`[Places Server] Refresh resolved via IP geo (${ipGeo.source}): ${latNum},${lonNum}`);
           } else {
             const dLat = parseFloat(_settings.defaultLat);
             const dLon = parseFloat(_settings.defaultLon);
@@ -452,14 +468,14 @@ export const routes = [
               latNum = dLat;
               lonNum = dLon;
               locationLabel = _settings.defaultLocationLabel || "Home";
-              console.log(`[Places Server] Refresh fell back to configured location: ${latNum},${lonNum}`);
+              _debugLog(`[Places Server] Refresh fell back to configured location: ${latNum},${lonNum}`);
             } else {
               return _jsonResponse({ error: "Could not determine location" }, 422);
             }
           }
         }
 
-        console.log(`[Places Server] Refresh Query: "${searchText}" (${plan ? plan.mode : "raw"}) at lat=${latNum}, lon=${lonNum} radius=${radiusMiles}mi`);
+        _debugLog(`[Places Server] Refresh Query: "${searchText}" (${plan ? plan.mode : "raw"}) at lat=${latNum}, lon=${lonNum} radius=${radiusMiles}mi`);
 
         const apiStatus = {
           here: { configured: !!_settings.hereApiKey, status: "unused", error: null, count: 0 },
@@ -486,7 +502,7 @@ export const routes = [
         const places = await _searchHere(searchText, latNum, lonNum, radiusMeters, limit * 2, wrapFetch, apiStatus, { global: isGlobal });
 
         if (places.length === 0) {
-          console.log(`[Places Server] No places found for refresh query.`);
+          _debugLog(`[Places Server] No places found for refresh query.`);
           return _jsonResponse({ html: "" });
         }
 
@@ -511,9 +527,9 @@ export const routes = [
           return _jsonResponse({ html: "" });
         }
 
-        console.log(`[Places Server] Final ${top.length} processed places (refresh):`);
+        _debugLog(`[Places Server] Final ${top.length} processed places (refresh):`);
         top.forEach((p, idx) => {
-          console.log(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source} - Hours: ${p.hours ? JSON.stringify(p.hours) : "None"}`);
+          _debugLog(`  [${idx}] ${p.name} (${(p.distanceMeters / 1609.34).toFixed(1)} mi) - Phone: ${p.phone || "None"} - Website: ${p.website || "None"} - Source: ${p.source} - Hours: ${p.hours ? JSON.stringify(p.hours) : "None"}`);
         });
 
         const html = _renderCard(top, searchText, locationLabel, false, apiStatus, null);
@@ -534,31 +550,30 @@ function _jsonResponse(obj, status = 200) {
 }
 
 function _makeWrapFetch(doFetch, tag) {
-  return (url, init = {}, timeoutMs = 15000) => {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeoutMs);
+  return async (url, init = {}, timeoutMs = 15000) => {
+    const controller = init.signal ? null : new AbortController();
+    const timeoutId = controller
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : null;
     const mergedInit = { ...init };
-    if (!mergedInit.signal) {
-      mergedInit.signal = controller.signal;
+    if (controller) mergedInit.signal = controller.signal;
+    const startFetch = _settings.debugMode ? Date.now() : 0;
+    const safeUrl = _settings.debugMode ? _redactRequestUrl(url) : "";
+    _debugLog(`[Places Performance v${PLUGIN_VERSION}] Fetch starting${tag}: ${safeUrl} (Timeout: ${timeoutMs}ms)`);
+    try {
+      const response = await doFetch(url, mergedInit);
+      _debugLog(`[Places Performance v${PLUGIN_VERSION}] Fetch completed${tag}: ${safeUrl} in ${Date.now() - startFetch}ms (Status: ${response.status})`);
+      return response;
+    } catch (err) {
+      if (err?.name === "AbortError") {
+        _debugWarn(`[Places Performance v${PLUGIN_VERSION}] Fetch timed out${tag}: ${safeUrl} (gave up after ${timeoutMs / 1000} seconds)`);
+      } else {
+        _debugWarn(`[Places Performance v${PLUGIN_VERSION}] Fetch failed${tag}: ${safeUrl} in ${Date.now() - startFetch}ms:`, err);
+      }
+      throw err;
+    } finally {
+      if (timeoutId !== null) clearTimeout(timeoutId);
     }
-    const startFetch = Date.now();
-    const safeUrl = _redactRequestUrl(url);
-    console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch starting${tag}: ${safeUrl} (Timeout: ${timeoutMs}ms)`);
-    return doFetch(url, mergedInit)
-      .then((res) => {
-        clearTimeout(id);
-        console.log(`[Places Performance v${PLUGIN_VERSION}] Fetch completed${tag}: ${safeUrl} in ${Date.now() - startFetch}ms (Status: ${res.status})`);
-        return res;
-      })
-      .catch((err) => {
-        clearTimeout(id);
-        if (err.name === "AbortError") {
-          console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch timed out${tag}: ${safeUrl} (gave up after ${timeoutMs / 1000} seconds)`);
-        } else {
-          console.warn(`[Places Performance v${PLUGIN_VERSION}] Fetch failed${tag}: ${safeUrl} in ${Date.now() - startFetch}ms:`, err);
-        }
-        throw err;
-      });
   };
 }
 
@@ -665,7 +680,7 @@ function _redactRequestUrl(url) {
 }
 
 function _attachPlacesDebug(apiStatus, plan, rawQuery, searchText, center, radiusMiles) {
-  if (!apiStatus) return;
+  if (!apiStatus || !_settings.debugMode) return;
   apiStatus.debug = {
     originalQuery: rawQuery,
     searchText,
@@ -854,7 +869,7 @@ async function _geocodeHere(hint, doFetch, apiStatus) {
   let lastError = null;
   for (const attempt of attempts) {
     try {
-      console.log(
+      _debugLog(
         `[Places Server v${PLUGIN_VERSION}] HERE geocode (${attempt.mode}) for "${hint}"`,
       );
       const items = await _fetchHereGeocodeItems(hint, doFetch, attempt.types, {
@@ -888,7 +903,7 @@ async function _geocodeHere(hint, doFetch, apiStatus) {
     } catch (err) {
       lastError = err;
       if (err.status === 400 && attempt.types) continue;
-      console.warn(`[Places] HERE geocode (${attempt.mode}) failed for "${hint}":`, err);
+      _debugWarn(`[Places] HERE geocode (${attempt.mode}) failed for "${hint}":`, err);
     }
   }
 
@@ -939,7 +954,7 @@ async function _discoverPlaceHintFallback(hint, doFetch, apiStatus) {
     `&apiKey=${encodeURIComponent(apiKey)}`;
 
   try {
-    console.log(
+    _debugLog(
       `[Places Server v${PLUGIN_VERSION}] HERE discover fallback for "${hint}"`,
     );
     const res = await doFetch(url, {}, 8000);
@@ -975,7 +990,7 @@ async function _discoverPlaceHintFallback(hint, doFetch, apiStatus) {
     }
     return out;
   } catch (err) {
-    console.warn(`[Places] HERE discover fallback failed for "${hint}":`, err);
+    _debugWarn(`[Places] HERE discover fallback failed for "${hint}":`, err);
     if (apiStatus && apiStatus.status !== "success") {
       apiStatus.status = "error";
       apiStatus.error = err.message;
@@ -1052,7 +1067,7 @@ async function _geocodePlaceHint(hint, doFetch, apiStatus, options = {}) {
     if (discovered) return discovered;
     return _geocodeNominatim(trimmed, osmStatus);
   } catch (err) {
-    console.warn(`[Places] HERE geocode failed for "${trimmed}":`, err);
+    _debugWarn(`[Places] HERE geocode failed for "${trimmed}":`, err);
     if (apiStatus && apiStatus.status === "unused") {
       apiStatus.status = "error";
       apiStatus.error = err.message;
@@ -1079,7 +1094,7 @@ async function _resolveSearchLocation(plan, doFetch, apiStatus) {
       lon = geo.lon;
       locationLabel = geo.label || plan.placeHint;
     } else {
-      console.warn(`[Places] Could not geocode "${plan.placeHint}" — not searching at default location`);
+      _debugWarn(`[Places] Could not geocode "${plan.placeHint}" — not searching at default location`);
       return null;
     }
   }
@@ -1177,7 +1192,7 @@ async function _searchHere(query, lat, lon, radiusM, limit, doFetch, apiStatus, 
   }
 
   try {
-    console.log(
+    _debugLog(
       `[Places Performance v${PLUGIN_VERSION}] HERE API request (${mode}) for "${query}"`
     );
     const res = await doFetch(url, {}, 10000);
@@ -1204,7 +1219,9 @@ async function _searchHere(query, lat, lon, radiusM, limit, doFetch, apiStatus, 
       apiStatus.here.center = { lat, lon };
       apiStatus.here.radiusMeters = radius;
       apiStatus.here.radiusMiles = Math.round((radius / 1609.34) * 10) / 10;
-      apiStatus.here.request = _redactRequestUrl(url);
+      if (_settings.debugMode) {
+        apiStatus.here.request = _redactRequestUrl(url);
+      }
       if (codes) apiStatus.here.categories = codes;
     }
 
@@ -1538,9 +1555,12 @@ function _renderCard(places, query, locationLabel, showGeoBtn, apiStatus, contex
     apiStatus?.osm?.status === "success"
       ? `<div class="places-osm-attribution">${_esc(t("locationResolvedByOsm", context))} <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></div>`
       : "";
+  const debugAttributes = _settings.debugMode
+    ? ` data-places-debug="true" data-places-apis="${_esc(JSON.stringify(apiStatus || {}))}"`
+    : "";
 
   return `
-<div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}" data-places-apis="${_esc(JSON.stringify(apiStatus || {}))}">
+<div class="places-wrap slot-full-width" data-places-version="${PLUGIN_VERSION}"${debugAttributes}>
   <div class="places-header">
     <span class="places-label">${_esc(t("places", context))}</span>
     <span class="places-subhead">${t("nearLabel", context)} ${_esc(locationLabel)}</span>

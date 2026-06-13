@@ -1,7 +1,3 @@
-// SearXNG Engine for degoog
-// Connects to a SearXNG instance and provides access to 242+ search engines
-// Install via degoog Store: Settings > Store > Add this repo URL
-
 const TIME_RANGE_MAP = {
   hour: "day",
   day: "day",
@@ -12,6 +8,38 @@ const TIME_RANGE_MAP = {
 
 const DEFAULT_CATEGORIES = "general";
 const REQUEST_TIMEOUT_MS = 10000;
+const SAFE_SEARCH_VALUES = new Set(["0", "1", "2"]);
+
+function normalizeBaseUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function mapResults(results) {
+  const mapped = [];
+  for (const result of results) {
+    if (!result?.title || !result?.url) continue;
+    const thumbnail = result.thumbnail || result.img_src;
+    const imageUrl = result.img_src || result.thumbnail;
+    const mappedResult = {
+      title: result.title,
+      url: result.url,
+      snippet: result.content ?? "",
+      source: `SearXNG:${result.engine ?? "unknown"}`,
+    };
+    if (thumbnail) mappedResult.thumbnail = thumbnail;
+    if (imageUrl) mappedResult.imageUrl = imageUrl;
+    if (result.duration) mappedResult.duration = result.duration;
+    mapped.push(mappedResult);
+  }
+  return mapped;
+}
 
 export const type = "web";
 export const outgoingHosts = ["*"];
@@ -60,32 +88,27 @@ class SearXNGEngine {
   #safesearch = "0";
 
   configure(settings = {}) {
-    if (typeof settings.baseUrl === "string" && settings.baseUrl.trim()) {
-      try {
-        const url = new URL(settings.baseUrl.trim());
-        if (url.protocol === "http:" || url.protocol === "https:") {
-          this.baseUrl = url.toString().replace(/\/+$/, "");
-        }
-      } catch {
-        // Keep the previous/default base URL when settings contain invalid input.
-      }
-    }
+    const baseUrl = normalizeBaseUrl(settings.baseUrl);
+    if (baseUrl) this.baseUrl = baseUrl;
     if (typeof settings.categories === "string") {
       this.#categories = settings.categories.trim() || DEFAULT_CATEGORIES;
     }
     if (typeof settings.engines === "string") {
       this.#engines = settings.engines.trim();
     }
-    if (typeof settings.safesearch === "string") {
+    if (SAFE_SEARCH_VALUES.has(settings.safesearch)) {
       this.#safesearch = settings.safesearch;
     }
   }
 
   async executeSearch(query, page = 1, timeFilter, context) {
+    const normalizedQuery = String(query ?? "").trim();
+    if (!normalizedQuery) return [];
+    const parsedPage = Number.parseInt(page, 10);
     const params = new URLSearchParams({
-      q: query,
+      q: normalizedQuery,
       format: "json",
-      pageno: String(Math.max(1, page || 1)),
+      pageno: String(Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1),
       safesearch: this.#safesearch,
     });
 
@@ -93,14 +116,8 @@ class SearXNGEngine {
     if (this.#engines) params.set("engines", this.#engines);
     if (context?.lang) params.set("language", context.lang);
 
-    if (
-      timeFilter &&
-      timeFilter !== "any" &&
-      timeFilter !== "custom" &&
-      TIME_RANGE_MAP[timeFilter]
-    ) {
-      params.set("time_range", TIME_RANGE_MAP[timeFilter]);
-    }
+    const timeRange = TIME_RANGE_MAP[timeFilter];
+    if (timeRange) params.set("time_range", timeRange);
 
     const url = `${this.baseUrl}/search?${params}`;
     const doFetch = context?.fetch ?? fetch;
@@ -120,23 +137,7 @@ class SearXNGEngine {
       if (!response.ok) return [];
 
       const data = await response.json();
-      if (!data.results || !Array.isArray(data.results)) return [];
-
-      return data.results
-        .filter((r) => r.title && r.url)
-        .map((r) => ({
-          title: r.title,
-          url: r.url,
-          snippet: r.content ?? "",
-          source: `SearXNG:${r.engine ?? "unknown"}`,
-          ...((r.thumbnail || r.img_src)
-            ? { thumbnail: r.thumbnail ?? r.img_src }
-            : {}),
-          ...((r.img_src || r.thumbnail)
-            ? { imageUrl: r.img_src ?? r.thumbnail }
-            : {}),
-          ...(r.duration ? { duration: r.duration } : {}),
-        }));
+      return Array.isArray(data?.results) ? mapResults(data.results) : [];
     } catch {
       return [];
     } finally {

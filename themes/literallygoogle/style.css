@@ -39,6 +39,13 @@ var {
     --literallygoogle-results-main-col-max: 48rem;
     --literallygoogle-results-sidebar-min: 19rem;
     --literallygoogle-results-sidebar-max: 24rem;
+    --theme-radius-xs: 4px;
+    --theme-radius-sm: 8px;
+    --theme-radius-md: 12px;
+    --theme-radius-lg: 16px;
+    --theme-radius-xl: 20px;
+    --theme-radius-search: 24px;
+    --theme-radius-pill: 999px;
     --primary: #4285f4;
     --primary-hover: #5a95f5;
     --primary-rgb: 66, 133, 244;
@@ -241,7 +248,7 @@ var {
     /* Match examples/theannoying-degoog-extensions/themes/LiterallyGoogle (AGENTS.md: examples/ is reference). */
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 24px;
+    border-radius: var(--theme-radius-search);
     box-shadow: 0px 3px 10px 0px rgba(31, 31, 31, 0.08);
     transition:
         box-shadow 0.16s ease,
@@ -383,8 +390,8 @@ var {
 .search-bar.ac-open:not(:has(> .ac-dropdown:not([style*="display: none"]))):not(
         :has(> .bang-ac-dropdown:not([style*="display: none"]))
     ) {
-    border-end-start-radius: 24px;
-    border-end-end-radius: 24px;
+    border-end-start-radius: var(--theme-radius-search);
+    border-end-end-radius: var(--theme-radius-search);
 }
 
 /* Short rule between bar and list (not full width). Core adds `.ac-open` on the bar when AC is open. */
@@ -438,8 +445,8 @@ var {
     border-top: none;
     border-start-start-radius: 0;
     border-start-end-radius: 0;
-    border-end-start-radius: 24px;
-    border-end-end-radius: 24px;
+    border-end-start-radius: var(--theme-radius-search);
+    border-end-end-radius: var(--theme-radius-search);
     /* Depth comes from the merged bar rule above; avoid double shadow on light. */
     box-shadow: none;
 }
@@ -453,8 +460,8 @@ var {
         border-top: none;
         border-start-start-radius: 0;
         border-start-end-radius: 0;
-        border-end-start-radius: 24px;
-        border-end-end-radius: 24px;
+        border-end-start-radius: var(--theme-radius-search);
+        border-end-end-radius: var(--theme-radius-search);
         box-shadow: none;
     }
 }
@@ -509,7 +516,7 @@ var {
 }
 
 .search-btn {
-    border-radius: 8px;
+    border-radius: var(--theme-radius-sm);
     font-weight: 500;
 }
 
@@ -556,7 +563,7 @@ var {
 /* RESULTS PAGE */
 
 .btn {
-    border-radius: 8px;
+    border-radius: var(--theme-radius-sm);
     user-select: none;
     border: 1px solid var(--border);
 }
@@ -572,7 +579,7 @@ var {
 
 .sidebar-panel,
 .results-slot-panel {
-    border-radius: 1rem !important;
+    border-radius: var(--theme-radius-lg) !important;
 }
 
 .results-tab {
@@ -581,7 +588,7 @@ var {
 
 .glance-box {
     margin: 0;
-    border-radius: 12px;
+    border-radius: var(--theme-radius-md);
 }
 
 .result-title {
@@ -604,7 +611,7 @@ var {
     color: var(--text-link);
     border: 1px solid var(--border-light);
     background: var(--bg);
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
     padding: 6px 12px;
 }
 
@@ -646,7 +653,7 @@ var {
     color: var(--text-link);
     background: var(--bg);
     border: 1px solid var(--border-light);
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
     padding: 6px 2rem 6px 12px;
     cursor: pointer;
 }
@@ -816,10 +823,10 @@ html[data-related-searches-desktop]
 #results-sidebar .sidebar-accordion.streaming-engine-panel
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
     background: var(--bg-light);
-    border-start-start-radius: 1rem;
-    border-start-end-radius: 1rem;
-    border-end-start-radius: 1rem;
-    border-end-end-radius: 1rem;
+    border-start-start-radius: var(--theme-radius-lg);
+    border-start-end-radius: var(--theme-radius-lg);
+    border-end-start-radius: var(--theme-radius-lg);
+    border-end-end-radius: var(--theme-radius-lg);
     box-sizing: border-box;
     width: 100%;
 }
@@ -830,12 +837,12 @@ html[data-related-searches-desktop]
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
 #results-sidebar .sidebar-accordion.streaming-engine-panel.open
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
-    border-end-start-radius: 4px;
-    border-end-end-radius: 4px;
+    border-end-start-radius: var(--theme-radius-xs);
+    border-end-end-radius: var(--theme-radius-xs);
 }
 
 .engine-stat-row {
-    border-radius: 4px;
+    border-radius: var(--theme-radius-xs);
     background: var(--bg-light);
     padding: 14px;
     margin-bottom: 2px;
@@ -843,14 +850,14 @@ html[data-related-searches-desktop]
 
 .engine-stat-row:first-child,
 .related-search-link:first-child {
-    border-start-start-radius: 4px;
-    border-start-end-radius: 4px;
+    border-start-start-radius: var(--theme-radius-xs);
+    border-start-end-radius: var(--theme-radius-xs);
 }
 
 .engine-stat-row:last-child:not(:only-child) {
     margin-bottom: 0;
-    border-end-end-radius: 12px;
-    border-end-start-radius: 12px;
+    border-end-end-radius: var(--theme-radius-md);
+    border-end-start-radius: var(--theme-radius-md);
 }
 
 .engine-stat-row:only-child {
@@ -864,13 +871,13 @@ html[data-related-searches-desktop]
     margin-bottom: 2px;
     font-size: 14px;
     background: var(--bg-light);
-    border-radius: 4px;
+    border-radius: var(--theme-radius-xs);
 }
 
 .related-search-link:last-child:not(:only-child) {
     margin-bottom: 0;
-    border-end-start-radius: 12px;
-    border-end-end-radius: 12px;
+    border-end-start-radius: var(--theme-radius-md);
+    border-end-end-radius: var(--theme-radius-md);
 }
 
 .related-search-link:only-child {
@@ -1497,7 +1504,7 @@ body {
     ) {
     background: var(--bg-light);
     border: 1px solid var(--border-light);
-    border-radius: 16px;
+    border-radius: var(--theme-radius-lg);
     overflow: visible;
     margin: 0;
     padding: 0;
@@ -1768,7 +1775,7 @@ body {
     color: var(--text-link);
     background: transparent;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
     font: inherit;
     font-size: 0.88rem;
     font-weight: 500;
@@ -1913,7 +1920,7 @@ body {
 .skeleton-line {
     height: 14px;
     background: var(--bg-light);
-    border-radius: 4px;
+    border-radius: var(--theme-radius-xs);
     margin-bottom: 0.75rem;
 }
 
@@ -1939,7 +1946,7 @@ body {
    ══════════════════════════════════════════════════════════════════════════ */
 
 .settings-page .btn {
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
 }
 
 /* Use ring shadows instead of border so track/knob box model matches core CSS
@@ -1955,7 +1962,7 @@ body {
 }
 
 .settings-tab-select {
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
 }
 
 [data-theme="light"] .settings-page-body {
@@ -1967,7 +1974,7 @@ body {
 }
 
 .settings-nav-item {
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
 }
 
 .settings-nav-item.active {
@@ -1983,7 +1990,7 @@ body {
 
 .settings-nav-search,
 .settings-global-search {
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
 }
 
 /* Settings sidebar filter may not use `.search-bar`; paint the shell like the reference theme
@@ -2118,14 +2125,14 @@ body {
 
 .store-updates-row {
     padding: 17px;
-    border-radius: 4px;
+    border-radius: var(--theme-radius-xs);
     background: var(--bg);
 }
 
 .ext-card:not(.settings-section) {
     padding: 17px;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--theme-radius-xs);
     background: #37393b;
 }
 
@@ -2145,15 +2152,15 @@ body {
 .store-updates-body > div:first-child,
 .settings-toggle-wrap:first-child,
 .ext-cards > div:first-child {
-    border-start-start-radius: 20px;
-    border-start-end-radius: 20px;
+    border-start-start-radius: var(--theme-radius-xl);
+    border-start-end-radius: var(--theme-radius-xl);
 }
 
 .store-updates-body > div:last-child,
 .settings-toggle-wrap:last-child,
 .ext-cards > div:last-child {
-    border-end-start-radius: 20px;
-    border-end-end-radius: 20px;
+    border-end-start-radius: var(--theme-radius-xl);
+    border-end-end-radius: var(--theme-radius-xl);
 }
 
 .store-updates-row:not(:has(+ .store-updates-row)):not(
@@ -2162,7 +2169,7 @@ body {
 .settings-toggle-wrap:not(:has(+ .settings-toggle-wrap)):not(
         .settings-toggle-wrap + .settings-toggle-wrap
     ) {
-    border-radius: 20px;
+    border-radius: var(--theme-radius-xl);
 }
 
 .settings-toggle-wrap:not(.settings-desc) {
@@ -2185,7 +2192,7 @@ body {
 .ext-card-configure,
 .ext-card-apply {
     background: #282a2c;
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
     border: none;
 }
 
@@ -2202,7 +2209,7 @@ body {
 
 .theme-select {
     background: var(--search-bar-bg);
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
     padding: 15px;
     border: none;
 }
@@ -2229,12 +2236,12 @@ body {
 }
 
 .store-updates-panel {
-    border-radius: 25px;
+    border-radius: var(--theme-radius-search);
 }
 
 /* Store catalog: same as degoog core (style_002) — use semantic vars only, no theme-local store-* tokens. */
 .store-repo-detail {
-    border-radius: 20px;
+    border-radius: var(--theme-radius-xl);
     background: var(--bg-hover);
     color: var(--text-primary);
 }
@@ -2244,14 +2251,14 @@ body {
 }
 
 .store-repo-img {
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
 }
 
 .store-search-input {
     appearance: none;
     -webkit-appearance: none;
     background: var(--search-bar-bg);
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
     border: 1px solid transparent;
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
     color: var(--text-primary);
@@ -2271,11 +2278,11 @@ body {
 }
 
 .store-filter-select {
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
 }
 
 .apps-pocket-panel {
-    border-radius: 20px !important;
+    border-radius: var(--theme-radius-xl) !important;
 }
 
 [data-theme="light"] .apps-pocket-panel {
@@ -2417,7 +2424,7 @@ body {
     width: 1.9rem;
     height: 1.9rem;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--theme-radius-sm);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
@@ -2450,7 +2457,7 @@ body {
     min-width: 9.5rem;
     background: var(--bg-light);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--theme-radius-sm);
     padding: 0.3rem;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     z-index: 30;
@@ -2463,7 +2470,7 @@ body {
     width: 100%;
     padding: 0.5rem 0.7rem;
     border: none;
-    border-radius: 7px;
+    border-radius: var(--theme-radius-sm);
     background: transparent;
     color: var(--text-primary);
     font-size: 0.88rem;
@@ -2496,7 +2503,7 @@ button.mp2-item[hidden] {
     padding: 0.55rem 1.15rem;
     background: var(--bg-light);
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: var(--theme-radius-pill);
     font-size: 0.85rem;
     color: var(--text-primary);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
@@ -2545,8 +2552,9 @@ button.mp2-item[hidden] {
 
 /* ── Plugin accent overrides ─────────────────────────────────────────── */
 .dslot-card {
-  --dslot-accent: #4285f4; /* Google blue for dictionary */
+    --dslot-accent: var(--primary);
 }
+
 .trc-card {
-  --trc-accent: #34a853; /* Google green for translate */
+    --trc-accent: var(--success);
 }

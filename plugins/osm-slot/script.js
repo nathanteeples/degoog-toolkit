@@ -2,6 +2,16 @@
   var REFRESH_TIMEOUT_MS = 22000;
   var TILE_SIZE = 256;
 
+  function _isDebugEnabled(node) {
+    var wrap = null;
+    if (node && node.classList && node.classList.contains("places-wrap")) {
+      wrap = node;
+    } else if (node && typeof node.closest === "function") {
+      wrap = node.closest(".places-wrap");
+    }
+    return !!(wrap && wrap.dataset.placesDebug === "true");
+  }
+
   function _setButtonState(btn, text, disabled) {
     btn.textContent = text;
     btn.disabled = disabled;
@@ -95,7 +105,9 @@
             if (settled) return;
             settled = true;
             window.clearTimeout(geoTimer);
-            console.warn("[places] Browser geolocation unavailable, using server IP geo:", err && err.message);
+            if (_isDebugEnabled(btn)) {
+              console.warn("[places] Browser geolocation unavailable, using server IP geo:", err && err.message);
+            }
             _sendRefreshRequest(null, null);
           },
           { enableHighAccuracy: false, timeout: GEO_TIMEOUT_MS, maximumAge: 60000 }
@@ -111,6 +123,7 @@
   var loggingTimeout = null;
   function _logClientSummary() {
     document.querySelectorAll(".places-wrap").forEach(function (wrap) {
+      if (!_isDebugEnabled(wrap)) return;
       var version = wrap.dataset.placesVersion || "unknown";
       var cards = wrap.querySelectorAll(".places-card[data-place-card]");
       if (cards.length === 0) return;
@@ -192,10 +205,10 @@
   }
 
   function _initPlaceCards() {
-    var newCardsFound = false;
+    var newDebugCardsFound = false;
     document.querySelectorAll(".places-card[data-place-card]:not([data-places-card-init])").forEach(function (card) {
       card.dataset.placesCardInit = "1";
-      newCardsFound = true;
+      if (_isDebugEnabled(card)) newDebugCardsFound = true;
       card.addEventListener("click", function (event) {
         if (event.target.closest("a,button")) return;
         _selectPlace(card);
@@ -207,7 +220,7 @@
         _selectPlace(card);
       });
     });
-    if (newCardsFound) {
+    if (newDebugCardsFound) {
       if (loggingTimeout) clearTimeout(loggingTimeout);
       loggingTimeout = setTimeout(_logClientSummary, 100);
     }
