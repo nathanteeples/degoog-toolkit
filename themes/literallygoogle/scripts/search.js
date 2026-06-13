@@ -739,7 +739,12 @@ function getLgTranslation(key) {
     }
 
     function syncKnowledgePanel(accordion) {
-        accordion.classList.add("open", "lg-sidebar-knowledge");
+        if (!accordion.classList.contains("open")) {
+            accordion.classList.add("open");
+        }
+        if (!accordion.classList.contains("lg-sidebar-knowledge")) {
+            accordion.classList.add("lg-sidebar-knowledge");
+        }
     }
 
     function normalizeEngineMode(raw) {
@@ -809,15 +814,18 @@ function getLgTranslation(key) {
 
     function syncEngineAccordion(accordion) {
         if (accordion.hasAttribute(USER_ATTR_ENGINE)) return;
-        accordion.classList.toggle(
-            "open",
-            shouldEngineBeOpen(getEngineMode(), isSearching()),
-        );
+        var shouldBeOpen = shouldEngineBeOpen(getEngineMode(), isSearching());
+        if (accordion.classList.contains("open") !== shouldBeOpen) {
+            accordion.classList.toggle("open", shouldBeOpen);
+        }
     }
 
     function syncRelatedAccordion(accordion) {
         if (accordion.hasAttribute(USER_ATTR_RELATED)) return;
-        accordion.classList.toggle("open", getRelatedMode() === "open");
+        var shouldBeOpen = getRelatedMode() === "open";
+        if (accordion.classList.contains("open") !== shouldBeOpen) {
+            accordion.classList.toggle("open", shouldBeOpen);
+        }
     }
 
     function syncAll() {
@@ -918,8 +926,6 @@ function getLgTranslation(key) {
         }).observe(root, {
             childList: true,
             subtree: true,
-            attributes: true,
-            attributeFilter: ["class"],
         });
     }
 
