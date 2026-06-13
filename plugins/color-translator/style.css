@@ -28,6 +28,21 @@
     width: 100%;
 }
 
+/* literallygoogle / literallyapple theme support: override theme wrapper borders and backgrounds */
+#results-page.degoog-fullwidth-slot-shell
+    .results-slot-panel:has(.clrtr-card.slot-full-width) {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+#results-page.degoog-fullwidth-slot-shell
+    .results-slot-panel:has(.clrtr-card.slot-full-width)
+    > .results-slot-panel-body {
+    padding: 0 !important;
+}
+
 .clrtr-panel {
     display: grid;
     grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
