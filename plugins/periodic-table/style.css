@@ -29,6 +29,14 @@
   --pt-noble: #f857a6;
   --pt-unknown: #a1a1a1;
 
+  /* Map full category names as aliases for runtime JS lookup */
+  --pt-alkali-metal: var(--pt-alkali);
+  --pt-alkaline-earth-metal: var(--pt-alkaline);
+  --pt-transition-metal: var(--pt-transition);
+  --pt-post-transition-metal: var(--pt-post-transition);
+  --pt-reactive-nonmetal: var(--pt-nonmetal);
+  --pt-noble-gas: var(--pt-noble);
+
   background: var(--bg-light);
   border: 1px solid var(--border);
   border-radius: 20px; /* Rounded card layout matching modern Google/Flipboard */
