@@ -41,6 +41,13 @@
     "tmdbVotes": "votos de TMDB",
     "letterboxdTooltip": "Letterboxd (las puntuaciones de la comunidad están en el sitio; no hay una API de calificación pública)",
     "trailer": "Tráiler",
-    "watchTrailer": "Ver tráiler"
+    "watchTrailer": "Ver tráiler",
+    "seerr": "Seerr",
+    "seerrAvailable": "Disponible",
+    "seerrRequested": "Solicitado",
+    "seerrRequest": "Solicitar",
+    "seerrPartially": "Parcial",
+    "seerrProcessing": "Procesando",
+    "rtAudience": "Audiencia"
   }
 }

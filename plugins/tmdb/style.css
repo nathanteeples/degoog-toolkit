@@ -1745,6 +1745,10 @@
     color: #fa320a;
 }
 
+.tmdb-rating-badge--rt-audience {
+    color: #ff8200;
+}
+
 .tmdb-rating-badge--letterboxd {
     color: #00e054;
 }
@@ -1771,6 +1775,37 @@
 
 .tmdb-rating-item--jellyfin:focus-visible {
     outline: 2px solid #00a4dc;
+    outline-offset: 2px;
+}
+
+.tmdb-rating-badge--seerr {
+    color: #6366f1;
+    text-transform: none;
+    letter-spacing: 0.02em;
+}
+
+.tmdb-rating-seerr-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    object-fit: contain;
+    display: block;
+}
+
+.tmdb-rating-seerr-status {
+    font-size: 0.90rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.tmdb-rating-item--seerr:hover,
+.tmdb-rating-item--seerr:focus-visible {
+    border-color: #6366f1;
+    background: var(--bg-hover, rgba(255, 255, 255, 0.04));
+}
+
+.tmdb-rating-item--seerr:focus-visible {
+    outline: 2px solid #6366f1;
     outline-offset: 2px;
 }
 

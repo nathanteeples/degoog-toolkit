@@ -3,6 +3,9 @@ let tmdbApiKey = "";
 let omdbApiKey = "";
 let jellyfinUrl = "";
 let jellyfinApiKey = "";
+let seerrUrl = "";
+let seerrApiKey = "";
+let tmdbLanguage = "en-US";
 let template = "";
 let pluginRuntimeContext = null;
 function t(key) {
@@ -14,6 +17,16 @@ let pluginRouteBase = "";
 const IMAGE_BASE = "https://image.tmdb.org/t/p";
 const JELLYFIN_LOGO =
   "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@refs/heads/main/svg/jellyfin.svg";
+const SEERR_LOGO =
+  "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@refs/heads/main/svg/overseerr.svg";
+
+const SEERR_STATUS_KEYS = {
+  1: "seerrRequest",
+  2: "seerrRequested",
+  3: "seerrProcessing",
+  4: "seerrPartially",
+  5: "seerrAvailable",
+};
 const ASSET_PROXY_HOSTS = new Set([
   "image.tmdb.org",
   "cdn.jsdelivr.net",
@@ -337,7 +350,7 @@ const _ratingStr = (vote) => {
 const _tmdb = async (path, ctx) => {
   const base = "https://api.themoviedb.org/3";
   const sep = path.includes("?") ? "&" : "?";
-  const url = `${base}/${path}${sep}api_key=${encodeURIComponent(tmdbApiKey)}&language=en-US`;
+  const url = `${base}/${path}${sep}api_key=${encodeURIComponent(tmdbApiKey)}&language=${encodeURIComponent(tmdbLanguage)}`;
   const fetchFn = _fetchFor(ctx);
   const res = await fetchFn(url);
   if (!res.ok) return null;
@@ -653,6 +666,56 @@ const _jellyfinSearch = async (title, ctx) => {
 const _jellyfinHrefForItem = (item) => {
   if (!item?.Id || !jellyfinUrl) return "";
   return `${jellyfinUrl}/web/index.html#!/details?id=${item.Id}`;
+};
+
+/** Fetch availability status and ratings from Seerr (Overseerr/Jellyseerr). */
+const _seerrLookup = async (mediaType, tmdbId, ctx) => {
+  if (!seerrUrl || !seerrApiKey || !tmdbId) return null;
+  try {
+    const fetchFn = _fetchFor(ctx);
+
+    // 1) Fetch media status
+    const statusUrl = `${seerrUrl}/api/v1/${mediaType}/${tmdbId}`;
+    const statusRes = await fetchFn(statusUrl, {
+      headers: { "X-Api-Key": seerrApiKey },
+    });
+
+    let status = 1;
+    if (statusRes.ok) {
+      const statusData = await statusRes.json();
+      const media = statusData?.mediaInfo || statusData?.media;
+      if (media && typeof media.status === "number") {
+        status = media.status;
+      }
+    }
+
+    // 2) Fetch ratings
+    let ratings = null;
+    const ratingsEndpoint = mediaType === "movie" ? "ratingscombined" : "ratings";
+    const ratingsUrl = `${seerrUrl}/api/v1/${mediaType}/${tmdbId}/${ratingsEndpoint}`;
+    const ratingsRes = await fetchFn(ratingsUrl, {
+      headers: { "X-Api-Key": seerrApiKey },
+    });
+    if (ratingsRes.ok) {
+      ratings = await ratingsRes.json();
+    }
+
+    const rtCritic = ratings?.rt?.criticsScore || ratings?.rtCriticsScore || null;
+    const rtAudience = ratings?.rt?.audienceScore || ratings?.rtAudienceScore || null;
+    const rtUrl = ratings?.rt?.url || ratings?.rtUrl || null;
+    const imdbRating = ratings?.imdb?.rating || ratings?.imdb?.score || ratings?.imdbRating || null;
+
+    return {
+      href: `${seerrUrl}/${mediaType}/${tmdbId}`,
+      statusKey: SEERR_STATUS_KEYS[status] || "seerrRequest",
+      rtCritic,
+      rtAudience,
+      rtUrl,
+      imdbRating,
+    };
+  } catch {
+    return null;
+  }
 };
 
 /** Best YouTube clip for the hero card (TMDB `/videos` result item). */
@@ -1177,8 +1240,12 @@ const _buildRatingsHtml = (opts, ctx) => {
     imdbHref,
     rottenTomatoes,
     rottenTomatoesHref,
+    rottenTomatoesAudience,
+    rottenTomatoesAudienceHref,
     letterboxdHref,
     jellyfinHref,
+    seerrHref,
+    seerrStatus,
   } = opts;
 
   const parts = [];
@@ -1230,6 +1297,16 @@ const _buildRatingsHtml = (opts, ctx) => {
     }
   }
 
+  if (rottenTomatoesAudience) {
+    const rta = String(rottenTomatoesAudience).trim();
+    if (rta.toUpperCase() !== "N/A") {
+      const rtaInner =
+        `<span class="tmdb-rating-badge tmdb-rating-badge--rt-audience">${t("rtAudience", ctx)}</span>` +
+        `<span class="tmdb-rating-score tmdb-rating-score--rt-audience">${_esc(rta)}</span>`;
+      parts.push(wrapLink(rtaInner, rottenTomatoesAudienceHref));
+    }
+  }
+
   if (letterboxdHref) {
     parts.push(
       wrapLink(
@@ -1253,6 +1330,24 @@ const _buildRatingsHtml = (opts, ctx) => {
         jellyfinHref,
         " tmdb-rating-item--jellyfin",
         ` aria-label="Open in Jellyfin"`,
+      ),
+    );
+  }
+
+  if (seerrHref) {
+    const seerrLogo = _proxiedAssetUrl(SEERR_LOGO, ctx);
+    const seerrIcon = seerrLogo
+      ? `<img class="tmdb-rating-seerr-icon" src="${_esc(seerrLogo)}" alt="" width="18" height="18" loading="lazy">`
+      : "";
+    const statusLabel = t(seerrStatus || "seerrRequest", ctx);
+    parts.push(
+      wrapLink(
+        seerrIcon +
+          `<span class="tmdb-rating-badge tmdb-rating-badge--seerr">${t("seerr", ctx)}</span>` +
+          `<span class="tmdb-rating-seerr-status">${_esc(statusLabel)}</span>`,
+        seerrHref,
+        " tmdb-rating-item--seerr",
+        ` aria-label="Open in Seerr"`,
       ),
     );
   }
@@ -1317,8 +1412,12 @@ const _renderMovie = (
       imdbHref: _imdbHref(imdbId),
       rottenTomatoes: omdbRatings?.rottenTomatoes,
       rottenTomatoesHref: omdbRatings?.rottenTomatoesHref,
+      rottenTomatoesAudience: omdbRatings?.rottenTomatoesAudience,
+      rottenTomatoesAudienceHref: omdbRatings?.rottenTomatoesAudienceHref,
       letterboxdHref: `https://letterboxd.com/tmdb/${details.id}/`,
       jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
+      seerrHref: omdbRatings?.seerrHref,
+      seerrStatus: omdbRatings?.seerrStatus,
     },
     ctx,
   );
@@ -1416,8 +1515,12 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, imdbId, 
       imdbHref: _imdbHref(imdbId),
       rottenTomatoes: omdbRatings?.rottenTomatoes,
       rottenTomatoesHref: omdbRatings?.rottenTomatoesHref,
+      rottenTomatoesAudience: omdbRatings?.rottenTomatoesAudience,
+      rottenTomatoesAudienceHref: omdbRatings?.rottenTomatoesAudienceHref,
       letterboxdHref: null,
       jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
+      seerrHref: omdbRatings?.seerrHref,
+      seerrStatus: omdbRatings?.seerrStatus,
     },
     ctx,
   );
@@ -1498,16 +1601,45 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, imdbId, 
 const _buildMoviePanel = async (id, ctx) => {
   const details = await _tmdb(`movie/${id}`, ctx);
   if (!details) return null;
-  const [credits, images, jellyfinItem, ext, videos] = await Promise.all([
+  const [credits, images, jellyfinItem, ext, videos, seerrData] = await Promise.all([
     _tmdb(`movie/${id}/credits`, ctx),
-    _tmdb(`movie/${id}/images?include_image_language=en,null`, ctx),
+    _tmdb(`movie/${id}/images?include_image_language=${encodeURIComponent(tmdbLanguage)},en,null`, ctx),
     jellyfinUrl && jellyfinApiKey
       ? _jellyfinSearch(details.title || details.original_title || "", ctx)
       : Promise.resolve(null),
     _tmdb(`movie/${id}/external_ids`, ctx),
     _tmdb(`movie/${id}/videos`, ctx),
+    seerrUrl && seerrApiKey
+      ? _seerrLookup("movie", id, ctx)
+      : Promise.resolve(null),
   ]);
   let omdbRatings = await _loadOmdbRatings(details, ext, "movie", ctx);
+  if (seerrData) {
+    if (!omdbRatings) {
+      omdbRatings = {
+        imdb: seerrData.imdbRating ? `${seerrData.imdbRating}/10` : null,
+        rottenTomatoes: seerrData.rtCritic ? `${seerrData.rtCritic}%` : null,
+        rottenTomatoesHref: seerrData.rtUrl || null,
+        imdbId: ext?.imdb_id || null,
+      };
+    } else {
+      if (!omdbRatings.rottenTomatoes && seerrData.rtCritic) {
+        omdbRatings.rottenTomatoes = `${seerrData.rtCritic}%`;
+        if (!omdbRatings.rottenTomatoesHref) {
+          omdbRatings.rottenTomatoesHref = seerrData.rtUrl || null;
+        }
+      }
+      if (!omdbRatings.imdb && seerrData.imdbRating) {
+        omdbRatings.imdb = `${seerrData.imdbRating}/10`;
+      }
+    }
+    if (seerrData.rtAudience) {
+      omdbRatings.rottenTomatoesAudience = `${seerrData.rtAudience}%`;
+      omdbRatings.rottenTomatoesAudienceHref = seerrData.rtUrl || omdbRatings.rottenTomatoesHref || null;
+    }
+    omdbRatings.seerrHref = seerrData.href;
+    omdbRatings.seerrStatus = seerrData.statusKey;
+  }
   const imdbId = ext?.imdb_id || omdbRatings?.imdbId || null;
   return {
     title: details.title || "Movie",
@@ -1527,17 +1659,46 @@ const _buildMoviePanel = async (id, ctx) => {
 const _buildTvPanel = async (id, ctx) => {
   const details = await _tmdb(`tv/${id}`, ctx);
   if (!details) return null;
-  const [credits, aggregateCredits, images, jellyfinItem, ext] =
+  const [credits, aggregateCredits, images, jellyfinItem, ext, seerrData] =
     await Promise.all([
       _tmdb(`tv/${id}/credits`, ctx),
       _tmdb(`tv/${id}/aggregate_credits`, ctx),
-      _tmdb(`tv/${id}/images?include_image_language=en,null`, ctx),
+      _tmdb(`tv/${id}/images?include_image_language=${encodeURIComponent(tmdbLanguage)},en,null`, ctx),
       jellyfinUrl && jellyfinApiKey
         ? _jellyfinSearch(details.name || details.original_name || "", ctx)
         : Promise.resolve(null),
       _tmdb(`tv/${id}/external_ids`, ctx),
+      seerrUrl && seerrApiKey
+        ? _seerrLookup("tv", id, ctx)
+        : Promise.resolve(null),
     ]);
   let omdbRatings = await _loadOmdbRatings(details, ext, "tv", ctx);
+  if (seerrData) {
+    if (!omdbRatings) {
+      omdbRatings = {
+        imdb: seerrData.imdbRating ? `${seerrData.imdbRating}/10` : null,
+        rottenTomatoes: seerrData.rtCritic ? `${seerrData.rtCritic}%` : null,
+        rottenTomatoesHref: seerrData.rtUrl || null,
+        imdbId: ext?.imdb_id || null,
+      };
+    } else {
+      if (!omdbRatings.rottenTomatoes && seerrData.rtCritic) {
+        omdbRatings.rottenTomatoes = `${seerrData.rtCritic}%`;
+        if (!omdbRatings.rottenTomatoesHref) {
+          omdbRatings.rottenTomatoesHref = seerrData.rtUrl || null;
+        }
+      }
+      if (!omdbRatings.imdb && seerrData.imdbRating) {
+        omdbRatings.imdb = `${seerrData.imdbRating}/10`;
+      }
+    }
+    if (seerrData.rtAudience) {
+      omdbRatings.rottenTomatoesAudience = `${seerrData.rtAudience}%`;
+      omdbRatings.rottenTomatoesAudienceHref = seerrData.rtUrl || omdbRatings.rottenTomatoesHref || null;
+    }
+    omdbRatings.seerrHref = seerrData.href;
+    omdbRatings.seerrStatus = seerrData.statusKey;
+  }
   const imdbId = ext?.imdb_id || omdbRatings?.imdbId || null;
   const normalizedCredits = {
     cast:
@@ -1764,6 +1925,39 @@ export const slot = {
         "Required to fetch movie, TV, and actor information. Get a free key at https://www.themoviedb.org/settings/api",
     },
     {
+      key: "language",
+      label: "TMDB Language",
+      type: "select",
+      required: false,
+      options: [
+        "en-US",
+        "fr-FR",
+        "es-ES",
+        "de-DE",
+        "it-IT",
+        "pt-PT",
+        "ja-JP",
+        "ko-KR",
+        "zh-CN",
+        "ar-SA",
+      ],
+      optionLabels: [
+        "English (en-US)",
+        "French (fr-FR)",
+        "Spanish (es-ES)",
+        "German (de-DE)",
+        "Italian (it-IT)",
+        "Portuguese (pt-PT)",
+        "Japanese (ja-JP)",
+        "Korean (ko-KR)",
+        "Chinese (zh-CN)",
+        "Arabic (ar-SA)",
+      ],
+      default: "en-US",
+      description:
+        "Optional. Language for movie/TV details, overviews, and genre names (TMDB falls back to English if a translation is missing).",
+    },
+    {
       key: "jellyfinUrl",
       label: "Jellyfin URL",
       type: "url",
@@ -1781,6 +1975,25 @@ export const slot = {
       placeholder: "Your Jellyfin API key",
       description:
         "Optional. Required together with the Jellyfin URL to enable library integration.",
+    },
+    {
+      key: "seerrUrl",
+      label: "Seerr URL",
+      type: "url",
+      required: false,
+      placeholder: "https://your-seerr-server.com",
+      description:
+        "Optional. Base URL of your Overseerr/Jellyseerr/Seerr instance to show availability/request status.",
+    },
+    {
+      key: "seerrApiKey",
+      label: "Seerr API Key",
+      type: "password",
+      required: false,
+      secret: true,
+      placeholder: "Your Seerr API key",
+      description:
+        "Optional. Required together with the Seerr URL to enable requests and RT rating fallbacks.",
     },
     {
       key: "omdbApiKey",
@@ -1809,6 +2022,9 @@ export const slot = {
     omdbApiKey = (settings?.omdbApiKey || "").trim();
     jellyfinUrl = _normalizeBaseUrl(settings?.jellyfinUrl);
     jellyfinApiKey = (settings?.jellyfinApiKey || "").trim();
+    seerrUrl = _normalizeBaseUrl(settings?.seerrUrl);
+    seerrApiKey = (settings?.seerrApiKey || "").trim();
+    tmdbLanguage = (settings?.language || "en-US").trim();
   },
 
   trigger(query) {
