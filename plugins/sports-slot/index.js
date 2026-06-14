@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.3.2";
+const PLUGIN_VERSION = "0.3.5";
 const PLUGIN_DESCRIPTION =
   "Shows live sports scores, schedules, and standings for soccer, NFL, NBA, and MLB above search results.";
 const BALLDONTLIE_FREE_REFRESH_MS = 12_000;
@@ -1632,29 +1632,375 @@ function renderProviderFooter(providerLabel, providerUrl, extraText = "") {
   `;
 }
 
-function renderCard(model) {
+function renderRefreshButton(model) {
+  if (!model.refreshable) return "";
+  return `
+    <button
+      class="sports-slot__refresh"
+      type="button"
+      data-sports-refresh
+      ${
+        model.refreshMinIntervalMs
+          ? `data-refresh-ms="${escapeHtml(model.refreshMinIntervalMs)}"`
+          : ""
+      }
+    >
+      ${t("refresh")}
+    </button>
+  `;
+}
+
+function renderToolbar(model) {
+  const badgeHtml = model.badge
+    ? model.badgeTone === "live"
+      ? renderLiveBadge(model.badge)
+      : `<span class="sports-slot__badge sports-slot__badge--${escapeHtml(
+          model.badgeTone || "scheduled",
+        )}">${escapeHtml(model.badge)}</span>`
+    : "";
+
+  return `
+    <header class="sports-slot__toolbar">
+      <div class="sports-slot__toolbar-copy">
+        ${
+          model.eyebrow
+            ? `<span class="sports-slot__kicker">${escapeHtml(model.eyebrow)}</span>`
+            : ""
+        }
+        ${
+          model.title
+            ? `<span class="sports-slot__headline">${escapeHtml(model.title)}</span>`
+            : ""
+        }
+        ${
+          model.subtitle
+            ? `<span class="sports-slot__meta">${escapeHtml(model.subtitle)}</span>`
+            : ""
+        }
+      </div>
+      <div class="sports-slot__toolbar-actions">
+        ${badgeHtml}
+        ${renderRefreshButton(model)}
+      </div>
+    </header>
+  `;
+}
+
+function renderSlotRootAttrs(model) {
   const awayColor = model.focusGame?.awayBrand?.color || "var(--primary)";
   const homeColor = model.focusGame?.homeBrand?.color || "var(--primary)";
   const styleAttr = ` style="--sports-away-color:${escapeHtml(
     awayColor,
   )};--sports-home-color:${escapeHtml(homeColor)};"`;
-  const refreshButtonHtml = model.refreshable
-    ? `
-      <button
-        class="sports-slot__refresh"
-        type="button"
-        data-sports-refresh
-        ${
-          model.refreshMinIntervalMs
-            ? `data-refresh-ms="${escapeHtml(model.refreshMinIntervalMs)}"`
-            : ""
-        }
-      >
-        ${t("refresh")}
-      </button>
-    `
+
+  return `
+      class="sports-slot sports-slot--${escapeHtml(model.sport)} slot-full-width sports-slot--full-width"
+      data-sports-query="${escapeHtml(model.query || "")}"
+      data-sports-provider="${escapeHtml(model.provider || "")}"
+      data-sports-sport="${escapeHtml(model.sport || "")}"
+      data-sports-version="${escapeHtml(PLUGIN_VERSION)}"
+      data-refresh-ms="${escapeHtml(model.refreshMinIntervalMs || "")}"
+      ${model.refreshable ? 'data-refreshable="true"' : ""}
+      ${model.focusGame?.state === "live" ? 'data-sports-live="true"' : ""}
+      ${debugMode ? 'data-sports-debug="true"' : ""}
+      ${styleAttr}
+  `;
+}
+
+function renderFocusScoreboard(game, sport, scorersHtml = "") {
+  if (!game) return "";
+
+  let statusText = game.status || "";
+  if (sport === "soccer" && game.state === "final" && statusText === "Final") {
+    statusText = "Full-time";
+  }
+
+  const isToday =
+    game.sortDate &&
+    new Date(game.sortDate).toDateString() === new Date().toDateString();
+  const metaLeft = `${game.competitionLabel || ""}${isToday ? " • Today" : ""}`;
+  const metaRight = formatMaybeTimestamp(statusText);
+  const liveClockAttr =
+    game.liveClockSeconds != null
+      ? `data-live-status data-live-prefix="${escapeHtml(
+          game.liveStatusPrefix || "",
+        )}" data-live-seconds="${escapeHtml(
+          game.liveClockSeconds,
+        )}" data-live-direction="down"`
+      : "";
+
+  const subLabelHtml = game.subLabel
+    ? `<div class="sports-slot__scoreboard-sublabel">${escapeHtml(game.subLabel)}</div>`
+    : "";
+  const venueHtml = game.meta
+    ? `<div class="sports-slot__scoreboard-meta">${escapeHtml(game.meta)}</div>`
     : "";
 
+  return `
+    <section class="sports-slot__scoreboard sports-slot__scoreboard--horizontal sports-slot__scoreboard--${escapeHtml(
+      game.state,
+    )}">
+      <div class="sports-slot__scoreboard-header">
+        <span class="sports-slot__scoreboard-header-meta">${escapeHtml(metaLeft)}</span>
+        <span class="sports-slot__scoreboard-header-status" ${liveClockAttr}>${escapeHtml(
+          metaRight,
+        )}</span>
+      </div>
+      <div class="sports-slot__scoreboard-body">
+        <div class="sports-slot__scoreboard-team sports-slot__scoreboard-team--away">
+          ${renderTeamMark(game.awayBrand, game.awayTeam, game.awayAbbr)}
+          <div class="sports-slot__scoreboard-team-name">${escapeHtml(game.awayTeam)}</div>
+        </div>
+        <div class="sports-slot__scoreboard-score">
+          <span class="sports-slot__score-val">${escapeHtml(game.awayScore)}</span>
+          <span class="sports-slot__score-divider">-</span>
+          <span class="sports-slot__score-val">${escapeHtml(game.homeScore)}</span>
+        </div>
+        <div class="sports-slot__scoreboard-team sports-slot__scoreboard-team--home">
+          ${renderTeamMark(game.homeBrand, game.homeTeam, game.homeAbbr)}
+          <div class="sports-slot__scoreboard-team-name">${escapeHtml(game.homeTeam)}</div>
+        </div>
+      </div>
+      ${subLabelHtml}
+      ${scorersHtml}
+      ${venueHtml}
+    </section>
+  `;
+}
+
+function renderMiniGameCard(game) {
+  return `
+    <article class="sports-slot__mini-game sports-slot__mini-game--card">
+      <div class="sports-slot__mini-game-top">
+        <span class="sports-slot__mini-game-label">${escapeHtml(game.label || "Game")}</span>
+        <span class="sports-slot__mini-game-status sports-slot__mini-game-status--${escapeHtml(
+          toStatusTone(game.state),
+        )}">${escapeHtml(formatMaybeTimestamp(game.status))}</span>
+      </div>
+      <div class="sports-slot__mini-game-score">
+        <span class="sports-slot__mini-game-matchup">
+          ${renderTeamMark(game.awayBrand, game.awayTeam, game.awayAbbr)}
+          <span>${escapeHtml(game.awayAbbr || game.awayTeam)}</span>
+          <span class="sports-slot__mini-game-separator">@</span>
+          ${renderTeamMark(game.homeBrand, game.homeTeam, game.homeAbbr)}
+          <span>${escapeHtml(game.homeAbbr || game.homeTeam)}</span>
+        </span>
+        <strong>${escapeHtml(formatMaybeTimestamp(game.score))}</strong>
+      </div>
+      ${
+        game.meta
+          ? `<div class="sports-slot__mini-game-meta">${escapeHtml(game.meta)}</div>`
+          : ""
+      }
+    </article>
+  `;
+}
+
+function renderAbbr(shortLabel, titleText) {
+  return `<abbr class="sports-slot__abbr" title="${escapeHtml(titleText)}">${escapeHtml(shortLabel)}</abbr>`;
+}
+
+function renderSoccerGroupTableHead() {
+  return `
+    <div class="sports-slot__group-row sports-slot__group-row--head sports-slot__group-row--soccer">
+      <span>${t("team")}</span>
+      <span>${renderAbbr("GP", t("abbrGp"))}</span>
+      <span>${renderAbbr("W", t("abbrW"))}</span>
+      <span>${renderAbbr("D", t("abbrD"))}</span>
+      <span>${renderAbbr("L", t("abbrL"))}</span>
+      <span>${renderAbbr("GF", t("abbrGf"))}</span>
+      <span>${renderAbbr("GA", t("abbrGa"))}</span>
+      <span>${renderAbbr("GD", t("abbrGd"))}</span>
+      <span>${renderAbbr("Pts", t("abbrPts"))}</span>
+    </div>
+  `;
+}
+
+function renderSoccerGroupTableRow(row) {
+  return `
+    <div class="sports-slot__group-row sports-slot__group-row--soccer ${
+      row.highlight ? "sports-slot__group-row--highlight" : ""
+    }">
+      <span class="sports-slot__group-team">
+        ${
+          row.logoUrl
+            ? `<img class="sports-slot__group-team-logo" src="${escapeHtml(row.logoUrl)}" alt="" />`
+            : ""
+        }
+        <span>${escapeHtml(row.team)}</span>
+      </span>
+      <span>${escapeHtml(row.played || "—")}</span>
+      <span>${escapeHtml(row.wins || "—")}</span>
+      <span>${escapeHtml(row.ties || "—")}</span>
+      <span>${escapeHtml(row.losses || "—")}</span>
+      <span>${escapeHtml(row.pointsFor || "—")}</span>
+      <span>${escapeHtml(row.pointsAgainst || "—")}</span>
+      <span>${escapeHtml(row.goalDiff || "—")}</span>
+      <strong>${escapeHtml(row.points || "—")}</strong>
+    </div>
+  `;
+}
+
+function renderSoccerGroupCard(group) {
+  return `
+    <article class="sports-slot__group-card">
+      <div class="sports-slot__group-card-head">
+        <strong>${escapeHtml(group.title)}</strong>
+      </div>
+      <div class="sports-slot__group-table-scroll">
+        <div class="sports-slot__group-table">
+          ${renderSoccerGroupTableHead()}
+          ${(group.rows ?? []).map((row) => renderSoccerGroupTableRow(row)).join("")}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderMatchFactsStrip(facts) {
+  if (!facts?.length) return "";
+  return `
+    <section class="sports-slot__match-facts" aria-label="${t("matchInfo")}">
+      ${facts
+        .map(
+          (fact) => `
+            <div class="sports-slot__match-fact">
+              <span class="sports-slot__match-fact-label">${escapeHtml(fact.label)}</span>
+              <span class="sports-slot__match-fact-value">${escapeHtml(fact.value)}</span>
+            </div>
+          `,
+        )
+        .join("")}
+    </section>
+  `;
+}
+
+function timelineEventTone(event) {
+  if (event.isPeriod) return "period";
+  if (event.scoring) return "goal";
+  if (event.redCard) return "red";
+  if (event.yellowCard) return "yellow";
+  if (event.substitution) return "sub";
+  return "default";
+}
+
+function timelineEventIcon(event) {
+  if (event.isPeriod) return "◆";
+  if (event.scoring) return "⚽";
+  if (event.redCard) return "🟥";
+  if (event.yellowCard) return "🟨";
+  if (event.substitution) return "↔";
+  return "•";
+}
+
+function renderTimelinePanel(timeline) {
+  if (!timeline?.length) return "";
+  return `
+    <div class="sports-slot__tab-panel" data-panel="timeline" style="display: none;">
+      <div class="sports-slot__timeline-grid">
+        ${timeline
+          .map((event) => {
+            const tone = timelineEventTone(event);
+            const assistHtml = event.assist
+              ? `<span class="sports-slot__timeline-assist">↳ ${escapeHtml(event.assist)}</span>`
+              : "";
+            const detailHtml =
+              event.detail && event.detail !== event.text
+                ? `<p class="sports-slot__timeline-detail">${escapeHtml(event.detail)}</p>`
+                : "";
+            return `
+              <article class="sports-slot__timeline-row sports-slot__timeline-row--${tone}">
+                ${
+                  event.isPeriod
+                    ? `<div class="sports-slot__timeline-period">${escapeHtml(event.type)}</div>`
+                    : `
+                      <span class="sports-slot__timeline-minute">${escapeHtml(event.minute || "—")}</span>
+                      <span class="sports-slot__timeline-icon" aria-hidden="true">${timelineEventIcon(event)}</span>
+                      <div class="sports-slot__timeline-body">
+                        <div class="sports-slot__timeline-top">
+                          <strong>${escapeHtml(event.athlete || event.type)}</strong>
+                          ${
+                            event.team
+                              ? `<span class="sports-slot__timeline-team">${escapeHtml(event.team)}</span>`
+                              : ""
+                          }
+                        </div>
+                        <span class="sports-slot__timeline-text">${escapeHtml(event.text)}</span>
+                        ${assistHtml}
+                        ${detailHtml}
+                      </div>
+                    `
+                }
+              </article>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderFormPanels(teamForm) {
+  if (!teamForm?.length) return "";
+  return `
+    <section class="sports-slot__form-grid">
+      ${teamForm
+        .map(
+          (block) => `
+            <article class="sports-slot__form-block">
+              <h4 class="sports-slot__section-label">${escapeHtml(block.team)} ${t("recentForm")}</h4>
+              <ul class="sports-slot__form-list">
+                ${(block.events ?? [])
+                  .map(
+                    (event) => `
+                      <li class="sports-slot__form-item sports-slot__form-item--${escapeHtml(
+                        event.result || "draw",
+                      ).toLowerCase()}">
+                        <span class="sports-slot__form-result">${escapeHtml(event.result || "—")}</span>
+                        <span class="sports-slot__form-opponent">${escapeHtml(event.opponent || "")}</span>
+                        <span class="sports-slot__form-score">${escapeHtml(event.score || "")}</span>
+                        <span class="sports-slot__form-comp">${escapeHtml(event.competition || "")}</span>
+                      </li>
+                    `,
+                  )
+                  .join("")}
+              </ul>
+            </article>
+          `,
+        )
+        .join("")}
+    </section>
+  `;
+}
+
+function renderHeadToHeadPanel(headToHead) {
+  if (!headToHead?.length) return "";
+  return `
+    <section class="sports-slot__h2h">
+      <h4 class="sports-slot__section-label">${t("headToHead")}</h4>
+      <ul class="sports-slot__h2h-list">
+        ${headToHead
+          .map(
+            (match) => `
+              <li class="sports-slot__h2h-item">
+                <span class="sports-slot__h2h-date">${escapeHtml(match.dateLabel || "")}</span>
+                <span class="sports-slot__h2h-matchup">${escapeHtml(match.label || "")}</span>
+                <strong class="sports-slot__h2h-score">${escapeHtml(match.score || "")}</strong>
+                ${
+                  match.competition
+                    ? `<span class="sports-slot__h2h-comp">${escapeHtml(match.competition)}</span>`
+                    : ""
+                }
+              </li>
+            `,
+          )
+          .join("")}
+      </ul>
+    </section>
+  `;
+}
+
+function renderCard(model) {
   const factsHtml = (model.facts ?? [])
     .filter((fact) => fact?.value)
     .map(
@@ -1667,48 +2013,12 @@ function renderCard(model) {
     )
     .join("");
 
-  const gamesHtml = (model.games ?? [])
-    .map(
-      (game) => `
-        <div class="sports-slot__mini-game">
-          <div class="sports-slot__mini-game-top">
-            <span class="sports-slot__mini-game-label">${escapeHtml(
-              game.label,
-            )}</span>
-            <span class="sports-slot__mini-game-status sports-slot__mini-game-status--${escapeHtml(
-              toStatusTone(game.state),
-            )}">${escapeHtml(formatMaybeTimestamp(game.status))}</span>
-          </div>
-          <div class="sports-slot__mini-game-score">
-            <span class="sports-slot__mini-game-matchup">
-              ${renderTeamMark(game.awayBrand, game.awayTeam, game.awayAbbr)}
-              <span>${escapeHtml(game.awayAbbr || game.awayTeam)}</span>
-              <span class="sports-slot__mini-game-separator">@</span>
-              ${renderTeamMark(game.homeBrand, game.homeTeam, game.homeAbbr)}
-              <span>${escapeHtml(game.homeAbbr || game.homeTeam)}</span>
-            </span>
-            <strong>${escapeHtml(formatMaybeTimestamp(game.score))}</strong>
-          </div>
-          ${
-            game.meta
-              ? `<div class="sports-slot__mini-game-meta">${escapeHtml(
-                  game.meta,
-                )}</div>`
-              : ""
-          }
-        </div>
-      `,
-    )
-    .join("");
+  const gamesHtml = (model.games ?? []).map((game) => renderMiniGameCard(game)).join("");
 
   const standingsHtml = model.standings
     ? `
-      <section class="sports-slot__section sports-slot__section--standings">
-        <div class="sports-slot__section-head">
-          <h4 class="sports-slot__section-title">${escapeHtml(
-            model.standings.title,
-          )}</h4>
-        </div>
+      <section class="sports-slot__pane sports-slot__pane--standings">
+        <h4 class="sports-slot__section-label">${escapeHtml(model.standings.title)}</h4>
         <div class="sports-slot__table">
           <div class="sports-slot__table-row sports-slot__table-row--head">
             <span>#</span>
@@ -1739,23 +2049,18 @@ function renderCard(model) {
 
   const groupTablesHtml = (model.groupTables ?? []).length
     ? `
-      <section class="sports-slot__section sports-slot__section--world-cup-groups">
-        <div class="sports-slot__section-head">
-          <h4 class="sports-slot__section-title">${escapeHtml(
-            model.groupTablesTitle || "Group stage",
-          )}</h4>
-          ${
-            model.groupTablesMeta
-              ? `<span class="sports-slot__section-meta">${escapeHtml(
-                  model.groupTablesMeta,
-                )}</span>`
-              : ""
-          }
-        </div>
-        <div class="sports-slot__group-grid">
+      <section class="sports-slot__pane sports-slot__pane--groups">
+        <h4 class="sports-slot__section-label">${escapeHtml(
+          model.groupTablesTitle || "Group stage",
+        )}</h4>
+        <div class="sports-slot__group-grid ${
+          model.sport === "soccer" ? "sports-slot__group-grid--wide" : ""
+        }">
           ${model.groupTables
-            .map(
-              (group) => `
+            .map((group) =>
+              model.sport === "soccer"
+                ? renderSoccerGroupCard(group)
+                : `
                 <article class="sports-slot__group-card">
                   <div class="sports-slot__group-card-head">
                     <strong>${escapeHtml(group.title)}</strong>
@@ -1768,9 +2073,9 @@ function renderCard(model) {
                   <div class="sports-slot__group-table">
                     <div class="sports-slot__group-row sports-slot__group-row--head">
                       <span>${t("team")}</span>
-                      <span>${t("playedAbbr")}</span>
-                      <span>${t("goalDiffAbbr")}</span>
-                      <span>${t("pointsAbbr")}</span>
+                      <span>${renderAbbr(t("playedAbbr"), t("abbrGp"))}</span>
+                      <span>${renderAbbr(t("goalDiffAbbr"), t("abbrGd"))}</span>
+                      <span>${renderAbbr(t("pointsAbbr"), t("abbrPts"))}</span>
                     </div>
                     ${group.rows
                       .map(
@@ -1800,12 +2105,10 @@ function renderCard(model) {
 
   const teamStatsHtml = (model.teamStats ?? []).length
     ? `
-      <section class="sports-slot__section sports-slot__section--stats">
-        <div class="sports-slot__section-head">
-          <h4 class="sports-slot__section-title">${escapeHtml(
-            model.teamStatsTitle || "Match stats",
-          )}</h4>
-        </div>
+      <section class="sports-slot__pane sports-slot__pane--stats">
+        <h4 class="sports-slot__section-label">${escapeHtml(
+          model.teamStatsTitle || "Match stats",
+        )}</h4>
         <div class="sports-slot__stats-list">
           ${model.teamStats
             .map(
@@ -1825,19 +2128,10 @@ function renderCard(model) {
 
   const bracketHtml = (model.bracket ?? []).length
     ? `
-      <section class="sports-slot__section sports-slot__section--bracket">
-        <div class="sports-slot__section-head">
-          <h4 class="sports-slot__section-title">${escapeHtml(
-            model.bracketTitle || "Round of 32 path",
-          )}</h4>
-          ${
-            model.bracketMeta
-              ? `<span class="sports-slot__section-meta">${escapeHtml(
-                  model.bracketMeta,
-                )}</span>`
-              : ""
-          }
-        </div>
+      <section class="sports-slot__pane sports-slot__pane--bracket">
+        <h4 class="sports-slot__section-label">${escapeHtml(
+          model.bracketTitle || "Round of 32 path",
+        )}</h4>
         <div class="sports-slot__bracket-grid">
           ${model.bracket
             .map(
@@ -1856,130 +2150,46 @@ function renderCard(model) {
     `
     : "";
 
-  const scoreboardHtml = model.focusGame
+  const scoreboardHtml = renderFocusScoreboard(model.focusGame, model.sport);
+  const gamesSectionHtml = gamesHtml
     ? `
-      <section class="sports-slot__scoreboard sports-slot__scoreboard--${escapeHtml(
-        model.focusGame.state,
-      )}">
-        <div class="sports-slot__game-meta">
-          <span class="sports-slot__game-meta-line">
-            <span>${escapeHtml(model.focusGame.competitionLabel)}</span>
-            <span class="sports-slot__game-status" ${
-              model.focusGame.liveClockSeconds != null
-                ? `data-live-status data-live-prefix="${escapeHtml(
-                    model.focusGame.liveStatusPrefix || "",
-                  )}" data-live-seconds="${escapeHtml(
-                    model.focusGame.liveClockSeconds,
-                  )}" data-live-direction="down"`
-                : ""
-            }>${escapeHtml(formatMaybeTimestamp(model.focusGame.status))}</span>
-          </span>
-        </div>
-        <div class="sports-slot__teams">
-          <div class="sports-slot__team">
-            <div class="sports-slot__team-name">${escapeHtml(
-              model.focusGame.awayTeam,
-            )}</div>
-            <div class="sports-slot__team-scoreline">
-              ${renderTeamMark(
-                model.focusGame.awayBrand,
-                model.focusGame.awayTeam,
-                model.focusGame.awayAbbr,
-              )}
-              <div class="sports-slot__team-scoreblock">
-                <div class="sports-slot__team-score">${escapeHtml(
-                  model.focusGame.awayScore,
-                )}</div>
-                <div class="sports-slot__team-abbr">${escapeHtml(
-                  model.focusGame.awayAbbr || "",
-                )}</div>
-              </div>
-            </div>
-          </div>
-          <div class="sports-slot__vs">vs</div>
-          <div class="sports-slot__team">
-            <div class="sports-slot__team-name">${escapeHtml(
-              model.focusGame.homeTeam,
-            )}</div>
-            <div class="sports-slot__team-scoreline">
-              ${renderTeamMark(
-                model.focusGame.homeBrand,
-                model.focusGame.homeTeam,
-                model.focusGame.homeAbbr,
-              )}
-              <div class="sports-slot__team-scoreblock">
-                <div class="sports-slot__team-score">${escapeHtml(
-                  model.focusGame.homeScore,
-                )}</div>
-                <div class="sports-slot__team-abbr">${escapeHtml(
-                  model.focusGame.homeAbbr || "",
-                )}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        ${
-          model.focusGame.meta
-            ? `<div class="sports-slot__scoreboard-meta">${escapeHtml(
-                model.focusGame.meta,
-              )}</div>`
-            : ""
-        }
+      <section class="sports-slot__pane sports-slot__pane--games">
+        <h4 class="sports-slot__section-label">${escapeHtml(
+          model.gamesTitle || t("recentAndNext"),
+        )}</h4>
+        <div class="sports-slot__mini-games sports-slot__mini-games--grid">${gamesHtml}</div>
       </section>
     `
     : "";
+  const secondaryHtml =
+    gamesSectionHtml + standingsHtml + teamStatsHtml + groupTablesHtml + bracketHtml;
+  const splitClass =
+    scoreboardHtml && secondaryHtml
+      ? "sports-slot__split sports-slot__split--active"
+      : "sports-slot__split";
 
   return `
     <div
-      class="sports-slot sports-slot--${escapeHtml(model.sport)} ${
-        model.fullWidth ? "slot-full-width sports-slot--full-width" : ""
-      }"
-      data-sports-query="${escapeHtml(model.query || "")}"
-      data-sports-provider="${escapeHtml(model.provider || "")}"
-      data-sports-sport="${escapeHtml(model.sport || "")}"
-      data-sports-version="${escapeHtml(PLUGIN_VERSION)}"
-      data-refresh-ms="${escapeHtml(model.refreshMinIntervalMs || "")}"
-      ${model.refreshable ? 'data-refreshable="true"' : ""}
-      ${model.focusGame?.state === "live" ? 'data-sports-live="true"' : ""}
-      ${debugMode ? 'data-sports-debug="true"' : ""}
-      ${styleAttr}
+      ${renderSlotRootAttrs(model)}
     >
-      <div class="sports-slot__hero">
-        <div class="sports-slot__hero-copy">
-          <div class="sports-slot__eyebrow">${escapeHtml(model.eyebrow || t("sportsResults"))}</div>
-          <h3 class="sports-slot__title">${escapeHtml(model.title)}</h3>
+      ${renderToolbar(model)}
+      <div class="sports-slot__body">
+        <div class="${splitClass}">
           ${
-            model.subtitle
-              ? `<p class="sports-slot__subtitle">${escapeHtml(model.subtitle)}</p>`
+            scoreboardHtml || factsHtml
+              ? `<div class="sports-slot__split-pane sports-slot__split-pane--primary">
+                  ${scoreboardHtml}
+                  ${factsHtml ? `<section class="sports-slot__facts">${factsHtml}</section>` : ""}
+                </div>`
               : ""
           }
-        </div>
-        <div class="sports-slot__hero-actions">
           ${
-            model.badge
-              ? model.badgeTone === "live"
-                ? renderLiveBadge(model.badge)
-                : `<span class="sports-slot__badge sports-slot__badge--${escapeHtml(
-                    model.badgeTone || "scheduled",
-                  )}">${escapeHtml(model.badge)}</span>`
+            secondaryHtml
+              ? `<div class="sports-slot__split-pane sports-slot__split-pane--secondary">${secondaryHtml}</div>`
               : ""
           }
-          ${refreshButtonHtml}
         </div>
       </div>
-      ${scoreboardHtml}
-      ${factsHtml ? `<section class="sports-slot__facts">${factsHtml}</section>` : ""}
-      ${
-        gamesHtml
-          ? `<section class="sports-slot__section"><div class="sports-slot__section-head"><h4 class="sports-slot__section-title">${escapeHtml(
-              model.gamesTitle || t("recentAndNext"),
-            )}</h4></div><div class="sports-slot__mini-games">${gamesHtml}</div></section>`
-          : ""
-      }
-      ${standingsHtml}
-      ${teamStatsHtml}
-      ${groupTablesHtml}
-      ${bracketHtml}
       ${model.footer ? `<div class="sports-slot__footer">${model.footer}</div>` : ""}
     </div>
   `;
@@ -3290,6 +3500,249 @@ async function fetchEspnSummary(sport, league, eventId) {
   return fetchJson(url);
 }
 
+function extractSoccerGoals(summaryData, awayTeamId, homeTeamId) {
+  const goals = { away: [], home: [] };
+  if (!summaryData?.keyEvents) return goals;
+
+  const scoringEvents = summaryData.keyEvents.filter(
+    (e) => e.scoringPlay || e.type?.type?.toLowerCase().includes("goal")
+  );
+
+  for (const e of scoringEvents) {
+    const time = e.clock?.displayValue || "";
+    const athleteName = e.participants?.[0]?.athlete?.displayName;
+    if (!athleteName) continue;
+
+    const typeText = e.type?.text || "";
+    let suffix = "";
+    if (typeText.toLowerCase().includes("penalty")) {
+      suffix = " (pen)";
+    } else if (typeText.toLowerCase().includes("own goal") || typeText.toLowerCase().includes("og")) {
+      suffix = " (OG)";
+    }
+
+    const goalStr = `${athleteName} ${time}${suffix}`;
+    const scoringTeamId = String(e.team?.id || "");
+    if (scoringTeamId === String(awayTeamId)) {
+      goals.away.push(goalStr);
+    } else if (scoringTeamId === String(homeTeamId)) {
+      goals.home.push(goalStr);
+    }
+  }
+
+  return goals;
+}
+
+const ESPN_SOCCER_BOX_SCORE_STATS = [
+  { name: "possessionPct", label: "Possession" },
+  { name: "totalShots", label: "Total shots" },
+  { name: "shotsOnTarget", label: "Shots on target" },
+  { name: "shotPct", label: "Shot accuracy" },
+  { name: "wonCorners", label: "Corners" },
+  { name: "foulsCommitted", label: "Fouls" },
+  { name: "yellowCards", label: "Yellow cards" },
+  { name: "redCards", label: "Red cards" },
+  { name: "offsides", label: "Offsides" },
+  { name: "saves", label: "Saves" },
+  { name: "totalPasses", label: "Passes" },
+  { name: "accuratePasses", label: "Accurate passes" },
+  { name: "passPct", label: "Pass accuracy" },
+  { name: "totalCrosses", label: "Crosses" },
+  { name: "accurateCrosses", label: "Accurate crosses" },
+  { name: "totalLongBalls", label: "Long balls" },
+  { name: "accurateLongBalls", label: "Accurate long balls" },
+  { name: "effectiveTackles", label: "Tackles won" },
+  { name: "totalTackles", label: "Total tackles" },
+  { name: "interceptions", label: "Interceptions" },
+  { name: "effectiveClearance", label: "Clearances" },
+  { name: "blockedShots", label: "Blocked shots" },
+  { name: "penaltyKickGoals", label: "Penalty goals" },
+];
+
+const ESPN_DEFAULT_BOX_SCORE_STATS = [
+  { name: "possessionPct", label: "Possession" },
+  { name: "totalShots", label: "Shots" },
+  { name: "shotsOnTarget", label: "On target" },
+  { name: "wonCorners", label: "Corners" },
+  { name: "foulsCommitted", label: "Fouls" },
+  { name: "yellowCards", label: "Yellow cards" },
+  { name: "redCards", label: "Red cards" },
+];
+
+function extractMatchTimeline(summaryData) {
+  const skipTypes = new Set(["Kickoff", "Start Delay", "End Delay"]);
+  const periodTypes = new Set([
+    "Halftime",
+    "Start 2nd Half",
+    "End Regular Time",
+    "End Extra Time",
+    "Penalty Shootout",
+  ]);
+
+  return (summaryData?.keyEvents || [])
+    .filter((event) => !skipTypes.has(event.type?.text || ""))
+    .map((event) => {
+      const type = event.type?.text || "Event";
+      const isPeriod = periodTypes.has(type);
+      return {
+        id: event.id,
+        minute: event.clock?.displayValue || "",
+        type,
+        team: event.team?.abbreviation || event.team?.displayName || "",
+        athlete: event.participants?.[0]?.athlete?.displayName || "",
+        assist: event.participants?.[1]?.athlete?.displayName || "",
+        text: event.shortText || event.text || type,
+        detail: event.text || "",
+        scoring: Boolean(event.scoringPlay),
+        redCard: Boolean(event.redCard) || /red card/i.test(type),
+        yellowCard: /yellow card/i.test(type),
+        substitution: /substitution/i.test(type),
+        isPeriod,
+      };
+    });
+}
+
+function extractMatchFacts(summaryData) {
+  const gameInfo = summaryData?.gameInfo || {};
+  const headerComp = summaryData?.header?.competitions?.[0] || {};
+  const broadcasts = [
+    ...(summaryData?.broadcasts || []),
+    ...(headerComp.broadcasts || []),
+  ]
+    .map((item) => item.media?.shortName || item.media?.name || item.names?.[0])
+    .filter(Boolean);
+  const uniqueBroadcasts = [...new Set(broadcasts)];
+  const officials = (gameInfo.officials || [])
+    .map((official) => official.displayName || official.fullName)
+    .filter(Boolean);
+  const venueBits = [
+    gameInfo.venue?.fullName,
+    gameInfo.venue?.address?.city,
+    gameInfo.venue?.address?.country,
+  ].filter(Boolean);
+
+  const facts = [];
+  if (venueBits.length) {
+    facts.push({ label: t("venue"), value: venueBits.join(", ") });
+  }
+  if (gameInfo.attendance) {
+    facts.push({
+      label: "Attendance",
+      value: Number(gameInfo.attendance).toLocaleString(),
+    });
+  }
+  if (officials[0]) {
+    facts.push({ label: "Referee", value: officials[0] });
+  }
+  if (uniqueBroadcasts.length) {
+    facts.push({ label: "Broadcast", value: uniqueBroadcasts.join(" • ") });
+  }
+  const weather = headerComp.weather?.displayValue || headerComp.weather?.conditionId;
+  if (weather) {
+    facts.push({ label: "Weather", value: String(weather) });
+  }
+  return facts;
+}
+
+function extractTeamForm(summaryData) {
+  return (summaryData?.lastFiveGames || []).map((block) => ({
+    team: block.team?.displayName || block.team?.abbreviation || "Team",
+    abbreviation: block.team?.abbreviation || "",
+    events: (block.events || []).slice(0, 5).map((event) => ({
+      result: event.gameResult || "—",
+      opponent: event.opponent?.displayName || event.opponent?.abbreviation || "",
+      score: event.score || `${event.awayTeamScore || "0"}-${event.homeTeamScore || "0"}`,
+      competition: event.competitionName || event.leagueAbbreviation || "",
+      dateLabel: event.gameDate ? formatDisplayTime(new Date(event.gameDate)) : "",
+    })),
+  }));
+}
+
+function extractHeadToHead(summaryData) {
+  return (summaryData?.headToHeadGames || []).flatMap((block) =>
+    (block.events || []).map((event) => ({
+      dateLabel: event.gameDate ? formatDisplayTime(new Date(event.gameDate)) : "",
+      label: [
+        block.team?.abbreviation || block.team?.displayName,
+        event.atVs,
+        event.opponent?.abbreviation || event.opponent?.displayName,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      score: event.score || "",
+      competition: event.competitionName || event.roundName || "",
+    })),
+  );
+}
+
+function buildEspnSummaryEnrichment(summaryData, focusGame, sport) {
+  if (!summaryData || !focusGame) {
+    return {
+      teamStats: [],
+      timeline: [],
+      matchFacts: [],
+      teamForm: [],
+      headToHead: [],
+    };
+  }
+
+  if (sport === "soccer") {
+    focusGame.goals = extractSoccerGoals(
+      summaryData,
+      focusGame.awayTeamId,
+      focusGame.homeTeamId,
+    );
+  }
+
+  return {
+    teamStats: parseEspnStats(
+      summaryData.boxscore,
+      focusGame.awayAbbr,
+      focusGame.homeAbbr,
+      sport,
+    ),
+    timeline: extractMatchTimeline(summaryData),
+    matchFacts: extractMatchFacts(summaryData),
+    teamForm: extractTeamForm(summaryData),
+    headToHead: extractHeadToHead(summaryData),
+  };
+}
+
+function buildEspnExtrasList(events, focusGameId, limit = 24) {
+  const extras = events.filter((event) => event.id !== focusGameId);
+  const live = extras.filter((event) => event.state === "live");
+  const upcoming = extras
+    .filter((event) => event.state === "scheduled")
+    .sort((a, b) => a.sortDate - b.sortDate);
+  const completed = extras
+    .filter((event) => event.state === "final")
+    .sort((a, b) => b.sortDate - a.sortDate);
+
+  return [...live, ...upcoming, ...completed].slice(0, limit).map((event) => ({
+    label:
+      event.state === "live"
+        ? "Live"
+        : event.state === "scheduled"
+          ? "Next"
+          : "Recent",
+    state: event.state,
+    status: event.status,
+    awayTeam: event.awayTeam,
+    homeTeam: event.homeTeam,
+    awayAbbr: event.awayAbbr,
+    homeAbbr: event.homeAbbr,
+    awayBrand: event.awayBrand,
+    homeBrand: event.homeBrand,
+    score:
+      event.state === "scheduled"
+        ? event.status
+        : `${event.awayScore} - ${event.homeScore}`,
+    meta: [event.subLabel, event.meta, event.competitionLabel]
+      .filter(Boolean)
+      .join(" • "),
+  }));
+}
+
 function normalizeEspnEvent(event, sport) {
   const comp = event?.competitions?.[0];
   const date = new Date(event?.date || comp?.date || "");
@@ -3333,6 +3786,20 @@ function normalizeEspnEvent(event, sport) {
     logoUrl: getLogoUrlForTeam(sport, awayAbbr, awayLogo),
   };
 
+  let subLabel = comp?.notes?.[0]?.text || "";
+  if (!subLabel && sport === "soccer") {
+    const awayGroup = getWorldCupGroupForTeam(awayAbbr);
+    const homeGroup = getWorldCupGroupForTeam(homeAbbr);
+    if (awayGroup && homeGroup && awayGroup.code === homeGroup.code) {
+      subLabel = `Group Stage • Group ${awayGroup.code}`;
+    }
+  }
+
+  const broadcasts = (comp?.broadcasts || comp?.geoBroadcasts || [])
+    .flatMap((item) => item.names || [item.media?.shortName, item.media?.name])
+    .filter(Boolean);
+  const broadcastLabel = [...new Set(broadcasts)].join(" • ");
+
   return {
     id: event.id,
     state,
@@ -3352,9 +3819,13 @@ function normalizeEspnEvent(event, sport) {
     homeBrand,
     awayScore,
     homeScore,
+    awayTeamId: awayCompetitor?.team?.id || "",
+    homeTeamId: homeCompetitor?.team?.id || "",
+    subLabel,
     meta: [
       comp?.venue?.fullName,
       comp?.venue?.address?.city,
+      broadcastLabel,
     ].filter(Boolean).join(" • "),
     sortDate: Number.isNaN(date.getTime()) ? 0 : date.getTime(),
     providerFixtureId: event.id ? String(event.id) : "",
@@ -3380,6 +3851,16 @@ function normalizeEspnStandings(standingsData) {
         ties: String(stats.find(s => s.name === "ties")?.value || ""),
         goalDiff: String(stats.find(s => s.name === "pointDifferential")?.displayValue || stats.find(s => s.name === "pointDifferential")?.value || ""),
         points: String(stats.find(s => s.name === "points")?.value || ""),
+        pointsFor: String(
+          stats.find(s => s.name === "pointsFor")?.displayValue ||
+            stats.find(s => s.name === "pointsFor")?.value ||
+            "",
+        ),
+        pointsAgainst: String(
+          stats.find(s => s.name === "pointsAgainst")?.displayValue ||
+            stats.find(s => s.name === "pointsAgainst")?.value ||
+            "",
+        ),
         pct: String(stats.find(s => s.name === "winPercent")?.displayValue || ""),
         gb: String(stats.find(s => s.name === "gamesBehind")?.displayValue || ""),
         record: stats.find(s => s.name === "overall")?.displayValue || stats.find(s => s.type === "total")?.displayValue || "",
@@ -3427,7 +3908,7 @@ function findMatchInEvents(events, leftName, rightName) {
   });
 }
 
-function parseEspnStats(boxscore, awayAbbr, homeAbbr) {
+function parseEspnStats(boxscore, awayAbbr, homeAbbr, sport = "soccer") {
   if (!boxscore || !boxscore.teams) return [];
   const teams = boxscore.teams;
   const awayTeam = teams.find(t => t.team?.abbreviation === awayAbbr) || teams[0];
@@ -3439,15 +3920,8 @@ function parseEspnStats(boxscore, awayAbbr, homeAbbr) {
     return stat ? stat.displayValue : "";
   };
 
-  const statsKeys = [
-    { name: "possessionPct", label: "Possession" },
-    { name: "totalShots", label: "Shots" },
-    { name: "shotsOnTarget", label: "On target" },
-    { name: "wonCorners", label: "Corners" },
-    { name: "foulsCommitted", label: "Fouls" },
-    { name: "yellowCards", label: "Yellow cards" },
-    { name: "redCards", label: "Red cards" },
-  ];
+  const statsKeys =
+    sport === "soccer" ? ESPN_SOCCER_BOX_SCORE_STATS : ESPN_DEFAULT_BOX_SCORE_STATS;
 
   return statsKeys.map(k => {
     const awayVal = getStatVal(awayTeam, k.name);
@@ -3490,206 +3964,284 @@ function buildEspnWorldCupBracket(events) {
   return rounds;
 }
 
+function buildEspnTabs({
+  hasStats = false,
+  hasStandings = false,
+  hasTimeline = false,
+  hasGroups = false,
+  hasBracket = false,
+  isMatchup = false,
+} = {}) {
+  const tabs = [{ id: "matches", label: isMatchup ? "Game" : "Matches" }];
+  if (hasTimeline) tabs.push({ id: "timeline", label: t("timeline") });
+  if (hasStats) tabs.push({ id: "stats", label: "Stats" });
+  if (hasStandings) tabs.push({ id: "standings", label: "Standings" });
+  if (hasGroups) tabs.push({ id: "groups", label: "Groups" });
+  if (hasBracket) tabs.push({ id: "bracket", label: "Bracket" });
+  return tabs;
+}
+
+async function loadEspnFocusEnrichment(sport, league, focusGame) {
+  if (!focusGame?.id) {
+    return {
+      teamStats: [],
+      timeline: [],
+      matchFacts: [],
+      teamForm: [],
+      headToHead: [],
+    };
+  }
+
+  try {
+    const summaryData = await fetchEspnSummary(sport, league, focusGame.id);
+    return buildEspnSummaryEnrichment(summaryData, focusGame, sport);
+  } catch {
+    return {
+      teamStats: [],
+      timeline: [],
+      matchFacts: [],
+      teamForm: [],
+      headToHead: [],
+    };
+  }
+}
+
 function renderEspnCard(model) {
-  const awayColor = model.focusGame?.awayBrand?.color || "var(--primary)";
-  const homeColor = model.focusGame?.homeBrand?.color || "var(--primary)";
-  const styleAttr = ` style="--sports-away-color:${escapeHtml(awayColor)};--sports-home-color:${escapeHtml(homeColor)};"`;
-
   const tabsList = model.tabs || [];
-  const tabsHeaders = tabsList.map((tab, idx) => {
-    const activeClass = idx === 0 ? "sports-slot__tab--active" : "";
-    return `<button class="sports-slot__tab ${activeClass}" data-tab="${tab.id}">${tab.label}</button>`;
-  }).join("");
+  const tabsHeaders = tabsList
+    .map((tab, idx) => {
+      const activeClass = idx === 0 ? "sports-slot__tab--active" : "";
+      return `<button class="sports-slot__tab ${activeClass}" data-tab="${tab.id}">${tab.label}</button>`;
+    })
+    .join("");
 
-  const tabsNavHtml = tabsHeaders ? `<nav class="sports-slot__tabs">${tabsHeaders}</nav>` : "";
+  const tabsNavHtml = tabsHeaders
+    ? `<nav class="sports-slot__tabs">${tabsHeaders}</nav>`
+    : "";
 
-  // 1. Matches tab panel
   const gamesHtml = (model.games ?? [])
-    .map(
-      (game) => `
-        <div class="sports-slot__mini-game">
-          <div class="sports-slot__mini-game-top">
-            <span class="sports-slot__mini-game-label">${escapeHtml(game.label || "Game")}</span>
-            <span class="sports-slot__mini-game-status sports-slot__mini-game-status--${escapeHtml(toStatusTone(game.state))}">${escapeHtml(game.status)}</span>
-          </div>
-          <div class="sports-slot__mini-game-score">
-            <span class="sports-slot__mini-game-matchup">
-              ${renderTeamMark(game.awayBrand, game.awayTeam, game.awayAbbr)}
-              <span>${escapeHtml(game.awayAbbr || game.awayTeam)}</span>
-              <span class="sports-slot__mini-game-separator">@</span>
-              ${renderTeamMark(game.homeBrand, game.homeTeam, game.homeAbbr)}
-              <span>${escapeHtml(game.homeAbbr || game.homeTeam)}</span>
-            </span>
-            <strong>${escapeHtml(game.score || "—")}</strong>
-          </div>
-          ${game.meta ? `<div class="sports-slot__mini-game-meta">${escapeHtml(game.meta)}</div>` : ""}
-        </div>
-      `,
+    .map((game) =>
+      renderMiniGameCard({
+        ...game,
+        status: game.status || "—",
+        score: game.score || "—",
+      }),
     )
     .join("");
 
-  const focusGameHtml = model.focusGame ? `
-    <section class="sports-slot__scoreboard sports-slot__scoreboard--${escapeHtml(model.focusGame.state)}">
-      <div class="sports-slot__game-meta">
-        <span class="sports-slot__game-meta-line">
-          <span>${escapeHtml(model.focusGame.competitionLabel)}</span>
-          <span class="sports-slot__game-status">${escapeHtml(model.focusGame.status)}</span>
-        </span>
-      </div>
-      <div class="sports-slot__teams">
-        <div class="sports-slot__team">
-          <div class="sports-slot__team-name">${escapeHtml(model.focusGame.awayTeam)}</div>
-          <div class="sports-slot__team-scoreline">
-            ${renderTeamMark(model.focusGame.awayBrand, model.focusGame.awayTeam, model.focusGame.awayAbbr)}
-            <div class="sports-slot__team-scoreblock">
-              <div class="sports-slot__team-score">${escapeHtml(model.focusGame.awayScore)}</div>
-              <div class="sports-slot__team-abbr">${escapeHtml(model.focusGame.awayAbbr)}</div>
-            </div>
-          </div>
+  let scorersHtml = "";
+  if (model.focusGame?.goals) {
+    const awayGoals = model.focusGame.goals.away || [];
+    const homeGoals = model.focusGame.goals.home || [];
+    if (awayGoals.length > 0 || homeGoals.length > 0) {
+      const awayHtml = awayGoals
+        .map((g) => `<div class="sports-slot__scorer-item">${escapeHtml(g)}</div>`)
+        .join("");
+      const homeHtml = homeGoals
+        .map((g) => `<div class="sports-slot__scorer-item">${escapeHtml(g)}</div>`)
+        .join("");
+      scorersHtml = `
+        <div class="sports-slot__scorers-row">
+          <div class="sports-slot__scorers-col sports-slot__scorers-col--away">${awayHtml}</div>
+          <div class="sports-slot__scorers-icon">⚽</div>
+          <div class="sports-slot__scorers-col sports-slot__scorers-col--home">${homeHtml}</div>
         </div>
-        <div class="sports-slot__vs">vs</div>
-        <div class="sports-slot__team">
-          <div class="sports-slot__team-name">${escapeHtml(model.focusGame.homeTeam)}</div>
-          <div class="sports-slot__team-scoreline">
-            ${renderTeamMark(model.focusGame.homeBrand, model.focusGame.homeTeam, model.focusGame.homeAbbr)}
-            <div class="sports-slot__team-scoreblock">
-              <div class="sports-slot__team-score">${escapeHtml(model.focusGame.homeScore)}</div>
-              <div class="sports-slot__team-abbr">${escapeHtml(model.focusGame.homeAbbr)}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      ${model.focusGame.meta ? `<div class="sports-slot__scoreboard-meta">${escapeHtml(model.focusGame.meta)}</div>` : ""}
-    </section>
-  ` : "";
+      `;
+    }
+  }
+
+  const focusGameHtml = renderFocusScoreboard(
+    model.focusGame,
+    model.sport,
+    scorersHtml,
+  );
+  const matchFactsHtml = renderMatchFactsStrip(model.matchFacts);
+  const formHtml = renderFormPanels(model.teamForm);
+  const headToHeadHtml = renderHeadToHeadPanel(model.headToHead);
 
   const hasNoGames = !focusGameHtml && !gamesHtml;
+  const matchesSplitClass =
+    focusGameHtml && gamesHtml
+      ? "sports-slot__split sports-slot__split--active"
+      : "sports-slot__split";
   const matchesTabPanel = `
     <div class="sports-slot__tab-panel sports-slot__tab-panel--active" data-panel="matches">
-      ${focusGameHtml}
-      ${gamesHtml ? `<section class="sports-slot__section"><h4 class="sports-slot__section-title">${escapeHtml(model.gamesTitle || "Matches")}</h4><div class="sports-slot__mini-games">${gamesHtml}</div></section>` : ""}
-      ${hasNoGames ? `<div class="sports-slot__empty-stage">No recent or upcoming games were found.</div>` : ""}
+      <div class="${matchesSplitClass}">
+        ${
+          focusGameHtml || matchFactsHtml || formHtml || headToHeadHtml
+            ? `<div class="sports-slot__split-pane sports-slot__split-pane--primary">
+                ${focusGameHtml}
+                ${matchFactsHtml}
+                ${formHtml}
+                ${headToHeadHtml}
+              </div>`
+            : ""
+        }
+        ${
+          gamesHtml
+            ? `<div class="sports-slot__split-pane sports-slot__split-pane--games">
+                <h4 class="sports-slot__section-label">${escapeHtml(
+                  model.gamesTitle || "Matches",
+                )}</h4>
+                <div class="sports-slot__mini-games sports-slot__mini-games--grid">${gamesHtml}</div>
+              </div>`
+            : ""
+        }
+      </div>
+      ${
+        hasNoGames
+          ? `<div class="sports-slot__empty-stage">No recent or upcoming games were found.</div>`
+          : ""
+      }
     </div>
   `;
 
-  // 2. Standings tab panel (single table or conference)
+  const timelineTabPanel = renderTimelinePanel(model.timeline);
+
   let standingsTabPanel = "";
   if (model.standings) {
     standingsTabPanel = `
       <div class="sports-slot__tab-panel" data-panel="standings" style="display: none;">
-        ${model.standings.map(table => `
-          <section class="sports-slot__section">
-            <h4 class="sports-slot__section-title">${escapeHtml(table.title)}</h4>
-            <div class="sports-slot__table">
-              <div class="sports-slot__table-row sports-slot__table-row--head">
-                <span>#</span>
-                <span>Team</span>
-                <span>Record</span>
-                <span>PCT</span>
-                <span>GB</span>
-              </div>
-              ${table.rows.map(row => `
-                <div class="sports-slot__table-row ${row.highlight ? "sports-slot__table-row--highlight" : ""}">
-                  <span>${escapeHtml(row.position)}</span>
-                  <span style="display: flex; align-items: center; gap: 0.35rem;">
-                    <img src="${escapeHtml(row.logoUrl)}" alt="" style="width: 20px; height: 20px; object-fit: contain;" />
-                    <span>${escapeHtml(row.team)}</span>
-                  </span>
-                  <span>${escapeHtml(row.record || `${row.wins}-${row.losses}-${row.ties}`)}</span>
-                  <span>${escapeHtml(row.pct || "—")}</span>
-                  <span>${escapeHtml(row.gb || "—")}</span>
-                </div>
-              `).join("")}
-            </div>
-          </section>
-        `).join("")}
+        <div class="sports-slot__standings-grid">
+          ${model.standings
+            .map(
+              (table) => `
+                <section class="sports-slot__pane sports-slot__pane--standings">
+                  <h4 class="sports-slot__section-label">${escapeHtml(table.title)}</h4>
+                  <div class="sports-slot__table">
+                    <div class="sports-slot__table-row sports-slot__table-row--head">
+                      <span>#</span>
+                      <span>Team</span>
+                      <span>Record</span>
+                      <span>PCT</span>
+                      <span>GB</span>
+                    </div>
+                    ${table.rows
+                      .map(
+                        (row) => `
+                          <div class="sports-slot__table-row ${
+                            row.highlight ? "sports-slot__table-row--highlight" : ""
+                          }">
+                            <span>${escapeHtml(row.position)}</span>
+                            <span class="sports-slot__table-team">
+                              <img src="${escapeHtml(row.logoUrl)}" alt="" />
+                              <span>${escapeHtml(row.team)}</span>
+                            </span>
+                            <span>${escapeHtml(
+                              row.record || `${row.wins}-${row.losses}-${row.ties}`,
+                            )}</span>
+                            <span>${escapeHtml(row.pct || "—")}</span>
+                            <span>${escapeHtml(row.gb || "—")}</span>
+                          </div>
+                        `,
+                      )
+                      .join("")}
+                  </div>
+                </section>
+              `,
+            )
+            .join("")}
+        </div>
       </div>
     `;
   }
 
-  // 3. Stats tab panel (progress bars)
   let statsTabPanel = "";
   if (model.teamStats) {
-    const statsHtml = (model.teamStats ?? []).map(stat => {
-      const awayVal = parseFloat(stat.away) || 0;
-      const homeVal = parseFloat(stat.home) || 0;
-      const total = awayVal + homeVal;
-      let awayPct = 50;
-      let homePct = 50;
-      if (total > 0) {
-        awayPct = (awayVal / total) * 100;
-        homePct = (homeVal / total) * 100;
-      }
-      const isPossession = stat.label.toLowerCase() === "possession";
-      const awayDisp = isPossession ? `${stat.away}%` : stat.away;
-      const homeDisp = isPossession ? `${stat.home}%` : stat.home;
+    const statsHtml = (model.teamStats ?? [])
+      .map((stat) => {
+        const awayVal = parseFloat(stat.away) || 0;
+        const homeVal = parseFloat(stat.home) || 0;
+        const total = awayVal + homeVal;
+        let awayPct = 50;
+        let homePct = 50;
+        if (total > 0) {
+          awayPct = (awayVal / total) * 100;
+          homePct = (homeVal / total) * 100;
+        }
+        const isPossession = stat.label.toLowerCase() === "possession";
+        const awayDisp = isPossession ? `${stat.away}%` : stat.away;
+        const homeDisp = isPossession ? `${stat.home}%` : stat.home;
 
-      return `
-        <div class="sports-slot__stat-row">
-          <span class="sports-slot__stat-val sports-slot__stat-val--away">${escapeHtml(awayDisp)}</span>
-          <div class="sports-slot__stat-bar-container">
-            <div class="sports-slot__stat-bar-track">
-              <div class="sports-slot__stat-bar sports-slot__stat-bar--away" style="width: ${awayPct}%"></div>
-              <div class="sports-slot__stat-bar sports-slot__stat-bar--home" style="width: ${homePct}%"></div>
+        return `
+          <div class="sports-slot__stat-row">
+            <span class="sports-slot__stat-val sports-slot__stat-val--away">${escapeHtml(
+              awayDisp,
+            )}</span>
+            <div class="sports-slot__stat-bar-container">
+              <div class="sports-slot__stat-bar-track">
+                <div class="sports-slot__stat-bar sports-slot__stat-bar--away" style="width: ${awayPct}%"></div>
+                <div class="sports-slot__stat-bar sports-slot__stat-bar--home" style="width: ${homePct}%"></div>
+              </div>
+              <span class="sports-slot__stat-label">${escapeHtml(stat.label)}</span>
             </div>
-            <span class="sports-slot__stat-label">${escapeHtml(stat.label)}</span>
+            <span class="sports-slot__stat-val sports-slot__stat-val--home">${escapeHtml(
+              homeDisp,
+            )}</span>
           </div>
-          <span class="sports-slot__stat-val sports-slot__stat-val--home">${escapeHtml(homeDisp)}</span>
-        </div>
-      `;
-    }).join("");
+        `;
+      })
+      .join("");
 
     statsTabPanel = `
       <div class="sports-slot__tab-panel" data-panel="stats" style="display: none;">
-        <section class="sports-slot__section">
-          <h4 class="sports-slot__section-title">Match statistics</h4>
-          <div class="sports-slot__stats-list">${statsHtml}</div>
+        <section class="sports-slot__pane sports-slot__pane--stats">
+          <div class="sports-slot__stats-list sports-slot__stats-list--wide sports-slot__stats-list--dense">${statsHtml}</div>
         </section>
       </div>
     `;
   }
 
-  // 4. Groups tab panel (World Cup 12 groups)
   let groupsTabPanel = "";
   if (model.groupTables) {
-    const groupTablesHtml = (model.groupTables ?? []).map(group => `
-      <div class="sports-slot__group-card">
-        <div class="sports-slot__group-card-head">
-          <strong>${escapeHtml(group.title)}</strong>
-        </div>
-        <div class="sports-slot__group-table">
-          <div class="sports-slot__group-row sports-slot__group-row--head">
-            <span>Team</span>
-            <span>GP</span>
-            <span>GD</span>
-            <span>Pts</span>
-          </div>
-          ${group.rows.map(row => `
-            <div class="sports-slot__group-row ${row.highlight ? "sports-slot__group-row--highlight" : ""}">
-              <span class="sports-slot__group-team">
-                <img class="sports-slot__group-team-logo" src="${escapeHtml(row.logoUrl)}" alt="" />
-                <span>${escapeHtml(row.team)}</span>
-              </span>
-              <span>${escapeHtml(row.played)}</span>
-              <span>${escapeHtml(row.goalDiff)}</span>
-              <strong>${escapeHtml(row.points)}</strong>
+    const groupTablesHtml = (model.groupTables ?? [])
+      .map((group) =>
+        model.sport === "soccer"
+          ? renderSoccerGroupCard(group)
+          : `
+          <article class="sports-slot__group-card">
+            <div class="sports-slot__group-card-head">
+              <strong>${escapeHtml(group.title)}</strong>
             </div>
-          `).join("")}
-        </div>
-      </div>
-    `).join("");
+            <div class="sports-slot__group-table">
+              <div class="sports-slot__group-row sports-slot__group-row--head">
+                <span>Team</span>
+                <span>${renderAbbr("GP", t("abbrGp"))}</span>
+                <span>${renderAbbr("GD", t("abbrGd"))}</span>
+                <span>${renderAbbr("Pts", t("abbrPts"))}</span>
+              </div>
+              ${group.rows
+                .map(
+                  (row) => `
+                    <div class="sports-slot__group-row ${
+                      row.highlight ? "sports-slot__group-row--highlight" : ""
+                    }">
+                      <span class="sports-slot__group-team">
+                        <img class="sports-slot__group-team-logo" src="${escapeHtml(
+                          row.logoUrl,
+                        )}" alt="" />
+                        <span>${escapeHtml(row.team)}</span>
+                      </span>
+                      <span>${escapeHtml(row.played)}</span>
+                      <span>${escapeHtml(row.goalDiff)}</span>
+                      <strong>${escapeHtml(row.points)}</strong>
+                    </div>
+                  `,
+                )
+                .join("")}
+            </div>
+          </article>
+        `,
+      )
+      .join("");
 
     groupsTabPanel = `
       <div class="sports-slot__tab-panel" data-panel="groups" style="display: none;">
-        <section class="sports-slot__section">
-          <h4 class="sports-slot__section-title">Group standings</h4>
-          <div class="sports-slot__group-grid">${groupTablesHtml}</div>
-        </section>
+        <div class="sports-slot__group-grid sports-slot__group-grid--wide">${groupTablesHtml}</div>
       </div>
     `;
   }
 
-  // 5. Bracket tab panel
   let bracketTabPanel = "";
   if (model.bracket) {
     const roundsList = [
@@ -3697,98 +4249,72 @@ function renderEspnCard(model) {
       { id: "round-of-16", label: "R16" },
       { id: "quarterfinals", label: "Quarter" },
       { id: "semifinals", label: "Semi" },
-      { id: "final", label: "Final" }
+      { id: "final", label: "Final" },
     ];
 
-    const subTabs = roundsList.map((r, idx) => {
-      const activeClass = idx === 0 ? "sports-slot__sub-tab--active" : "";
-      return `<button class="sports-slot__sub-tab ${activeClass}" data-sub-tab="${r.id}">${r.label}</button>`;
-    }).join("");
+    const subTabs = roundsList
+      .map((r, idx) => {
+        const activeClass = idx === 0 ? "sports-slot__sub-tab--active" : "";
+        return `<button class="sports-slot__sub-tab ${activeClass}" data-sub-tab="${r.id}">${r.label}</button>`;
+      })
+      .join("");
 
-    const roundPanels = roundsList.map((r, idx) => {
-      const displayStyle = idx === 0 ? "display: grid;" : "display: none;";
-      const roundMatches = model.bracket[r.id] || [];
+    const roundPanels = roundsList
+      .map((r, idx) => {
+        const displayStyle = idx === 0 ? "display: grid;" : "display: none;";
+        const roundMatches = model.bracket[r.id] || [];
 
-      let matchesHtml = roundMatches.map(m => `
-        <div class="sports-slot__bracket-match sports-slot__bracket-match--${m.state}">
-          <div class="sports-slot__bracket-team">
-            <span>${escapeHtml(m.away)}</span>
-            <strong>${escapeHtml(m.awayScore)}</strong>
+        let matchesHtml = roundMatches
+          .map(
+            (m) => `
+              <div class="sports-slot__bracket-match sports-slot__bracket-match--${m.state}">
+                <div class="sports-slot__bracket-team">
+                  <span>${escapeHtml(m.away)}</span>
+                  <strong>${escapeHtml(m.awayScore)}</strong>
+                </div>
+                <div class="sports-slot__bracket-team">
+                  <span>${escapeHtml(m.home)}</span>
+                  <strong>${escapeHtml(m.homeScore)}</strong>
+                </div>
+                <div class="sports-slot__bracket-match-status">${escapeHtml(m.status)}</div>
+              </div>
+            `,
+          )
+          .join("");
+
+        if (!matchesHtml) {
+          matchesHtml = `<div class="sports-slot__empty-stage">No matches scheduled yet</div>`;
+        }
+
+        return `
+          <div class="sports-slot__sub-tab-panel" data-sub-panel="${r.id}" style="${displayStyle}">
+            <div class="sports-slot__bracket-matches-grid">${matchesHtml}</div>
           </div>
-          <div class="sports-slot__bracket-team">
-            <span>${escapeHtml(m.home)}</span>
-            <strong>${escapeHtml(m.homeScore)}</strong>
-          </div>
-          <div class="sports-slot__bracket-match-status">${escapeHtml(m.status)}</div>
-        </div>
-      `).join("");
-
-      if (!matchesHtml) {
-        matchesHtml = `<div class="sports-slot__empty-stage">No matches scheduled yet</div>`;
-      }
-
-      return `
-        <div class="sports-slot__sub-tab-panel" data-sub-panel="${r.id}" style="${displayStyle}">
-          <div class="sports-slot__bracket-matches-grid">${matchesHtml}</div>
-        </div>
-      `;
-    }).join("");
+        `;
+      })
+      .join("");
 
     bracketTabPanel = `
       <div class="sports-slot__tab-panel" data-panel="bracket" style="display: none;">
-        <section class="sports-slot__section">
-          <h4 class="sports-slot__section-title">Knockout Stage Bracket</h4>
-          <div class="sports-slot__bracket-container">
-            <div class="sports-slot__sub-tabs-wrapper">
-              <div class="sports-slot__sub-tabs">${subTabs}</div>
-            </div>
-            <div class="sports-slot__round-panels">${roundPanels}</div>
+        <div class="sports-slot__bracket-container">
+          <div class="sports-slot__sub-tabs-wrapper">
+            <div class="sports-slot__sub-tabs">${subTabs}</div>
           </div>
-        </section>
+          <div class="sports-slot__round-panels">${roundPanels}</div>
+        </div>
       </div>
     `;
   }
 
-  const refreshButtonHtml = model.refreshable
-    ? `
-      <button
-        class="sports-slot__refresh"
-        type="button"
-        data-sports-refresh
-        ${model.refreshMinIntervalMs ? `data-refresh-ms="${escapeHtml(model.refreshMinIntervalMs)}"` : ""}
-      >
-        Refresh
-      </button>
-    `
-    : "";
-
   return `
     <div
-      class="sports-slot sports-slot--${escapeHtml(model.sport)} ${model.fullWidth ? "slot-full-width sports-slot--full-width" : ""}"
-      data-sports-query="${escapeHtml(model.query || "")}"
-      data-sports-provider="${escapeHtml(model.provider || "")}"
-      data-sports-sport="${escapeHtml(model.sport || "")}"
-      data-sports-version="${escapeHtml(PLUGIN_VERSION)}"
-      data-refresh-ms="${escapeHtml(model.refreshMinIntervalMs || "")}"
-      ${model.refreshable ? 'data-refreshable="true"' : ""}
-      ${model.focusGame?.state === "live" ? 'data-sports-live="true"' : ""}
-      ${debugMode ? 'data-sports-debug="true"' : ""}
-      ${styleAttr}
+      ${renderSlotRootAttrs(model)}
     >
-      <div class="sports-slot__hero">
-        <div class="sports-slot__hero-copy">
-          <div class="sports-slot__eyebrow">${escapeHtml(model.eyebrow || "Sports Results")}</div>
-          <h3 class="sports-slot__title">${escapeHtml(model.title)}</h3>
-          ${model.subtitle ? `<p class="sports-slot__subtitle">${escapeHtml(model.subtitle)}</p>` : ""}
-        </div>
-        <div class="sports-slot__hero-actions">
-          ${model.badge ? `<span class="sports-slot__badge sports-slot__badge--${escapeHtml(model.badgeTone || "scheduled")}">${escapeHtml(model.badge)}</span>` : ""}
-          ${refreshButtonHtml}
-        </div>
-      </div>
+      ${renderToolbar(model)}
       ${tabsNavHtml}
-      <div class="sports-slot__tab-panels">
+      <div class="sports-slot__body sports-slot__tab-panels">
         ${matchesTabPanel}
+        ${timelineTabPanel}
         ${standingsTabPanel}
         ${statsTabPanel}
         ${groupsTabPanel}
@@ -3847,26 +4373,16 @@ async function handleEspnQuery(parsed, context) {
 
     // Normalize event
     const focusGame = normalizeEspnEvent(matchEvent, parsed.sport);
-
-    // Fetch stats boxscore
-    let teamStats = [];
-    try {
-      const summaryData = await fetchEspnSummary(sport, league, matchEvent.id);
-      teamStats = parseEspnStats(summaryData.boxscore, focusGame.awayAbbr, focusGame.homeAbbr);
-    } catch {
-      // Fallback silently
-    }
+    const enrichment = await loadEspnFocusEnrichment(sport, league, focusGame);
 
     // Fetch standings
     let standings = null;
     try {
       const standingsData = await fetchEspnStandings(sport, league);
       const allStandings = normalizeEspnStandings(standingsData);
-      // Filter child standings to show the conference/group containing these teams
       standings = allStandings.filter(child => {
         return child.rows.some(r => r.team.toLowerCase() === focusGame.awayTeam.toLowerCase() || r.team.toLowerCase() === focusGame.homeTeam.toLowerCase());
       });
-      // Highlight the two teams
       standings.forEach(child => {
         child.rows.forEach(r => {
           if (r.team.toLowerCase() === focusGame.awayTeam.toLowerCase() || r.team.toLowerCase() === focusGame.homeTeam.toLowerCase()) {
@@ -3878,18 +4394,16 @@ async function handleEspnQuery(parsed, context) {
       // Fallback silently
     }
 
-    const tabs = [
-      { id: "matches", label: "Game" },
-      { id: "stats", label: "Stats" },
-    ];
-    if (standings && standings.length > 0) {
-      tabs.push({ id: "standings", label: "Standings" });
-    }
+    const tabs = buildEspnTabs({
+      hasTimeline: enrichment.timeline.length > 0,
+      hasStats: enrichment.teamStats.length > 0,
+      hasStandings: Boolean(standings?.length),
+      isMatchup: true,
+    });
 
     return renderEspnCard({
       sport: parsed.sport,
       query: parsed.query,
-      fullWidth: true,
       provider: "espn",
       eyebrow: "Matchup Results",
       title: `${focusGame.awayTeam} vs ${focusGame.homeTeam}`,
@@ -3898,7 +4412,11 @@ async function handleEspnQuery(parsed, context) {
       badgeTone: toStatusTone(focusGame.state),
       tabs,
       focusGame,
-      teamStats,
+      teamStats: enrichment.teamStats,
+      timeline: enrichment.timeline,
+      matchFacts: enrichment.matchFacts,
+      teamForm: enrichment.teamForm,
+      headToHead: enrichment.headToHead,
       standings,
       footer: renderProviderFooter("ESPN", `https://www.espn.com/${parsed.sport}/${league === "fifa.world" ? "world-cup" : league === "eng.1" ? "premier-league" : league}`),
     });
@@ -3934,19 +4452,17 @@ async function handleEspnQuery(parsed, context) {
     const completedGames = events.filter(e => e.state === "final").sort((a,b) => b.sortDate - a.sortDate);
 
     const focusGame = liveGames[0] || upcomingGames[0] || completedGames[0] || null;
-    const extras = events.filter(e => e.id !== focusGame?.id).slice(0, 5).map(e => ({
-      label: e.state === "live" ? "Live" : e.state === "scheduled" ? "Next" : "Recent",
-      state: e.state,
-      status: e.status,
-      awayTeam: e.awayTeam,
-      homeTeam: e.homeTeam,
-      awayAbbr: e.awayAbbr,
-      homeAbbr: e.homeAbbr,
-      awayBrand: e.awayBrand,
-      homeBrand: e.homeBrand,
-      score: e.state === "scheduled" ? e.status : `${e.awayScore} - ${e.homeScore}`,
-      meta: e.competitionLabel,
-    }));
+    const enrichment = focusGame
+      ? await loadEspnFocusEnrichment(sport, league, focusGame)
+      : {
+          teamStats: [],
+          timeline: [],
+          matchFacts: [],
+          teamForm: [],
+          headToHead: [],
+        };
+
+    const extras = buildEspnExtrasList(events, focusGame?.id, 20);
 
     // Standings for team's conference/group
     const standings = allStandings.filter(child => {
@@ -3958,17 +4474,15 @@ async function handleEspnQuery(parsed, context) {
       });
     });
 
-    const tabs = [
-      { id: "matches", label: "Matches" },
-    ];
-    if (standings && standings.length > 0) {
-      tabs.push({ id: "standings", label: "Standings" });
-    }
+    const tabs = buildEspnTabs({
+      hasTimeline: enrichment.timeline.length > 0,
+      hasStats: enrichment.teamStats.length > 0,
+      hasStandings: Boolean(standings?.length),
+    });
 
     return renderEspnCard({
       sport: parsed.sport,
       query: parsed.query,
-      fullWidth: true,
       provider: "espn",
       eyebrow: "Team Summary",
       title: parsed.team.canonicalName,
@@ -3979,6 +4493,11 @@ async function handleEspnQuery(parsed, context) {
       focusGame,
       games: extras,
       gamesTitle: "Schedule & Results",
+      teamStats: enrichment.teamStats,
+      timeline: enrichment.timeline,
+      matchFacts: enrichment.matchFacts,
+      teamForm: enrichment.teamForm,
+      headToHead: enrichment.headToHead,
       standings,
       footer: renderProviderFooter("ESPN", `https://www.espn.com/${parsed.sport}/${league === "fifa.world" ? "world-cup" : league === "eng.1" ? "premier-league" : league}`),
     });
@@ -4000,19 +4519,21 @@ async function handleEspnQuery(parsed, context) {
   const completedGames = events.filter(e => e.state === "final").sort((a,b) => b.sortDate - a.sortDate);
 
   const focusGame = liveGames[0] || upcomingGames[0] || completedGames[0] || null;
-  const extras = events.filter(e => e.id !== focusGame?.id).slice(0, 6).map(e => ({
-    label: e.state === "live" ? "Live" : e.state === "scheduled" ? "Next" : "Recent",
-    state: e.state,
-    status: e.status,
-    awayTeam: e.awayTeam,
-    homeTeam: e.homeTeam,
-    awayAbbr: e.awayAbbr,
-    homeAbbr: e.homeAbbr,
-    awayBrand: e.awayBrand,
-    homeBrand: e.homeBrand,
-    score: e.state === "scheduled" ? e.status : `${e.awayScore} - ${e.homeScore}`,
-    meta: e.competitionLabel,
-  }));
+  const enrichment = focusGame
+    ? await loadEspnFocusEnrichment(sport, league, focusGame)
+    : {
+        teamStats: [],
+        timeline: [],
+        matchFacts: [],
+        teamForm: [],
+        headToHead: [],
+      };
+
+  const extras = buildEspnExtrasList(
+    events,
+    focusGame?.id,
+    isWC ? Math.max(events.length - 1, 0) : 24,
+  );
 
   // Fetch standings
   let standingsData = null;
@@ -4022,25 +4543,19 @@ async function handleEspnQuery(parsed, context) {
     // Fallback silently
   }
   const allStandings = standingsData ? normalizeEspnStandings(standingsData) : [];
-
-  const tabs = [
-    { id: "matches", label: "Matches" },
-  ];
-
-  if (isWC) {
-    tabs.push({ id: "groups", label: "Groups" });
-    tabs.push({ id: "bracket", label: "Bracket" });
-  } else if (allStandings.length > 0) {
-    tabs.push({ id: "standings", label: "Standings" });
-  }
-
-  // Parse WC Bracket
   const bracket = isWC ? buildEspnWorldCupBracket(scoreboardData?.events || []) : null;
+
+  const tabs = buildEspnTabs({
+    hasTimeline: enrichment.timeline.length > 0,
+    hasStats: enrichment.teamStats.length > 0,
+    hasStandings: !isWC && allStandings.length > 0,
+    hasGroups: isWC,
+    hasBracket: isWC,
+  });
 
   return renderEspnCard({
     sport: parsed.sport,
     query: parsed.query,
-    fullWidth: true,
     provider: "espn",
     eyebrow: "League Summary",
     title: isWC ? "FIFA World Cup 2026" : title,
@@ -4051,6 +4566,11 @@ async function handleEspnQuery(parsed, context) {
     focusGame,
     games: extras,
     gamesTitle: isWC ? "Tournament Matches" : "Recent & Upcoming",
+    teamStats: enrichment.teamStats,
+    timeline: enrichment.timeline,
+    matchFacts: enrichment.matchFacts,
+    teamForm: enrichment.teamForm,
+    headToHead: enrichment.headToHead,
     groupTables: isWC ? allStandings : null,
     standings: !isWC ? allStandings : null,
     bracket,
@@ -4067,7 +4587,7 @@ async function executeSportsQuery(query, context) {
       const html = await handleEspnQuery(parsed, context);
       if (html) {
         return {
-          title: PLUGIN_NAME,
+          title: "",
           html,
         };
       }
@@ -4080,14 +4600,14 @@ async function executeSportsQuery(query, context) {
 
   if (parsed.sport === "soccer") {
     return {
-      title: PLUGIN_NAME,
+      title: "",
       html: await handleSoccerQuery(parsed, context),
     };
   }
 
   if (isBalldontlieSport(parsed.sport)) {
     return {
-      title: PLUGIN_NAME,
+      title: "",
       html: await handleBalldontlieTeamOrLeagueQuery(parsed, parsed.sport, context),
     };
   }
@@ -4261,7 +4781,7 @@ export const slot = {
       const message =
         error instanceof Error ? error.message : "Unknown provider error";
       return {
-        title: PLUGIN_NAME,
+        title: "",
         html: renderEmptyCard(
           parsed?.sport || "soccer",
           PLUGIN_NAME,
