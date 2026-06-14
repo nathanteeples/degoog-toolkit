@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.3.8";
+const PLUGIN_VERSION = "0.3.10";
 const PLUGIN_DESCRIPTION =
   "Shows live sports scores, schedules, and standings for soccer, NFL, NBA, and MLB above search results.";
 const BALLDONTLIE_FREE_REFRESH_MS = 12_000;
@@ -4294,16 +4294,14 @@ function renderEspnCard(model) {
             <span class="sports-slot__stat-val sports-slot__stat-val--away">${escapeHtml(
               awayDisp,
             )}</span>
-            <div class="sports-slot__stat-bar-container">
-              <div class="sports-slot__stat-bar-track">
-                <div class="sports-slot__stat-bar sports-slot__stat-bar--away" style="width: ${awayPct}%"></div>
-                <div class="sports-slot__stat-bar sports-slot__stat-bar--home" style="width: ${homePct}%"></div>
-              </div>
-              <span class="sports-slot__stat-label">${escapeHtml(stat.label)}</span>
+            <div class="sports-slot__stat-bar-track">
+              <div class="sports-slot__stat-bar sports-slot__stat-bar--away" style="width: ${awayPct}%"></div>
+              <div class="sports-slot__stat-bar sports-slot__stat-bar--home" style="width: ${homePct}%"></div>
             </div>
             <span class="sports-slot__stat-val sports-slot__stat-val--home">${escapeHtml(
               homeDisp,
             )}</span>
+            <span class="sports-slot__stat-label">${escapeHtml(stat.label)}</span>
           </div>
         `;
       })
