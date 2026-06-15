@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.3.17";
+const PLUGIN_VERSION = "0.3.18";
 const ESPN_LIVE_REFRESH_MS = 15_000;
 
 const FALLBACK_STRINGS = {
@@ -4004,6 +4004,109 @@ const FORMATION_PLACE_COORDS = {
   11: { x: 20, y: 28 },
 };
 
+const ESPN_FORMATION_ROWS = {
+  "4-4-2": [[1], [2, 3, 5, 6], [4, 7, 8, 11], [9, 10]],
+  "4-3-3": [[1], [2, 3, 5, 6], [4, 7, 8], [9, 10, 11]],
+  "4-2-3-1": [[1], [2, 3, 5, 6], [4, 8], [7, 10, 11], [9]],
+  "4-3-1-2": [[1], [2, 3, 5, 6], [4, 7, 11], [8], [9, 10]],
+  "4-1-4-1": [[1], [2, 3, 5, 6], [4], [7, 8, 10, 11], [9]],
+  "4-5-1": [[1], [2, 3, 5, 6], [4, 7, 8, 10, 11], [9]],
+  "3-4-3": [[1], [4, 5, 6], [2, 3, 7, 8], [9, 10, 11]],
+  "3-4-2-1": [[1], [4, 5, 6], [2, 3, 7, 8], [10, 11], [9]],
+  "3-5-2": [[1], [4, 5, 6], [2, 3, 7, 8, 11], [9, 10]],
+  "5-4-1": [[1], [2, 3, 4, 5, 6], [7, 8, 10, 11], [9]],
+  "5-3-2": [[1], [2, 3, 4, 5, 6], [7, 8, 11], [9, 10]],
+};
+
+function buildFourBackFormationRows(lineCounts) {
+  const rows = [[1], [2, 3, 5, 6]];
+  const rest = lineCounts.slice(1);
+  const midPool = [4, 7, 8, 11];
+  const fwdPool = [9, 10, 11];
+
+  if (rest.length === 1) {
+    if (rest[0] === 1) rows.push([9]);
+    else rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
+    return rows;
+  }
+
+  if (rest.length === 2) {
+    rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
+    rows.push(fwdPool.slice(0, Math.min(rest[1], fwdPool.length)));
+    return rows;
+  }
+
+  if (rest.length === 3 && rest[0] === 2 && rest[1] === 3 && rest[2] === 1) {
+    rows.push([4, 8], [7, 10, 11], [9]);
+    return rows;
+  }
+
+  if (rest.length === 3) {
+    rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
+    if (rest[1] === 1) rows.push([8]);
+    rows.push(fwdPool.slice(0, Math.min(rest[2] ?? rest[1], fwdPool.length)));
+    return rows;
+  }
+
+  return rows;
+}
+
+function buildThreeBackFormationRows(lineCounts) {
+  const rows = [[1], [4, 5, 6]];
+  const rest = lineCounts.slice(1);
+  const midPool = [2, 3, 7, 8, 11];
+  const fwdPool = [9, 10, 11];
+
+  if (rest.length === 1) {
+    rows.push(fwdPool.slice(0, Math.min(rest[0], fwdPool.length)));
+    return rows;
+  }
+
+  if (rest.length === 2) {
+    rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
+    rows.push(fwdPool.slice(0, Math.min(rest[1], fwdPool.length)));
+    return rows;
+  }
+
+  if (rest.length === 3 && rest[1] === 2 && rest[2] === 1) {
+    rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
+    rows.push([10, 11]);
+    rows.push([9]);
+    return rows;
+  }
+
+  return rows;
+}
+
+function buildFiveBackFormationRows(lineCounts) {
+  const rows = [[1], [2, 3, 4, 5, 6]];
+  const rest = lineCounts.slice(1);
+  const midPool = [7, 8, 10, 11];
+  const fwdPool = [9, 10, 11];
+
+  if (rest.length === 1) {
+    rows.push(fwdPool.slice(0, Math.min(rest[0], fwdPool.length)));
+    return rows;
+  }
+
+  rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
+  if (rest[1]) rows.push(fwdPool.slice(0, Math.min(rest[1], fwdPool.length)));
+  return rows;
+}
+
+function getFormationRows(formation = "") {
+  const key = String(formation).replace(/\s/g, "");
+  if (ESPN_FORMATION_ROWS[key]) return ESPN_FORMATION_ROWS[key];
+
+  const lineCounts = parseFormationLines(key);
+  if (!lineCounts.length) return null;
+
+  if (lineCounts[0] >= 5) return buildFiveBackFormationRows(lineCounts);
+  if (lineCounts[0] === 4) return buildFourBackFormationRows(lineCounts);
+  if (lineCounts[0] === 3) return buildThreeBackFormationRows(lineCounts);
+  return buildFourBackFormationRows(lineCounts);
+}
+
 function parseFormationLines(formation = "") {
   return String(formation)
     .split("-")
@@ -4054,30 +4157,44 @@ function getHorizontalBias(position = "") {
 }
 
 function layoutPitchPlayers(starters = [], formation = "", homeAway = "home") {
+  const rows = getFormationRows(formation);
+  const awayRowY = [14, 26, 34, 40, 44, 48];
+  const homeRowY = [86, 74, 66, 60, 56, 52];
+  const placeToRow = new Map();
+
+  if (rows?.length) {
+    rows.forEach((rowPlaces, rowIndex) => {
+      for (const place of rowPlaces) {
+        placeToRow.set(String(place), rowIndex);
+      }
+    });
+  }
+
+  const rowGroups = new Map();
   const formationLines = parseFormationLines(formation);
-  const bands = new Map();
-  const awayRowY = [14, 26, 34, 40, 44];
-  const homeRowY = [86, 74, 66, 60, 56];
 
   for (const player of starters) {
-    const band = getFormationDepthBand(player.position, formationLines);
-    if (!bands.has(band)) bands.set(band, []);
-    bands.get(band).push(player);
+    const place = String(player.formationPlace || "");
+    const rowIndex =
+      placeToRow.get(place) ??
+      getFormationDepthBand(player.position, formationLines);
+    if (!rowGroups.has(rowIndex)) rowGroups.set(rowIndex, []);
+    rowGroups.get(rowIndex).push(player);
   }
 
   const coords = new Map();
-  for (const [band, players] of bands) {
+  for (const [rowIndex, players] of rowGroups) {
     const sorted = [...players].sort(
       (left, right) =>
         getHorizontalBias(left.position) - getHorizontalBias(right.position) ||
         Number(left.formationPlace) - Number(right.formationPlace),
     );
-    const rowIndex = Math.min(Math.max(band, 0), 4);
-    const y = homeAway === "away" ? awayRowY[rowIndex] : homeRowY[rowIndex];
+    const yIndex = Math.min(Math.max(rowIndex, 0), awayRowY.length - 1);
+    const y = homeAway === "away" ? awayRowY[yIndex] : homeRowY[yIndex];
 
     sorted.forEach((player, index) => {
       const total = sorted.length;
-      const x = total === 1 ? 50 : 10 + (index / (total - 1)) * 80;
+      const x = total === 1 ? 50 : 12 + (index / (total - 1)) * 76;
       coords.set(String(player.formationPlace), { x, y });
     });
   }
