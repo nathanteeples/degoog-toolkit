@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.3.18";
+const PLUGIN_VERSION = "0.3.19";
 const ESPN_LIVE_REFRESH_MS = 15_000;
 
 const FALLBACK_STRINGS = {
@@ -4004,6 +4004,171 @@ const FORMATION_PLACE_COORDS = {
   11: { x: 20, y: 28 },
 };
 
+const FORMATION_PLACE_X = {
+  "4-4-2": {
+    1: 50,
+    2: 82,
+    3: 18,
+    4: 65,
+    5: 62,
+    6: 38,
+    7: 85,
+    8: 32,
+    9: 38,
+    10: 62,
+    11: 15,
+  },
+  "4-3-3": {
+    1: 50,
+    2: 82,
+    3: 18,
+    5: 62,
+    6: 38,
+    4: 50,
+    7: 72,
+    8: 28,
+    9: 50,
+    10: 78,
+    11: 22,
+  },
+  "4-2-3-1": {
+    1: 50,
+    2: 82,
+    3: 18,
+    5: 62,
+    6: 38,
+    4: 35,
+    8: 65,
+    7: 78,
+    10: 50,
+    11: 22,
+    9: 50,
+  },
+  "4-3-1-2": {
+    1: 50,
+    2: 82,
+    3: 18,
+    5: 62,
+    6: 38,
+    4: 50,
+    7: 72,
+    11: 28,
+    8: 50,
+    9: 38,
+    10: 62,
+  },
+  "4-1-4-1": {
+    1: 50,
+    2: 82,
+    3: 18,
+    5: 62,
+    6: 38,
+    4: 50,
+    7: 85,
+    8: 32,
+    10: 62,
+    11: 15,
+    9: 50,
+  },
+  "4-5-1": {
+    1: 50,
+    2: 82,
+    3: 18,
+    5: 62,
+    6: 38,
+    4: 50,
+    7: 85,
+    8: 50,
+    10: 32,
+    11: 15,
+    9: 50,
+  },
+  "3-4-3": {
+    1: 50,
+    4: 22,
+    5: 50,
+    6: 78,
+    2: 85,
+    3: 15,
+    7: 65,
+    8: 35,
+    9: 50,
+    10: 78,
+    11: 22,
+  },
+  "3-4-2-1": {
+    1: 50,
+    4: 22,
+    5: 50,
+    6: 78,
+    2: 85,
+    3: 15,
+    7: 65,
+    8: 35,
+    10: 72,
+    11: 28,
+    9: 50,
+  },
+  "3-5-2": {
+    1: 50,
+    4: 22,
+    5: 50,
+    6: 78,
+    2: 88,
+    3: 12,
+    7: 65,
+    8: 50,
+    11: 15,
+    9: 38,
+    10: 62,
+  },
+  "5-4-1": {
+    1: 50,
+    2: 88,
+    3: 12,
+    4: 68,
+    5: 50,
+    6: 32,
+    7: 85,
+    8: 32,
+    10: 62,
+    11: 15,
+    9: 50,
+  },
+  "5-3-2": {
+    1: 50,
+    2: 88,
+    3: 12,
+    4: 68,
+    5: 50,
+    6: 32,
+    7: 72,
+    8: 50,
+    11: 28,
+    9: 38,
+    10: 62,
+  },
+};
+
+function getFormationPlaceX(formation = "", formationPlace = 0) {
+  const key = String(formation).replace(/\s/g, "");
+  const place = Number(formationPlace);
+  const table = FORMATION_PLACE_X[key];
+  if (table?.[place] != null) return table[place];
+  return FORMATION_PLACE_COORDS[place]?.x ?? 50;
+}
+
+function getFormationRowY(rowIndex = 0, rowCount = 1, homeAway = "home") {
+  const maxIndex = Math.max(rowCount - 1, 1);
+  const depth = rowIndex / maxIndex;
+
+  if (homeAway === "away") {
+    return 16 + depth * 28;
+  }
+
+  return 84 - depth * 28;
+}
+
 const ESPN_FORMATION_ROWS = {
   "4-4-2": [[1], [2, 3, 5, 6], [4, 7, 8, 11], [9, 10]],
   "4-3-3": [[1], [2, 3, 5, 6], [4, 7, 8], [9, 10, 11]],
@@ -4158,9 +4323,9 @@ function getHorizontalBias(position = "") {
 
 function layoutPitchPlayers(starters = [], formation = "", homeAway = "home") {
   const rows = getFormationRows(formation);
-  const awayRowY = [14, 26, 34, 40, 44, 48];
-  const homeRowY = [86, 74, 66, 60, 56, 52];
   const placeToRow = new Map();
+  const formationLines = parseFormationLines(formation);
+  const rowCount = rows?.length || 1;
 
   if (rows?.length) {
     rows.forEach((rowPlaces, rowIndex) => {
@@ -4170,33 +4335,16 @@ function layoutPitchPlayers(starters = [], formation = "", homeAway = "home") {
     });
   }
 
-  const rowGroups = new Map();
-  const formationLines = parseFormationLines(formation);
-
+  const coords = new Map();
   for (const player of starters) {
     const place = String(player.formationPlace || "");
+    const placeNum = Number(player.formationPlace);
     const rowIndex =
       placeToRow.get(place) ??
       getFormationDepthBand(player.position, formationLines);
-    if (!rowGroups.has(rowIndex)) rowGroups.set(rowIndex, []);
-    rowGroups.get(rowIndex).push(player);
-  }
-
-  const coords = new Map();
-  for (const [rowIndex, players] of rowGroups) {
-    const sorted = [...players].sort(
-      (left, right) =>
-        getHorizontalBias(left.position) - getHorizontalBias(right.position) ||
-        Number(left.formationPlace) - Number(right.formationPlace),
-    );
-    const yIndex = Math.min(Math.max(rowIndex, 0), awayRowY.length - 1);
-    const y = homeAway === "away" ? awayRowY[yIndex] : homeRowY[yIndex];
-
-    sorted.forEach((player, index) => {
-      const total = sorted.length;
-      const x = total === 1 ? 50 : 12 + (index / (total - 1)) * 76;
-      coords.set(String(player.formationPlace), { x, y });
-    });
+    const x = getFormationPlaceX(formation, placeNum);
+    const y = getFormationRowY(rowIndex, rowCount, homeAway);
+    coords.set(place, { x, y });
   }
 
   return coords;
