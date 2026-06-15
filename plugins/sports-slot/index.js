@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.3.10";
+const PLUGIN_VERSION = "0.3.12";
 const PLUGIN_DESCRIPTION =
   "Shows live sports scores, schedules, and standings for soccer, NFL, NBA, and MLB above search results.";
 const BALLDONTLIE_FREE_REFRESH_MS = 12_000;
@@ -862,7 +862,41 @@ const cache = {
   soccerTeamsByCompetition: new Map(),
 };
 const refreshCache = new Map();
-const logoCache = new Map();
+const LOGO_CACHE_NAMESPACE = "ext:sports-slot:logos";
+const LOGO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+let logoCache = null;
+
+function createExtensionCache(ctx, namespace, ttlMs) {
+  if (typeof ctx?.useCache === "function") {
+    return ctx.useCache(namespace, ttlMs);
+  }
+  return typeof ctx?.createCache === "function"
+    ? ctx.createCache(ttlMs)
+    : null;
+}
+
+async function cacheGet(cache, key) {
+  return cache ? await cache.get(key) : null;
+}
+
+async function cacheSet(cache, key, value, ttlMs) {
+  if (cache) await cache.set(key, value, ttlMs);
+}
+
+function encodeLogoCacheEntry(bytes, contentType) {
+  return {
+    contentType,
+    data: Buffer.from(bytes).toString("base64"),
+  };
+}
+
+function decodeLogoCacheEntry(entry) {
+  if (!entry?.data) return null;
+  return {
+    bytes: Uint8Array.from(Buffer.from(entry.data, "base64")),
+    contentType: entry.contentType || "image/png",
+  };
+}
 
 function initRuntime(ctx) {
   if (ctx?.apiBase) {
@@ -878,6 +912,7 @@ function initRuntime(ctx) {
   if (typeof ctx?.fetch === "function") {
     pluginFetch = (...args) => ctx.fetch(...args);
   }
+  logoCache = createExtensionCache(ctx, LOGO_CACHE_NAMESPACE, LOGO_CACHE_TTL_MS);
 }
 
 const TEAM_PRIMARY_COLORS = {
@@ -1848,8 +1883,15 @@ function renderFocusScoreboard(game, sport, scorersHtml = "") {
 }
 
 function renderMiniGameCard(game) {
+  const scoreHtml =
+    game.state === "scheduled"
+      ? ""
+      : `<strong>${escapeHtml(formatMaybeTimestamp(game.score))}</strong>`;
+
   return `
-    <article class="sports-slot__mini-game sports-slot__mini-game--card">
+    <article class="sports-slot__mini-game sports-slot__mini-game--card${
+      game.state === "scheduled" ? " sports-slot__mini-game--scheduled" : ""
+    }">
       <div class="sports-slot__mini-game-top">
         <span class="sports-slot__mini-game-label">${escapeHtml(game.label || "Game")}</span>
         <span class="sports-slot__mini-game-status sports-slot__mini-game-status--${escapeHtml(
@@ -1864,7 +1906,7 @@ function renderMiniGameCard(game) {
           ${renderTeamMark(game.homeBrand, game.homeTeam, game.homeAbbr)}
           <span>${escapeHtml(game.homeAbbr || game.homeTeam)}</span>
         </span>
-        <strong>${escapeHtml(formatMaybeTimestamp(game.score))}</strong>
+        ${scoreHtml}
       </div>
       ${
         game.meta
@@ -2852,9 +2894,10 @@ function pickFocusAndExtras(normalizedGames) {
       homeBrand: game.homeBrand,
       score:
         game.state === "scheduled"
-          ? game.status
+          ? ""
           : `${game.awayScore} - ${game.homeScore}`,
-      status: game.competitionLabel,
+      status:
+        game.state === "scheduled" ? game.status : game.competitionLabel,
       state: game.state,
       meta: game.meta,
     });
@@ -3803,7 +3846,7 @@ function buildEspnExtrasList(events, focusGameId, limitOrOptions = 24) {
   }
 
   const pastLimit = limitOrOptions.pastLimit ?? 4;
-  const futureLimit = limitOrOptions.futureLimit ?? 5;
+  const futureLimit = limitOrOptions.futureLimit ?? 4;
   const extras = events.filter((event) => event.id !== focusGameId);
   const seen = new Set();
   const picked = [];
@@ -3857,7 +3900,7 @@ function mapEspnExtraGame(event) {
     homeBrand: event.homeBrand,
     score:
       event.state === "scheduled"
-        ? event.status
+        ? ""
         : `${event.awayScore} - ${event.homeScore}`,
     meta: [event.subLabel, event.meta, event.competitionLabel]
       .filter(Boolean)
@@ -4655,7 +4698,7 @@ async function handleEspnQuery(parsed, context) {
 
   const extras = buildEspnExtrasList(events, focusGame?.id, {
     pastLimit: 4,
-    futureLimit: 5,
+    futureLimit: 4,
   });
 
   // Fetch standings
@@ -4819,8 +4862,8 @@ async function handleLogoRoute(request) {
     sport === "soccer"
       ? `soccer:${abbreviation}:${crestSlug || crest || "none"}`
       : `${sport}:${abbreviation}`;
-  const cached = logoCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
+  const cached = decodeLogoCacheEntry(await cacheGet(logoCache, cacheKey));
+  if (cached) {
     return new Response(cached.bytes.slice(), {
       status: 200,
       headers: {
@@ -4855,11 +4898,12 @@ async function handleLogoRoute(request) {
 
     const bytes = new Uint8Array(await response.arrayBuffer());
     const contentType = response.headers.get("content-type") || "image/png";
-    logoCache.set(cacheKey, {
-      bytes,
-      contentType,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-    });
+    await cacheSet(
+      logoCache,
+      cacheKey,
+      encodeLogoCacheEntry(bytes, contentType),
+      LOGO_CACHE_TTL_MS,
+    );
 
     return new Response(bytes.slice(), {
       status: 200,

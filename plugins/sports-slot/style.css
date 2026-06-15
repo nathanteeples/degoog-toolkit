@@ -117,7 +117,21 @@
 @container (min-width: 860px) {
     .sports-slot__split--active {
         grid-template-columns: minmax(300px, 1.05fr) minmax(280px, 1fr);
-        align-items: start;
+        align-items: stretch;
+    }
+
+    .sports-slot__split-pane--primary {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sports-slot__split-pane--games {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sports-slot__split-pane--games .sports-slot__mini-games--grid {
+        flex: 1;
     }
 }
 
@@ -466,6 +480,10 @@
     font-size: 0.88rem;
 }
 
+.sports-slot__mini-game--scheduled .sports-slot__mini-game-score {
+    justify-content: flex-start;
+}
+
 .sports-slot__mini-game-score strong {
     font-size: 0.95rem;
     font-weight: 800;
@@ -477,7 +495,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     min-width: 0;
 }
 
@@ -1168,6 +1186,7 @@
     display: grid;
     gap: 0.75rem;
     margin-top: 0.85rem;
+    flex: 1;
 }
 
 .sports-slot__form-list {
@@ -1175,7 +1194,7 @@
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.35rem;
+    gap: 0.42rem;
 }
 
 .sports-slot__form-item {
@@ -1183,7 +1202,7 @@
     grid-template-columns: 28px minmax(0, 1fr) auto;
     gap: 0.35rem 0.55rem;
     align-items: center;
-    padding: 0.4rem 0.55rem;
+    padding: 0.52rem 0.55rem;
     border: 1px solid var(--border);
     border-radius: 10px;
     font-size: 0.78rem;
