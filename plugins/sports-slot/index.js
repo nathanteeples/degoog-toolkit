@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.3.12";
+const PLUGIN_VERSION = "0.3.14";
 const PLUGIN_DESCRIPTION =
   "Shows live sports scores, schedules, and standings for soccer, NFL, NBA, and MLB above search results.";
 const BALLDONTLIE_FREE_REFRESH_MS = 12_000;
@@ -2002,6 +2002,7 @@ function timelineEventTone(event) {
   if (event.redCard) return "red";
   if (event.yellowCard) return "yellow";
   if (event.substitution) return "sub";
+  if (event.isPlay) return "play";
   return "default";
 }
 
@@ -2011,6 +2012,7 @@ function timelineEventIcon(event) {
   if (event.redCard) return "🟥";
   if (event.yellowCard) return "🟨";
   if (event.substitution) return "↔";
+  if (event.isPlay) return "·";
   return "•";
 }
 
@@ -2023,7 +2025,9 @@ function renderTimelinePanel(timeline) {
           .map((event) => {
             const tone = timelineEventTone(event);
             const assistHtml = event.assist
-              ? `<span class="sports-slot__timeline-assist">↳ ${escapeHtml(event.assist)}</span>`
+              ? `<span class="sports-slot__timeline-assist">${
+                  event.substitution ? "↳ replaces " : "↳ "
+                }${escapeHtml(event.assist)}</span>`
               : "";
             const detailHtml =
               event.detail && event.detail !== event.text
@@ -2046,7 +2050,9 @@ function renderTimelinePanel(timeline) {
                               : ""
                           }
                         </div>
-                        <span class="sports-slot__timeline-text">${escapeHtml(event.text)}</span>
+                        <span class="sports-slot__timeline-text">${escapeHtml(
+                          event.isPlay && !event.athlete ? event.text : event.text,
+                        )}</span>
                         ${assistHtml}
                         ${detailHtml}
                       </div>
@@ -2057,6 +2063,104 @@ function renderTimelinePanel(timeline) {
           })
           .join("")}
       </div>
+    </div>
+  `;
+}
+
+function renderLineupPlayer(player, homeAway) {
+  const coords = getPitchCoords(player.formationPlace, homeAway);
+  const statusClass = player.subbedOut
+    ? "sports-slot__pitch-player--out"
+    : player.subbedIn
+      ? "sports-slot__pitch-player--in"
+      : "";
+  const imageHtml = player.imageUrl
+    ? `<img class="sports-slot__pitch-player-image" src="${escapeHtml(
+        player.imageUrl,
+      )}" alt="" loading="lazy" decoding="async" />`
+    : `<span class="sports-slot__pitch-player-fallback">${escapeHtml(
+        player.jersey || player.position || "?",
+      )}</span>`;
+
+  return `
+    <div
+      class="sports-slot__pitch-player ${statusClass}"
+      style="left:${coords.x}%;top:${coords.y}%"
+      title="${escapeHtml(player.fullName || player.name)}"
+    >
+      ${imageHtml}
+      <span class="sports-slot__pitch-player-name">${escapeHtml(player.name)}</span>
+      <span class="sports-slot__pitch-player-jersey">${escapeHtml(player.jersey)}</span>
+    </div>
+  `;
+}
+
+function renderLineupBench(team) {
+  if (!team.subs?.length) return "";
+  return `
+    <div class="sports-slot__lineup-bench">
+      <h5 class="sports-slot__lineup-bench-label">${escapeHtml(team.team)} ${t("bench")}</h5>
+      <ul class="sports-slot__lineup-bench-list">
+        ${team.subs
+          .map(
+            (player) => `
+              <li class="sports-slot__lineup-bench-item${
+                player.subbedIn ? " sports-slot__lineup-bench-item--in" : ""
+              }">
+                ${
+                  player.imageUrl
+                    ? `<img src="${escapeHtml(player.imageUrl)}" alt="" loading="lazy" />`
+                    : ""
+                }
+                <span class="sports-slot__lineup-bench-num">${escapeHtml(player.jersey)}</span>
+                <span class="sports-slot__lineup-bench-name">${escapeHtml(player.name)}</span>
+                <span class="sports-slot__lineup-bench-pos">${escapeHtml(player.position)}</span>
+              </li>
+            `,
+          )
+          .join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function renderLineupPanel(lineups) {
+  if (!lineups?.length) return "";
+
+  const pitchPlayers = lineups
+    .map((team) =>
+      (team.starters ?? [])
+        .map((player) => renderLineupPlayer(player, team.homeAway))
+        .join(""),
+    )
+    .join("");
+
+  const benchHtml = lineups.map((team) => renderLineupBench(team)).join("");
+
+  return `
+    <div class="sports-slot__tab-panel" data-panel="lineup" style="display: none;">
+      <section class="sports-slot__lineup">
+        <div class="sports-slot__lineup-header">
+          ${lineups
+            .map(
+              (team) => `
+                <div class="sports-slot__lineup-team-meta">
+                  <strong>${escapeHtml(team.team)}</strong>
+                  <span>${escapeHtml(team.formation || "")}</span>
+                </div>
+              `,
+            )
+            .join("")}
+        </div>
+        <div class="sports-slot__pitch" aria-label="Match lineup">
+          <div class="sports-slot__pitch-surface"></div>
+          <div class="sports-slot__pitch-halfway"></div>
+          <div class="sports-slot__pitch-box sports-slot__pitch-box--top"></div>
+          <div class="sports-slot__pitch-box sports-slot__pitch-box--bottom"></div>
+          ${pitchPlayers}
+        </div>
+        <div class="sports-slot__lineup-bench-grid">${benchHtml}</div>
+      </section>
     </div>
   `;
 }
@@ -3691,7 +3795,14 @@ const ESPN_DEFAULT_BOX_SCORE_STATS = [
   { name: "redCards", label: "Red cards" },
 ];
 
-function extractMatchTimeline(summaryData) {
+function extractMatchTimeline(summaryData, sport = "soccer") {
+  if (sport === "soccer" && summaryData?.commentary?.length) {
+    return parseSoccerCommentaryTimeline(
+      summaryData.commentary,
+      summaryData.keyEvents,
+    );
+  }
+
   const skipTypes = new Set(["Kickoff", "Start Delay", "End Delay"]);
   const periodTypes = new Set([
     "Halftime",
@@ -3720,8 +3831,250 @@ function extractMatchTimeline(summaryData) {
         yellowCard: /yellow card/i.test(type),
         substitution: /substitution/i.test(type),
         isPeriod,
+        isPlay: false,
       };
     });
+}
+
+const FORMATION_PLACE_COORDS = {
+  1: { x: 50, y: 88 },
+  2: { x: 84, y: 68 },
+  3: { x: 16, y: 68 },
+  4: { x: 65, y: 48 },
+  5: { x: 72, y: 68 },
+  6: { x: 28, y: 68 },
+  7: { x: 35, y: 48 },
+  8: { x: 50, y: 48 },
+  9: { x: 50, y: 22 },
+  10: { x: 72, y: 22 },
+  11: { x: 28, y: 22 },
+};
+
+function buildKeyEventLookup(keyEvents) {
+  const lookup = new Map();
+  for (const event of keyEvents || []) {
+    const minute = event.clock?.displayValue || "";
+    const athlete = event.participants?.[0]?.athlete?.displayName || "";
+    const key = `${minute}|${normalizeText(athlete)}`;
+    lookup.set(key, {
+      assist: event.participants?.[1]?.athlete?.displayName || "",
+      text: event.shortText || event.text || "",
+      detail: event.text || "",
+      team: event.team?.abbreviation || event.team?.displayName || "",
+      type: event.type?.text || "",
+      scoring: Boolean(event.scoringPlay),
+      redCard: Boolean(event.redCard) || /red card/i.test(event.type?.text || ""),
+      yellowCard: /yellow card/i.test(event.type?.text || ""),
+      substitution: /substitution/i.test(event.type?.text || ""),
+    });
+  }
+  return lookup;
+}
+
+function parseSoccerCommentaryTimeline(commentary, keyEvents) {
+  const lookup = buildKeyEventLookup(keyEvents);
+  const events = [];
+
+  for (const entry of commentary || []) {
+    const text = String(entry.text || "").trim();
+    if (!text || /^Delay over|^They are ready to continue/i.test(text)) {
+      continue;
+    }
+
+    const minute = entry.time?.displayValue || "";
+    let parsed = null;
+
+    if (/^First Half begins/i.test(text)) {
+      parsed = {
+        type: "Kick-off",
+        isPeriod: true,
+        minute: "",
+        text: "First half",
+        detail: text,
+      };
+    } else if (/^First Half ends/i.test(text)) {
+      parsed = {
+        type: "Halftime",
+        isPeriod: true,
+        minute,
+        text: "Halftime",
+        detail: text,
+      };
+    } else if (/^Second Half begins/i.test(text)) {
+      parsed = {
+        type: "Second half",
+        isPeriod: true,
+        minute,
+        text: "Second half",
+        detail: text,
+      };
+    } else if (/^Second Half ends|^Match ends/i.test(text)) {
+      parsed = {
+        type: "Full time",
+        isPeriod: true,
+        minute,
+        text: "Full time",
+        detail: text,
+      };
+    } else if (/^Lineups are announced/i.test(text)) {
+      parsed = {
+        type: "Lineups",
+        isPeriod: true,
+        minute: "",
+        text: "Lineups announced",
+        detail: text,
+      };
+    } else if (/^Goal!/i.test(text)) {
+      const playerMatch = text.match(/Goal!\s*(?:[^.]+\.\s*)?([^(]+)\(([^)]+)\)/i);
+      const athlete = playerMatch?.[1]?.trim() || "";
+      const team = playerMatch?.[2]?.trim() || "";
+      const enriched = lookup.get(`${minute}|${normalizeText(athlete)}`);
+      const assistMatch = text.match(/Assisted by\s+([^.]+)/i);
+      parsed = {
+        type: enriched?.type || "Goal",
+        minute,
+        athlete,
+        team: enriched?.team || team,
+        text: enriched?.text || `${text.split(".")[0]}.`,
+        detail: enriched?.detail || text,
+        assist: enriched?.assist || assistMatch?.[1]?.trim() || "",
+        scoring: true,
+        yellowCard: false,
+        redCard: false,
+        substitution: false,
+        isPeriod: false,
+        isPlay: false,
+      };
+    } else if (/is shown the yellow card/i.test(text)) {
+      const playerMatch = text.match(/^([^(]+)\(([^)]+)\)/);
+      parsed = {
+        type: "Yellow Card",
+        minute,
+        athlete: playerMatch?.[1]?.trim() || "",
+        team: playerMatch?.[2]?.trim() || "",
+        text: `${text.split(".")[0]}.`,
+        detail: text,
+        assist: "",
+        scoring: false,
+        yellowCard: true,
+        redCard: false,
+        substitution: false,
+        isPeriod: false,
+        isPlay: false,
+      };
+    } else if (/is shown the red card/i.test(text)) {
+      const playerMatch = text.match(/^([^(]+)\(([^)]+)\)/);
+      parsed = {
+        type: "Red Card",
+        minute,
+        athlete: playerMatch?.[1]?.trim() || "",
+        team: playerMatch?.[2]?.trim() || "",
+        text: `${text.split(".")[0]}.`,
+        detail: text,
+        assist: "",
+        scoring: false,
+        yellowCard: false,
+        redCard: true,
+        substitution: false,
+        isPeriod: false,
+        isPlay: false,
+      };
+    } else if (/^Substitution,/i.test(text)) {
+      const match = text.match(
+        /^Substitution,\s*([^.]+)\.\s*(.+?)\s+replaces\s+(.+?)\.?$/i,
+      );
+      parsed = {
+        type: "Substitution",
+        minute,
+        athlete: match?.[2]?.trim() || "",
+        team: match?.[1]?.trim() || "",
+        text: `${text.split(".")[0]}.`,
+        detail: text,
+        assist: match?.[3]?.trim() || "",
+        scoring: false,
+        yellowCard: false,
+        redCard: false,
+        substitution: true,
+        isPeriod: false,
+        isPlay: false,
+      };
+    } else if (minute) {
+      const playerMatch = text.match(/^([^(]+)\(([^)]+)\)/);
+      parsed = {
+        type: "Play",
+        minute,
+        athlete: playerMatch?.[1]?.trim() || "",
+        team: playerMatch?.[2]?.trim() || "",
+        text,
+        detail: "",
+        assist: "",
+        scoring: false,
+        yellowCard: false,
+        redCard: false,
+        substitution: false,
+        isPeriod: false,
+        isPlay: true,
+      };
+    }
+
+    if (parsed) {
+      events.push({
+        id: `commentary-${entry.sequence}`,
+        ...parsed,
+      });
+    }
+  }
+
+  return events;
+}
+
+function normalizeLineupPlayer(player) {
+  return {
+    name: player.athlete?.shortName || player.athlete?.displayName || "",
+    fullName: player.athlete?.displayName || "",
+    jersey: String(player.jersey || ""),
+    position: player.position?.abbreviation || player.position?.displayName || "",
+    formationPlace: String(player.formationPlace || ""),
+    imageUrl: player.athlete?.jerseyImages?.[0]?.href || "",
+    subbedOut: Boolean(player.subbedOut),
+    subbedIn: Boolean(player.subbedIn),
+  };
+}
+
+function extractLineups(summaryData) {
+  const rosters = summaryData?.rosters || [];
+  if (!rosters.length) return [];
+
+  return rosters
+    .map((block) => {
+      const players = block.roster || [];
+      const starters = players.filter((player) => player.starter);
+      if (!starters.length) return null;
+
+      return {
+        team: block.team?.displayName || block.team?.name || "Team",
+        abbreviation: block.team?.abbreviation || "",
+        homeAway: block.homeAway || "",
+        formation:
+          typeof block.formation === "string"
+            ? block.formation
+            : block.formation?.text || "",
+        starters: starters.map(normalizeLineupPlayer),
+        subs: players
+          .filter((player) => !player.starter && player.active !== false)
+          .map(normalizeLineupPlayer),
+      };
+    })
+    .filter(Boolean);
+}
+
+function getPitchCoords(formationPlace, homeAway) {
+  const base = FORMATION_PLACE_COORDS[Number(formationPlace)];
+  if (!base) return { x: 50, y: 50 };
+  if (homeAway === "away") {
+    return { x: base.x, y: 100 - base.y };
+  }
+  return base;
 }
 
 function extractMatchFacts(summaryData) {
@@ -3805,6 +4158,7 @@ function buildEspnSummaryEnrichment(summaryData, focusGame, sport) {
       matchFacts: [],
       teamForm: [],
       headToHead: [],
+      lineups: [],
     };
   }
 
@@ -3823,10 +4177,11 @@ function buildEspnSummaryEnrichment(summaryData, focusGame, sport) {
       focusGame.homeAbbr,
       sport,
     ),
-    timeline: extractMatchTimeline(summaryData),
+    timeline: extractMatchTimeline(summaryData, sport),
     matchFacts: extractMatchFacts(summaryData),
     teamForm: extractTeamForm(summaryData),
     headToHead: extractHeadToHead(summaryData),
+    lineups: sport === "soccer" ? extractLineups(summaryData) : [],
   };
 }
 
@@ -4137,11 +4492,13 @@ function buildEspnTabs({
   hasStats = false,
   hasStandings = false,
   hasTimeline = false,
+  hasLineup = false,
   hasGroups = false,
   hasBracket = false,
   isMatchup = false,
 } = {}) {
   const tabs = [{ id: "matches", label: isMatchup ? "Game" : "Matches" }];
+  if (hasLineup) tabs.push({ id: "lineup", label: t("lineup") });
   if (hasTimeline) tabs.push({ id: "timeline", label: t("timeline") });
   if (hasStats) tabs.push({ id: "stats", label: "Stats" });
   if (hasStandings) tabs.push({ id: "standings", label: "Standings" });
@@ -4158,6 +4515,7 @@ async function loadEspnFocusEnrichment(sport, league, focusGame) {
       matchFacts: [],
       teamForm: [],
       headToHead: [],
+      lineups: [],
     };
   }
 
@@ -4171,6 +4529,7 @@ async function loadEspnFocusEnrichment(sport, league, focusGame) {
       matchFacts: [],
       teamForm: [],
       headToHead: [],
+      lineups: [],
     };
   }
 }
@@ -4266,6 +4625,7 @@ function renderEspnCard(model) {
   `;
 
   const timelineTabPanel = renderTimelinePanel(model.timeline);
+  const lineupTabPanel = renderLineupPanel(model.lineups);
 
   let standingsTabPanel = "";
   if (model.standings) {
@@ -4481,6 +4841,7 @@ function renderEspnCard(model) {
       ${tabsNavHtml}
       <div class="sports-slot__body sports-slot__tab-panels">
         ${matchesTabPanel}
+        ${lineupTabPanel}
         ${timelineTabPanel}
         ${standingsTabPanel}
         ${statsTabPanel}
@@ -4562,6 +4923,7 @@ async function handleEspnQuery(parsed, context) {
     }
 
     const tabs = buildEspnTabs({
+      hasLineup: enrichment.lineups.length > 0,
       hasTimeline: enrichment.timeline.length > 0,
       hasStats: enrichment.teamStats.length > 0,
       hasStandings: Boolean(standings?.length),
@@ -4581,6 +4943,7 @@ async function handleEspnQuery(parsed, context) {
       focusGame,
       teamStats: enrichment.teamStats,
       timeline: enrichment.timeline,
+      lineups: enrichment.lineups,
       matchFacts: enrichment.matchFacts,
       teamForm: enrichment.teamForm,
       headToHead: enrichment.headToHead,
@@ -4627,6 +4990,7 @@ async function handleEspnQuery(parsed, context) {
           matchFacts: [],
           teamForm: [],
           headToHead: [],
+          lineups: [],
         };
 
     const extras = buildEspnExtrasList(events, focusGame?.id, 20);
@@ -4642,6 +5006,7 @@ async function handleEspnQuery(parsed, context) {
     });
 
     const tabs = buildEspnTabs({
+      hasLineup: enrichment.lineups.length > 0,
       hasTimeline: enrichment.timeline.length > 0,
       hasStats: enrichment.teamStats.length > 0,
       hasStandings: Boolean(standings?.length),
@@ -4662,6 +5027,7 @@ async function handleEspnQuery(parsed, context) {
       gamesTitle: "Schedule & Results",
       teamStats: enrichment.teamStats,
       timeline: enrichment.timeline,
+      lineups: enrichment.lineups,
       matchFacts: enrichment.matchFacts,
       teamForm: enrichment.teamForm,
       headToHead: enrichment.headToHead,
@@ -4694,6 +5060,7 @@ async function handleEspnQuery(parsed, context) {
         matchFacts: [],
         teamForm: [],
         headToHead: [],
+        lineups: [],
       };
 
   const extras = buildEspnExtrasList(events, focusGame?.id, {
@@ -4712,6 +5079,7 @@ async function handleEspnQuery(parsed, context) {
   const bracket = isWC ? buildEspnWorldCupBracket(scoreboardData?.events || []) : null;
 
   const tabs = buildEspnTabs({
+    hasLineup: enrichment.lineups.length > 0,
     hasTimeline: enrichment.timeline.length > 0,
     hasStats: enrichment.teamStats.length > 0,
     hasStandings: !isWC && allStandings.length > 0,
@@ -4734,6 +5102,7 @@ async function handleEspnQuery(parsed, context) {
     gamesTitle: isWC ? "Tournament Matches" : "Recent & Upcoming",
     teamStats: enrichment.teamStats,
     timeline: enrichment.timeline,
+    lineups: enrichment.lineups,
     matchFacts: enrichment.matchFacts,
     teamForm: enrichment.teamForm,
     headToHead: enrichment.headToHead,
