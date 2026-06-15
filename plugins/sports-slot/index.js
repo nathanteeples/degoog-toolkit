@@ -18,7 +18,8 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.3.14";
+const PLUGIN_VERSION = "0.3.15";
+const ESPN_LIVE_REFRESH_MS = 15_000;
 const PLUGIN_DESCRIPTION =
   "Shows live sports scores, schedules, and standings for soccer, NFL, NBA, and MLB above search results.";
 const BALLDONTLIE_FREE_REFRESH_MS = 12_000;
@@ -1164,6 +1165,15 @@ function getRemoteLogoUrlForTeam(sport, abbreviation, crestUrl = "") {
   return `https://a.espncdn.com/i/teamlogos/${sport}/500/${key}.png`;
 }
 
+function getJerseyImageUrl(jerseyHref = "") {
+  if (!jerseyHref || !pluginRouteBase) return "";
+  const params = new URLSearchParams({
+    sport: "jersey",
+    src: jerseyHref,
+  });
+  return `${pluginRouteBase}/logo?${params.toString()}`;
+}
+
 function getLogoUrlForTeam(sport, abbreviation, crestUrl = "") {
   const abbr = String(abbreviation ?? "").toUpperCase();
   if (sport === "nba" || sport === "nfl" || sport === "mlb" || sport === "soccer") {
@@ -1856,7 +1866,9 @@ function renderFocusScoreboard(game, sport, scorersHtml = "") {
     )}">
       <div class="sports-slot__scoreboard-header">
         <span class="sports-slot__scoreboard-header-meta">${escapeHtml(metaLeft)}</span>
-        <span class="sports-slot__scoreboard-header-status" ${liveClockAttr}>${escapeHtml(
+        <span class="sports-slot__scoreboard-header-status${
+          game.state === "live" ? " sports-slot__scoreboard-header-status--live" : ""
+        }" ${liveClockAttr}>${escapeHtml(
           metaRight,
         )}</span>
       </div>
@@ -2067,8 +2079,10 @@ function renderTimelinePanel(timeline) {
   `;
 }
 
-function renderLineupPlayer(player, homeAway) {
-  const coords = getPitchCoords(player.formationPlace, homeAway);
+function renderLineupPlayer(player, homeAway, coordsMap) {
+  const coords =
+    coordsMap?.get(String(player.formationPlace)) ||
+    getPitchCoords(player.formationPlace, homeAway);
   const statusClass = player.subbedOut
     ? "sports-slot__pitch-player--out"
     : player.subbedIn
@@ -2077,10 +2091,8 @@ function renderLineupPlayer(player, homeAway) {
   const imageHtml = player.imageUrl
     ? `<img class="sports-slot__pitch-player-image" src="${escapeHtml(
         player.imageUrl,
-      )}" alt="" loading="lazy" decoding="async" />`
-    : `<span class="sports-slot__pitch-player-fallback">${escapeHtml(
-        player.jersey || player.position || "?",
-      )}</span>`;
+      )}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
+    : "";
 
   return `
     <div
@@ -2088,9 +2100,13 @@ function renderLineupPlayer(player, homeAway) {
       style="left:${coords.x}%;top:${coords.y}%"
       title="${escapeHtml(player.fullName || player.name)}"
     >
-      ${imageHtml}
+      <span class="sports-slot__pitch-player-avatar">
+        <span class="sports-slot__pitch-player-fallback">${escapeHtml(
+          player.jersey || player.position || "?",
+        )}</span>
+        ${imageHtml}
+      </span>
       <span class="sports-slot__pitch-player-name">${escapeHtml(player.name)}</span>
-      <span class="sports-slot__pitch-player-jersey">${escapeHtml(player.jersey)}</span>
     </div>
   `;
 }
@@ -2109,8 +2125,8 @@ function renderLineupBench(team) {
               }">
                 ${
                   player.imageUrl
-                    ? `<img src="${escapeHtml(player.imageUrl)}" alt="" loading="lazy" />`
-                    : ""
+                    ? `<span class="sports-slot__lineup-bench-avatar"><span class="sports-slot__lineup-bench-fallback">${escapeHtml(player.jersey || "?")}</span><img class="sports-slot__lineup-bench-image" src="${escapeHtml(player.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" /></span>`
+                    : `<span class="sports-slot__lineup-bench-fallback">${escapeHtml(player.jersey || "?")}</span>`
                 }
                 <span class="sports-slot__lineup-bench-num">${escapeHtml(player.jersey)}</span>
                 <span class="sports-slot__lineup-bench-name">${escapeHtml(player.name)}</span>
@@ -2128,11 +2144,16 @@ function renderLineupPanel(lineups) {
   if (!lineups?.length) return "";
 
   const pitchPlayers = lineups
-    .map((team) =>
-      (team.starters ?? [])
-        .map((player) => renderLineupPlayer(player, team.homeAway))
-        .join(""),
-    )
+    .map((team) => {
+      const coordsMap = layoutPitchPlayers(
+        team.starters ?? [],
+        team.formation,
+        team.homeAway,
+      );
+      return (team.starters ?? [])
+        .map((player) => renderLineupPlayer(player, team.homeAway, coordsMap))
+        .join("");
+    })
     .join("");
 
   const benchHtml = lineups.map((team) => renderLineupBench(team)).join("");
@@ -3837,18 +3858,98 @@ function extractMatchTimeline(summaryData, sport = "soccer") {
 }
 
 const FORMATION_PLACE_COORDS = {
-  1: { x: 50, y: 88 },
-  2: { x: 84, y: 68 },
-  3: { x: 16, y: 68 },
-  4: { x: 65, y: 48 },
-  5: { x: 72, y: 68 },
-  6: { x: 28, y: 68 },
-  7: { x: 35, y: 48 },
-  8: { x: 50, y: 48 },
-  9: { x: 50, y: 22 },
-  10: { x: 72, y: 22 },
-  11: { x: 28, y: 22 },
+  1: { x: 50, y: 100 },
+  2: { x: 88, y: 78 },
+  3: { x: 12, y: 78 },
+  4: { x: 80, y: 55 },
+  5: { x: 68, y: 78 },
+  6: { x: 32, y: 78 },
+  7: { x: 20, y: 55 },
+  8: { x: 50, y: 55 },
+  9: { x: 50, y: 28 },
+  10: { x: 80, y: 28 },
+  11: { x: 20, y: 28 },
 };
+
+function parseFormationLines(formation = "") {
+  return String(formation)
+    .split("-")
+    .map((part) => Number(part.trim()))
+    .filter((count) => Number.isFinite(count) && count > 0);
+}
+
+function getFormationDepthBand(position = "", formationLines = []) {
+  const pos = String(position).toUpperCase();
+  if (/^G/.test(pos) || pos === "GK") return 0;
+
+  const lineCount = formationLines.length;
+  if (!lineCount) return 2;
+
+  if (/^(LB|RB|LWB|RWB|CB|CD)/.test(pos) || /CD-[LR]|LCB|RCB/.test(pos)) {
+    return 1;
+  }
+
+  if (lineCount >= 4) {
+    if (/^(CF|SS)/.test(pos) || /CF-[LR]/.test(pos)) return lineCount - 1;
+    if (/^(F|ST)\b/.test(pos)) return lineCount;
+    if (/^(LM|RM|LW|RW|CM|AM|DM|CDM)/.test(pos) || /CM-[LR]|DM-[LR]/.test(pos)) {
+      return 2;
+    }
+    return 2;
+  }
+
+  if (/^(CM|CDM|DM|AM|RM|LM|LW|RW|CAM)/.test(pos) || /CM-[LR]/.test(pos)) {
+    return 2;
+  }
+
+  if (/^(F|ST|CF|LF|RF|LW|RW|SS)/.test(pos) || /CF-[LR]|LF|RF/.test(pos)) {
+    return lineCount;
+  }
+
+  return 2;
+}
+
+function getHorizontalBias(position = "") {
+  const pos = String(position).toUpperCase();
+  if (/(^|[^A-Z])(L|LF|LM|LW|LB|LCB|CD-L)([^A-Z]|$)/.test(pos) || pos.endsWith("-L")) {
+    return 0;
+  }
+  if (/(^|[^A-Z])(R|RF|RM|RW|RB|RCB|CD-R)([^A-Z]|$)/.test(pos) || pos.endsWith("-R")) {
+    return 1;
+  }
+  return 0.5;
+}
+
+function layoutPitchPlayers(starters = [], formation = "", homeAway = "home") {
+  const formationLines = parseFormationLines(formation);
+  const maxBand = formationLines.length + 1;
+  const bands = new Map();
+
+  for (const player of starters) {
+    const band = getFormationDepthBand(player.position, formationLines);
+    if (!bands.has(band)) bands.set(band, []);
+    bands.get(band).push(player);
+  }
+
+  const coords = new Map();
+  for (const [band, players] of bands) {
+    const sorted = [...players].sort(
+      (left, right) =>
+        getHorizontalBias(left.position) - getHorizontalBias(right.position) ||
+        Number(left.formationPlace) - Number(right.formationPlace),
+    );
+    const depth = band / maxBand;
+
+    sorted.forEach((player, index) => {
+      const total = sorted.length;
+      const x = total === 1 ? 50 : 14 + (index / (total - 1)) * 72;
+      const y = homeAway === "away" ? 8 + depth * 38 : 92 - depth * 38;
+      coords.set(String(player.formationPlace), { x, y });
+    });
+  }
+
+  return coords;
+}
 
 function buildKeyEventLookup(keyEvents) {
   const lookup = new Map();
@@ -4035,7 +4136,7 @@ function normalizeLineupPlayer(player) {
     jersey: String(player.jersey || ""),
     position: player.position?.abbreviation || player.position?.displayName || "",
     formationPlace: String(player.formationPlace || ""),
-    imageUrl: player.athlete?.jerseyImages?.[0]?.href || "",
+    imageUrl: getJerseyImageUrl(player.athlete?.jerseyImages?.[0]?.href || ""),
     subbedOut: Boolean(player.subbedOut),
     subbedIn: Boolean(player.subbedIn),
   };
@@ -4071,10 +4172,14 @@ function extractLineups(summaryData) {
 function getPitchCoords(formationPlace, homeAway) {
   const base = FORMATION_PLACE_COORDS[Number(formationPlace)];
   if (!base) return { x: 50, y: 50 };
+
+  const depth = (100 - base.y) / 72;
+
   if (homeAway === "away") {
-    return { x: base.x, y: 100 - base.y };
+    return { x: base.x, y: 8 + depth * 38 };
   }
-  return base;
+
+  return { x: base.x, y: 92 - depth * 38 };
 }
 
 function extractMatchFacts(summaryData) {
@@ -4535,7 +4640,18 @@ async function loadEspnFocusEnrichment(sport, league, focusGame) {
 }
 
 function renderEspnCard(model) {
-  const tabsList = model.tabs || [];
+  const cardModel =
+    model.focusGame?.state === "live"
+      ? {
+          ...model,
+          provider: model.provider || "espn",
+          refreshable: true,
+          refreshMinIntervalMs:
+            model.refreshMinIntervalMs || ESPN_LIVE_REFRESH_MS,
+        }
+      : model;
+
+  const tabsList = cardModel.tabs || [];
   const tabsHeaders = tabsList
     .map((tab, idx) => {
       const activeClass = idx === 0 ? "sports-slot__tab--active" : "";
@@ -4835,9 +4951,9 @@ function renderEspnCard(model) {
 
   return `
     <div
-      ${renderSlotRootAttrs(model)}
+      ${renderSlotRootAttrs(cardModel)}
     >
-      ${renderToolbar(model)}
+      ${renderToolbar(cardModel)}
       ${tabsNavHtml}
       <div class="sports-slot__body sports-slot__tab-panels">
         ${matchesTabPanel}
@@ -5172,8 +5288,10 @@ async function handleRefreshRoute(request) {
   const key = normalizeText(query);
   const now = Date.now();
   const minIntervalMs =
-    (useEspnApi || (parsed && isBalldontlieSport(parsed.sport)))
-      ? BALLDONTLIE_FREE_REFRESH_MS
+    useEspnApi || (parsed && isBalldontlieSport(parsed.sport))
+      ? useEspnApi
+        ? ESPN_LIVE_REFRESH_MS
+        : BALLDONTLIE_FREE_REFRESH_MS
       : 0;
   const cached = refreshCache.get(key);
 
@@ -5221,6 +5339,55 @@ async function handleLogoRoute(request) {
     .trim()
     .toUpperCase();
   const crest = String(url.searchParams.get("crest") ?? "").trim();
+  const jerseySrc = String(url.searchParams.get("src") ?? "").trim();
+
+  if (sport === "jersey") {
+    if (!jerseySrc || !/^https:\/\/stitcher\.espn\.com\//i.test(jerseySrc)) {
+      return new Response("Not found", { status: 404 });
+    }
+
+    const cacheKey = `jersey:${jerseySrc}`;
+    const cached = decodeLogoCacheEntry(await cacheGet(logoCache, cacheKey));
+    if (cached) {
+      return new Response(cached.bytes.slice(), {
+        status: 200,
+        headers: {
+          "Content-Type": cached.contentType,
+          "Cache-Control": "public, max-age=86400",
+        },
+      });
+    }
+
+    try {
+      const response = await fetchWithTimeout(jerseySrc, {
+        headers: {
+          Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        },
+      });
+      if (!response.ok) {
+        return new Response("Not found", { status: 404 });
+      }
+
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const contentType = response.headers.get("content-type") || "image/png";
+      await cacheSet(
+        logoCache,
+        cacheKey,
+        encodeLogoCacheEntry(bytes, contentType),
+        LOGO_CACHE_TTL_MS,
+      );
+
+      return new Response(bytes.slice(), {
+        status: 200,
+        headers: {
+          "Content-Type": contentType,
+          "Cache-Control": "public, max-age=86400",
+        },
+      });
+    } catch {
+      return new Response("Not found", { status: 404 });
+    }
+  }
 
   if (!["nba", "nfl", "mlb", "soccer"].includes(sport) || (!abbreviation && !crest)) {
     return new Response("Not found", { status: 404 });

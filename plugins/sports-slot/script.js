@@ -47,6 +47,40 @@
       : formatClock(nextSeconds);
   }
 
+  function repairPlayerAvatars(root) {
+    root
+      .querySelectorAll(".sports-slot__pitch-player-image, .sports-slot__lineup-bench-image")
+      .forEach((image) => {
+        if (image.dataset.sportsAvatarBound === "true") return;
+        image.dataset.sportsAvatarBound = "true";
+
+        const avatar =
+          image.closest(".sports-slot__pitch-player-avatar") ||
+          image.closest(".sports-slot__lineup-bench-item");
+
+        const handleLoad = () => {
+          if (avatar?.classList.contains("sports-slot__pitch-player-avatar")) {
+            avatar.classList.add("sports-slot__pitch-player-avatar--ready");
+          } else if (avatar?.classList.contains("sports-slot__lineup-bench-item")) {
+            avatar.classList.add("sports-slot__lineup-bench-item--ready");
+          }
+        };
+
+        const handleFailure = () => {
+          image.remove();
+        };
+
+        image.addEventListener("load", handleLoad, { once: true });
+        image.addEventListener("error", handleFailure, { once: true });
+
+        if (image.complete && image.naturalWidth) {
+          handleLoad();
+        } else if (image.complete && !image.naturalWidth) {
+          handleFailure();
+        }
+      });
+  }
+
   function repairBrokenLogos(root) {
     root.querySelectorAll(".sports-slot__team-mark-image").forEach((image) => {
       if (image.dataset.sportsLogoBound === "true") return;
@@ -216,13 +250,8 @@
       });
     });
 
-    panel.querySelectorAll("img").forEach((img) => {
-      img.addEventListener("error", () => {
-        img.style.display = "none";
-      }, { once: true });
-    });
-
     repairBrokenLogos(panel);
+    repairPlayerAvatars(panel);
 
     const ticker = window.setInterval(() => {
       if (!document.body.contains(panel)) {
@@ -235,9 +264,11 @@
       if (panel.dataset.sportsLive === "true") {
         updateLiveClock(panel);
 
+        const refreshMs = Number(panel.dataset.refreshMs || 0);
         const nextRefreshAt = Number(panel.dataset.nextRefreshAt || 0);
         if (
-          panel.dataset.sportsProvider === "balldontlie" &&
+          panel.dataset.refreshable === "true" &&
+          refreshMs > 0 &&
           nextRefreshAt > 0 &&
           Date.now() >= nextRefreshAt
         ) {
@@ -254,6 +285,7 @@
 
     root.querySelectorAll?.(PANEL_SELECTOR).forEach(initPanel);
     repairBrokenLogos(root);
+    repairPlayerAvatars(root);
   }
 
   function startObserver() {
