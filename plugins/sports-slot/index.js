@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.3.19";
+const PLUGIN_VERSION = "0.3.20";
 const ESPN_LIVE_REFRESH_MS = 15_000;
 
 const FALLBACK_STRINGS = {
@@ -4163,10 +4163,10 @@ function getFormationRowY(rowIndex = 0, rowCount = 1, homeAway = "home") {
   const depth = rowIndex / maxIndex;
 
   if (homeAway === "away") {
-    return 16 + depth * 28;
+    return 6 + depth * 38;
   }
 
-  return 84 - depth * 28;
+  return 94 - depth * 38;
 }
 
 const ESPN_FORMATION_ROWS = {
@@ -5915,5 +5915,12 @@ export const slot = {
 //
 // The slot renders above search results for natural sports queries.
 export const slotPlugin = slot;
+
+export const lineupLayoutTestHelpers = {
+  layoutPitchPlayers,
+  getFormationRows,
+  getFormationPlaceX,
+  getFormationRowY,
+};
 
 export default slot;

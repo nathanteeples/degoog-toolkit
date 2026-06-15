@@ -1455,7 +1455,10 @@
 
 .sports-slot__pitch-players {
     position: absolute;
-    inset: 0;
+    top: 10%;
+    right: 0;
+    bottom: 10%;
+    left: 0;
     z-index: 2;
 }
 

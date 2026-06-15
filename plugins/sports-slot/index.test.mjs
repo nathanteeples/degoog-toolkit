@@ -1,7 +1,54 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { routes, slot } from "./index.js";
+import { lineupLayoutTestHelpers, routes, slot } from "./index.js";
+
+const { layoutPitchPlayers, getFormationRows } = lineupLayoutTestHelpers;
+
+test("4-4-2 lineup rows use tactical X and shared row Y", () => {
+  const ecuadorStarters = [
+    { formationPlace: "1", position: "G" },
+    { formationPlace: "2", position: "RB" },
+    { formationPlace: "3", position: "LB" },
+    { formationPlace: "4", position: "CM-R" },
+    { formationPlace: "5", position: "CD-R" },
+    { formationPlace: "6", position: "CD-L" },
+    { formationPlace: "7", position: "RM" },
+    { formationPlace: "8", position: "CM-L" },
+    { formationPlace: "9", position: "CF-L" },
+    { formationPlace: "10", position: "CF-R" },
+    { formationPlace: "11", position: "LM" },
+  ];
+
+  const coords = layoutPitchPlayers(ecuadorStarters, "4-4-2", "away");
+  const defY = coords.get("3").y;
+  const midY = coords.get("11").y;
+  const fwdY = coords.get("9").y;
+
+  assert.equal(coords.get("6").y, defY);
+  assert.equal(coords.get("4").y, midY);
+  assert.equal(coords.get("10").y, fwdY);
+  assert.notEqual(defY, midY);
+  assert.notEqual(midY, fwdY);
+
+  assert.ok(coords.get("3").x < coords.get("6").x);
+  assert.ok(coords.get("6").x < coords.get("5").x);
+  assert.ok(coords.get("5").x < coords.get("2").x);
+
+  assert.ok(coords.get("11").x < coords.get("8").x);
+  assert.ok(coords.get("8").x < coords.get("4").x);
+  assert.ok(coords.get("4").x < coords.get("7").x);
+
+  assert.notEqual(coords.get("4").x, coords.get("6").x);
+  assert.notEqual(coords.get("8").x, coords.get("6").x);
+});
+
+test("getFormationRows covers common World Cup shapes", () => {
+  assert.deepEqual(getFormationRows("4-4-2")?.[2], [4, 7, 8, 11]);
+  assert.deepEqual(getFormationRows("4-3-3")?.[3], [9, 10, 11]);
+  assert.deepEqual(getFormationRows("3-4-2-1")?.[3], [10, 11]);
+  assert.deepEqual(getFormationRows("5-4-1")?.[1], [2, 3, 4, 5, 6]);
+});
 
 test("refresh route renders without relying on an undefined request alias", async () => {
   slot.configure({});
