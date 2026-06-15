@@ -1366,84 +1366,129 @@
     padding: 1rem 1.15rem 1.15rem;
 }
 
-.sports-slot__lineup-header {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 0.65rem 1rem;
-    margin-bottom: 0.75rem;
-}
-
-.sports-slot__lineup-team-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.35rem 0.55rem;
-    font-size: 0.84rem;
-}
-
-.sports-slot__lineup-team-meta strong {
-    font-weight: 800;
-}
-
-.sports-slot__lineup-team-meta span {
-    color: var(--text-secondary);
-    font-weight: 700;
+.sports-slot__pitch-wrap {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0.55rem;
+    border-radius: calc(var(--sports-radius-card) + 4px);
+    background: color-mix(in srgb, #0f1419 88%, var(--bg));
+    box-shadow: 0 10px 28px color-mix(in srgb, #000000 24%, transparent);
 }
 
 .sports-slot__pitch {
     position: relative;
     width: 100%;
-    max-width: 720px;
-    margin: 0 auto;
     aspect-ratio: 68 / 105;
     border-radius: var(--sports-radius-card);
     overflow: hidden;
-    border: 1px solid #1f5c34;
+    border: 1px solid #1a5c34;
     background:
-        linear-gradient(
-            180deg,
-            color-mix(in srgb, #2f8f52 88%, var(--bg)) 0%,
-            color-mix(in srgb, #256f40 92%, var(--bg)) 48%,
-            color-mix(in srgb, #2f8f52 88%, var(--bg)) 100%
+        repeating-linear-gradient(
+            0deg,
+            #2f9a52 0,
+            #2f9a52 8%,
+            #268646 8%,
+            #268646 16%
         );
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, #8fd4a4 22%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #9fe0b4 18%, transparent);
+}
+
+.sports-slot__pitch-team-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.5rem 0.75rem;
+    background: color-mix(in srgb, #101820 78%, transparent);
+    backdrop-filter: blur(2px);
+}
+
+.sports-slot__pitch-team-bar--away {
+    top: 0;
+    border-bottom: 1px solid color-mix(in srgb, #ffffff 10%, transparent);
+}
+
+.sports-slot__pitch-team-bar--home {
+    bottom: 0;
+    border-top: 1px solid color-mix(in srgb, #ffffff 10%, transparent);
+}
+
+.sports-slot__pitch-team-name {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #f4fff7;
+    letter-spacing: 0.01em;
+}
+
+.sports-slot__pitch-formation-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.18rem 0.62rem;
+    border-radius: 100px;
+    background: color-mix(in srgb, #1f6d3d 82%, #000000);
+    border: 1px solid color-mix(in srgb, #8fd4a4 35%, transparent);
+    color: #e8fff0;
+    font-size: 0.72rem;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
 .sports-slot__pitch-surface {
     position: absolute;
     inset: 0;
     pointer-events: none;
+    opacity: 0.22;
     background:
         repeating-linear-gradient(
             90deg,
-            color-mix(in srgb, #ffffff 7%, transparent) 0,
-            color-mix(in srgb, #ffffff 7%, transparent) 10%,
-            transparent 10%,
-            transparent 20%
+            color-mix(in srgb, #ffffff 16%, transparent) 0,
+            color-mix(in srgb, #ffffff 16%, transparent) 1px,
+            transparent 1px,
+            transparent 12%
         );
-    opacity: 0.55;
 }
 
+.sports-slot__pitch-players {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+}
+
+.sports-slot__pitch-center-circle,
 .sports-slot__pitch-halfway,
 .sports-slot__pitch-box {
     position: absolute;
     pointer-events: none;
 }
 
+.sports-slot__pitch-center-circle {
+    top: 50%;
+    left: 50%;
+    width: 22%;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border: 1px solid color-mix(in srgb, #ffffff 48%, transparent);
+    border-radius: 50%;
+}
+
 .sports-slot__pitch-halfway {
     top: 50%;
-    left: 4%;
-    right: 4%;
+    left: 3%;
+    right: 3%;
     height: 1px;
-    background: color-mix(in srgb, #ffffff 42%, transparent);
+    background: color-mix(in srgb, #ffffff 48%, transparent);
 }
 
 .sports-slot__pitch-box {
-    left: 22%;
-    right: 22%;
-    height: 16%;
-    border: 1px solid color-mix(in srgb, #ffffff 38%, transparent);
+    left: 20%;
+    right: 20%;
+    height: 17%;
+    border: 1px solid color-mix(in srgb, #ffffff 42%, transparent);
 }
 
 .sports-slot__pitch-box--top {
@@ -1462,21 +1507,23 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.12rem;
-    width: 64px;
+    gap: 0.18rem;
+    width: 72px;
     text-align: center;
     z-index: 1;
 }
 
 .sports-slot__pitch-player-avatar {
     position: relative;
-    width: 44px;
-    height: 44px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     overflow: hidden;
-    background: var(--bg);
-    border: 2px solid color-mix(in srgb, #ffffff 55%, var(--border));
-    box-shadow: 0 2px 6px color-mix(in srgb, #000000 18%, transparent);
+    background: color-mix(in srgb, var(--sports-player-team-color, #1f4f9a) 72%, #0b1220);
+    border: 2px solid color-mix(in srgb, var(--sports-player-team-color, #ffffff) 72%, #ffffff);
+    box-shadow:
+        0 2px 8px color-mix(in srgb, #000000 34%, transparent),
+        inset 0 0 0 1px color-mix(in srgb, #ffffff 18%, transparent);
 }
 
 .sports-slot__pitch-player-image {
@@ -1484,10 +1531,11 @@
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    object-position: center top;
+    object-fit: contain;
+    object-position: center 18%;
     opacity: 0;
     transition: opacity 0.2s ease;
+    transform: scale(1.12);
 }
 
 .sports-slot__pitch-player-avatar--ready .sports-slot__pitch-player-image {
@@ -1507,21 +1555,16 @@
     inset: 0;
 }
 
-.sports-slot__lineup-bench-item .sports-slot__lineup-bench-avatar .sports-slot__lineup-bench-fallback {
-    position: absolute;
-    inset: 0;
-}
-
 .sports-slot__pitch-player-fallback {
     position: absolute;
     inset: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.68rem;
+    font-size: 0.74rem;
     font-weight: 800;
-    color: var(--text-secondary);
-    background: color-mix(in srgb, var(--bg-light) 88%, var(--bg));
+    color: #f4fff7;
+    background: color-mix(in srgb, var(--sports-player-team-color, #1f4f9a) 55%, #0b1220);
 }
 
 .sports-slot__pitch-player-avatar--ready .sports-slot__pitch-player-fallback {
@@ -1529,12 +1572,12 @@
 }
 
 .sports-slot__pitch-player-name {
-    font-size: 0.58rem;
+    font-size: 0.6rem;
     font-weight: 800;
-    line-height: 1.1;
-    color: #f4fff7;
-    text-shadow: 0 1px 2px color-mix(in srgb, #000000 55%, transparent);
-    max-width: 64px;
+    line-height: 1.15;
+    color: #f8fff9;
+    text-shadow: 0 1px 3px color-mix(in srgb, #000000 72%, transparent);
+    max-width: 72px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

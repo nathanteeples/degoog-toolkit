@@ -18,8 +18,77 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports Results";
-const PLUGIN_VERSION = "0.3.15";
+const PLUGIN_VERSION = "0.3.17";
 const ESPN_LIVE_REFRESH_MS = 15_000;
+
+const FALLBACK_STRINGS = {
+  sportsResults: "Sports Results",
+  live: "Live",
+  upcoming: "Upcoming",
+  final: "Final",
+  nextMatch: "Next match",
+  latestResult: "Latest result",
+  standings: "Standings",
+  team: "Team",
+  league: "League",
+  venue: "Venue",
+  conference: "Conference",
+  division: "Division",
+  noStandings: "No standings were returned for that competition.",
+  noFixtures: "No recent or upcoming fixtures were found.",
+  refresh: "Refresh",
+  playedAbbr: "P",
+  goalDiffAbbr: "GD",
+  pointsAbbr: "Pts",
+  abbrGp: "Games played",
+  abbrW: "Wins",
+  abbrD: "Draws",
+  abbrL: "Losses",
+  abbrGf: "Goals for",
+  abbrGa: "Goals against",
+  abbrGd: "Goal difference",
+  abbrPts: "Points",
+  abbrP: "Played",
+  timeline: "Timeline",
+  lineup: "Lineup",
+  starters: "Starters",
+  bench: "Bench",
+  matchInfo: "Match info",
+  recentForm: "Recent form",
+  headToHead: "Head to head",
+  recentAndNext: "Recent + next",
+  usage: "Usage",
+  usageDescription:
+    "Run <code>!sports &lt;query&gt;</code> with a team, matchup, schedule, or standings query.",
+  example: "Example",
+  latestMeeting: "Latest meeting",
+  tonight: "Tonight",
+  nextGame: "Next game",
+  clubNotFound: "That club was not found in the configured competition list.",
+  ambiguousTeamHint:
+    "Try a league keyword like Premier League or La Liga if the team is ambiguous.",
+  noRecentMatches: "No recent or upcoming matches were found in the lookup window.",
+  clubNotFoundInSameComp:
+    "One of the clubs was not found in the same supported competition.",
+  noMeetingFound: "No recent or upcoming meeting was found in the lookup window.",
+  teamNotFound: "That team was not found in the provider response.",
+  teamNotFoundInResponse: "One of the teams was not found in the provider response.",
+  noRecentGames: "No recent or upcoming games were found.",
+  noRecentGamesInLookup:
+    "No recent or upcoming games were found in the lookup window.",
+  noMeetingFoundShort: "No recent or upcoming meeting was found.",
+  setupBalldontlie: "results use BALLDONTLIE.",
+  addApiKeyBalldontlie: "Add a BALLDONTLIE API key in the plugin settings.",
+  setupSoccer: "Soccer results use football-data.org.",
+  addApiKeySoccer: "Add a football-data.org API key in the plugin settings.",
+  standingsUnsupportedBalldontlie:
+    "The free BALLDONTLIE tier does not expose standings for this sport. Scores and schedules still work.",
+  queryUnsupported: "That query shape is not supported yet.",
+  providerFailed: "The provider request failed.",
+  soccerSport: "Soccer",
+  competition: "Competition",
+  stage: "Stage",
+};
 const PLUGIN_DESCRIPTION =
   "Shows live sports scores, schedules, and standings for soccer, NFL, NBA, and MLB above search results.";
 const BALLDONTLIE_FREE_REFRESH_MS = 12_000;
@@ -899,6 +968,35 @@ function decodeLogoCacheEntry(entry) {
   };
 }
 
+let localeBanks = { en: FALLBACK_STRINGS };
+let requestLocale = "en";
+
+function normalizeRequestLocale(value = "en") {
+  const requested = String(value || "en").trim() || "en";
+  try {
+    return Intl.getCanonicalLocales(requested)[0] || "en";
+  } catch {
+    return "en";
+  }
+}
+
+function setTranslationLocale(context) {
+  requestLocale = normalizeRequestLocale(
+    context?.locale || context?.acceptLanguage || context?.i18n || "en",
+  );
+}
+
+function lookupLocaleString(key) {
+  const tag = requestLocale.toLowerCase();
+  const base = tag.split("-")[0];
+  const bank =
+    localeBanks[tag] ||
+    localeBanks[base] ||
+    localeBanks.en ||
+    {};
+  return bank[key] || "";
+}
+
 function initRuntime(ctx) {
   if (ctx?.apiBase) {
     pluginRouteBase = ctx.apiBase;
@@ -914,6 +1012,23 @@ function initRuntime(ctx) {
     pluginFetch = (...args) => ctx.fetch(...args);
   }
   logoCache = createExtensionCache(ctx, LOGO_CACHE_NAMESPACE, LOGO_CACHE_TTL_MS);
+
+  if (typeof ctx?.readFile === "function") {
+    return Promise.all(
+      ["en", "es", "fr"].map(async (lang) => {
+        try {
+          const raw = await ctx.readFile(`locales/${lang}.json`);
+          const parsed = JSON.parse(raw);
+          return [lang, parsed?.["plugin-sports-slot"] || {}];
+        } catch {
+          return [lang, {}];
+        }
+      }),
+    ).then((loaded) => {
+      localeBanks = Object.fromEntries(loaded);
+      localeBanks.en = { ...FALLBACK_STRINGS, ...(localeBanks.en || {}) };
+    });
+  }
 }
 
 const TEAM_PRIMARY_COLORS = {
@@ -2079,10 +2194,10 @@ function renderTimelinePanel(timeline) {
   `;
 }
 
-function renderLineupPlayer(player, homeAway, coordsMap) {
+function renderLineupPlayer(player, team, coordsMap) {
   const coords =
     coordsMap?.get(String(player.formationPlace)) ||
-    getPitchCoords(player.formationPlace, homeAway);
+    getPitchCoords(player.formationPlace, team.homeAway);
   const statusClass = player.subbedOut
     ? "sports-slot__pitch-player--out"
     : player.subbedIn
@@ -2093,6 +2208,9 @@ function renderLineupPlayer(player, homeAway, coordsMap) {
         player.imageUrl,
       )}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
     : "";
+  const teamColorStyle = team.color
+    ? ` style="--sports-player-team-color:${escapeHtml(team.color)}"`
+    : "";
 
   return `
     <div
@@ -2100,7 +2218,7 @@ function renderLineupPlayer(player, homeAway, coordsMap) {
       style="left:${coords.x}%;top:${coords.y}%"
       title="${escapeHtml(player.fullName || player.name)}"
     >
-      <span class="sports-slot__pitch-player-avatar">
+      <span class="sports-slot__pitch-player-avatar"${teamColorStyle}>
         <span class="sports-slot__pitch-player-fallback">${escapeHtml(
           player.jersey || player.position || "?",
         )}</span>
@@ -2111,11 +2229,25 @@ function renderLineupPlayer(player, homeAway, coordsMap) {
   `;
 }
 
+function renderPitchTeamBar(team, placement) {
+  if (!team) return "";
+  return `
+    <div class="sports-slot__pitch-team-bar sports-slot__pitch-team-bar--${placement}">
+      <span class="sports-slot__pitch-team-name">${escapeHtml(team.team)}</span>
+      ${
+        team.formation
+          ? `<span class="sports-slot__pitch-formation-pill">${escapeHtml(team.formation)}</span>`
+          : ""
+      }
+    </div>
+  `;
+}
+
 function renderLineupBench(team) {
   if (!team.subs?.length) return "";
   return `
     <div class="sports-slot__lineup-bench">
-      <h5 class="sports-slot__lineup-bench-label">${escapeHtml(team.team)} ${t("bench")}</h5>
+      <h5 class="sports-slot__lineup-bench-label">${escapeHtml(team.team)} · ${escapeHtml(t("bench"))}</h5>
       <ul class="sports-slot__lineup-bench-list">
         ${team.subs
           .map(
@@ -2143,6 +2275,12 @@ function renderLineupBench(team) {
 function renderLineupPanel(lineups) {
   if (!lineups?.length) return "";
 
+  const awayTeam = lineups.find((team) => team.homeAway === "away") || lineups[0];
+  const homeTeam =
+    lineups.find((team) => team.homeAway === "home") ||
+    lineups.find((team) => team !== awayTeam) ||
+    lineups[0];
+
   const pitchPlayers = lineups
     .map((team) => {
       const coordsMap = layoutPitchPlayers(
@@ -2151,7 +2289,7 @@ function renderLineupPanel(lineups) {
         team.homeAway,
       );
       return (team.starters ?? [])
-        .map((player) => renderLineupPlayer(player, team.homeAway, coordsMap))
+        .map((player) => renderLineupPlayer(player, team, coordsMap))
         .join("");
     })
     .join("");
@@ -2161,24 +2299,17 @@ function renderLineupPanel(lineups) {
   return `
     <div class="sports-slot__tab-panel" data-panel="lineup" style="display: none;">
       <section class="sports-slot__lineup">
-        <div class="sports-slot__lineup-header">
-          ${lineups
-            .map(
-              (team) => `
-                <div class="sports-slot__lineup-team-meta">
-                  <strong>${escapeHtml(team.team)}</strong>
-                  <span>${escapeHtml(team.formation || "")}</span>
-                </div>
-              `,
-            )
-            .join("")}
-        </div>
-        <div class="sports-slot__pitch" aria-label="Match lineup">
-          <div class="sports-slot__pitch-surface"></div>
-          <div class="sports-slot__pitch-halfway"></div>
-          <div class="sports-slot__pitch-box sports-slot__pitch-box--top"></div>
-          <div class="sports-slot__pitch-box sports-slot__pitch-box--bottom"></div>
-          ${pitchPlayers}
+        <div class="sports-slot__pitch-wrap">
+          <div class="sports-slot__pitch" aria-label="Match lineup">
+            ${renderPitchTeamBar(awayTeam, "away")}
+            <div class="sports-slot__pitch-surface"></div>
+            <div class="sports-slot__pitch-center-circle"></div>
+            <div class="sports-slot__pitch-halfway"></div>
+            <div class="sports-slot__pitch-box sports-slot__pitch-box--top"></div>
+            <div class="sports-slot__pitch-box sports-slot__pitch-box--bottom"></div>
+            <div class="sports-slot__pitch-players">${pitchPlayers}</div>
+            ${renderPitchTeamBar(homeTeam, "home")}
+          </div>
         </div>
         <div class="sports-slot__lineup-bench-grid">${benchHtml}</div>
       </section>
@@ -3083,7 +3214,9 @@ function buildStandingsModel(competitionName, standings, highlightTeamName) {
 }
 
 function t(key) {
-  return `{{ t:plugin-sports-slot.${key} }}`;
+  const resolved = lookupLocaleString(key);
+  if (resolved) return resolved;
+  return FALLBACK_STRINGS[key] || key;
 }
 
 async function handleSoccerQuery(parsedQuery, context) {
@@ -3922,8 +4055,9 @@ function getHorizontalBias(position = "") {
 
 function layoutPitchPlayers(starters = [], formation = "", homeAway = "home") {
   const formationLines = parseFormationLines(formation);
-  const maxBand = formationLines.length + 1;
   const bands = new Map();
+  const awayRowY = [14, 26, 34, 40, 44];
+  const homeRowY = [86, 74, 66, 60, 56];
 
   for (const player of starters) {
     const band = getFormationDepthBand(player.position, formationLines);
@@ -3938,12 +4072,12 @@ function layoutPitchPlayers(starters = [], formation = "", homeAway = "home") {
         getHorizontalBias(left.position) - getHorizontalBias(right.position) ||
         Number(left.formationPlace) - Number(right.formationPlace),
     );
-    const depth = band / maxBand;
+    const rowIndex = Math.min(Math.max(band, 0), 4);
+    const y = homeAway === "away" ? awayRowY[rowIndex] : homeRowY[rowIndex];
 
     sorted.forEach((player, index) => {
       const total = sorted.length;
-      const x = total === 1 ? 50 : 14 + (index / (total - 1)) * 72;
-      const y = homeAway === "away" ? 8 + depth * 38 : 92 - depth * 38;
+      const x = total === 1 ? 50 : 10 + (index / (total - 1)) * 80;
       coords.set(String(player.formationPlace), { x, y });
     });
   }
@@ -4155,6 +4289,7 @@ function extractLineups(summaryData) {
       return {
         team: block.team?.displayName || block.team?.name || "Team",
         abbreviation: block.team?.abbreviation || "",
+        color: getBrandColorForTeam("soccer", block.team?.abbreviation || ""),
         homeAway: block.homeAway || "",
         formation:
           typeof block.formation === "string"
@@ -5230,6 +5365,7 @@ async function handleEspnQuery(parsed, context) {
 }
 
 async function executeSportsQuery(query, context) {
+  setTranslationLocale(context);
   const parsed = parseQuery(query);
   if (!parsed) return { html: "" };
 
