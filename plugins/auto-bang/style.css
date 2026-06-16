@@ -9,6 +9,19 @@
   font-weight: 400;
 }
 
+/* Occupies the icon column so themes do not paint the search magnifier ::before. */
+.ac-item--bang .ac-item-icon--bang {
+  display: block;
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.ac-item--bang::before {
+  content: none !important;
+  display: none !important;
+}
+
 .ac-item--bang .ac-item-copy {
   flex: 1;
   min-width: 0;
@@ -42,6 +55,7 @@
 }
 
 .ac-item--bang:hover,
+.ac-item--bang.active,
 .ac-item--bang.ac-item--bang-active {
   background: var(--bg-hover);
 }
