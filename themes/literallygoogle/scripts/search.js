@@ -672,10 +672,13 @@ function getLgTranslation(key) {
     var ENGINE_MODE_DESKTOP = "data-sidebar-panels-desktop";
     var RELATED_MODE_MOBILE = "data-related-searches-mobile";
     var RELATED_MODE_DESKTOP = "data-related-searches-desktop";
+    var KNOWLEDGE_MODE_MOBILE = "data-knowledge-panel-mobile";
+    var KNOWLEDGE_MODE_DESKTOP = "data-knowledge-panel-desktop";
     var DESKTOP_MIN = 768;
     var SEARCHING_ATTR = "data-lg-sidebar-searching";
     var USER_ATTR_ENGINE = "data-lg-sidebar-user-engine";
     var USER_ATTR_RELATED = "data-lg-sidebar-user-related";
+    var USER_ATTR_KNOWLEDGE = "data-lg-sidebar-user-knowledge";
     var lastIsDesktop = null;
 
     function isDesktop() {
@@ -692,7 +695,9 @@ function getLgTranslation(key) {
             root.hasAttribute(ENGINE_MODE_MOBILE) ||
             root.hasAttribute(ENGINE_MODE_DESKTOP) ||
             root.hasAttribute(RELATED_MODE_MOBILE) ||
-            root.hasAttribute(RELATED_MODE_DESKTOP)
+            root.hasAttribute(RELATED_MODE_DESKTOP) ||
+            root.hasAttribute(KNOWLEDGE_MODE_MOBILE) ||
+            root.hasAttribute(KNOWLEDGE_MODE_DESKTOP)
         );
     }
 
@@ -738,12 +743,14 @@ function getLgTranslation(key) {
             .filter(isKnowledgePanel);
     }
 
-    function syncKnowledgePanel(accordion) {
-        if (!accordion.classList.contains("open")) {
-            accordion.classList.add("open");
-        }
+    function syncKnowledgeAccordion(accordion) {
         if (!accordion.classList.contains("lg-sidebar-knowledge")) {
             accordion.classList.add("lg-sidebar-knowledge");
+        }
+        if (accordion.hasAttribute(USER_ATTR_KNOWLEDGE)) return;
+        var shouldBeOpen = getKnowledgeMode() === "open";
+        if (accordion.classList.contains("open") !== shouldBeOpen) {
+            accordion.classList.toggle("open", shouldBeOpen);
         }
     }
 
@@ -761,6 +768,13 @@ function getLgTranslation(key) {
 
     function getRelatedMode() {
         var attr = isDesktop() ? RELATED_MODE_DESKTOP : RELATED_MODE_MOBILE;
+        var fallback = isDesktop() ? "open" : "collapsed";
+        var raw = document.documentElement.getAttribute(attr) || fallback;
+        return raw === "open" ? "open" : "collapsed";
+    }
+
+    function getKnowledgeMode() {
+        var attr = isDesktop() ? KNOWLEDGE_MODE_DESKTOP : KNOWLEDGE_MODE_MOBILE;
         var fallback = isDesktop() ? "open" : "collapsed";
         var raw = document.documentElement.getAttribute(attr) || fallback;
         return raw === "open" ? "open" : "collapsed";
@@ -834,7 +848,7 @@ function getLgTranslation(key) {
         if (!root) return;
         getEnginePerformancePanels(root).forEach(syncEngineAccordion);
         getRelatedSearchesPanels(root).forEach(syncRelatedAccordion);
-        getKnowledgePanels(root).forEach(syncKnowledgePanel);
+        getKnowledgePanels(root).forEach(syncKnowledgeAccordion);
     }
 
     function scheduleSync() {
@@ -862,6 +876,9 @@ function getLgTranslation(key) {
         });
         getRelatedSearchesPanels(root).forEach(function (accordion) {
             accordion.removeAttribute(USER_ATTR_RELATED);
+        });
+        getKnowledgePanels(root).forEach(function (accordion) {
+            accordion.removeAttribute(USER_ATTR_KNOWLEDGE);
         });
     }
 
@@ -907,6 +924,8 @@ function getLgTranslation(key) {
                     accordion.setAttribute(USER_ATTR_ENGINE, "1");
                 } else if (isRelatedSearchesPanel(accordion)) {
                     accordion.setAttribute(USER_ATTR_RELATED, "1");
+                } else if (isKnowledgePanel(accordion)) {
+                    accordion.setAttribute(USER_ATTR_KNOWLEDGE, "1");
                 }
             },
             true,
@@ -991,136 +1010,7 @@ function getLgTranslation(key) {
     }
 })();
 
-/* ── 7. At a glance accordion (collapsible like sidebar panels) ─────────── */
-(function () {
-    var GLANCE_MODE_MOBILE = "data-at-a-glance-mobile";
-    var GLANCE_MODE_DESKTOP = "data-at-a-glance-desktop";
-    var USER_ATTR_GLANCE = "data-lg-glance-user";
-    var WRAPPED_ATTR = "data-lg-glance-wrapped";
-    var DESKTOP_MIN = 768;
-    var DEFAULT_TITLE = "At a glance";
-    var CHEVRON_SVG =
-        '<svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
-
-    function isDesktop() {
-        return window.innerWidth >= DESKTOP_MIN;
-    }
-
-    function escapeHtml(str) {
-        var div = document.createElement("div");
-        div.textContent = String(str);
-        return div.innerHTML;
-    }
-
-    function getGlanceMode() {
-        var attr = isDesktop() ? GLANCE_MODE_DESKTOP : GLANCE_MODE_MOBILE;
-        var raw = document.documentElement.getAttribute(attr) || "open";
-        return raw === "collapsed" ? "collapsed" : "open";
-    }
-
-    function resolveGlanceTitle(fragment) {
-        var panel = fragment.querySelector(".results-slot-panel");
-        if (panel) {
-            var titleEl = panel.querySelector(".results-slot-panel-title");
-            if (titleEl && titleEl.textContent.trim()) {
-                var panelTitle = titleEl.textContent.trim();
-                titleEl.remove();
-                return panelTitle;
-            }
-        }
-        var glanceLink = fragment.querySelector(".glance-link");
-        if (glanceLink && glanceLink.textContent.trim()) {
-            return glanceLink.textContent.trim();
-        }
-        return DEFAULT_TITLE;
-    }
-
-    function wrapGlance(root) {
-        if (!root || !root.childNodes.length) return;
-        if (root.querySelector(".lg-glance-accordion")) {
-            root.setAttribute(WRAPPED_ATTR, "1");
-            return;
-        }
-
-        var fragment = document.createDocumentFragment();
-        while (root.firstChild) {
-            fragment.appendChild(root.firstChild);
-        }
-
-        var title = resolveGlanceTitle(fragment);
-        var accordion = document.createElement("div");
-        accordion.className =
-            "lg-glance-accordion sidebar-panel sidebar-accordion degoog-panel degoog-panel--accordion degoog-panel--stack-item";
-        if (getGlanceMode() === "open") {
-            accordion.classList.add("open");
-        }
-
-        var toggle = document.createElement("button");
-        toggle.type = "button";
-        toggle.className =
-            "sidebar-accordion-toggle degoog-accordion-toggle degoog-accordion-toggle--sidebar";
-        toggle.innerHTML = "<span>" + escapeHtml(title) + "</span>" + CHEVRON_SVG;
-
-        var body = document.createElement("div");
-        body.className =
-            "sidebar-accordion-body degoog-accordion-body lg-glance-accordion-body";
-        body.appendChild(fragment);
-
-        accordion.appendChild(toggle);
-        accordion.appendChild(body);
-        root.appendChild(accordion);
-        root.setAttribute(WRAPPED_ATTR, "1");
-
-        toggle.addEventListener("click", function () {
-            accordion.classList.toggle("open");
-            accordion.setAttribute(USER_ATTR_GLANCE, "1");
-        });
-    }
-
-    function syncGlance() {
-        var root = document.getElementById("at-a-glance");
-        if (!root) return;
-        var accordion = root.querySelector(".lg-glance-accordion");
-        if (!accordion || accordion.hasAttribute(USER_ATTR_GLANCE)) return;
-        var shouldOpen = getGlanceMode() === "open";
-        if (accordion.classList.contains("open") !== shouldOpen) {
-            accordion.classList.toggle("open", shouldOpen);
-        }
-    }
-
-    function bindGlance() {
-        var root = document.getElementById("at-a-glance");
-        if (!root || root.hasAttribute("data-lg-glance-bound")) return;
-        root.setAttribute("data-lg-glance-bound", "1");
-
-        new MutationObserver(function () {
-            if (!root.childNodes.length) {
-                root.removeAttribute(WRAPPED_ATTR);
-                return;
-            }
-            if (!root.querySelector(".lg-glance-accordion")) {
-                root.removeAttribute(WRAPPED_ATTR);
-            }
-            wrapGlance(root);
-            syncGlance();
-        }).observe(root, { childList: true });
-
-        if (root.childNodes.length) {
-            wrapGlance(root);
-            syncGlance();
-        }
-
-        window.addEventListener("resize", syncGlance);
-    }
-
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", bindGlance);
-    } else {
-        bindGlance();
-    }
-})();
-
-/* ── 8. Translate settings gear title ───────────────────────────────────── */
+/* ── 7. Translate settings gear title ───────────────────────────────────── */
 (function () {
     function translateSettingsGear() {
         var settingsEl = document.getElementById("nav-settings-results");

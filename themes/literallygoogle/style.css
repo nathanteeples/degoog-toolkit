@@ -591,57 +591,6 @@ var {
     border-radius: var(--theme-radius-md);
 }
 
-/* At a glance — collapsible accordion (matches sidebar panel chrome). */
-#at-a-glance .lg-glance-accordion {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin-bottom: 1rem;
-}
-
-#at-a-glance .lg-glance-accordion > .sidebar-accordion-toggle {
-    display: flex;
-    width: 100%;
-    box-sizing: border-box;
-    background: var(--bg-light);
-    border-start-start-radius: var(--theme-radius-lg);
-    border-start-end-radius: var(--theme-radius-lg);
-    border-end-start-radius: var(--theme-radius-lg);
-    border-end-end-radius: var(--theme-radius-lg);
-}
-
-#at-a-glance .lg-glance-accordion.open > .sidebar-accordion-toggle {
-    border-end-start-radius: var(--theme-radius-xs);
-    border-end-end-radius: var(--theme-radius-xs);
-}
-
-#at-a-glance .lg-glance-accordion:not(.open) .lg-glance-accordion-body {
-    display: none;
-}
-
-#at-a-glance .lg-glance-accordion .lg-glance-accordion-body {
-    background: var(--bg-light);
-    border-start-start-radius: var(--theme-radius-xs);
-    border-start-end-radius: var(--theme-radius-xs);
-    border-end-start-radius: var(--theme-radius-lg);
-    border-end-end-radius: var(--theme-radius-lg);
-    padding: 1rem 1.125rem;
-}
-
-#at-a-glance .lg-glance-accordion .glance-box,
-#at-a-glance .lg-glance-accordion .results-slot-panel {
-    background: transparent !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-}
-
-#at-a-glance .lg-glance-accordion .results-slot-panel-body {
-    padding: 0 !important;
-}
-
 .result-title {
     margin-top: 10px;
 }
@@ -809,43 +758,44 @@ var {
     }
 }
 
-/* Knowledge plugin panels: always expanded, no collapse toggle. */
-html[data-sidebar-panels-mobile]
-    #results-sidebar
-    .sidebar-accordion.lg-sidebar-knowledge
-    .sidebar-accordion-toggle,
-html[data-sidebar-panels-desktop]
-    #results-sidebar
-    .sidebar-accordion.lg-sidebar-knowledge
-    .sidebar-accordion-toggle,
-html[data-related-searches-mobile]
-    #results-sidebar
-    .sidebar-accordion.lg-sidebar-knowledge
-    .sidebar-accordion-toggle,
-html[data-related-searches-desktop]
-    #results-sidebar
-    .sidebar-accordion.lg-sidebar-knowledge
-    .sidebar-accordion-toggle {
-    display: none !important;
+/* Knowledge panel (Wikipedia / knowledge plugins) — respect .open on mobile and desktop. */
+@media (max-width: 767px) {
+    html[data-knowledge-panel-mobile]
+        #results-sidebar
+        .sidebar-accordion.lg-sidebar-knowledge:not(.open)
+        .sidebar-accordion-body {
+        display: none;
+    }
+
+    html[data-knowledge-panel-mobile]
+        #results-sidebar
+        .sidebar-accordion.lg-sidebar-knowledge.open
+        .sidebar-accordion-body {
+        display: block;
+    }
 }
 
-html[data-sidebar-panels-mobile]
-    #results-sidebar
-    .sidebar-accordion.lg-sidebar-knowledge
-    .sidebar-accordion-body,
-html[data-sidebar-panels-desktop]
-    #results-sidebar
-    .sidebar-accordion.lg-sidebar-knowledge
-    .sidebar-accordion-body,
-html[data-related-searches-mobile]
-    #results-sidebar
-    .sidebar-accordion.lg-sidebar-knowledge
-    .sidebar-accordion-body,
-html[data-related-searches-desktop]
-    #results-sidebar
-    .sidebar-accordion.lg-sidebar-knowledge
-    .sidebar-accordion-body {
-    display: block !important;
+@media (min-width: 768px) {
+    html[data-knowledge-panel-desktop]
+        #results-sidebar
+        .sidebar-accordion.lg-sidebar-knowledge
+        .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
+        display: flex;
+    }
+
+    html[data-knowledge-panel-desktop]
+        #results-sidebar
+        .sidebar-accordion.lg-sidebar-knowledge:not(.open)
+        .sidebar-accordion-body {
+        display: none;
+    }
+
+    html[data-knowledge-panel-desktop]
+        #results-sidebar
+        .sidebar-accordion.lg-sidebar-knowledge.open
+        .sidebar-accordion-body {
+        display: block;
+    }
 }
 
 /* Results sidebar: strip core panel border/shadow; card rows match examples/LiterallyGoogle. */
@@ -856,6 +806,7 @@ html[data-related-searches-desktop]
 
 #results-sidebar .sidebar-accordion:has(.engine-stat-row),
 #results-sidebar .sidebar-accordion:has(.related-search-link),
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge,
 #results-sidebar .sidebar-accordion.streaming-engine-panel {
     display: flex;
     flex-direction: column;
@@ -871,6 +822,8 @@ html[data-related-searches-desktop]
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
 #results-sidebar .sidebar-accordion:has(.related-search-link)
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge
+    > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
 #results-sidebar .sidebar-accordion.streaming-engine-panel
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
     background: var(--bg-light);
@@ -885,6 +838,8 @@ html[data-related-searches-desktop]
 #results-sidebar .sidebar-accordion:has(.engine-stat-row).open
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
 #results-sidebar .sidebar-accordion:has(.related-search-link).open
+    > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge.open
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
 #results-sidebar .sidebar-accordion.streaming-engine-panel.open
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {

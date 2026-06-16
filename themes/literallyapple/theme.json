@@ -56,18 +56,18 @@
       "default": false
     },
     {
-      "key": "atAGlanceMobile",
-      "label": "At a glance (mobile)",
-      "description": "Default open or collapsed state for the at-a-glance panel above results.",
+      "key": "knowledgePanelMobile",
+      "label": "Knowledge panel (mobile)",
+      "description": "Default open or collapsed state for Wikipedia and knowledge plugin panels in the sidebar.",
       "type": "select",
-      "options": ["open", "collapsed"],
-      "optionLabels": ["Open", "Collapsed"],
-      "default": "open"
+      "options": ["collapsed", "open"],
+      "optionLabels": ["Collapsed", "Open"],
+      "default": "collapsed"
     },
     {
-      "key": "atAGlanceDesktop",
-      "label": "At a glance (desktop)",
-      "description": "Default open or collapsed state for the at-a-glance panel above results.",
+      "key": "knowledgePanelDesktop",
+      "label": "Knowledge panel (desktop)",
+      "description": "Default open or collapsed state for Wikipedia and knowledge plugin panels in the sidebar.",
       "type": "select",
       "options": ["open", "collapsed"],
       "optionLabels": ["Open", "Collapsed"],
@@ -80,8 +80,8 @@
     "relatedSearchesMobile": "related-searches-mobile",
     "relatedSearchesDesktop": "related-searches-desktop",
     "stickySidebar": "sticky-sidebar",
-    "atAGlanceMobile": "at-a-glance-mobile",
-    "atAGlanceDesktop": "at-a-glance-desktop"
+    "knowledgePanelMobile": "knowledge-panel-mobile",
+    "knowledgePanelDesktop": "knowledge-panel-desktop"
   },
   "html": {
     "layout": "layout.html",
