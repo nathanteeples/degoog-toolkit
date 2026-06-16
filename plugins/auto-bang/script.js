@@ -57,6 +57,14 @@ function rememberBangTypedQuery(input) {
   input.dataset.bangTypedQuery = input.value.slice(1).split(" ")[0] || "";
 }
 
+function getBangFilterQuery(input) {
+  if (!input) return "";
+  if (Object.prototype.hasOwnProperty.call(input.dataset, "bangTypedQuery")) {
+    return String(input.dataset.bangTypedQuery).toLowerCase();
+  }
+  return input.value.slice(1).split(" ")[0].toLowerCase();
+}
+
 function isBangDropdownActive(dropdown) {
   return dropdown?.dataset?.autoBangActive === "true";
 }
@@ -214,8 +222,13 @@ function setActiveBangItem(items, activeIndex) {
     const isActive = index === activeIndex;
     item.classList.toggle("ac-item--bang-active", isActive);
     item.classList.toggle("active", isActive);
+    item.classList.toggle("ac-active", isActive);
     item.setAttribute("aria-selected", isActive ? "true" : "false");
   });
+
+  if (activeIndex >= 0 && items[activeIndex]) {
+    items[activeIndex].scrollIntoView({ block: "nearest" });
+  }
 }
 
 function renderBangDropdown(commands, input, dropdown, options = {}) {
@@ -235,8 +248,9 @@ function renderBangDropdown(commands, input, dropdown, options = {}) {
   const wasActive = isBangDropdownActive(dropdown);
   const activeTrigger =
     options.preserveActiveTrigger ||
-    dropdown.querySelector(".ac-item--bang.active, .ac-item--bang.ac-item--bang-active")
-      ?.dataset.trigger ||
+    dropdown.querySelector(
+      ".ac-item--bang.active, .ac-item--bang.ac-active, .ac-item--bang.ac-item--bang-active",
+    )?.dataset.trigger ||
     "";
 
   if (wasActive && nextKey === prevKey && !options.forceRepaint) {
@@ -298,7 +312,7 @@ function renderBangDropdown(commands, input, dropdown, options = {}) {
 function updateBangDropdownSync(input, dropdown, options = {}) {
   if (!input || !dropdown || !commandCache) return false;
   if (!shouldShowBang(input)) return false;
-  const filtered = filterCommands(input.value.slice(1), commandCache);
+  const filtered = filterCommands(getBangFilterQuery(input), commandCache);
   renderBangDropdown(filtered, input, dropdown, options);
   return true;
 }
@@ -311,7 +325,7 @@ async function updateBangDropdown(input, dropdown, options = {}) {
   }
 
   const commands = await fetchCommands();
-  const filtered = filterCommands(input.value.slice(1), commands);
+  const filtered = filterCommands(getBangFilterQuery(input), commands);
   renderBangDropdown(filtered, input, dropdown, options);
 }
 
@@ -349,7 +363,7 @@ function getHighlightedBangItem(dropdown) {
   if (!dropdown || !isBangDropdownActive(dropdown)) return null;
   return (
     dropdown.querySelector(
-      '.ac-item--bang.active, .ac-item--bang.ac-item--bang-active, .ac-item--bang[aria-selected="true"]',
+      '.ac-item--bang.active, .ac-item--bang.ac-active, .ac-item--bang.ac-item--bang-active, .ac-item--bang[aria-selected="true"]',
     ) ?? null
   );
 }
@@ -374,18 +388,14 @@ function handleBangKeydown(event, input, dropdown) {
   let activeIndex = [...items].findIndex(
     (item) =>
       item.classList.contains("ac-item--bang-active") ||
-      item.classList.contains("active"),
+      item.classList.contains("active") ||
+      item.classList.contains("ac-active"),
   );
 
   if (event.key === "ArrowDown") {
     stopBangKeyEvent(event);
     activeIndex = Math.min(activeIndex + 1, items.length - 1);
     setActiveBangItem(items, activeIndex);
-    const trigger = items[activeIndex]?.dataset.trigger;
-    if (trigger) {
-      setBangInputValue(input, trigger);
-      updateBangDropdownSync(input, dropdown, { preserveActiveTrigger: trigger });
-    }
     return true;
   }
 
@@ -393,17 +403,6 @@ function handleBangKeydown(event, input, dropdown) {
     stopBangKeyEvent(event);
     activeIndex = Math.max(activeIndex - 1, -1);
     setActiveBangItem(items, activeIndex);
-    if (activeIndex === -1) {
-      const typed = input.dataset.bangTypedQuery || input.value.slice(1).split(" ")[0] || "";
-      setBangInputValue(input, typed);
-      updateBangDropdownSync(input, dropdown);
-    } else {
-      const trigger = items[activeIndex]?.dataset.trigger;
-      if (trigger) {
-        setBangInputValue(input, trigger);
-        updateBangDropdownSync(input, dropdown, { preserveActiveTrigger: trigger });
-      }
-    }
     return true;
   }
 
@@ -442,11 +441,39 @@ function loadSettings() {
     .catch(() => {});
 }
 
+function bindBangSearchInput(input) {
+  if (!(input instanceof HTMLInputElement) || input.dataset.bangKeyBound === "true") {
+    return;
+  }
+  input.dataset.bangKeyBound = "true";
+
+  input.addEventListener(
+    "keydown",
+    (event) => {
+      const dropdown = getDropdownForInput(input);
+      if (!dropdown || !isBangDropdownActive(dropdown)) return;
+      if (!shouldShowBang(input)) return;
+      if (!["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(event.key)) {
+        return;
+      }
+      handleBangKeydown(event, input, dropdown);
+    },
+    true,
+  );
+}
+
 function initAutoBang() {
   if (initialized) return;
   initialized = true;
 
   loadSettings().then(() => fetchCommands());
+
+  for (const id of ["search-input", "results-search-input"]) {
+    const input = document.getElementById(id);
+    if (input instanceof HTMLInputElement) {
+      bindBangSearchInput(input);
+    }
+  }
 
   document.addEventListener("input", (event) => {
     const input = getBangInput(event.target);
@@ -454,7 +481,12 @@ function initAutoBang() {
     if (!input || !dropdown) return;
     if (!shouldShowBang(input)) {
       hideBangDropdown(dropdown);
+      delete input.dataset.bangTypedQuery;
       return;
+    }
+    if (event.isTrusted) {
+      const items = dropdown.querySelectorAll(".ac-item--bang");
+      if (items.length) setActiveBangItem(items, -1);
     }
     queueBangUpdate(input, dropdown);
   });
@@ -503,21 +535,6 @@ function initAutoBang() {
       }
     });
   });
-
-  document.addEventListener(
-    "keydown",
-    (event) => {
-      const input = getBangInput(event.target);
-      const dropdown = getDropdownForInput(input);
-      if (!input || !dropdown || !isBangDropdownActive(dropdown)) return;
-      if (!shouldShowBang(input)) return;
-      if (!["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(event.key)) {
-        return;
-      }
-      handleBangKeydown(event, input, dropdown);
-    },
-    true,
-  );
 }
 
 if (document.readyState === "loading") {
