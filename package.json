@@ -88,6 +88,13 @@
       "type": "command"
     },
     {
+      "path": "plugins/auto-bang",
+      "name": "Auto Bang",
+      "description": "Autocomplete !bang commands in the search bar as you type, using the same autocomplete dropdown panel as search history.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
+      "version": "1.0.0",
+      "type": "command"
+    },
+    {
       "path": "plugins/speedtest",
       "name": "Speedtest",
       "description": "Internet speed test with selectable servers, latency, and a circular gauge. Supports !speedtest, !speed, !speed-test, !networkspeed, !internetspeed, and natural phrases like 'run a speedtest' or 'how fast is internet'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
@@ -175,7 +182,7 @@
       "path": "plugins/sports-slot",
       "name": "Sports",
       "description": "Shows live sports scores, schedules, and standings. Activates on natural queries like team names, 'premier league standings', or 'lakers vs warriors'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "0.3.24",
+      "version": "0.3.29",
       "type": "slot"
     }
   ],

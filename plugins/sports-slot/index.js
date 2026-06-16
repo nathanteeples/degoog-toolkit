@@ -18,8 +18,8 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.24";
-const ESPN_LIVE_REFRESH_MS = 15_000;
+const PLUGIN_VERSION = "0.3.29";
+const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
   sportsResults: "Sports",
@@ -2200,6 +2200,81 @@ function getTimelineTeamColor(side, focusGame) {
   return "var(--primary)";
 }
 
+function annotateTimelineScores(timeline, focusGame) {
+  if (!timeline?.length || !focusGame) return timeline ?? [];
+
+  let away = 0;
+  let home = 0;
+
+  return timeline.map((event) => {
+    if (!event.scoring) return event;
+
+    const side = resolveTimelineTeamSide(event.team, focusGame);
+    if (side === "away") away += 1;
+    else if (side === "home") home += 1;
+
+    return {
+      ...event,
+      scoreAfter: { away, home, label: `${away}-${home}` },
+    };
+  });
+}
+
+function renderTimelineScoreBar(focusGame, sport = "soccer") {
+  if (!focusGame) return "";
+
+  let statusText = focusGame.status || "";
+  if (sport === "soccer" && focusGame.state === "final" && statusText === "Final") {
+    statusText = "Full-time";
+  }
+
+  const liveClockAttr =
+    focusGame.liveClockSeconds != null
+      ? `data-live-status data-live-prefix="${escapeHtml(
+          focusGame.liveStatusPrefix || "",
+        )}" data-live-seconds="${escapeHtml(
+          focusGame.liveClockSeconds,
+        )}" data-live-direction="down"`
+      : "";
+
+  const awayScore = escapeHtml(focusGame.awayScore ?? "—");
+  const homeScore = escapeHtml(focusGame.homeScore ?? "—");
+  const showScores = focusGame.state !== "scheduled";
+
+  return `
+    <div class="sports-slot__timeline-scorebar" aria-label="Match score">
+      <div class="sports-slot__timeline-scorebar-team sports-slot__timeline-scorebar-team--away">
+        ${renderTeamMark(focusGame.awayBrand, focusGame.awayTeam, focusGame.awayAbbr)}
+        <span class="sports-slot__timeline-scorebar-abbr">${escapeHtml(
+          focusGame.awayAbbr || focusGame.awayTeam,
+        )}</span>
+      </div>
+      <div class="sports-slot__timeline-scorebar-center">
+        ${
+          showScores
+            ? `<div class="sports-slot__timeline-scorebar-score">
+                <span class="sports-slot__timeline-scorebar-val">${awayScore}</span>
+                <span class="sports-slot__timeline-scorebar-divider">-</span>
+                <span class="sports-slot__timeline-scorebar-val">${homeScore}</span>
+              </div>`
+            : `<span class="sports-slot__timeline-scorebar-vs">vs</span>`
+        }
+        <span class="sports-slot__timeline-scorebar-status${
+          focusGame.state === "live"
+            ? " sports-slot__timeline-scorebar-status--live"
+            : ""
+        }" ${liveClockAttr}>${escapeHtml(formatMaybeTimestamp(statusText) || statusText)}</span>
+      </div>
+      <div class="sports-slot__timeline-scorebar-team sports-slot__timeline-scorebar-team--home">
+        ${renderTeamMark(focusGame.homeBrand, focusGame.homeTeam, focusGame.homeAbbr)}
+        <span class="sports-slot__timeline-scorebar-abbr">${escapeHtml(
+          focusGame.homeAbbr || focusGame.homeTeam,
+        )}</span>
+      </div>
+    </div>
+  `;
+}
+
 function renderTimelineEventCard(event, tone) {
   const assistHtml = event.assist
     ? `<span class="sports-slot__timeline-assist">${
@@ -2210,12 +2285,18 @@ function renderTimelineEventCard(event, tone) {
     event.detail && event.detail !== event.text
       ? `<p class="sports-slot__timeline-detail">${escapeHtml(event.detail)}</p>`
       : "";
+  const scoreHtml = event.scoreAfter
+    ? `<span class="sports-slot__timeline-score-pill" title="Score after this event">${escapeHtml(
+        event.scoreAfter.label,
+      )}</span>`
+    : "";
 
   return `
     <div class="sports-slot__timeline-card sports-slot__timeline-card--${tone}">
       <div class="sports-slot__timeline-card-head">
         <span class="sports-slot__timeline-minute">${escapeHtml(event.minute || "—")}</span>
         <span class="sports-slot__timeline-icon" aria-hidden="true">${timelineEventIcon(event)}</span>
+        ${scoreHtml}
       </div>
       <div class="sports-slot__timeline-card-body">
         <div class="sports-slot__timeline-top">
@@ -2243,12 +2324,16 @@ function getTimelineEventKey(event) {
   return `${event.minute || ""}|${text}|${athlete}`;
 }
 
-function renderTimelinePanel(timeline, focusGame = null) {
+function renderTimelinePanel(timeline, focusGame = null, sport = "soccer") {
   if (!timeline?.length) return "";
-  const orderedTimeline = [...timeline].reverse();
+  const scoredTimeline = annotateTimelineScores(timeline, focusGame);
+  const orderedTimeline = [...scoredTimeline].reverse();
+  const scoreBarHtml = renderTimelineScoreBar(focusGame, sport);
   return `
     <div class="sports-slot__tab-panel" data-panel="timeline" style="display: none;">
       <div class="sports-slot__timeline">
+        ${scoreBarHtml}
+        <div class="sports-slot__timeline-body">
         <div class="sports-slot__timeline-spine" aria-hidden="true"></div>
         <div class="sports-slot__timeline-events">
           ${orderedTimeline
@@ -2312,6 +2397,7 @@ function renderTimelinePanel(timeline, focusGame = null) {
               `;
             })
             .join("")}
+        </div>
         </div>
       </div>
     </div>
@@ -4909,6 +4995,47 @@ function extractMatchFacts(summaryData) {
   return facts;
 }
 
+function teamFormBlockMatchesFocus(block, needles) {
+  const blockNeedles = [block.abbreviation, block.team]
+    .map(normalizeText)
+    .filter(Boolean);
+  return blockNeedles.some((candidate) =>
+    needles.some(
+      (needle) =>
+        candidate === needle ||
+        candidate.includes(needle) ||
+        needle.includes(candidate),
+    ),
+  );
+}
+
+function orderTeamFormForMatch(teamForm, focusGame) {
+  if (!teamForm?.length || !focusGame) return teamForm ?? [];
+
+  const awayNeedles = [focusGame.awayAbbr, focusGame.awayTeam]
+    .map(normalizeText)
+    .filter(Boolean);
+  const homeNeedles = [focusGame.homeAbbr, focusGame.homeTeam]
+    .map(normalizeText)
+    .filter(Boolean);
+
+  const awayBlock = teamForm.find((block) =>
+    teamFormBlockMatchesFocus(block, awayNeedles),
+  );
+  const homeBlock = teamForm.find((block) =>
+    teamFormBlockMatchesFocus(block, homeNeedles),
+  );
+
+  const ordered = [];
+  if (awayBlock) ordered.push(awayBlock);
+  if (homeBlock) ordered.push(homeBlock);
+  for (const block of teamForm) {
+    if (block !== awayBlock && block !== homeBlock) ordered.push(block);
+  }
+
+  return ordered.length ? ordered : teamForm;
+}
+
 function extractTeamForm(summaryData) {
   return (summaryData?.lastFiveGames || []).map((block) => ({
     team: block.team?.displayName || block.team?.abbreviation || "Team",
@@ -4969,7 +5096,7 @@ function buildEspnSummaryEnrichment(summaryData, focusGame, sport) {
     ),
     timeline: extractMatchTimeline(summaryData, sport),
     matchFacts: extractMatchFacts(summaryData),
-    teamForm: extractTeamForm(summaryData),
+    teamForm: orderTeamFormForMatch(extractTeamForm(summaryData), focusGame),
     headToHead: extractHeadToHead(summaryData),
     lineups: sport === "soccer" ? extractLineups(summaryData) : [],
   };
@@ -5425,7 +5552,11 @@ function renderEspnCard(model) {
     </div>
   `;
 
-  const timelineTabPanel = renderTimelinePanel(model.timeline, model.focusGame);
+  const timelineTabPanel = renderTimelinePanel(
+    model.timeline,
+    model.focusGame,
+    model.sport,
+  );
   const lineupTabPanel = renderLineupPanel(model.lineups);
 
   let standingsTabPanel = "";

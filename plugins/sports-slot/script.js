@@ -11,24 +11,16 @@
     return `${minutes}:${remaining}`;
   }
 
-  function formatCountdown(ms) {
-    return Math.max(1, Math.ceil(ms / 1000));
-  }
-
   function updateRefreshButton(panel) {
     const button = panel.querySelector("[data-sports-refresh]");
     if (!button) return;
 
     const nextRefreshAt = Number(panel.dataset.nextRefreshAt || 0);
     const remaining = nextRefreshAt - Date.now();
+    const isRefreshing = panel.dataset.refreshing === "true";
 
-    if (remaining > 0) {
-      button.disabled = true;
-      button.textContent = `Refresh (${formatCountdown(remaining)}s)`;
-      return;
-    }
-
-    button.disabled = false;
+    button.disabled = remaining > 0 || isRefreshing;
+    if (button.textContent === "Refreshing...") return;
     button.textContent = "Refresh";
   }
 
