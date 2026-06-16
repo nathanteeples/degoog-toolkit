@@ -33,18 +33,17 @@
   }
 
   function updateLiveClock(panel) {
-    const node = panel.querySelector("[data-live-status]");
-    if (!node) return;
+    panel.querySelectorAll("[data-live-status]").forEach((node) => {
+      const seconds = Number(node.dataset.liveSeconds);
+      if (!Number.isFinite(seconds)) return;
 
-    const seconds = Number(node.dataset.liveSeconds);
-    if (!Number.isFinite(seconds)) return;
-
-    const prefix = node.dataset.livePrefix || "";
-    const nextSeconds = Math.max(0, seconds - 1);
-    node.dataset.liveSeconds = String(nextSeconds);
-    node.textContent = prefix
-      ? `${prefix} • ${formatClock(nextSeconds)}`
-      : formatClock(nextSeconds);
+      const prefix = node.dataset.livePrefix || "";
+      const nextSeconds = Math.max(0, seconds - 1);
+      node.dataset.liveSeconds = String(nextSeconds);
+      node.textContent = prefix
+        ? `${prefix} • ${formatClock(nextSeconds)}`
+        : formatClock(nextSeconds);
+    });
   }
 
   function repairPlayerAvatars(root) {

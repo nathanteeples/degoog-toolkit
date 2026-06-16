@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.21";
+const PLUGIN_VERSION = "0.3.23";
 const ESPN_LIVE_REFRESH_MS = 15_000;
 
 const FALLBACK_STRINGS = {
@@ -1844,10 +1844,24 @@ function renderTeamMark(brand, teamName, fallbackAbbreviation) {
   `;
 }
 
-function renderLiveBadge(label) {
+function getLiveBadgeLabel(game) {
+  if (!game || game.state !== "live") return "";
+  const status = formatMaybeTimestamp(game.status || "");
+  return status && !/^live$/i.test(status) ? status : game.status || "Live";
+}
+
+function renderLiveBadge(label, game = null) {
+  const liveClockAttr =
+    game?.liveClockSeconds != null
+      ? `data-live-status data-live-prefix="${escapeHtml(
+          game.liveStatusPrefix || "",
+        )}" data-live-seconds="${escapeHtml(
+          game.liveClockSeconds,
+        )}" data-live-direction="down"`
+      : "";
+
   return `
-    <span class="sports-slot__badge sports-slot__badge--live">
-      <span class="sports-slot__live-dot" aria-hidden="true"></span>
+    <span class="sports-slot__badge sports-slot__badge--live" ${liveClockAttr}>
       ${escapeHtml(label)}
     </span>
   `;
@@ -1892,7 +1906,7 @@ function renderRefreshButton(model) {
 function renderToolbar(model) {
   const badgeHtml = model.badge
     ? model.badgeTone === "live"
-      ? renderLiveBadge(model.badge)
+      ? renderLiveBadge(model.badge, model.focusGame)
       : `<span class="sports-slot__badge sports-slot__badge--${escapeHtml(
           model.badgeTone || "scheduled",
         )}">${escapeHtml(model.badge)}</span>`
@@ -2143,52 +2157,147 @@ function timelineEventIcon(event) {
   return "•";
 }
 
-function renderTimelinePanel(timeline) {
+function resolveTimelineTeamSide(eventTeam = "", focusGame = null) {
+  if (!focusGame || !eventTeam) return "neutral";
+
+  const needle = normalizeText(eventTeam);
+  const awayNeedles = [
+    focusGame.awayAbbr,
+    focusGame.awayTeam,
+    focusGame.awayBrand?.abbreviation,
+  ]
+    .map(normalizeText)
+    .filter(Boolean);
+  const homeNeedles = [
+    focusGame.homeAbbr,
+    focusGame.homeTeam,
+    focusGame.homeBrand?.abbreviation,
+  ]
+    .map(normalizeText)
+    .filter(Boolean);
+
+  const matchesNeedle = (candidates) =>
+    candidates.some(
+      (candidate) =>
+        candidate === needle ||
+        candidate.includes(needle) ||
+        needle.includes(candidate),
+    );
+
+  if (matchesNeedle(awayNeedles)) return "away";
+  if (matchesNeedle(homeNeedles)) return "home";
+  return "neutral";
+}
+
+function getTimelineTeamColor(side, focusGame) {
+  if (!focusGame) return "var(--primary)";
+  if (side === "away") {
+    return focusGame.awayBrand?.color || "var(--sports-away-color, var(--primary))";
+  }
+  if (side === "home") {
+    return focusGame.homeBrand?.color || "var(--sports-home-color, var(--primary))";
+  }
+  return "var(--primary)";
+}
+
+function renderTimelineEventCard(event, tone) {
+  const assistHtml = event.assist
+    ? `<span class="sports-slot__timeline-assist">${
+        event.substitution ? "↳ replaces " : "↳ "
+      }${escapeHtml(event.assist)}</span>`
+    : "";
+  const detailHtml =
+    event.detail && event.detail !== event.text
+      ? `<p class="sports-slot__timeline-detail">${escapeHtml(event.detail)}</p>`
+      : "";
+
+  return `
+    <div class="sports-slot__timeline-card sports-slot__timeline-card--${tone}">
+      <div class="sports-slot__timeline-card-head">
+        <span class="sports-slot__timeline-minute">${escapeHtml(event.minute || "—")}</span>
+        <span class="sports-slot__timeline-icon" aria-hidden="true">${timelineEventIcon(event)}</span>
+      </div>
+      <div class="sports-slot__timeline-card-body">
+        <div class="sports-slot__timeline-top">
+          <strong>${escapeHtml(event.athlete || event.type)}</strong>
+          ${
+            event.team
+              ? `<span class="sports-slot__timeline-team">${escapeHtml(event.team)}</span>`
+              : ""
+          }
+        </div>
+        <span class="sports-slot__timeline-text">${escapeHtml(
+          event.isPlay && !event.athlete ? event.text : event.text,
+        )}</span>
+        ${assistHtml}
+        ${detailHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderTimelinePanel(timeline, focusGame = null) {
   if (!timeline?.length) return "";
   return `
     <div class="sports-slot__tab-panel" data-panel="timeline" style="display: none;">
-      <div class="sports-slot__timeline-grid">
-        ${timeline
-          .map((event) => {
-            const tone = timelineEventTone(event);
-            const assistHtml = event.assist
-              ? `<span class="sports-slot__timeline-assist">${
-                  event.substitution ? "↳ replaces " : "↳ "
-                }${escapeHtml(event.assist)}</span>`
-              : "";
-            const detailHtml =
-              event.detail && event.detail !== event.text
-                ? `<p class="sports-slot__timeline-detail">${escapeHtml(event.detail)}</p>`
-                : "";
-            return `
-              <article class="sports-slot__timeline-row sports-slot__timeline-row--${tone}">
-                ${
-                  event.isPeriod
-                    ? `<div class="sports-slot__timeline-period">${escapeHtml(event.type)}</div>`
-                    : `
-                      <span class="sports-slot__timeline-minute">${escapeHtml(event.minute || "—")}</span>
-                      <span class="sports-slot__timeline-icon" aria-hidden="true">${timelineEventIcon(event)}</span>
-                      <div class="sports-slot__timeline-body">
-                        <div class="sports-slot__timeline-top">
-                          <strong>${escapeHtml(event.athlete || event.type)}</strong>
-                          ${
-                            event.team
-                              ? `<span class="sports-slot__timeline-team">${escapeHtml(event.team)}</span>`
-                              : ""
-                          }
-                        </div>
-                        <span class="sports-slot__timeline-text">${escapeHtml(
-                          event.isPlay && !event.athlete ? event.text : event.text,
-                        )}</span>
-                        ${assistHtml}
-                        ${detailHtml}
-                      </div>
-                    `
-                }
-              </article>
-            `;
-          })
-          .join("")}
+      <div class="sports-slot__timeline">
+        <div class="sports-slot__timeline-spine" aria-hidden="true"></div>
+        <div class="sports-slot__timeline-events">
+          ${timeline
+            .map((event) => {
+              const tone = timelineEventTone(event);
+
+              if (event.isPeriod) {
+                return `
+                  <article class="sports-slot__timeline-event sports-slot__timeline-event--period">
+                    <div class="sports-slot__timeline-period-pill">${escapeHtml(event.text || event.type)}</div>
+                  </article>
+                `;
+              }
+
+              const side = resolveTimelineTeamSide(event.team, focusGame);
+              const layoutSide =
+                side === "away" ? "left" : side === "home" ? "right" : "center";
+              const teamColor = getTimelineTeamColor(side, focusGame);
+              const cardHtml = renderTimelineEventCard(event, tone);
+
+              if (layoutSide === "center") {
+                return `
+                  <article
+                    class="sports-slot__timeline-event sports-slot__timeline-event--neutral sports-slot__timeline-event--${tone}"
+                    style="--sports-timeline-color:${escapeHtml(teamColor)}"
+                  >
+                    ${cardHtml}
+                  </article>
+                `;
+              }
+
+              if (layoutSide === "left") {
+                return `
+                  <article
+                    class="sports-slot__timeline-event sports-slot__timeline-event--left sports-slot__timeline-event--${tone}"
+                    style="--sports-timeline-color:${escapeHtml(teamColor)}"
+                  >
+                    ${cardHtml}
+                    <span class="sports-slot__timeline-node" aria-hidden="true"></span>
+                    <span class="sports-slot__timeline-spacer" aria-hidden="true"></span>
+                  </article>
+                `;
+              }
+
+              return `
+                <article
+                  class="sports-slot__timeline-event sports-slot__timeline-event--right sports-slot__timeline-event--${tone}"
+                  style="--sports-timeline-color:${escapeHtml(teamColor)}"
+                >
+                  <span class="sports-slot__timeline-spacer" aria-hidden="true"></span>
+                  <span class="sports-slot__timeline-node" aria-hidden="true"></span>
+                  ${cardHtml}
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
       </div>
     </div>
   `;
@@ -3919,18 +4028,19 @@ function extractSoccerGoals(summaryData, awayTeamId, homeTeamId) {
 
 const ESPN_SOCCER_BOX_SCORE_STATS = [
   { name: "possessionPct", label: "Possession" },
-  { name: "totalShots", label: "Total shots" },
-  { name: "shotsOnTarget", label: "Shots on target" },
-  { name: "shotPct", label: "Shot accuracy" },
-  { name: "wonCorners", label: "Corners" },
+  { name: "totalShots", label: "Shots" },
+  { name: "shotsOnTarget", label: "Shots on goal" },
+  { name: "wonCorners", label: "Corner kicks" },
+  { name: "totalPasses", label: "Total passes" },
+  { name: "passPct", label: "Passing accuracy" },
+  { name: "offsides", label: "Offsides" },
   { name: "foulsCommitted", label: "Fouls" },
   { name: "yellowCards", label: "Yellow cards" },
   { name: "redCards", label: "Red cards" },
-  { name: "offsides", label: "Offsides" },
+  { name: "shotPct", label: "Shot accuracy" },
   { name: "saves", label: "Saves" },
-  { name: "totalPasses", label: "Passes" },
   { name: "accuratePasses", label: "Accurate passes" },
-  { name: "passPct", label: "Pass accuracy" },
+  { name: "blockedShots", label: "Blocked shots" },
   { name: "totalCrosses", label: "Crosses" },
   { name: "accurateCrosses", label: "Accurate crosses" },
   { name: "totalLongBalls", label: "Long balls" },
@@ -3939,15 +4049,17 @@ const ESPN_SOCCER_BOX_SCORE_STATS = [
   { name: "totalTackles", label: "Total tackles" },
   { name: "interceptions", label: "Interceptions" },
   { name: "effectiveClearance", label: "Clearances" },
-  { name: "blockedShots", label: "Blocked shots" },
   { name: "penaltyKickGoals", label: "Penalty goals" },
 ];
 
 const ESPN_DEFAULT_BOX_SCORE_STATS = [
   { name: "possessionPct", label: "Possession" },
   { name: "totalShots", label: "Shots" },
-  { name: "shotsOnTarget", label: "On target" },
-  { name: "wonCorners", label: "Corners" },
+  { name: "shotsOnTarget", label: "Shots on goal" },
+  { name: "wonCorners", label: "Corner kicks" },
+  { name: "totalPasses", label: "Total passes" },
+  { name: "passPct", label: "Passing accuracy" },
+  { name: "offsides", label: "Offsides" },
   { name: "foulsCommitted", label: "Fouls" },
   { name: "yellowCards", label: "Yellow cards" },
   { name: "redCards", label: "Red cards" },
@@ -5161,9 +5273,9 @@ function buildEspnTabs({
   isMatchup = false,
 } = {}) {
   const tabs = [{ id: "matches", label: isMatchup ? "Game" : "Matches" }];
-  if (hasLineup) tabs.push({ id: "lineup", label: t("lineup") });
   if (hasTimeline) tabs.push({ id: "timeline", label: t("timeline") });
   if (hasStats) tabs.push({ id: "stats", label: "Stats" });
+  if (hasLineup) tabs.push({ id: "lineup", label: t("lineup") });
   if (hasStandings) tabs.push({ id: "standings", label: "Standings" });
   if (hasGroups) tabs.push({ id: "groups", label: "Groups" });
   if (hasBracket) tabs.push({ id: "bracket", label: "Bracket" });
@@ -5298,7 +5410,7 @@ function renderEspnCard(model) {
     </div>
   `;
 
-  const timelineTabPanel = renderTimelinePanel(model.timeline);
+  const timelineTabPanel = renderTimelinePanel(model.timeline, model.focusGame);
   const lineupTabPanel = renderLineupPanel(model.lineups);
 
   let standingsTabPanel = "";
@@ -5515,10 +5627,10 @@ function renderEspnCard(model) {
       ${tabsNavHtml}
       <div class="sports-slot__body sports-slot__tab-panels">
         ${matchesTabPanel}
-        ${lineupTabPanel}
         ${timelineTabPanel}
-        ${standingsTabPanel}
         ${statsTabPanel}
+        ${lineupTabPanel}
+        ${standingsTabPanel}
         ${groupsTabPanel}
         ${bracketTabPanel}
       </div>
@@ -5611,7 +5723,12 @@ async function handleEspnQuery(parsed, context) {
       eyebrow: "Matchup Results",
       title: `${focusGame.awayTeam} vs ${focusGame.homeTeam}`,
       subtitle: focusGame.competitionLabel,
-      badge: focusGame.state === "live" ? "Live" : focusGame.state === "final" ? "Final" : "Scheduled",
+      badge:
+        focusGame.state === "live"
+          ? getLiveBadgeLabel(focusGame) || t("live")
+          : focusGame.state === "final"
+            ? "Final"
+            : "Scheduled",
       badgeTone: toStatusTone(focusGame.state),
       tabs,
       focusGame,
@@ -5693,7 +5810,12 @@ async function handleEspnQuery(parsed, context) {
       eyebrow: "Team Summary",
       title: parsed.team.canonicalName,
       subtitle: focusGame ? focusGame.competitionLabel : "",
-      badge: focusGame?.state === "live" ? "Live" : focusGame?.state === "final" ? "Final" : "Scheduled",
+      badge:
+        focusGame?.state === "live"
+          ? getLiveBadgeLabel(focusGame) || t("live")
+          : focusGame?.state === "final"
+            ? "Final"
+            : "Scheduled",
       badgeTone: toStatusTone(focusGame?.state || "scheduled"),
       tabs,
       focusGame,
@@ -5768,7 +5890,12 @@ async function handleEspnQuery(parsed, context) {
     eyebrow: "League Summary",
     title: isWC ? "FIFA World Cup 2026" : title,
     subtitle: isWC ? "USA • Canada • Mexico" : "Scoreboard & Standings",
-    badge: focusGame?.state === "live" ? "Live" : focusGame?.state === "final" ? "Final" : "Scheduled",
+    badge:
+      focusGame?.state === "live"
+        ? getLiveBadgeLabel(focusGame) || t("live")
+        : focusGame?.state === "final"
+          ? "Final"
+          : "Scheduled",
     badgeTone: toStatusTone(focusGame?.state || "scheduled"),
     tabs,
     focusGame,
