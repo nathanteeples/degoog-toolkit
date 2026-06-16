@@ -9,19 +9,6 @@
   font-weight: 400;
 }
 
-.ac-item--bang .ac-item-icon--bang {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 1.125rem;
-  height: 1.125rem;
-  font-size: 0.82rem;
-  font-weight: 800;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color: var(--primary);
-}
-
 .ac-item--bang .ac-item-copy {
   flex: 1;
   min-width: 0;
