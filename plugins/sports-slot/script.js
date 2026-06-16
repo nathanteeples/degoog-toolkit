@@ -114,6 +114,34 @@
     });
   }
 
+  function collectTimelineKeys(panel) {
+    return new Set(
+      [...panel.querySelectorAll("[data-timeline-key]")].map(
+        (node) => node.dataset.timelineKey,
+      ),
+    );
+  }
+
+  function animateNewTimelineEvents(panel, previousKeys) {
+    if (!previousKeys?.size) return;
+
+    const newEvents = [...panel.querySelectorAll("[data-timeline-key]")].filter(
+      (node) => !previousKeys.has(node.dataset.timelineKey),
+    );
+    if (!newEvents.length) return;
+
+    requestAnimationFrame(() => {
+      for (const node of newEvents) {
+        node.classList.add("sports-slot__timeline-event--enter");
+      }
+    });
+  }
+
+  function restoreScrollPosition(scrollY) {
+    if (!Number.isFinite(scrollY)) return;
+    window.scrollTo(0, scrollY);
+  }
+
   async function refreshPanel(panel, manual = false) {
     const query = panel.dataset.sportsQuery;
     if (!query || panel.dataset.refreshing === "true") return;
@@ -165,9 +193,12 @@
         if (nextPanel) {
           const activeTab = panel.querySelector(".sports-slot__tab--active")?.dataset.tab;
           const activeSubTab = panel.querySelector(".sports-slot__sub-tab--active")?.dataset.subTab;
+          const scrollY = window.scrollY;
+          const timelineKeys = collectTimelineKeys(panel);
 
           panel.replaceWith(nextPanel);
           initPanel(nextPanel);
+          restoreScrollPosition(scrollY);
 
           if (activeTab) {
             const nextTabBtn = nextPanel.querySelector(`.sports-slot__tab[data-tab="${activeTab}"]`);
@@ -177,6 +208,9 @@
             const nextSubTabBtn = nextPanel.querySelector(`.sports-slot__sub-tab[data-sub-tab="${activeSubTab}"]`);
             if (nextSubTabBtn) nextSubTabBtn.click();
           }
+
+          restoreScrollPosition(scrollY);
+          animateNewTimelineEvents(nextPanel, timelineKeys);
           return;
         }
       }

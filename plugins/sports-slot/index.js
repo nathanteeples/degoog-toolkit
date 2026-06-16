@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.23";
+const PLUGIN_VERSION = "0.3.24";
 const ESPN_LIVE_REFRESH_MS = 15_000;
 
 const FALLBACK_STRINGS = {
@@ -2236,20 +2236,32 @@ function renderTimelineEventCard(event, tone) {
   `;
 }
 
+function getTimelineEventKey(event) {
+  if (event.id) return String(event.id);
+  const athlete = normalizeText(event.athlete || "");
+  const text = normalizeText(event.text || event.type || "");
+  return `${event.minute || ""}|${text}|${athlete}`;
+}
+
 function renderTimelinePanel(timeline, focusGame = null) {
   if (!timeline?.length) return "";
+  const orderedTimeline = [...timeline].reverse();
   return `
     <div class="sports-slot__tab-panel" data-panel="timeline" style="display: none;">
       <div class="sports-slot__timeline">
         <div class="sports-slot__timeline-spine" aria-hidden="true"></div>
         <div class="sports-slot__timeline-events">
-          ${timeline
+          ${orderedTimeline
             .map((event) => {
               const tone = timelineEventTone(event);
+              const eventKey = escapeHtml(getTimelineEventKey(event));
 
               if (event.isPeriod) {
                 return `
-                  <article class="sports-slot__timeline-event sports-slot__timeline-event--period">
+                  <article
+                    class="sports-slot__timeline-event sports-slot__timeline-event--period"
+                    data-timeline-key="${eventKey}"
+                  >
                     <div class="sports-slot__timeline-period-pill">${escapeHtml(event.text || event.type)}</div>
                   </article>
                 `;
@@ -2265,6 +2277,7 @@ function renderTimelinePanel(timeline, focusGame = null) {
                 return `
                   <article
                     class="sports-slot__timeline-event sports-slot__timeline-event--neutral sports-slot__timeline-event--${tone}"
+                    data-timeline-key="${eventKey}"
                     style="--sports-timeline-color:${escapeHtml(teamColor)}"
                   >
                     ${cardHtml}
@@ -2276,6 +2289,7 @@ function renderTimelinePanel(timeline, focusGame = null) {
                 return `
                   <article
                     class="sports-slot__timeline-event sports-slot__timeline-event--left sports-slot__timeline-event--${tone}"
+                    data-timeline-key="${eventKey}"
                     style="--sports-timeline-color:${escapeHtml(teamColor)}"
                   >
                     ${cardHtml}
@@ -2288,6 +2302,7 @@ function renderTimelinePanel(timeline, focusGame = null) {
               return `
                 <article
                   class="sports-slot__timeline-event sports-slot__timeline-event--right sports-slot__timeline-event--${tone}"
+                  data-timeline-key="${eventKey}"
                   style="--sports-timeline-color:${escapeHtml(teamColor)}"
                 >
                   <span class="sports-slot__timeline-spacer" aria-hidden="true"></span>
