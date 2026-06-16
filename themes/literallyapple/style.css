@@ -733,6 +733,59 @@ body {
     box-shadow: none;
 }
 
+/* At a glance — collapsible accordion (matches sidebar panel chrome). */
+#at-a-glance .lg-glance-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 1rem;
+}
+
+#at-a-glance .lg-glance-accordion > .sidebar-accordion-toggle {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--la-card);
+    border: 1px solid var(--border-light);
+    border-start-start-radius: var(--theme-radius-xl);
+    border-start-end-radius: var(--theme-radius-xl);
+    border-end-start-radius: var(--theme-radius-xl);
+    border-end-end-radius: var(--theme-radius-xl);
+}
+
+#at-a-glance .lg-glance-accordion.open > .sidebar-accordion-toggle {
+    border-end-start-radius: var(--theme-radius-xs);
+    border-end-end-radius: var(--theme-radius-xs);
+}
+
+#at-a-glance .lg-glance-accordion:not(.open) .lg-glance-accordion-body {
+    display: none;
+}
+
+#at-a-glance .lg-glance-accordion .lg-glance-accordion-body {
+    background: var(--la-card);
+    border: 1px solid var(--border-light);
+    border-start-start-radius: var(--theme-radius-xs);
+    border-start-end-radius: var(--theme-radius-xs);
+    border-end-start-radius: var(--theme-radius-xl);
+    border-end-end-radius: var(--theme-radius-xl);
+    padding: 1rem 1.125rem;
+}
+
+#at-a-glance .lg-glance-accordion .glance-box,
+#at-a-glance .lg-glance-accordion .results-slot-panel {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+}
+
+#at-a-glance .lg-glance-accordion .results-slot-panel-body {
+    padding: 0 !important;
+}
+
 .result-title {
     margin-top: 10px;
 }

@@ -54,6 +54,24 @@
       "description": "Keep the sidebar pinned below the header while scrolling results (desktop only).",
       "type": "toggle",
       "default": false
+    },
+    {
+      "key": "atAGlanceMobile",
+      "label": "At a glance (mobile)",
+      "description": "Default open or collapsed state for the at-a-glance panel above results.",
+      "type": "select",
+      "options": ["open", "collapsed"],
+      "optionLabels": ["Open", "Collapsed"],
+      "default": "open"
+    },
+    {
+      "key": "atAGlanceDesktop",
+      "label": "At a glance (desktop)",
+      "description": "Default open or collapsed state for the at-a-glance panel above results.",
+      "type": "select",
+      "options": ["open", "collapsed"],
+      "optionLabels": ["Open", "Collapsed"],
+      "default": "open"
     }
   ],
   "dataAttrsFromSettings": {
@@ -61,7 +79,9 @@
     "sidebarPanelsDesktop": "sidebar-panels-desktop",
     "relatedSearchesMobile": "related-searches-mobile",
     "relatedSearchesDesktop": "related-searches-desktop",
-    "stickySidebar": "sticky-sidebar"
+    "stickySidebar": "sticky-sidebar",
+    "atAGlanceMobile": "at-a-glance-mobile",
+    "atAGlanceDesktop": "at-a-glance-desktop"
   },
   "html": {
     "layout": "layout.html",
