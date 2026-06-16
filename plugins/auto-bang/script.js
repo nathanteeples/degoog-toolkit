@@ -8,6 +8,7 @@ let commandCache = null;
 let cacheExpiry = 0;
 let maxSuggestions = 6;
 let debounceTimer = null;
+let bangPaintFrame = 0;
 let initialized = false;
 
 const escapeHtml = (str) => {
@@ -50,8 +51,20 @@ function shouldShowBang(input) {
   return !value.slice(1).includes(" ");
 }
 
-function hideBangDropdown(dropdown) {
+function isBangDropdownActive(dropdown) {
+  return dropdown?.dataset?.autoBangActive === "true";
+}
+
+function clearBangDropdown(dropdown) {
   if (!dropdown) return;
+  dropdown.querySelectorAll(".ac-item--bang").forEach((item) => item.remove());
+  dropdown.dataset.autoBangActive = "";
+  dropdown.dataset.bangTriggers = "";
+}
+
+function hideBangDropdown(dropdown) {
+  if (!dropdown || !isBangDropdownActive(dropdown)) return;
+  clearBangDropdown(dropdown);
   dropdown.style.display = "none";
   dropdown.parentElement?.classList.remove("ac-open");
 }
@@ -116,6 +129,47 @@ function applyBangSelection(input, dropdown, trigger) {
   hideBangDropdown(dropdown);
 }
 
+function createBangItemElement(command) {
+  const item = document.createElement("div");
+  item.className = "ac-item ac-item--bang";
+  item.dataset.trigger = command.trigger;
+  item.setAttribute("role", "button");
+  item.setAttribute("tabindex", "0");
+  item.innerHTML = `<span class="ac-item-icon ac-item-icon--bang" aria-hidden="true">!</span>
+          <span class="ac-item-copy">
+            <span class="ac-item-bang-trigger">!${escapeHtml(command.trigger)}</span>
+            <span class="ac-item-bang-name">${escapeHtml(command.name)}</span>
+            <span class="ac-item-bang-desc">${escapeHtml(command.description || "")}</span>
+          </span>`;
+  return item;
+}
+
+function updateBangItemElement(item, command) {
+  const triggerEl = item.querySelector(".ac-item-bang-trigger");
+  const nameEl = item.querySelector(".ac-item-bang-name");
+  const descEl = item.querySelector(".ac-item-bang-desc");
+  const triggerText = `!${command.trigger}`;
+  if (triggerEl && triggerEl.textContent !== triggerText) {
+    triggerEl.textContent = triggerText;
+  }
+  if (nameEl && nameEl.textContent !== command.name) {
+    nameEl.textContent = command.name;
+  }
+  const description = command.description || "";
+  if (descEl && descEl.textContent !== description) {
+    descEl.textContent = description;
+  }
+}
+
+function bindBangItem(item, input, dropdown) {
+  if (item.dataset.bangBound === "true") return;
+  item.dataset.bangBound = "true";
+  item.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    applyBangSelection(input, dropdown, item.dataset.trigger);
+  });
+}
+
 function renderBangDropdown(commands, input, dropdown) {
   if (!dropdown || !input) return;
   if (!shouldShowBang(input)) {
@@ -127,28 +181,68 @@ function renderBangDropdown(commands, input, dropdown) {
     return;
   }
 
-  dropdown.innerHTML = commands
-    .map(
-      (command) => `<div class="ac-item ac-item--bang" data-trigger="${escapeAttr(command.trigger)}" role="button" tabindex="0">
-          <span class="ac-item-icon ac-item-icon--bang" aria-hidden="true">!</span>
-          <span class="ac-item-copy">
-            <span class="ac-item-bang-trigger">!${escapeHtml(command.trigger)}</span>
-            <span class="ac-item-bang-name">${escapeHtml(command.name)}</span>
-            <span class="ac-item-bang-desc">${escapeHtml(command.description || "")}</span>
-          </span>
-        </div>`,
-    )
-    .join("");
+  const nextTriggers = commands.map((command) => command.trigger);
+  const nextKey = nextTriggers.join("|");
+  const prevKey = dropdown.dataset.bangTriggers || "";
+  const wasActive = isBangDropdownActive(dropdown);
+  const activeTrigger =
+    dropdown.querySelector(".ac-item--bang-active")?.dataset.trigger || "";
 
-  dropdown.style.display = "block";
+  if (wasActive && nextKey === prevKey) {
+    if (dropdown.style.display !== "block") {
+      dropdown.style.display = "block";
+      dropdown.parentElement?.classList.add("ac-open");
+    }
+    return;
+  }
+
+  const existingByTrigger = new Map();
+  dropdown.querySelectorAll(".ac-item--bang").forEach((item) => {
+    if (item.dataset.trigger) existingByTrigger.set(item.dataset.trigger, item);
+  });
+
+  dropdown.querySelectorAll(".ac-item:not(.ac-item--bang)").forEach((item) => {
+    item.remove();
+  });
+
+  for (const command of commands) {
+    let item = existingByTrigger.get(command.trigger);
+    if (!item) {
+      item = createBangItemElement(command);
+      bindBangItem(item, input, dropdown);
+    } else {
+      existingByTrigger.delete(command.trigger);
+      updateBangItemElement(item, command);
+    }
+    dropdown.appendChild(item);
+  }
+
+  existingByTrigger.forEach((item) => item.remove());
+
+  dropdown.dataset.bangTriggers = nextKey;
+  dropdown.dataset.autoBangActive = "true";
+
+  if (dropdown.style.display !== "block") {
+    dropdown.style.display = "block";
+  }
   dropdown.parentElement?.classList.add("ac-open");
 
-  dropdown.querySelectorAll(".ac-item--bang").forEach((item) => {
-    item.addEventListener("mousedown", (event) => {
-      event.preventDefault();
-      applyBangSelection(input, dropdown, item.dataset.trigger);
+  if (activeTrigger) {
+    dropdown.querySelectorAll(".ac-item--bang").forEach((item) => {
+      item.classList.toggle(
+        "ac-item--bang-active",
+        item.dataset.trigger === activeTrigger,
+      );
     });
-  });
+  }
+}
+
+function updateBangDropdownSync(input, dropdown) {
+  if (!input || !dropdown || !commandCache) return false;
+  if (!shouldShowBang(input)) return false;
+  const filtered = filterCommands(input.value.slice(1), commandCache);
+  renderBangDropdown(filtered, input, dropdown);
+  return true;
 }
 
 async function updateBangDropdown(input, dropdown) {
@@ -163,15 +257,36 @@ async function updateBangDropdown(input, dropdown) {
   renderBangDropdown(filtered, input, dropdown);
 }
 
-function scheduleBangUpdate(input, dropdown) {
+function queueBangUpdate(input, dropdown) {
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    updateBangDropdown(input, dropdown);
-  }, 80);
+
+  if (!shouldShowBang(input)) {
+    hideBangDropdown(dropdown);
+    return;
+  }
+
+  const repaint = () => {
+    if (!shouldShowBang(input)) {
+      hideBangDropdown(dropdown);
+      return;
+    }
+    if (!updateBangDropdownSync(input, dropdown)) {
+      updateBangDropdown(input, dropdown);
+    }
+  };
+
+  if (updateBangDropdownSync(input, dropdown)) {
+    queueMicrotask(repaint);
+    cancelAnimationFrame(bangPaintFrame);
+    bangPaintFrame = requestAnimationFrame(repaint);
+    return;
+  }
+
+  debounceTimer = setTimeout(repaint, 0);
 }
 
 function getHighlightedBangItem(dropdown) {
-  if (!dropdown || dropdown.style.display === "none") return null;
+  if (!dropdown || !isBangDropdownActive(dropdown)) return null;
   return (
     dropdown.querySelector(
       '.ac-item--bang.ac-item--bang-active, .ac-item--bang[aria-selected="true"], .ac-item--bang:hover',
@@ -212,14 +327,14 @@ function initAutoBang() {
       hideBangDropdown(dropdown);
       return;
     }
-    scheduleBangUpdate(input, dropdown);
+    queueBangUpdate(input, dropdown);
   });
 
   document.addEventListener("focusin", (event) => {
     const input = getBangInput(event.target);
     const dropdown = getDropdownForInput(input);
     if (!input || !dropdown || !shouldShowBang(input)) return;
-    scheduleBangUpdate(input, dropdown);
+    queueBangUpdate(input, dropdown);
   });
 
   document.addEventListener(
@@ -231,7 +346,7 @@ function initAutoBang() {
         const dropdown = getDropdownForInput(input);
         const bar = getSearchBarForInput(input);
         if (!input || !dropdown || !bar) continue;
-        if (dropdown.style.display === "none") continue;
+        if (!isBangDropdownActive(dropdown)) continue;
         if (!shouldShowBang(input)) continue;
         if (bar.contains(event.target)) continue;
         hideBangDropdown(dropdown);
@@ -265,7 +380,7 @@ function initAutoBang() {
     (event) => {
       const input = getBangInput(event.target);
       const dropdown = getDropdownForInput(input);
-      if (!input || !dropdown || dropdown.style.display === "none") return;
+      if (!input || !dropdown || !isBangDropdownActive(dropdown)) return;
       if (!shouldShowBang(input)) return;
 
       const items = dropdown.querySelectorAll(".ac-item--bang");
