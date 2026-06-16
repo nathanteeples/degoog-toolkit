@@ -381,6 +381,13 @@ function stopBangKeyEvent(event) {
   event.stopImmediatePropagation();
 }
 
+function previewBangTrigger(input, trigger) {
+  if (!input) return;
+  const typed = getBangFilterQuery(input);
+  const preview = trigger || typed;
+  setBangInputValue(input, preview, { trailingSpace: false });
+}
+
 function handleBangKeydown(event, input, dropdown) {
   const items = dropdown.querySelectorAll(".ac-item--bang");
   if (!items.length) return false;
@@ -396,6 +403,7 @@ function handleBangKeydown(event, input, dropdown) {
     stopBangKeyEvent(event);
     activeIndex = Math.min(activeIndex + 1, items.length - 1);
     setActiveBangItem(items, activeIndex);
+    previewBangTrigger(input, items[activeIndex]?.dataset.trigger);
     return true;
   }
 
@@ -403,6 +411,11 @@ function handleBangKeydown(event, input, dropdown) {
     stopBangKeyEvent(event);
     activeIndex = Math.max(activeIndex - 1, -1);
     setActiveBangItem(items, activeIndex);
+    if (activeIndex === -1) {
+      previewBangTrigger(input, input.dataset.bangTypedQuery || "");
+    } else {
+      previewBangTrigger(input, items[activeIndex]?.dataset.trigger);
+    }
     return true;
   }
 

@@ -26,8 +26,14 @@ function getSearchBarForInput(input) {
 }
 
 /** True when the bar should show the empty-field history list (focused, not typing). */
+function isHistoryKeyboardBrowsing(input) {
+  return input?.dataset?.historyKeyboardNav === "true";
+}
+
 function shouldShowHistory(input) {
-  if (!input || input.value.trim() !== "") return false;
+  if (!input) return false;
+  if (isHistoryKeyboardBrowsing(input)) return true;
+  if (input.value.trim() !== "") return false;
   if (document.activeElement === input) return true;
   const bar = getSearchBarForInput(input);
   return (
@@ -205,6 +211,138 @@ function getDropdownForInput(input) {
   return null;
 }
 
+function isHistoryDropdownOpen(dropdown) {
+  return (
+    dropdown instanceof HTMLElement &&
+    dropdown.style.display !== "none" &&
+    dropdown.querySelector(".ac-item--history") !== null
+  );
+}
+
+function setActiveHistoryItem(items, activeIndex) {
+  items.forEach((item, index) => {
+    const isActive = activeIndex >= 0 && index === activeIndex;
+    item.classList.toggle("active", isActive);
+    item.classList.toggle("ac-active", isActive);
+    item.classList.toggle("selected", isActive);
+    item.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+
+  if (activeIndex >= 0 && items[activeIndex]) {
+    items[activeIndex].scrollIntoView({ block: "nearest" });
+  }
+}
+
+function previewHistoryEntry(input, entry) {
+  if (!input || !entry) return;
+  input.dataset.historyKeyboardNav = "true";
+  input.value = entry;
+  input.setSelectionRange(entry.length, entry.length);
+}
+
+function clearHistoryKeyboardNav(input) {
+  if (!input) return;
+  delete input.dataset.historyKeyboardNav;
+}
+
+function getHighlightedHistoryItem(dropdown) {
+  if (!isHistoryDropdownOpen(dropdown)) return null;
+  return dropdown.querySelector(
+    '.ac-item--history.active, .ac-item--history.ac-active, .ac-item--history.selected, .ac-item--history[aria-selected="true"]',
+  );
+}
+
+function stopHistoryKeyEvent(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+}
+
+function handleHistoryKeydown(event, input, dropdown) {
+  const items = dropdown.querySelectorAll(".ac-item--history");
+  if (!items.length) return false;
+
+  let activeIndex = [...items].findIndex(
+    (item) =>
+      item.classList.contains("active") ||
+      item.classList.contains("ac-active") ||
+      item.classList.contains("selected"),
+  );
+
+  if (event.key === "ArrowDown") {
+    stopHistoryKeyEvent(event);
+    activeIndex = Math.min(activeIndex + 1, items.length - 1);
+    setActiveHistoryItem(items, activeIndex);
+    previewHistoryEntry(input, items[activeIndex]?.dataset.entry);
+    return true;
+  }
+
+  if (event.key === "ArrowUp") {
+    stopHistoryKeyEvent(event);
+    activeIndex = Math.max(activeIndex - 1, -1);
+    setActiveHistoryItem(items, activeIndex);
+    if (activeIndex === -1) {
+      clearHistoryKeyboardNav(input);
+      input.value = "";
+    } else {
+      previewHistoryEntry(input, items[activeIndex]?.dataset.entry);
+    }
+    return true;
+  }
+
+  if (event.key === "Escape") {
+    stopHistoryKeyEvent(event);
+    clearHistoryKeyboardNav(input);
+    input.value = "";
+    hideHistoryDropdown(dropdown);
+    return true;
+  }
+
+  if (event.key === "Enter") {
+    const highlighted = getHighlightedHistoryItem(dropdown);
+    if (!highlighted?.dataset.entry) return false;
+    stopHistoryKeyEvent(event);
+    input.value = highlighted.dataset.entry;
+    clearHistoryKeyboardNav(input);
+    submitHistoryInput(input, dropdown);
+    return true;
+  }
+
+  if (event.key === "Tab") {
+    const highlighted = getHighlightedHistoryItem(dropdown);
+    const entry = highlighted?.dataset.entry ?? items[0]?.dataset.entry;
+    if (!entry) return false;
+    stopHistoryKeyEvent(event);
+    input.value = entry;
+    clearHistoryKeyboardNav(input);
+    submitHistoryInput(input, dropdown);
+    return true;
+  }
+
+  return false;
+}
+
+function bindHistorySearchInput(input) {
+  if (!(input instanceof HTMLInputElement) || input.dataset.historyKeyBound === "true") {
+    return;
+  }
+  input.dataset.historyKeyBound = "true";
+
+  input.addEventListener(
+    "keydown",
+    (event) => {
+      const dropdown = getDropdownForInput(input);
+      if (!isHistoryDropdownOpen(dropdown)) return;
+      if (input.value.trim() !== "" && !isHistoryKeyboardBrowsing(input)) return;
+      if (!["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(event.key)) {
+        return;
+      }
+      handleHistoryKeydown(event, input, dropdown);
+    },
+    true,
+  );
+}
+
 function submitHistoryInput(input, dropdown) {
   hideHistoryDropdown(dropdown);
   const form = input.closest("form");
@@ -216,25 +354,6 @@ function submitHistoryInput(input, dropdown) {
   }
   const resultsBtn = document.getElementById("results-search-btn");
   if (resultsBtn) resultsBtn.click();
-}
-
-function useHighlightedHistory(input, dropdown, event) {
-  if (!dropdown || dropdown.style.display === "none" || !dropdown.offsetParent) {
-    return false;
-  }
-  // degoog highlights AC items with an inline background or a class; check
-  // for the most common indicators that a history row is "active".
-  const highlighted = dropdown.querySelector(
-    ".ac-item--history.active, .ac-item--history.selected, .ac-item--history[aria-selected=\"true\"], .ac-item--history:hover"
-  );
-  if (!highlighted) return false;
-  const entry = highlighted.dataset.entry;
-  if (!entry) return false;
-  event.preventDefault();
-  event.stopPropagation();
-  input.value = entry;
-  submitHistoryInput(input, dropdown);
-  return true;
 }
 
 let initialized = false;
@@ -258,6 +377,13 @@ function getShTranslation(key) {
 function initSearchHistory() {
   if (initialized) return;
   initialized = true;
+
+  for (const id of ["search-input", "results-search-input"]) {
+    const input = document.getElementById(id);
+    if (input instanceof HTMLInputElement) {
+      bindHistorySearchInput(input);
+    }
+  }
 
   document.addEventListener("mousedown", () => { hasUserInteracted = true; }, { passive: true });
   document.addEventListener("keydown", () => { hasUserInteracted = true; }, { passive: true });
@@ -307,7 +433,11 @@ function initSearchHistory() {
   document.addEventListener("input", (e) => {
     const input = getHistoryInput(e.target);
     const dropdown = getDropdownForInput(input);
-    if (!input || !dropdown || input.value.trim() !== "") return;
+    if (!input || !dropdown) return;
+    if (isHistoryKeyboardBrowsing(input) && e.isTrusted) {
+      clearHistoryKeyboardNav(input);
+    }
+    if (input.value.trim() !== "") return;
     paintCachedHistoryIfAny(input, dropdown);
     fetchAndShowHistory(input, dropdown);
   });
@@ -339,9 +469,9 @@ function initSearchHistory() {
     (e) => {
       if (e.key !== "Enter") return;
       const input = getHistoryInput(e.target);
-      const dropdown = getDropdownForInput(input);
       if (!input) return;
-      if (useHighlightedHistory(input, dropdown, e)) return;
+      const dropdown = getDropdownForInput(input);
+      if (isHistoryDropdownOpen(dropdown)) return;
       if (input.id === "results-search-input") appendHistory(input.value);
     },
     true,

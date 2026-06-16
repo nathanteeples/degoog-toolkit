@@ -62,6 +62,13 @@
   display: block;
 }
 
+.ac-item--history:hover,
+.ac-item--history.active,
+.ac-item--history.ac-active,
+.ac-item--history.selected {
+  background: var(--bg-hover);
+}
+
 .search-history-result .result-favicon--clock {
   display: inline-flex;
   align-items: center;
