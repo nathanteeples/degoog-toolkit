@@ -677,6 +677,49 @@ var {
     margin: 20px;
 }
 
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge > .sidebar-accordion-body {
+    margin: 0;
+}
+
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge.open > .sidebar-accordion-body {
+    background: var(--bg-light);
+    padding: 14px 16px 16px;
+    border-start-start-radius: var(--theme-radius-xs);
+    border-start-end-radius: var(--theme-radius-xs);
+    border-end-start-radius: var(--theme-radius-lg);
+    border-end-end-radius: var(--theme-radius-lg);
+}
+
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge.open .wiki-card,
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge.open .sidebar-accordion-body:has(.kp-title) {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    gap: 0.75rem;
+    overflow: visible;
+}
+
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge.open .wiki-title,
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge.open .kp-title {
+    display: none;
+}
+
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge .wiki-desc,
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge .kp-description {
+    color: var(--text-secondary);
+    margin: 0 0 0.75rem;
+}
+
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge .wiki-extract {
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge .wiki-thumb,
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge .kp-image {
+    border-radius: var(--theme-radius-md);
+}
+
 .sidebar-accordion-body {
     background: var(--bg);
     padding: 0;
@@ -802,6 +845,10 @@ var {
 #results-sidebar .sidebar-panel {
     border: none !important;
     box-shadow: none !important;
+}
+
+#results-sidebar .sidebar-accordion.lg-sidebar-knowledge {
+    gap: 0;
 }
 
 #results-sidebar .sidebar-accordion:has(.engine-stat-row),

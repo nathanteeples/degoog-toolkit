@@ -819,6 +819,91 @@ body {
     margin: 12px;
 }
 
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge
+    > .sidebar-accordion-body {
+    margin: 0;
+}
+
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge.open
+    > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
+    border-bottom: 0;
+}
+
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge.open
+    > .sidebar-accordion-body {
+    background: var(--la-card);
+    border: 1px solid var(--border-light);
+    border-top: 0;
+    padding: 1rem 1.125rem;
+    border-start-start-radius: var(--theme-radius-xs);
+    border-start-end-radius: var(--theme-radius-xs);
+    border-end-start-radius: var(--theme-radius-xl);
+    border-end-end-radius: var(--theme-radius-xl);
+}
+
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge.open
+    .wiki-card,
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge.open
+    .sidebar-accordion-body:has(.kp-title) {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    gap: 0.75rem;
+    overflow: visible;
+}
+
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge.open
+    .wiki-title,
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge.open
+    .kp-title {
+    display: none;
+}
+
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge
+    .wiki-desc,
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge
+    .kp-description {
+    color: var(--text-secondary);
+    margin: 0 0 0.75rem;
+}
+
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge
+    .wiki-extract {
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge
+    .wiki-thumb,
+#results-page
+    #results-sidebar
+    .sidebar-accordion.lg-sidebar-knowledge
+    .kp-image {
+    border-radius: var(--theme-radius-md);
+}
+
 .sidebar-accordion-body {
     background: transparent;
     padding: 0;
@@ -938,6 +1023,10 @@ body {
         .sidebar-accordion-body {
         display: block;
     }
+}
+
+#results-page #results-sidebar .sidebar-accordion.lg-sidebar-knowledge {
+    gap: 0;
 }
 
 #results-page #results-sidebar .sidebar-accordion:has(.engine-stat-row),
