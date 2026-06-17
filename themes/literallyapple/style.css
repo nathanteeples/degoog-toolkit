@@ -554,11 +554,27 @@ body {
     z-index: 101;
 }
 
-/* Suggestions are plain `.ac-item` text; history rows include `.ac-item-icon` (search-history plugin). */
+/* Suggestions are plain `.ac-item` text; plugin rows use `.ac-item-icon` in the same column. */
 .results-search-bar .ac-item:not(:has(.ac-item-icon)),
 .search-bar .ac-item:not(:has(.ac-item-icon)) {
     position: relative;
     padding-inline-start: 2.75rem;
+}
+
+.results-search-bar .ac-item:has(.ac-item-icon),
+.search-bar .ac-item:has(.ac-item-icon) {
+    position: relative;
+    padding-inline-start: 2.75rem;
+}
+
+.results-search-bar .ac-item .ac-item-icon,
+.search-bar .ac-item .ac-item-icon {
+    position: absolute;
+    inset-inline-start: 0.8rem;
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+    width: 1.125rem;
+    height: 1.125rem;
 }
 
 .results-search-bar .ac-item:not(:has(.ac-item-icon))::before,
@@ -3044,19 +3060,21 @@ button.mp2-item[hidden] {
     color: var(--text-primary);
 }
 
-.ac-item:not(.ac-item--history):hover,
-.ac-item:not(.ac-item--history).active {
+.ac-item:not(.ac-item--history):not(.ac-item--bang):hover,
+.ac-item:not(.ac-item--history):not(.ac-item--bang).active {
     background: var(--la-fill-tertiary);
     color: var(--text-primary);
 }
 
-/* Search history plugin: readable text/icons on translucent glass. */
-.ac-item--history {
+/* Search history + auto-bang: readable text/icons on translucent glass. */
+.ac-item--history,
+.ac-item--bang {
     color: var(--text-primary);
     background: transparent;
 }
 
-.ac-item--history .ac-item-icon--clock,
+.ac-item--history .ac-item-icon,
+.ac-item--bang .ac-item-icon,
 .ac-item--history .ac-item-delete {
     color: var(--search-bar-icon);
 }
@@ -3066,7 +3084,9 @@ button.mp2-item[hidden] {
 }
 
 .ac-item--history:hover,
-.ac-item--history:focus-within {
+.ac-item--history:focus-within,
+.ac-item--bang:hover,
+.ac-item--bang:focus-within {
     background: var(--la-fill-tertiary);
 }
 

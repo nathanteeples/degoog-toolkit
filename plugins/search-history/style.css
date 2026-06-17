@@ -1,117 +1,124 @@
-/* Match core `.ac-item` row rhythm (style_002) + LiterallyGoogle suggestion icons (~1.125rem). */
+/* Match LiterallyGoogle suggestion icon column (theme ::before at 0.8rem, 1.125rem). */
 .ac-item--history {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem;
-  line-height: 1.25;
-  font-weight: 400;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-block: 0.5rem;
+    padding-inline-end: 0.75rem;
+    padding-inline-start: 2.75rem;
+    font-size: 1rem;
+    line-height: 1.25;
+    font-weight: 400;
 }
 
-.ac-item--history .ac-item-icon--clock {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 1.125rem;
-  height: 1.125rem;
-  color: var(--text-secondary);
+.ac-item--history .ac-item-icon {
+    position: absolute;
+    inset-inline-start: 0.8rem;
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    color: var(--text-secondary);
 }
 
-.ac-item--history .ac-item-icon--clock svg {
-  width: 1.125rem;
-  height: 1.125rem;
-  display: block;
+.ac-item--history .ac-item-icon svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    display: block;
 }
 
 .ac-item--history .ac-item-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 1em;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1em;
 }
 
 .ac-item--history .ac-item-delete {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-secondary);
-  border-radius: 50%;
-  opacity: 0.85;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-radius: 50%;
+    opacity: 0.85;
 }
 
 .ac-item--history .ac-item-delete:hover {
-  opacity: 1;
-  background: var(--bg-hover);
-  color: var(--danger);
+    opacity: 1;
+    background: var(--bg-hover);
+    color: var(--danger);
 }
 
 .ac-item--history .ac-item-delete svg {
-  width: 1rem;
-  height: 1rem;
-  display: block;
+    width: 1rem;
+    height: 1rem;
+    display: block;
 }
 
 .ac-item--history:hover,
 .ac-item--history.active,
 .ac-item--history.ac-active,
 .ac-item--history.selected {
-  background: var(--bg-hover);
+    background: var(--bg-hover);
 }
 
 .search-history-result .result-favicon--clock {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.125rem;
-  height: 1.125rem;
-  flex-shrink: 0;
-  color: var(--text-cite);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    flex-shrink: 0;
+    color: var(--text-cite);
 }
 
 .search-history-result .result-favicon--clock svg {
-  width: 1.125rem;
-  height: 1.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
 }
 
 .search-history-result .history-delete-form {
-  display: inline-flex;
-  margin-left: auto;
+    display: inline-flex;
+    margin-left: auto;
 }
 
 .search-history-result .history-delete-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  cursor: pointer;
-  color: var(--text-secondary);
-  border-radius: 50%;
-  text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-radius: 50%;
+    text-decoration: none;
 }
 
 .search-history-result .history-delete-btn:hover {
-  color: var(--danger);
-  background: var(--bg-hover);
+    color: var(--danger);
+    background: var(--bg-hover);
 }
 
 .search-history-result .history-delete-btn svg {
-  width: 1rem;
-  height: 1rem;
+    width: 1rem;
+    height: 1rem;
 }

@@ -7,13 +7,13 @@
       "path": "themes/literallygoogle",
       "name": "LiterallyGoogle",
       "description": "A Google-like theme with a sticky header and full-width above-results plugin slots.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "2.1.80"
+      "version": "2.1.81"
     },
     {
       "path": "themes/literallyapple",
       "name": "LiterallyApple",
       "description": "Apple-inspired liquid glass theme with translucent materials, capsule search, and full-width plugin slots.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.30"
+      "version": "1.0.31"
     }
   ],
   "plugins": [
@@ -84,14 +84,14 @@
       "path": "plugins/search-history",
       "name": "Search History",
       "description": "Stores your past searches with timestamps and surfaces them as a dropdown on the search bar. Use !history to view a paginated, deletable list. Entries are kept locally in data/history.json and the maximum count is configurable.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.2.16",
+      "version": "1.2.17",
       "type": "command"
     },
     {
       "path": "plugins/auto-bang",
       "name": "Auto Bang",
       "description": "Autocomplete !bang commands in the search bar as you type, using the same autocomplete dropdown panel as search history.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.7",
+      "version": "1.0.10",
       "type": "command"
     },
     {

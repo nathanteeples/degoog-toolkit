@@ -408,11 +408,27 @@ var {
     z-index: 101;
 }
 
-/* Suggestions are plain `.ac-item` text; history rows include `.ac-item-icon` (search-history plugin). */
+/* Suggestions are plain `.ac-item` text; plugin rows use `.ac-item-icon` in the same column. */
 .results-search-bar .ac-item:not(:has(.ac-item-icon)),
 .search-bar .ac-item:not(:has(.ac-item-icon)) {
     position: relative;
     padding-inline-start: 2.75rem;
+}
+
+.results-search-bar .ac-item:has(.ac-item-icon),
+.search-bar .ac-item:has(.ac-item-icon) {
+    position: relative;
+    padding-inline-start: 2.75rem;
+}
+
+.results-search-bar .ac-item .ac-item-icon,
+.search-bar .ac-item .ac-item-icon {
+    position: absolute;
+    inset-inline-start: 0.8rem;
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+    width: 1.125rem;
+    height: 1.125rem;
 }
 
 .results-search-bar .ac-item:not(:has(.ac-item-icon))::before,

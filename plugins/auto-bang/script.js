@@ -4,6 +4,9 @@ const COMMANDS_URL = "/api/commands";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const HIDDEN_BANG_TRIGGERS = new Set(["autobang", "gif"]);
 
+const BANG_ICON =
+  "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 19h8'/><path d='m4 17 6-6-6-6'/></svg>";
+
 /** @type {Array<{trigger:string,name:string,description:string,aliases:string[]}> | null} */
 let commandCache = null;
 let cacheExpiry = 0;
@@ -183,7 +186,7 @@ function createBangItemElement(command) {
   item.dataset.text = `!${command.trigger}`;
   item.setAttribute("role", "option");
   item.setAttribute("tabindex", "-1");
-  item.innerHTML = `<span class="ac-item-icon ac-item-icon--bang" aria-hidden="true"></span>
+  item.innerHTML = `<span class="ac-item-icon ac-item-icon--bang" aria-hidden="true">${BANG_ICON}</span>
           <span class="ac-item-copy">
             <span class="ac-item-bang-trigger">!${escapeHtml(command.trigger)}</span>
             <span class="ac-item-bang-name">${escapeHtml(command.name)}</span>
