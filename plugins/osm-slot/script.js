@@ -253,18 +253,11 @@
     if (tileMap) {
       var state = _getMapState(tileMap);
       var targetZoom = Math.max(16, Number(state.zoomFloat) || 15);
-      // Recenter on the selected place; keep all pins, just mark this one active.
-      state.lat = lat;
-      state.lon = lon;
-      state.offsetX = 0;
-      state.offsetY = 0;
-      state.lastRenderKey = null;
+      // Keep all pins, just mark this one active immediately.
       if (Number.isFinite(idx)) state.activeIndex = idx;
-      tileMap.dataset.lat = String(lat);
-      tileMap.dataset.lon = String(lon);
       tileMap.setAttribute("aria-label", "Map for " + name);
       card.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      _animateZoom(tileMap, state, targetZoom, tileMap.clientWidth / 2, tileMap.clientHeight / 2, 260);
+      _animatePanAndZoom(tileMap, state, lat, lon, targetZoom, 400);
     }
   }
 
@@ -384,6 +377,49 @@
     panel.dataset.lat = String(state.lat);
     panel.dataset.lon = String(state.lon);
     _updateMapExtLinks(panel, state.lat, state.lon, panel.dataset.placeName || "");
+  }
+
+  function _animatePanAndZoom(mapEl, state, targetLat, targetLon, targetZoomFloat, durationMs) {
+    _cancelZoomAnim(state);
+    var startLat = state.lat;
+    var startLon = state.lon;
+    var startZoom = state.zoomFloat;
+    var startTime = performance.now();
+
+    state.offsetX = 0;
+    state.offsetY = 0;
+
+    function frame(now) {
+      if (!mapEl.isConnected) {
+        state.zoomAnimFrame = null;
+        return;
+      }
+      var t = Math.min(1, (now - startTime) / durationMs);
+      var eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+
+      state.lat = startLat + (targetLat - startLat) * eased;
+      state.lon = startLon + (targetLon - startLon) * eased;
+      state.zoomFloat = _clampZoomFloat(startZoom + (targetZoomFloat - startZoom) * eased);
+      state.zoom = Math.floor(state.zoomFloat);
+
+      _syncMapDataset(mapEl, state);
+      _renderTiles(mapEl, state);
+
+      if (t < 1) {
+        state.zoomAnimFrame = requestAnimationFrame(frame);
+      } else {
+        state.zoomAnimFrame = null;
+        state.lat = targetLat;
+        state.lon = targetLon;
+        state.zoomFloat = _clampZoomFloat(targetZoomFloat);
+        state.zoom = Math.floor(state.zoomFloat);
+        _syncMapDataset(mapEl, state);
+        _updateMapLinksFromState(mapEl, state);
+        _renderTiles(mapEl, state);
+      }
+    }
+
+    state.zoomAnimFrame = requestAnimationFrame(frame);
   }
 
   function _animateZoom(mapEl, state, targetZoomFloat, anchorX, anchorY, durationMs) {
