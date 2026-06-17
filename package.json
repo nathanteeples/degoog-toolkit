@@ -84,7 +84,7 @@
       "path": "plugins/search-history",
       "name": "Search History",
       "description": "Stores your past searches with timestamps and surfaces them as a dropdown on the search bar. Use !history to view a paginated, deletable list. Entries are kept locally in data/history.json and the maximum count is configurable.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.2.15",
+      "version": "1.2.16",
       "type": "command"
     },
     {

@@ -294,7 +294,20 @@ function submitHistoryInput(input, dropdown) {
 }
 
 let initialized = false;
-let hasUserInteracted = false;
+let searchBarEngaged = false;
+
+function markSearchBarEngagedFromEvent(event) {
+  const target = event.target;
+  if (!(target instanceof Node)) return;
+  for (const id of ["search-input", "results-search-input"]) {
+    const input = document.getElementById(id);
+    const bar = getSearchBarForInput(input);
+    if (bar instanceof HTMLElement && bar.contains(target)) {
+      searchBarEngaged = true;
+      return;
+    }
+  }
+}
 
 const SH_LANG_DICT = {
   en: {
@@ -322,15 +335,18 @@ function initSearchHistory() {
     }
   }
 
-  document.addEventListener("mousedown", () => { hasUserInteracted = true; }, { passive: true });
-  document.addEventListener("keydown", () => { hasUserInteracted = true; }, { passive: true });
-  document.addEventListener("touchstart", () => { hasUserInteracted = true; }, { passive: true });
+  document.addEventListener("mousedown", markSearchBarEngagedFromEvent, {
+    passive: true,
+  });
+  document.addEventListener("touchstart", markSearchBarEngagedFromEvent, {
+    passive: true,
+  });
 
   document.addEventListener("focusin", (e) => {
     const input = getHistoryInput(e.target);
     const dropdown = getDropdownForInput(input);
     if (!input || !dropdown) return;
-    if (!hasUserInteracted) return;
+    if (!searchBarEngaged) return;
     paintCachedHistoryIfAny(input, dropdown);
     fetchAndShowHistory(input, dropdown);
   });
@@ -361,9 +377,19 @@ function initSearchHistory() {
     if (!bar) return;
     requestAnimationFrame(() => {
       if (bar.contains(document.activeElement)) return;
+      searchBarEngaged = false;
       const dropdown = bar.querySelector(".ac-dropdown");
       if (dropdown instanceof HTMLElement) hideHistoryDropdown(dropdown);
     });
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") return;
+    searchBarEngaged = false;
+    for (const id of ["search-input", "results-search-input"]) {
+      const input = document.getElementById(id);
+      hideHistoryDropdown(getDropdownForInput(input));
+    }
   });
 
   // When the field is cleared while focused (e.g. backspace), show history without blur/refocus.
