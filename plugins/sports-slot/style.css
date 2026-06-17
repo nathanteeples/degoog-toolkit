@@ -197,6 +197,8 @@
 }
 
 .sports-slot__badge--live {
+    --sports-live-track-inset: 0.65rem;
+    --sports-live-bar-size: 18px;
     position: relative;
     overflow: hidden;
     padding-bottom: 0.55rem;
@@ -208,8 +210,8 @@
 .sports-slot__badge--live::after {
     content: "";
     position: absolute;
-    left: 0.65rem;
-    right: 0.65rem;
+    left: var(--sports-live-track-inset);
+    right: var(--sports-live-track-inset);
     bottom: 0.3rem;
     height: 2px;
     border-radius: 999px;
@@ -220,13 +222,13 @@
     content: "";
     position: absolute;
     bottom: 0.3rem;
-    left: 0.65rem;
-    width: 4px;
+    left: var(--sports-live-track-inset);
+    width: var(--sports-live-bar-size);
     height: 2px;
     border-radius: 999px;
     background: currentColor;
-    box-shadow: 0 0 6px color-mix(in srgb, currentColor 55%, transparent);
-    animation: sports-slot-live-bar 2.4s linear infinite;
+    box-shadow: 0 0 4px color-mix(in srgb, currentColor 45%, transparent);
+    animation: sports-slot-live-sweep 3s linear infinite;
 }
 
 .sports-slot__badge--final {
@@ -248,95 +250,17 @@
     color: var(--warning);
 }
 
-@keyframes sports-slot-live-bar {
+@keyframes sports-slot-live-sweep {
     0%,
+    4%,
+    96%,
     100% {
-        left: 0.65rem;
-        width: 4px;
-        opacity: 0.85;
+        left: calc(var(--sports-live-track-inset) - var(--sports-live-bar-size));
     }
 
-    7% {
-        left: 0.65rem;
-        width: 22px;
-        opacity: 1;
-    }
-
-    40% {
-        left: calc(100% - 0.65rem - 22px);
-        width: 22px;
-        opacity: 1;
-    }
-
-    48%,
-    52% {
-        left: calc(100% - 0.65rem - 4px);
-        width: 4px;
-        opacity: 0.85;
-    }
-
-    59% {
-        left: calc(100% - 0.65rem - 22px);
-        width: 22px;
-        opacity: 1;
-    }
-
-    92% {
-        left: 0.65rem;
-        width: 22px;
-        opacity: 1;
-    }
-
-    98% {
-        left: 0.65rem;
-        width: 4px;
-        opacity: 0.85;
-    }
-}
-
-@keyframes sports-slot-live-bar-wide {
-    0%,
-    100% {
-        left: 0;
-        width: 4px;
-        opacity: 0.85;
-    }
-
-    7% {
-        left: 0;
-        width: 22px;
-        opacity: 1;
-    }
-
-    40% {
-        left: calc(100% - 22px);
-        width: 22px;
-        opacity: 1;
-    }
-
-    48%,
-    52% {
-        left: calc(100% - 4px);
-        width: 4px;
-        opacity: 0.85;
-    }
-
-    59% {
-        left: calc(100% - 22px);
-        width: 22px;
-        opacity: 1;
-    }
-
-    92% {
-        left: 0;
-        width: 22px;
-        opacity: 1;
-    }
-
-    98% {
-        left: 0;
-        width: 4px;
-        opacity: 0.85;
+    46%,
+    54% {
+        left: calc(100% - var(--sports-live-track-inset));
     }
 }
 
@@ -368,7 +292,10 @@
 }
 
 .sports-slot__scoreboard-header-status--live {
+    --sports-live-track-inset: 0;
+    --sports-live-bar-size: 18px;
     position: relative;
+    overflow: hidden;
     padding-bottom: 0.45rem;
     color: var(--danger);
 }
@@ -376,8 +303,8 @@
 .sports-slot__scoreboard-header-status--live::after {
     content: "";
     position: absolute;
-    left: 0;
-    right: 0;
+    left: var(--sports-live-track-inset);
+    right: var(--sports-live-track-inset);
     bottom: 0.12rem;
     height: 2px;
     border-radius: 999px;
@@ -388,13 +315,13 @@
     content: "";
     position: absolute;
     bottom: 0.12rem;
-    left: 0;
-    width: 4px;
+    left: var(--sports-live-track-inset);
+    width: var(--sports-live-bar-size);
     height: 2px;
     border-radius: 999px;
     background: currentColor;
-    box-shadow: 0 0 6px color-mix(in srgb, currentColor 55%, transparent);
-    animation: sports-slot-live-bar-wide 2.4s linear infinite;
+    box-shadow: 0 0 4px color-mix(in srgb, currentColor 45%, transparent);
+    animation: sports-slot-live-sweep 3s linear infinite;
 }
 
 .sports-slot__scoreboard-body {
@@ -1333,7 +1260,10 @@
 }
 
 .sports-slot__timeline-scorebar-status--live {
+    --sports-live-track-inset: 0;
+    --sports-live-bar-size: 18px;
     position: relative;
+    overflow: hidden;
     padding-bottom: 0.38rem;
     color: var(--danger);
 }
@@ -1341,8 +1271,8 @@
 .sports-slot__timeline-scorebar-status--live::after {
     content: "";
     position: absolute;
-    left: 0;
-    right: 0;
+    left: var(--sports-live-track-inset);
+    right: var(--sports-live-track-inset);
     bottom: 0.05rem;
     height: 2px;
     border-radius: 999px;
@@ -1353,13 +1283,13 @@
     content: "";
     position: absolute;
     bottom: 0.05rem;
-    left: 0;
-    width: 4px;
+    left: var(--sports-live-track-inset);
+    width: var(--sports-live-bar-size);
     height: 2px;
     border-radius: 999px;
     background: currentColor;
-    box-shadow: 0 0 6px color-mix(in srgb, currentColor 55%, transparent);
-    animation: sports-slot-live-bar-wide 2.4s linear infinite;
+    box-shadow: 0 0 4px color-mix(in srgb, currentColor 45%, transparent);
+    animation: sports-slot-live-sweep 3s linear infinite;
 }
 
 .sports-slot__timeline-score-pill {
