@@ -11,7 +11,7 @@ function t(key, context) {
 }
 
 const PLUGIN_NAME = "Places";
-const PLUGIN_VERSION = "4.7.5";
+const PLUGIN_VERSION = "4.7.6";
 const PLUGIN_DESCRIPTION =
   "Local place recognition — shows nearby businesses and POIs with address, hours, phone, directions, and interactive map.";
 
@@ -315,8 +315,8 @@ export const slot = {
       let places = await _searchHere(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus, { global: isGlobal });
 
       let activeGlobal = isGlobal;
-      if (places.length === 0 && !isGlobal && plan.confidence === "name") {
-        _debugLog(`[Places Server v${PLUGIN_VERSION}] No local results found for name query. Trying global fallback search...`);
+      if (places.length === 0 && !isGlobal && plan.confidence === "name" && plan.hasExplicitIntent) {
+        _debugLog(`[Places Server v${PLUGIN_VERSION}] No local results found for explicit name query. Trying global fallback search...`);
         places = await _searchHere(q, lat, lon, radiusMeters, limit * 2, wrapFetch, apiStatus, { global: true });
         if (places.length > 0) {
           plan.mode = "global";
@@ -1815,6 +1815,7 @@ function _classifyPlaceQuery(rawQuery) {
     validationRequired: intent.validationRequired === true,
     kind: intent.kind,
     evidence: intent.evidence,
+    hasExplicitIntent: intent.confidence === "high",
   };
 }
 
