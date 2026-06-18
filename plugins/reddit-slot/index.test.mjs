@@ -3,58 +3,170 @@ import test from "node:test";
 
 import { slot } from "./index.js";
 
+const SAMPLE_SEARCH_RSS = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <title>White collar thread</title>
+    <link href="https://www.reddit.com/r/test/comments/abc123/white_collar/" />
+    <content type="html">discussion about white collar</content>
+    <author><name>/u/poster</name></author>
+  </entry>
+</feed>`;
+
+const SAMPLE_COMMENTS_RSS = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <title>White collar thread</title>
+    <link href="https://www.reddit.com/r/test/comments/abc123/white_collar/" />
+  </entry>
+  <entry>
+    <title>comment</title>
+    <link href="https://www.reddit.com/r/test/comments/abc123/white_collar/n1/" />
+    <content type="html">RSS comment body</content>
+    <author><name>/u/tester</name></author>
+  </entry>
+</feed>`;
+
 function mockRedditFetch() {
   return async (url) => {
-    if (String(url).includes("/search.json")) {
+    const target = String(url);
+
+    if (target.includes("/search.json")) {
+      const body = JSON.stringify({
+        data: {
+          children: [
+            {
+              data: {
+                id: "abc123",
+                subreddit: "test",
+                subreddit_name_prefixed: "r/test",
+                title: "Feather issues thread",
+                permalink: "/r/test/comments/abc123/feather_issues/",
+                score: 120,
+                num_comments: 42,
+                selftext: "feather issues discussion",
+                over_18: false,
+              },
+            },
+          ],
+        },
+      });
       return {
         ok: true,
-        async json() {
-          return {
-            data: {
-              children: [
-                {
-                  data: {
-                    id: "abc123",
-                    subreddit: "test",
-                    subreddit_name_prefixed: "r/test",
-                    title: "Feather issues thread",
-                    permalink: "/r/test/comments/abc123/feather_issues/",
-                    score: 120,
-                    num_comments: 42,
-                    selftext: "feather issues discussion",
-                    over_18: false,
-                  },
+        status: 200,
+        statusText: "OK",
+        text: async () => body,
+      };
+    }
+
+    if (target.includes("/comments/") && target.includes(".json")) {
+      const body = JSON.stringify([
+        {},
+        {
+          data: {
+            children: [
+              {
+                kind: "t1",
+                data: {
+                  author: "tester",
+                  body: "Try checking the quill alignment.",
+                  score: 15,
+                  permalink: "/r/test/comments/abc123/feather_issues/n123/",
+                  stickied: false,
                 },
-              ],
-            },
-          };
+              },
+            ],
+          },
         },
+      ]);
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: async () => body,
       };
     }
 
     return {
-      ok: true,
-      async json() {
-        return [
-          {},
-          {
-            data: {
-              children: [
-                {
-                  kind: "t1",
-                  data: {
-                    author: "tester",
-                    body: "Try checking the quill alignment.",
-                    score: 15,
-                    permalink: "/r/test/comments/abc123/feather_issues/n123/",
-                    stickied: false,
-                  },
-                },
-              ],
-            },
-          },
-        ];
-      },
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      text: async () => "",
+    };
+  };
+}
+
+function mockBlockedJsonRssFallbackFetch() {
+  return async (url) => {
+    const target = String(url);
+
+    if (target.includes("/search.json")) {
+      return {
+        ok: false,
+        status: 403,
+        statusText: "Blocked",
+        text: async () => "<html>blocked</html>",
+      };
+    }
+
+    if (target.startsWith("https://www.reddit.com") && target.includes("/search.rss")) {
+      return {
+        ok: false,
+        status: 429,
+        statusText: "Too Many Requests",
+        text: async () => "",
+      };
+    }
+
+    if (target.startsWith("https://old.reddit.com") && target.includes("/search.rss")) {
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: async () => SAMPLE_SEARCH_RSS,
+      };
+    }
+
+    if (target.includes("/comments/") && target.includes(".json")) {
+      return {
+        ok: false,
+        status: 403,
+        statusText: "Blocked",
+        text: async () => "<html>blocked</html>",
+      };
+    }
+
+    if (
+      target.startsWith("https://www.reddit.com") &&
+      target.includes("/comments/") &&
+      target.includes(".rss")
+    ) {
+      return {
+        ok: false,
+        status: 429,
+        statusText: "Too Many Requests",
+        text: async () => "",
+      };
+    }
+
+    if (
+      target.startsWith("https://old.reddit.com") &&
+      target.includes("/comments/") &&
+      target.includes(".rss")
+    ) {
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: async () => SAMPLE_COMMENTS_RSS,
+      };
+    }
+
+    return {
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      text: async () => "",
     };
   };
 }
@@ -91,6 +203,19 @@ test("renders a reddit card server-side for reddit queries", async () => {
   assert.doesNotMatch(output.html, /results-slot-panel rslot-panel/);
 });
 
+test("falls back to RSS when reddit JSON search is blocked", async () => {
+  slot.configure({ showMode: "keyword", maxComments: "1" });
+
+  const output = await slot.execute("reddit white collar", {
+    results: [],
+    fetch: mockBlockedJsonRssFallbackFetch(),
+  });
+
+  assert.match(output.html, /White collar thread/);
+  assert.match(output.html, /RSS comment body/);
+  assert.doesNotMatch(output.html, /rslot-error/);
+});
+
 test("top10 mode returns empty html when no reddit result is present", async () => {
   slot.configure({ showMode: "top10" });
 
@@ -101,12 +226,17 @@ test("top10 mode returns empty html when no reddit result is present", async () 
   assert.equal(output.html, "");
 });
 
-test("renders an error card when reddit blocks the server", async () => {
+test("renders an error card when reddit JSON and RSS are blocked", async () => {
   slot.configure({ showMode: "keyword" });
 
   const output = await slot.execute("reddit feather issues", {
     results: [],
-    fetch: async () => ({ ok: false, status: 403 }),
+    fetch: async () => ({
+      ok: false,
+      status: 403,
+      statusText: "Blocked",
+      text: async () => "<html>blocked</html>",
+    }),
   });
 
   assert.match(output.html, /rslot-error/);

@@ -8,10 +8,12 @@ let pluginFetch = (...args) => fetch(...args);
 let redditCache = null;
 
 /** Reddit requires a descriptive User-Agent; bare bot names often get 403. */
-const REDDIT_USER_AGENT = "web:degoog-toolkit:v1.0.21 (by /u/SoPat712)";
+const REDDIT_USER_AGENT = "web:degoog-toolkit:v1.0.23 (by /u/SoPat712)";
 const FETCH_TIMEOUT_MS = 8000;
 const CACHE_TTL_MS = 2 * 60 * 1000;
 const LOG_PREFIX = "[reddit-slot]";
+const REDDIT_JSON_HOSTS = ["https://old.reddit.com", "https://www.reddit.com"];
+const REDDIT_RSS_HOSTS = ["https://old.reddit.com", "https://www.reddit.com"];
 
 const QUERY_STOP_WORDS = new Set([
   "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
@@ -204,12 +206,15 @@ function scoreTextMatch(searchQuery, title, body = "") {
   return score;
 }
 
-async function redditFetch(doFetch, url, context = {}) {
+async function redditFetch(doFetch, url, context = {}, accept = "application/json") {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     return await doFetch(url, {
-      headers: { "User-Agent": REDDIT_USER_AGENT },
+      headers: {
+        "User-Agent": REDDIT_USER_AGENT,
+        Accept: accept,
+      },
       signal: controller.signal,
     });
   } catch (err) {
@@ -226,15 +231,295 @@ async function redditFetch(doFetch, url, context = {}) {
   }
 }
 
-async function readResponseSnippet(response, maxLen = 240) {
-  try {
-    if (typeof response?.text !== "function") return "";
-    const text = await response.text();
-    if (!text) return "";
-    return text.length > maxLen ? `${text.slice(0, maxLen)}…` : text;
-  } catch (err) {
-    return `(unreadable body: ${formatError(err)})`;
+async function readResponseBody(response) {
+  if (typeof response?.text === "function") {
+    return await response.text();
   }
+  if (typeof response?.json === "function") {
+    return JSON.stringify(await response.json());
+  }
+  return "";
+}
+
+function isHtmlResponse(body) {
+  const trimmed = String(body || "").trimStart();
+  const lower = trimmed.toLowerCase();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) return false;
+  if (
+    trimmed.startsWith("<?xml") ||
+    lower.startsWith("<feed") ||
+    lower.startsWith("<rss")
+  ) {
+    return false;
+  }
+  return (
+    lower.startsWith("<!doctype html") ||
+    lower.startsWith("<html") ||
+    lower.startsWith("<body")
+  );
+}
+
+function decodeXmlEntities(str) {
+  return String(str || "")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function stripHtml(str) {
+  return decodeXmlEntities(str)
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchXmlTag(block, tag) {
+  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
+  const match = block.match(re);
+  return match ? decodeXmlEntities(match[1].trim()) : "";
+}
+
+function matchLinkHref(block) {
+  const match = block.match(/<link[^>]+href="([^"]+)"/i);
+  return match ? match[1] : "";
+}
+
+function matchAuthorName(block) {
+  const authorBlock = block.match(/<author>([\s\S]*?)<\/author>/i)?.[1] || block;
+  const name = matchXmlTag(authorBlock, "name");
+  return name.replace(/^\/u\//i, "").trim();
+}
+
+function extractRssEntries(xml) {
+  const entries = [];
+  const re = /<entry\b[^>]*>([\s\S]*?)<\/entry>/gi;
+  let match;
+  while ((match = re.exec(xml)) !== null) {
+    entries.push(match[1]);
+  }
+  return entries;
+}
+
+function parsePostLink(link) {
+  try {
+    const url = new URL(link);
+    const parts = url.pathname.split("/").filter(Boolean);
+    const commentsIndex = parts.indexOf("comments");
+    if (commentsIndex === -1 || !parts[commentsIndex + 1]) return null;
+    return {
+      subreddit: parts[commentsIndex - 1] || "",
+      postId: parts[commentsIndex + 1],
+      permalink: `${url.pathname}${url.search}`,
+      postUrl: link.split("?")[0],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildJsonSearchPath(searchQuery, subreddit) {
+  const encoded = encodeURIComponent(searchQuery);
+  return subreddit
+    ? `/r/${encodeURIComponent(subreddit)}/search.json?q=${encoded}&sort=relevance&limit=10&type=link&restrict_sr=1&raw_json=1`
+    : `/search.json?q=${encoded}&sort=relevance&limit=10&type=link&raw_json=1`;
+}
+
+function buildRssSearchPath(searchQuery, subreddit) {
+  const query = encodeURIComponent(searchQuery).replace(/%20/g, "+");
+  return subreddit
+    ? `/r/${encodeURIComponent(subreddit)}/search.rss?q=${query}&sort=relevance&restrict_sr=1`
+    : `/search.rss?q=${query}&sort=relevance`;
+}
+
+async function fetchJsonSearch(doFetch, path, context) {
+  let lastFailure = null;
+
+  for (const host of REDDIT_JSON_HOSTS) {
+    const url = `${host}${path}`;
+    let response;
+    let body = "";
+    try {
+      response = await redditFetch(doFetch, url, {
+        ...context,
+        host,
+        transport: "json",
+      });
+      body = await readResponseBody(response);
+    } catch (err) {
+      lastFailure = {
+        status: 0,
+        statusText: formatError(err),
+        url,
+      };
+      continue;
+    }
+
+    if (!response.ok || isHtmlResponse(body)) {
+      lastFailure = {
+        status: response.status || 0,
+        statusText: response.statusText || "",
+        url,
+        bodyPreview: body.slice(0, 240),
+      };
+      logWarn("Reddit JSON search unavailable", {
+        ...lastFailure,
+        ...context,
+      });
+      continue;
+    }
+
+    try {
+      const data = JSON.parse(body);
+      const posts = data?.data?.children;
+      if (!Array.isArray(posts)) {
+        lastFailure = { status: 502, statusText: "Invalid JSON", url };
+        continue;
+      }
+      return { posts, source: "json", url };
+    } catch (err) {
+      lastFailure = {
+        status: 502,
+        statusText: "Invalid JSON",
+        url,
+        error: formatError(err),
+      };
+      logWarn("Reddit JSON search returned unparsable body", lastFailure);
+    }
+  }
+
+  return { error: lastFailure?.status || 0, lastFailure };
+}
+
+function parseSearchRss(xml) {
+  return extractRssEntries(xml)
+    .map((entry) => {
+      const link = matchLinkHref(entry);
+      const parsed = parsePostLink(link);
+      if (!parsed?.postId || !parsed.subreddit) return null;
+
+      const title = matchXmlTag(entry, "title");
+      const selftext = stripHtml(
+        matchXmlTag(entry, "content") || matchXmlTag(entry, "summary"),
+      );
+      const categoryLabel = entry.match(/label="r\/([^"]+)"/i)?.[1];
+
+      return {
+        data: {
+          id: parsed.postId,
+          subreddit: parsed.subreddit,
+          subreddit_name_prefixed: `r/${categoryLabel || parsed.subreddit}`,
+          title,
+          permalink: parsed.permalink,
+          score: null,
+          num_comments: null,
+          selftext,
+          over_18: false,
+          postUrl: parsed.postUrl,
+        },
+      };
+    })
+    .filter(Boolean);
+}
+
+async function fetchRssSearch(doFetch, searchQuery, subreddit, context) {
+  const path = buildRssSearchPath(searchQuery, subreddit);
+
+  for (const host of REDDIT_RSS_HOSTS) {
+    const url = `${host}${path}`;
+    let response;
+    let body = "";
+    try {
+      response = await redditFetch(
+        doFetch,
+        url,
+        { ...context, host, transport: "rss" },
+        "application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+      );
+      body = await readResponseBody(response);
+    } catch {
+      continue;
+    }
+
+    if (!response.ok || !body.trim() || isHtmlResponse(body)) {
+      logWarn("Reddit RSS search unavailable", {
+        status: response.status,
+        statusText: response.statusText || "",
+        url,
+        searchQuery,
+        restrictSubreddit: subreddit || null,
+        bodyPreview: body.slice(0, 240),
+      });
+      continue;
+    }
+
+    const posts = parseSearchRss(body);
+    if (posts.length === 0) {
+      logWarn("Reddit RSS search returned no entries", {
+        url,
+        searchQuery,
+        restrictSubreddit: subreddit || null,
+      });
+      continue;
+    }
+
+    return { posts, source: "rss", url };
+  }
+
+  return null;
+}
+
+function mapJsonComments(rawComments, commentLimit) {
+  return rawComments
+    .filter(
+      (c) =>
+        c.kind === "t1" &&
+        c.data.body &&
+        c.data.body !== "[deleted]" &&
+        c.data.body !== "[removed]" &&
+        !c.data.stickied &&
+        c.data.score > 0,
+    )
+    .sort((a, b) => b.data.score - a.data.score)
+    .slice(0, commentLimit)
+    .map((c) => ({
+      author: c.data.author,
+      body:
+        c.data.body.length > 180
+          ? `${c.data.body.slice(0, 177)}…`
+          : c.data.body,
+      score: c.data.score,
+      url: `https://reddit.com${c.data.permalink}`,
+    }));
+}
+
+function parseCommentsRss(xml, postUrl, commentLimit) {
+  const entries = extractRssEntries(xml);
+  const comments = [];
+
+  for (const entry of entries) {
+    const link = matchLinkHref(entry);
+    if (!link || link.split("?")[0] === postUrl.split("?")[0]) continue;
+
+    const body = stripHtml(
+      matchXmlTag(entry, "content") || matchXmlTag(entry, "summary"),
+    );
+    const author = matchAuthorName(entry);
+    if (!body || !author) continue;
+
+    comments.push({
+      author,
+      body: body.length > 180 ? `${body.slice(0, 177)}…` : body,
+      score: null,
+      url: link,
+    });
+    if (comments.length >= commentLimit) break;
+  }
+
+  return comments;
 }
 
 function formatError(err) {
@@ -279,45 +564,46 @@ async function fetchCardFromRedditApi(config, doFetch = pluginFetch) {
   const cached = await cacheGet(redditCache, cacheKey);
   if (cached) return cached;
 
-  const encoded = encodeURIComponent(searchQuery);
-  const searchUrl = subreddit
-    ? `https://www.reddit.com/r/${encodeURIComponent(subreddit)}/search.json?q=${encoded}&sort=relevance&limit=10&type=link&restrict_sr=1&raw_json=1`
-    : `https://www.reddit.com/search.json?q=${encoded}&sort=relevance&limit=10&type=link&raw_json=1`;
-
-  const searchRes = await redditFetch(doFetch, searchUrl, {
+  const searchContext = {
     phase: "search",
     searchQuery,
     restrictSubreddit: subreddit || null,
-  });
-  if (!searchRes.ok) {
-    const bodyPreview = await readResponseSnippet(searchRes);
-    logWarn("Reddit search request blocked or failed", {
-      status: searchRes.status,
-      statusText: searchRes.statusText || "",
-      url: searchUrl,
-      searchQuery,
-      restrictSubreddit: subreddit || null,
-      bodyPreview,
-    });
-    const result = { error: searchRes.status || 0 };
-    await cacheSet(redditCache, cacheKey, result);
-    return result;
-  }
+  };
 
-  const searchData = await searchRes.json();
-  const posts = searchData?.data?.children;
-  if (!Array.isArray(posts) || posts.length === 0) {
-    logWarn("Reddit search returned no posts", {
+  const jsonPath = buildJsonSearchPath(searchQuery, subreddit);
+  const jsonResult = await fetchJsonSearch(doFetch, jsonPath, searchContext);
+  let posts = jsonResult.posts;
+  let searchSource = jsonResult.source || "json";
+
+  if (!posts) {
+    logWarn("Falling back to Reddit RSS search", searchContext);
+    const rssResult = await fetchRssSearch(
+      doFetch,
       searchQuery,
-      restrictSubreddit: subreddit || null,
-      url: searchUrl,
-    });
-    return null;
+      subreddit,
+      searchContext,
+    );
+    if (!rssResult?.posts) {
+      if (jsonResult.error) {
+        const result = { error: jsonResult.error };
+        await cacheSet(redditCache, cacheKey, result);
+        return result;
+      }
+      return null;
+    }
+    posts = rssResult.posts;
+    searchSource = rssResult.source;
   }
 
   const filtered = posts.filter((p) => {
     if (hideNsfw && p.data.over_18) return false;
-    if (p.data.score < scoreFloor) return false;
+    if (
+      searchSource !== "rss" &&
+      Number.isFinite(p.data.score) &&
+      p.data.score < scoreFloor
+    ) {
+      return false;
+    }
     return true;
   });
   if (filtered.length === 0) {
@@ -327,6 +613,7 @@ async function fetchCardFromRedditApi(config, doFetch = pluginFetch) {
       minScore: scoreFloor,
       filterNsfw: hideNsfw,
       candidateCount: posts.length,
+      searchSource,
     });
     return null;
   }
@@ -335,7 +622,9 @@ async function fetchCardFromRedditApi(config, doFetch = pluginFetch) {
     data: p.data,
     score:
       scoreTextMatch(searchQuery, p.data.title, p.data.selftext) +
-      Math.min(p.data.num_comments / 5000, 0.5),
+      (Number.isFinite(p.data.num_comments)
+        ? Math.min(p.data.num_comments / 5000, 0.5)
+        : 0),
   }));
   scored.sort((a, b) => b.score - a.score);
   const post = scored[0].data;
@@ -345,12 +634,13 @@ async function fetchCardFromRedditApi(config, doFetch = pluginFetch) {
     post.subreddit,
     post.id,
     commentLimit,
+    post.postUrl || `https://reddit.com${post.permalink}`,
   );
   const result = {
     card: {
       subreddit: post.subreddit_name_prefixed,
       postTitle: post.title,
-      postUrl: `https://reddit.com${post.permalink}`,
+      postUrl: post.postUrl || `https://reddit.com${post.permalink}`,
       postScore: post.score,
       numComments: post.num_comments,
       comments,
@@ -360,51 +650,100 @@ async function fetchCardFromRedditApi(config, doFetch = pluginFetch) {
   return result;
 }
 
-async function fetchComments(doFetch, subreddit, postId, commentLimit) {
-  const commentsUrl =
-    `https://www.reddit.com/r/${encodeURIComponent(subreddit)}/comments/${encodeURIComponent(postId)}.json` +
+async function fetchComments(doFetch, subreddit, postId, commentLimit, postUrl) {
+  const commentsPath =
+    `/r/${encodeURIComponent(subreddit)}/comments/${encodeURIComponent(postId)}.json` +
     `?limit=15&depth=1&sort=top&raw_json=1`;
-  const commentsRes = await redditFetch(doFetch, commentsUrl, {
-    phase: "comments",
-    subreddit,
-    postId,
-  });
-  if (!commentsRes.ok) {
-    const bodyPreview = await readResponseSnippet(commentsRes);
-    logWarn("Reddit comments request blocked or failed", {
-      status: commentsRes.status,
-      statusText: commentsRes.statusText || "",
-      url: commentsUrl,
-      subreddit,
-      postId,
-      bodyPreview,
-    });
-    return [];
+
+  for (const host of REDDIT_JSON_HOSTS) {
+    const url = `${host}${commentsPath}`;
+    let response;
+    let body = "";
+    try {
+      response = await redditFetch(doFetch, url, {
+        phase: "comments",
+        subreddit,
+        postId,
+        host,
+        transport: "json",
+      });
+      body = await readResponseBody(response);
+    } catch {
+      continue;
+    }
+
+    if (!response.ok || isHtmlResponse(body)) {
+      logWarn("Reddit JSON comments unavailable", {
+        status: response.status,
+        statusText: response.statusText || "",
+        url,
+        subreddit,
+        postId,
+        bodyPreview: body.slice(0, 240),
+      });
+      continue;
+    }
+
+    try {
+      const commentsData = JSON.parse(body);
+      const rawComments = commentsData?.[1]?.data?.children || [];
+      const mapped = mapJsonComments(rawComments, commentLimit);
+      if (mapped.length > 0) return mapped;
+    } catch (err) {
+      logWarn("Reddit JSON comments returned unparsable body", {
+        url,
+        subreddit,
+        postId,
+        error: formatError(err),
+      });
+    }
   }
 
-  const commentsData = await commentsRes.json();
-  const rawComments = commentsData?.[1]?.data?.children || [];
-  return rawComments
-    .filter(
-      (c) =>
-        c.kind === "t1" &&
-        c.data.body &&
-        c.data.body !== "[deleted]" &&
-        c.data.body !== "[removed]" &&
-        !c.data.stickied &&
-        c.data.score > 0,
-    )
-    .sort((a, b) => b.data.score - a.data.score)
-    .slice(0, commentLimit)
-    .map((c) => ({
-      author: c.data.author,
-      body:
-        c.data.body.length > 180
-          ? `${c.data.body.slice(0, 177)}…`
-          : c.data.body,
-      score: c.data.score,
-      url: `https://reddit.com${c.data.permalink}`,
-    }));
+  const rssPath =
+    `/r/${encodeURIComponent(subreddit)}/comments/${encodeURIComponent(postId)}/.rss` +
+    `?limit=25&sort=top`;
+
+  for (const host of REDDIT_RSS_HOSTS) {
+    const rssUrl = `${host}${rssPath}`;
+    let rssResponse;
+    let rssBody = "";
+    try {
+      rssResponse = await redditFetch(
+        doFetch,
+        rssUrl,
+        { phase: "comments", subreddit, postId, host, transport: "rss" },
+        "application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+      );
+      rssBody = await readResponseBody(rssResponse);
+    } catch {
+      continue;
+    }
+
+    if (!rssResponse.ok || !rssBody.trim() || isHtmlResponse(rssBody)) {
+      logWarn("Reddit RSS comments unavailable", {
+        status: rssResponse.status,
+        statusText: rssResponse.statusText || "",
+        url: rssUrl,
+        subreddit,
+        postId,
+        bodyPreview: rssBody.slice(0, 240),
+      });
+      continue;
+    }
+
+    const rssComments = parseCommentsRss(rssBody, postUrl, commentLimit);
+    if (rssComments.length === 0) {
+      logWarn("Reddit RSS comments feed had no comment entries", {
+        url: rssUrl,
+        subreddit,
+        postId,
+      });
+      continue;
+    }
+    return rssComments;
+  }
+
+  return [];
 }
 
 function formatCount(value) {
@@ -431,7 +770,7 @@ function renderErrorCard(status, searchQuery) {
     <div class="rslot-error">
       <span class="rslot-error-code">${escapeHtml(statusCode)}</span>
       <p class="rslot-error-title">Reddit blocked this request</p>
-      <p class="rslot-error-body">Reddit's public JSON API returned HTTP ${escapeHtml(statusCode)} from this server.</p>
+      <p class="rslot-error-body">Reddit blocked JSON and RSS requests from this server (HTTP ${escapeHtml(statusCode)}).</p>
       <a class="rslot-error-link" href="${searchHref}" target="_blank" rel="noopener noreferrer">Search “${queryLabel}” on reddit.com</a>
     </div>
   </div>
