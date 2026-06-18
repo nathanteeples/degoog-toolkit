@@ -5,7 +5,7 @@ import { slot } from "./index.js";
 
 await slot.init({
   template:
-    '<div class="rslot"><a href="{{post_url}}">{{post_title}}</a><span>{{post_subreddit}}</span>{{comment_cards}}</div>',
+    '<div class="results-slot-panel rslot-panel"><a href="{{post_url}}">{{post_title}}</a><span>{{post_subreddit}}</span>{{comment_cards}}</div>',
 });
 
 test("triggers on explicit reddit keyword queries", () => {
@@ -14,19 +14,27 @@ test("triggers on explicit reddit keyword queries", () => {
   assert.equal(slot.trigger("best laptops"), false);
 });
 
-test("shows a blocked card when Reddit returns 403", async () => {
+test("returns a client-loading shell for reddit queries", async () => {
   slot.configure({ showMode: "keyword", maxComments: "2" });
 
   const output = await slot.execute("reddit mark hamill", {
     tab: "all",
     results: [],
-    fetch: async () => new Response("", { status: 403 }),
   });
 
-  assert.match(output.html, /rslot-error/);
-  assert.match(output.html, />403</);
-  assert.match(output.html, /Reddit blocked this request/);
-  assert.match(output.html, /mark hamill/);
-  assert.match(output.html, /reddit\.com\/search/);
-  assert.doesNotMatch(output.html, /Search preview/);
+  assert.match(output.html, /data-rslot-pending="1"/);
+  assert.match(output.html, /data-rslot-query="mark hamill"/);
+  assert.match(output.html, /rslot-card-template/);
+  assert.match(output.html, /rslot-body--loading/);
+  assert.doesNotMatch(output.html, /rslot-error/);
+});
+
+test("top10 mode skips shell when no reddit result is present", async () => {
+  slot.configure({ showMode: "top10" });
+
+  const output = await slot.execute("mark hamill", {
+    results: [{ url: "https://example.com/thread" }],
+  });
+
+  assert.equal(output.html, "");
 });

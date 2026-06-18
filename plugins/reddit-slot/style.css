@@ -125,6 +125,19 @@
   background: var(--bg-hover);
 }
 
+.rslot-body--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.5rem;
+}
+
+.rslot-loading-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
 .rslot-error {
   background: var(--bg);
   border: 1px solid var(--border-light);

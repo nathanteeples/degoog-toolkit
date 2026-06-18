@@ -25,6 +25,7 @@
       }
     },
     "reddit": "Reddit",
-    "topComments": "MEILLEURS COMMENTAIRES"
+    "topComments": "MEILLEURS COMMENTAIRES",
+    "loading": "Chargement de Reddit…"
   }
 }
