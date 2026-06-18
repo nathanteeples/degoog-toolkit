@@ -216,6 +216,28 @@ test("falls back to RSS when reddit JSON search is blocked", async () => {
   assert.doesNotMatch(output.html, /rslot-error/);
 });
 
+test("uses existing reddit search results before direct reddit requests", async () => {
+  slot.configure({ showMode: "keyword", maxComments: "1" });
+
+  const output = await slot.execute("best lsat prep site reddit", {
+    results: [
+      {
+        title: "Best LSAT prep site? : r/LSAT - Reddit",
+        url: "https://www.reddit.com/r/LSAT/comments/abc123/best_lsat_prep_site/",
+        snippet: "People compare LawHub, 7Sage, and other LSAT prep options.",
+      },
+    ],
+    fetch: async () => {
+      throw new Error("direct reddit fetch should not run");
+    },
+  });
+
+  assert.match(output.html, /Best LSAT prep site\?/);
+  assert.match(output.html, /r\/LSAT/);
+  assert.match(output.html, /People compare LawHub/);
+  assert.doesNotMatch(output.html, /rslot-error/);
+});
+
 test("top10 mode returns empty html when no reddit result is present", async () => {
   slot.configure({ showMode: "top10" });
 
