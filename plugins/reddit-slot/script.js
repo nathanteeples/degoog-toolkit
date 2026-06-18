@@ -200,6 +200,28 @@
   </div>`;
   }
 
+  function readCardTemplate(panel) {
+    const templateEl = panel.querySelector("template.rslot-card-template");
+    if (!templateEl) return "";
+
+    const inline = templateEl.innerHTML.trim();
+    if (inline) return inline;
+
+    // Browsers park <template> children in .content when the slot HTML is injected via innerHTML.
+    if (!templateEl.content?.childNodes?.length) return "";
+    const wrap = document.createElement("div");
+    wrap.appendChild(templateEl.content.cloneNode(true));
+    return wrap.innerHTML;
+  }
+
+  function removeSlotShell(panel) {
+    const shell =
+      panel?.closest?.(".results-slot-panel.degoog-panel") ||
+      panel?.closest?.(".results-slot-panel") ||
+      panel;
+    shell?.remove?.();
+  }
+
   function renderCardHtml(card, cardTemplate, maxComments) {
     if (!cardTemplate) return "";
 
@@ -241,13 +263,12 @@
     panel.dataset.rslotPending = "0";
 
     const config = readPanelConfig(panel);
-    const templateEl = panel.querySelector("template.rslot-card-template");
-    const cardTemplate = templateEl ? templateEl.innerHTML : "";
+    const cardTemplate = readCardTemplate(panel);
 
     try {
       const result = await fetchCard(config);
       if (!result) {
-        panel.remove();
+        removeSlotShell(panel);
         return;
       }
       if (result.error) {
@@ -257,7 +278,8 @@
       }
       const html = renderCardHtml(result.card, cardTemplate, config.maxComments);
       if (!html) {
-        panel.remove();
+        panel.classList.remove("rslot-panel--loading");
+        panel.innerHTML = renderErrorHtml(0, config.searchQuery);
         return;
       }
       const wrapper = document.createElement("div");
@@ -270,7 +292,8 @@
         panel.innerHTML = wrapper.innerHTML;
       }
     } catch {
-      panel.remove();
+      panel.classList.remove("rslot-panel--loading");
+      panel.innerHTML = renderErrorHtml(0, config.searchQuery);
     }
   }
 

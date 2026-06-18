@@ -124,8 +124,8 @@ function isRedditUrl(url) {
 }
 
 function renderLoadingShell(searchQuery, settings) {
-  return `<div class="results-slot-panel rslot-panel rslot-panel--loading" data-rslot-pending="1" data-rslot-query="${escapeAttr(searchQuery)}" data-rslot-max-comments="${settings.maxComments}" data-rslot-min-score="${settings.minScore}" data-rslot-filter-nsfw="${settings.filterNsfw ? "1" : "0"}" data-rslot-restrict="${escapeAttr(settings.restrictSubreddit)}">
-  <template class="rslot-card-template">${template}</template>
+  return `<div class="rslot-panel rslot-panel--loading" data-rslot-pending="1" data-rslot-query="${escapeAttr(searchQuery)}" data-rslot-max-comments="${settings.maxComments}" data-rslot-min-score="${settings.minScore}" data-rslot-filter-nsfw="${settings.filterNsfw ? "1" : "0"}" data-rslot-restrict="${escapeAttr(settings.restrictSubreddit)}">
+  <template class="rslot-card-template">${escapeTemplateMarkup(template)}</template>
   <div class="rslot-header">
     <svg class="rslot-icon" width="28" height="28" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <circle cx="10" cy="10" r="10" fill="rgba(255,255,255,0.12)"/>
@@ -151,4 +151,8 @@ function escapeHtml(str) {
 
 function escapeAttr(str) {
   return escapeHtml(str);
+}
+
+function escapeTemplateMarkup(str) {
+  return String(str || "").replace(/<\/template>/gi, "<\\/template>");
 }

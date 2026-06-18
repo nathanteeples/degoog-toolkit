@@ -5,7 +5,7 @@ import { slot } from "./index.js";
 
 await slot.init({
   template:
-    '<div class="results-slot-panel rslot-panel"><a href="{{post_url}}">{{post_title}}</a><span>{{post_subreddit}}</span>{{comment_cards}}</div>',
+    '<div class="rslot-panel"><a href="{{post_url}}">{{post_title}}</a><span>{{post_subreddit}}</span>{{comment_cards}}</div>',
 });
 
 test("triggers on explicit reddit keyword queries", () => {
@@ -27,6 +27,7 @@ test("returns a client-loading shell for reddit queries", async () => {
   assert.match(output.html, /rslot-card-template/);
   assert.match(output.html, /rslot-body--loading/);
   assert.doesNotMatch(output.html, /rslot-error/);
+  assert.doesNotMatch(output.html, /results-slot-panel rslot-panel/);
 });
 
 test("top10 mode skips shell when no reddit result is present", async () => {
