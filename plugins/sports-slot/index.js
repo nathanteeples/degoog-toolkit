@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.38";
+const PLUGIN_VERSION = "0.3.39";
 const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
@@ -2192,35 +2192,129 @@ function timelineEventIcon(event) {
   return "•";
 }
 
-function resolveTimelineTeamSide(eventTeam = "", focusGame = null) {
-  if (!focusGame || !eventTeam) return "neutral";
+function expandTimelineMatchNeedles(...labels) {
+  const needles = new Set();
 
-  const needle = normalizeText(eventTeam);
-  const awayNeedles = [
+  for (const label of labels) {
+    if (!label) continue;
+
+    needles.add(normalizeText(label));
+    needles.add(normalizeSoccerName(label));
+
+    const entity = resolveEntity(label, "soccer");
+    if (!entity) continue;
+
+    needles.add(normalizeText(entity.canonicalName));
+    needles.add(normalizeSoccerName(entity.canonicalName));
+
+    if (entity.abbreviation) {
+      needles.add(normalizeText(entity.abbreviation));
+    }
+
+    for (const alias of entity.aliases || []) {
+      needles.add(normalizeText(alias));
+      needles.add(normalizeSoccerName(alias));
+    }
+  }
+
+  return [...needles].filter(Boolean);
+}
+
+function timelineTeamLabelMatches(label, needles) {
+  const normalized = normalizeSoccerName(label);
+  const plain = normalizeText(label);
+  if (!normalized && !plain) return false;
+
+  return needles.some((needle) => {
+    if (!needle) return false;
+    if (needle === normalized || needle === plain) return true;
+    if (normalized && (needle.includes(normalized) || normalized.includes(needle))) {
+      return true;
+    }
+    if (plain && (needle.includes(plain) || plain.includes(needle))) {
+      return true;
+    }
+    return false;
+  });
+}
+
+const COMMENTARY_NON_TEAM_PARENS =
+  /^(very close range|left footed|right footed|penalty area|six yard box|centre of the box|center of the box|outside the box)/i;
+
+function stripCommentaryLeadIn(value = "") {
+  const trimmed = String(value || "").trim();
+  const parts = trimmed.split(/\.\s+/);
+  return parts.length > 1 ? parts[parts.length - 1].trim() : trimmed;
+}
+
+function parseCommentaryAthleteTeam(text = "") {
+  const source = String(text || "").trim();
+  if (!source) return { athlete: "", team: "" };
+
+  const leadingMatch = source.match(/^([^.(\n]+)\(([^)]+)\)/);
+  if (leadingMatch) {
+    return {
+      athlete: leadingMatch[1].trim(),
+      team: leadingMatch[2].trim(),
+    };
+  }
+
+  const footedMatch = source.match(
+    /\.\s*([A-ZÀ-ÖØ-öø-ÿ][\w\s.'-]+?)\s*\(([^)]+)\)\s+(?:left|right)\s+footed/i,
+  );
+  if (footedMatch && !COMMENTARY_NON_TEAM_PARENS.test(footedMatch[2])) {
+    return {
+      athlete: footedMatch[1].trim(),
+      team: footedMatch[2].trim(),
+    };
+  }
+
+  for (const match of source.matchAll(/([A-ZÀ-ÖØ-öø-ÿ][\w\s.'-]{1,48}?)\s*\(([^)]+)\)/g)) {
+    const team = match[2].trim();
+    if (!team || COMMENTARY_NON_TEAM_PARENS.test(team)) continue;
+
+    const athlete = stripCommentaryLeadIn(match[1]);
+    if (!athlete || athlete.length < 2) continue;
+
+    return { athlete, team };
+  }
+
+  return { athlete: "", team: "" };
+}
+
+function resolveTimelineTeamSide(eventTeam = "", focusGame = null, event = null) {
+  if (!focusGame) return "neutral";
+
+  const teamCandidates = [];
+  if (eventTeam) teamCandidates.push(eventTeam);
+
+  if (event) {
+    const parsed = parseCommentaryAthleteTeam(
+      event.text || event.detail || eventTeam || "",
+    );
+    if (parsed.team) teamCandidates.push(parsed.team);
+  }
+
+  if (!teamCandidates.length) return "neutral";
+
+  const awayNeedles = expandTimelineMatchNeedles(
     focusGame.awayAbbr,
     focusGame.awayTeam,
     focusGame.awayBrand?.abbreviation,
-  ]
-    .map(normalizeText)
-    .filter(Boolean);
-  const homeNeedles = [
+  );
+  const homeNeedles = expandTimelineMatchNeedles(
     focusGame.homeAbbr,
     focusGame.homeTeam,
     focusGame.homeBrand?.abbreviation,
-  ]
-    .map(normalizeText)
-    .filter(Boolean);
+  );
 
-  const matchesNeedle = (candidates) =>
-    candidates.some(
-      (candidate) =>
-        candidate === needle ||
-        candidate.includes(needle) ||
-        needle.includes(candidate),
-    );
+  if (teamCandidates.some((label) => timelineTeamLabelMatches(label, awayNeedles))) {
+    return "away";
+  }
+  if (teamCandidates.some((label) => timelineTeamLabelMatches(label, homeNeedles))) {
+    return "home";
+  }
 
-  if (matchesNeedle(awayNeedles)) return "away";
-  if (matchesNeedle(homeNeedles)) return "home";
   return "neutral";
 }
 
@@ -2244,7 +2338,7 @@ function annotateTimelineScores(timeline, focusGame) {
   return timeline.map((event) => {
     if (!event.scoring) return event;
 
-    const side = resolveTimelineTeamSide(event.team, focusGame);
+    const side = resolveTimelineTeamSide(event.team, focusGame, event);
     if (side === "away") away += 1;
     else if (side === "home") home += 1;
 
@@ -2368,7 +2462,7 @@ function renderTimelinePanel(timeline, focusGame = null, sport = "soccer") {
                 `;
               }
 
-              const side = resolveTimelineTeamSide(event.team, focusGame);
+              const side = resolveTimelineTeamSide(event.team, focusGame, event);
               const layoutSide =
                 side === "home" ? "left" : side === "away" ? "right" : "center";
               const teamColor = getTimelineTeamColor(side, focusGame);
@@ -4877,21 +4971,23 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         isPlay: false,
       };
     } else if (minute) {
-      const playerMatch = text.match(/^([^(]+)\(([^)]+)\)/);
+      const { athlete, team } = parseCommentaryAthleteTeam(text);
+      const enriched =
+        athlete && lookup.get(`${minute}|${normalizeText(athlete)}`);
       parsed = {
-        type: "Play",
+        type: enriched?.type || "Play",
         minute,
-        athlete: playerMatch?.[1]?.trim() || "",
-        team: playerMatch?.[2]?.trim() || "",
-        text,
-        detail: "",
-        assist: "",
-        scoring: false,
-        yellowCard: false,
-        redCard: false,
-        substitution: false,
+        athlete,
+        team: enriched?.team || team,
+        text: enriched?.text || text,
+        detail: enriched?.detail || text,
+        assist: enriched?.assist || "",
+        scoring: Boolean(enriched?.scoring),
+        yellowCard: Boolean(enriched?.yellowCard),
+        redCard: Boolean(enriched?.redCard),
+        substitution: Boolean(enriched?.substitution),
         isPeriod: false,
-        isPlay: true,
+        isPlay: !team,
       };
     }
 
@@ -6447,6 +6543,8 @@ export const lineupLayoutTestHelpers = {
 
 export const timelineTestHelpers = {
   parseSoccerCommentaryTimeline,
+  parseCommentaryAthleteTeam,
+  resolveTimelineTeamSide,
 };
 
 export default slot;

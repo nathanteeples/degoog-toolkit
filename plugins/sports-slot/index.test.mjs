@@ -5,7 +5,8 @@ import { lineupLayoutTestHelpers, routes, slot, timelineTestHelpers } from "./in
 
 const { layoutPitchPlayers, getFormationRows, resolveEffectiveFormation } =
   lineupLayoutTestHelpers;
-const { parseSoccerCommentaryTimeline } = timelineTestHelpers;
+const { parseSoccerCommentaryTimeline, parseCommentaryAthleteTeam, resolveTimelineTeamSide } =
+  timelineTestHelpers;
 
 test("4-4-2 lineup rows use tactical X and shared row Y", () => {
   const ivoryCoastStarters = [
@@ -144,6 +145,43 @@ test("execute runs World Cup and matchup queries successfully", async () => {
   const soccerResult = await slot.execute("soccer", {});
   assert.ok(soccerResult.html);
   assert.match(soccerResult.html, /FIFA World Cup/i);
+});
+
+test("commentary attempt blocked extracts embedded player team", () => {
+  const timeline = parseSoccerCommentaryTimeline(
+    [
+      {
+        sequence: 10,
+        time: { displayValue: "23'" },
+        text: "Attempt blocked. Amad Diallo (Côte d'Ivoire) left footed shot from very close range is blocked. Assisted by Yan Diomande with a cross.",
+      },
+    ],
+    [],
+  );
+
+  assert.equal(timeline.length, 1);
+  assert.equal(timeline[0].team, "Côte d'Ivoire");
+  assert.equal(timeline[0].athlete, "Amad Diallo");
+  assert.equal(timeline[0].isPlay, false);
+});
+
+test("resolveTimelineTeamSide maps commentary country names to focus teams", () => {
+  const focusGame = {
+    awayTeam: "Ecuador",
+    awayAbbr: "ECU",
+    homeTeam: "Ivory Coast",
+    homeAbbr: "CIV",
+    awayBrand: {},
+    homeBrand: {},
+  };
+
+  assert.equal(resolveTimelineTeamSide("Côte d'Ivoire", focusGame), "home");
+  assert.equal(
+    resolveTimelineTeamSide("", focusGame, {
+      text: "Attempt blocked. Amad Diallo (Côte d'Ivoire) left footed shot from very close range is blocked.",
+    }),
+    "home",
+  );
 });
 
 test("soccer commentary timeline dedupes repeated full-time markers", () => {
