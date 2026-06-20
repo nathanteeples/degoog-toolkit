@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.34";
+const PLUGIN_VERSION = "0.3.35";
 const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
@@ -1877,16 +1877,6 @@ function renderLiveBadge(label, game = null) {
   `;
 }
 
-function renderTimelineScoreBarStatus(focusGame, sport = "soccer") {
-  if (focusGame.state === "live") {
-    return renderLiveIndicator("Live", { clock: false });
-  }
-  if (focusGame.state === "final") {
-    return escapeHtml(sport === "soccer" ? "Full-time" : "Final");
-  }
-  return "";
-}
-
 function renderProviderFooter(providerLabel, providerUrl, extraText = "") {
   const debugSuffix = ` <span class="sports-slot__footer-debug">• v${escapeHtml(
     PLUGIN_VERSION,
@@ -2268,8 +2258,6 @@ function annotateTimelineScores(timeline, focusGame) {
 function renderTimelineScoreBar(focusGame, sport = "soccer") {
   if (!focusGame) return "";
 
-  const timelineStatusHtml = renderTimelineScoreBarStatus(focusGame, sport);
-
   const awayScore = escapeHtml(focusGame.awayScore ?? "—");
   const homeScore = escapeHtml(focusGame.homeScore ?? "—");
   const showScores = focusGame.state !== "scheduled";
@@ -2291,15 +2279,6 @@ function renderTimelineScoreBar(focusGame, sport = "soccer") {
                 <span class="sports-slot__timeline-scorebar-val">${homeScore}</span>
               </div>`
             : `<span class="sports-slot__timeline-scorebar-vs">vs</span>`
-        }
-        ${
-          timelineStatusHtml
-            ? `<span class="sports-slot__timeline-scorebar-status${
-                focusGame.state === "live"
-                  ? " sports-slot__timeline-scorebar-status--live"
-                  : ""
-              }">${timelineStatusHtml}</span>`
-            : ""
         }
       </div>
       <div class="sports-slot__timeline-scorebar-team sports-slot__timeline-scorebar-team--home">

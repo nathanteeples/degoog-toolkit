@@ -71,6 +71,7 @@ var {
     --btn-text: #e8eaed;
     --overlay-bg: rgba(0, 0, 0, 0.6);
     --white: #fff;
+    --lg-search-shadow: 0 2px 8px 1px rgba(0, 0, 0, 0.24);
 }
 
 @media (prefers-color-scheme: light) {
@@ -100,6 +101,8 @@ var {
         --btn-text: #3c4043;
         --overlay-bg: rgba(0, 0, 0, 0.4);
         --white: #fff;
+        --lg-search-shadow: 0px 3px 10px 0px rgba(31, 31, 31, 0.08);
+        --lg-search-shadow-hover: 0 2px 8px 1px rgba(64, 60, 67, 0.24);
     }
 }
 
@@ -129,6 +132,8 @@ var {
     --btn-text: #3c4043;
     --overlay-bg: rgba(0, 0, 0, 0.4);
     --white: #fff;
+    --lg-search-shadow: 0px 3px 10px 0px rgba(31, 31, 31, 0.08);
+    --lg-search-shadow-hover: 0 2px 8px 1px rgba(64, 60, 67, 0.24);
 }
 
 [data-theme="dark"] {
@@ -249,7 +254,7 @@ var {
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--theme-radius-search);
-    box-shadow: 0px 3px 10px 0px rgba(31, 31, 31, 0.08);
+    box-shadow: var(--lg-search-shadow);
     transition:
         box-shadow 0.16s ease,
         border-color 0.16s ease,
@@ -258,7 +263,7 @@ var {
 
 [data-theme="light"] .results-search-bar:hover,
 [data-theme="light"] .search-bar:hover {
-    box-shadow: 0 2px 8px 1px rgba(64, 60, 67, 0.24);
+    box-shadow: var(--lg-search-shadow-hover);
 }
 
 /* Merged bar + dropdown when the AC panel is visibly open. Inline display toggles
@@ -297,8 +302,8 @@ var {
     border-color: #dadce0;
     border-end-start-radius: 0;
     border-end-end-radius: 0;
-    /* Single elevation (multi-layer shadow read as a double halo). */
-    box-shadow: 0 2px 8px 1px rgba(64, 60, 67, 0.24);
+    /* Same elevation as the resting search bar — dropdown panes stay shadowless on light. */
+    box-shadow: var(--lg-search-shadow);
 }
 
 [data-theme="light"] .results-search-bar.ac-open,
@@ -306,7 +311,7 @@ var {
     border-color: #dadce0;
     border-end-start-radius: 0;
     border-end-end-radius: 0;
-    box-shadow: 0 2px 8px 1px rgba(64, 60, 67, 0.24);
+    box-shadow: var(--lg-search-shadow);
 }
 
 /* Dark / default: no separate bar shadow while AC is open (dropdown carries depth). */
@@ -325,11 +330,7 @@ var {
 .ac-dropdown,
 .bang-ac-dropdown {
     background: var(--search-bar-focused);
-    /* Bottom + sides only (negative spread trims upward blur). */
-    box-shadow:
-        5px 10px 14px -8px rgba(0, 0, 0, 0.45),
-        -5px 10px 14px -8px rgba(0, 0, 0, 0.45),
-        0 12px 18px -8px rgba(0, 0, 0, 0.4) !important;
+    box-shadow: var(--lg-search-shadow);
 }
 
 /*
@@ -365,10 +366,7 @@ var {
 #apps-pocket-panel {
     border-top: 1px solid #5f6368;
     background: var(--search-bar-focused);
-    box-shadow:
-        5px 10px 14px -8px rgba(0, 0, 0, 0.45),
-        -5px 10px 14px -8px rgba(0, 0, 0, 0.45),
-        0 12px 18px -8px rgba(0, 0, 0, 0.4) !important;
+    box-shadow: var(--lg-search-shadow);
 }
 
 /* Autocomplete: align panel edges to the bar border box (no fractional nudging). */
@@ -464,7 +462,7 @@ var {
     border-end-start-radius: var(--theme-radius-search);
     border-end-end-radius: var(--theme-radius-search);
     /* Depth comes from the merged bar rule above; avoid double shadow on light. */
-    box-shadow: none;
+    box-shadow: none !important;
 }
 
 @media (prefers-color-scheme: light) {
@@ -478,7 +476,7 @@ var {
         border-start-end-radius: 0;
         border-end-start-radius: var(--theme-radius-search);
         border-end-end-radius: var(--theme-radius-search);
-        box-shadow: none;
+        box-shadow: none !important;
     }
 }
 
@@ -517,7 +515,7 @@ var {
         border-color: #dadce0;
         border-end-start-radius: 0;
         border-end-end-radius: 0;
-        box-shadow: 0 2px 8px 1px rgba(64, 60, 67, 0.24);
+        box-shadow: var(--lg-search-shadow);
     }
 
     :root:not([data-theme="dark"]):not([data-theme="light"])
@@ -527,7 +525,7 @@ var {
         border-color: #dadce0;
         border-end-start-radius: 0;
         border-end-end-radius: 0;
-        box-shadow: 0 2px 8px 1px rgba(64, 60, 67, 0.24);
+        box-shadow: var(--lg-search-shadow);
     }
 }
 
@@ -2088,12 +2086,12 @@ body {
 :root:not([data-theme="dark"]) .settings-global-search {
     background: var(--bg);
     border: 1px solid var(--border);
-    box-shadow: 0px 3px 10px 0px rgba(31, 31, 31, 0.08);
+    box-shadow: var(--lg-search-shadow);
 }
 
 :root:not([data-theme="dark"]) .settings-nav-search:hover,
 :root:not([data-theme="dark"]) .settings-global-search:hover {
-    box-shadow: 0 2px 8px 1px rgba(64, 60, 67, 0.24);
+    box-shadow: var(--lg-search-shadow-hover);
 }
 
 :root:not([data-theme="dark"]) .settings-nav-search:focus-within,
@@ -2159,12 +2157,12 @@ body {
     :root:not([data-theme="dark"]):not([data-theme="light"]) .settings-global-search {
         background: var(--bg);
         border: 1px solid var(--border);
-        box-shadow: 0px 3px 10px 0px rgba(31, 31, 31, 0.08);
+        box-shadow: var(--lg-search-shadow);
     }
 
     :root:not([data-theme="dark"]):not([data-theme="light"]) .settings-nav-search:hover,
     :root:not([data-theme="dark"]):not([data-theme="light"]) .settings-global-search:hover {
-        box-shadow: 0 2px 8px 1px rgba(64, 60, 67, 0.24);
+        box-shadow: var(--lg-search-shadow-hover);
     }
 
     :root:not([data-theme="dark"]):not([data-theme="light"]) .settings-nav-search:focus-within,
