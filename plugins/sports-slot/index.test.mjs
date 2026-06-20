@@ -169,6 +169,80 @@ test("corner commentary assigns team for timeline side", () => {
   assert.equal(timeline[0].isPlay, false);
 });
 
+test("offside commentary assigns team for timeline side", () => {
+  const timeline = parseSoccerCommentaryTimeline(
+    [
+      {
+        sequence: 4,
+        time: { displayValue: "4'" },
+        text: "Offside, Côte d'Ivoire. Franck Kessie is caught offside.",
+      },
+    ],
+    [],
+  );
+
+  assert.equal(timeline.length, 1);
+  assert.equal(timeline[0].team, "Côte d'Ivoire");
+  assert.equal(timeline[0].athlete, "Franck Kessie");
+  assert.equal(timeline[0].type, "Offside");
+  assert.equal(timeline[0].isPlay, false);
+});
+
+test("offside commentary supports period and caught-offside formats", () => {
+  const periodTimeline = parseSoccerCommentaryTimeline(
+    [
+      {
+        sequence: 1,
+        time: { displayValue: "4'" },
+        text: "Offside. Côte d'Ivoire. Franck Kessie is caught offside.",
+      },
+    ],
+    [],
+  );
+  assert.equal(periodTimeline[0].team, "Côte d'Ivoire");
+  assert.equal(periodTimeline[0].type, "Offside");
+  assert.equal(periodTimeline[0].isPlay, false);
+
+  const playerTimeline = parseSoccerCommentaryTimeline(
+    [
+      {
+        sequence: 2,
+        time: { displayValue: "12'" },
+        text: "Franck Kessie (Côte d'Ivoire) is caught offside.",
+      },
+    ],
+    [],
+  );
+  assert.equal(playerTimeline[0].team, "Côte d'Ivoire");
+  assert.equal(playerTimeline[0].athlete, "Franck Kessie");
+  assert.equal(playerTimeline[0].type, "Offside");
+  assert.equal(playerTimeline[0].isPlay, false);
+});
+
+test("resolveTimelineTeamSide resolves offside team label", () => {
+  const focusGame = {
+    awayTeam: "Germany",
+    awayAbbr: "GER",
+    homeTeam: "Ivory Coast",
+    homeAbbr: "CIV",
+    awayBrand: {},
+    homeBrand: {},
+  };
+
+  assert.equal(
+    resolveTimelineTeamSide("Côte d'Ivoire", focusGame, {
+      text: "Offside, Côte d'Ivoire. Franck Kessie is caught offside.",
+    }),
+    "home",
+  );
+  assert.equal(
+    resolveTimelineTeamSide("", focusGame, {
+      text: "Offside. Côte d'Ivoire. Franck Kessie is caught offside.",
+    }),
+    "home",
+  );
+});
+
 test("resolveTimelineTeamSide resolves corner team label", () => {
   const focusGame = {
     awayTeam: "Germany",

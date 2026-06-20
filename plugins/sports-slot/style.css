@@ -263,11 +263,12 @@
 }
 
 @keyframes sports-slot-live-sweep {
-    0% {
-        left: -18px;
+    0%,
+    100% {
+        left: calc(-1 * var(--sports-live-bar-size));
     }
 
-    100% {
+    50% {
         left: 100%;
     }
 }

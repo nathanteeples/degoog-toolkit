@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.41";
+const PLUGIN_VERSION = "0.3.43";
 const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
@@ -2282,31 +2282,88 @@ function parseCommentaryAthleteTeam(text = "") {
   return { athlete: "", team: "" };
 }
 
-const COMMENTARY_EVENT_TEAM_PREFIX =
-  /^(?:Corner|Free kick|Goal kick|Throw[- ]in|Offside|Foul|VAR|Penalty(?: awarded)?|Hand ball|Handball|Save|Miss|Attempt blocked|Shot blocked|Goal ruled out),?\s*([^.]+)\./i;
+const COMMENTARY_EVENT_KINDS =
+  "Corner|Offside(?: call|ruling)?|Free kick|Goal kick|Throw[- ]in|Foul|VAR|Penalty(?: awarded)?|Hand ball|Handball|Save|Miss|Attempt blocked|Shot blocked|Goal ruled out";
+
+const COMMENTARY_EVENT_TEAM_PREFIX = new RegExp(
+  `^(?:${COMMENTARY_EVENT_KINDS})\\s*[,\\-–—.]?\\s*([^.]+)\\.`,
+  "i",
+);
+
+const COMMENTARY_EVENT_TEAM_INLINE = new RegExp(
+  `(?:${COMMENTARY_EVENT_KINDS})\\s*[,\\-–—.]?\\s*([^.]+)\\.`,
+  "ig",
+);
+
+const COMMENTARY_OFFSIDE_TEAM =
+  /\bOffside(?: call|ruling)?\s*[,.\-–—]?\s*([^.]+)\./i;
+
+function sanitizeCommentaryTeamLabel(label = "") {
+  return String(label || "")
+    .trim()
+    .replace(/^[-–—]\s*/, "")
+    .trim();
+}
 
 function parseCommentaryEventTeam(text = "") {
   const source = String(text || "").trim();
   if (!source) return "";
 
   const { team: athleteTeam } = parseCommentaryAthleteTeam(source);
-  if (athleteTeam) return athleteTeam;
+  if (athleteTeam) return sanitizeCommentaryTeamLabel(athleteTeam);
 
-  const eventTeamMatch = source.match(COMMENTARY_EVENT_TEAM_PREFIX);
-  if (eventTeamMatch?.[1]) return eventTeamMatch[1].trim();
+  const offsideMatch = source.match(COMMENTARY_OFFSIDE_TEAM);
+  if (offsideMatch?.[1]) return sanitizeCommentaryTeamLabel(offsideMatch[1]);
+
+  const eventTeamMatch =
+    source.match(COMMENTARY_EVENT_TEAM_PREFIX) ||
+    [...source.matchAll(COMMENTARY_EVENT_TEAM_INLINE)].find(
+      (match) => !/^var\b/i.test(match[0]),
+    );
+  if (eventTeamMatch?.[1]) return sanitizeCommentaryTeamLabel(eventTeamMatch[1]);
 
   return "";
 }
 
 function parseCommentaryEventType(text = "") {
   const source = String(text || "").trim();
+  if (/\bOffside(?: call|ruling)?\b/i.test(source)) return "Offside";
+  if (/^VAR\b/i.test(source)) return "VAR";
+
   const match = source.match(
-    /^(Corner|Free kick|Goal kick|Throw[- ]in|Offside|Foul|VAR|Penalty(?: awarded)?|Hand ball|Handball|Save|Miss|Attempt blocked|Shot blocked|Goal ruled out)/i,
+    new RegExp(`^(${COMMENTARY_EVENT_KINDS})`, "i"),
   );
   if (!match?.[1]) return "Play";
-  return match[1]
+
+  const raw = match[1].trim();
+  if (/^offside/i.test(raw)) return "Offside";
+
+  return raw
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .replace(/Handball/i, "Hand ball");
+}
+
+function findFocusTeamSideInCommentary(text = "", focusGame = null) {
+  const haystack = normalizeText(text);
+  if (!haystack || !focusGame) return "neutral";
+
+  const awayNeedles = expandTimelineMatchNeedles(
+    focusGame.awayAbbr,
+    focusGame.awayTeam,
+    focusGame.awayBrand?.abbreviation,
+  ).filter((needle) => needle.length >= 4);
+  const homeNeedles = expandTimelineMatchNeedles(
+    focusGame.homeAbbr,
+    focusGame.homeTeam,
+    focusGame.homeBrand?.abbreviation,
+  ).filter((needle) => needle.length >= 4);
+
+  const awayHit = awayNeedles.some((needle) => haystack.includes(needle));
+  const homeHit = homeNeedles.some((needle) => haystack.includes(needle));
+
+  if (awayHit && !homeHit) return "away";
+  if (homeHit && !awayHit) return "home";
+  return "neutral";
 }
 
 function resolveTimelineTeamSide(eventTeam = "", focusGame = null, event = null) {
@@ -2340,6 +2397,14 @@ function resolveTimelineTeamSide(eventTeam = "", focusGame = null, event = null)
   }
   if (teamCandidates.some((label) => timelineTeamLabelMatches(label, homeNeedles))) {
     return "home";
+  }
+
+  if (event) {
+    const sideFromText = findFocusTeamSideInCommentary(
+      `${event.text || ""} ${event.detail || ""}`,
+      focusGame,
+    );
+    if (sideFromText !== "neutral") return sideFromText;
   }
 
   return "neutral";
@@ -4329,7 +4394,11 @@ function extractMatchTimeline(summaryData, sport = "soccer") {
         id: event.id,
         minute: event.clock?.displayValue || "",
         type,
-        team: event.team?.abbreviation || event.team?.displayName || "",
+        team:
+          event.team?.abbreviation ||
+          event.team?.displayName ||
+          parseCommentaryEventTeam(event.text || event.shortText || "") ||
+          "",
         athlete: event.participants?.[0]?.athlete?.displayName || "",
         assist: event.participants?.[1]?.athlete?.displayName || "",
         text: event.shortText || event.text || type,
@@ -4996,6 +5065,35 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         substitution: true,
         isPeriod: false,
         isPlay: false,
+      };
+    } else if (
+      /^Offside(?: call|ruling)?\b/i.test(text) ||
+      /\bis caught offside\b/i.test(text)
+    ) {
+      const { athlete: athleteFromParens, team: teamFromParens } =
+        parseCommentaryAthleteTeam(text);
+      const team = teamFromParens || parseCommentaryEventTeam(text);
+      let athlete = athleteFromParens;
+      if (!athlete) {
+        const caughtMatch = text.match(
+          /(?:^|\.\s+)([A-ZÀ-ÖØ-öø-ÿ][\w\s.'-]+?)\s+is caught offside/i,
+        );
+        athlete = caughtMatch?.[1]?.trim() || "";
+      }
+      parsed = {
+        type: "Offside",
+        minute,
+        athlete,
+        team,
+        text: `${text.split(".")[0]}.`,
+        detail: text,
+        assist: "",
+        scoring: false,
+        yellowCard: false,
+        redCard: false,
+        substitution: false,
+        isPeriod: false,
+        isPlay: !team && !athlete,
       };
     } else if (minute) {
       const { athlete } = parseCommentaryAthleteTeam(text);
