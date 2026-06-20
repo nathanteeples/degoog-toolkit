@@ -32,9 +32,16 @@
       const prefix = node.dataset.livePrefix || "";
       const nextSeconds = Math.max(0, seconds - 1);
       node.dataset.liveSeconds = String(nextSeconds);
-      node.textContent = prefix
+      const label = prefix
         ? `${prefix} • ${formatClock(nextSeconds)}`
         : formatClock(nextSeconds);
+      const textNode = node.querySelector(".sports-slot__live-status-text");
+      if (textNode) {
+        textNode.textContent = label;
+        return;
+      }
+
+      node.textContent = label;
     });
   }
 

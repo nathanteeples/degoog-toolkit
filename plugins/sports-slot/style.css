@@ -231,14 +231,16 @@
 }
 
 .sports-slot__live-bar {
-    position: relative;
+    position: absolute;
     top: 0;
+    left: 0;
     width: var(--sports-live-bar-size);
     height: 100%;
     border-radius: 999px;
     background: currentColor;
     box-shadow: 0 0 4px color-mix(in srgb, currentColor 45%, transparent);
     animation: sports-slot-live-sweep 2.5s linear infinite;
+    will-change: left;
 }
 
 .sports-slot__badge--final {
@@ -263,7 +265,7 @@
 @keyframes sports-slot-live-sweep {
     0%,
     100% {
-        left: calc(-1 * var(--sports-live-bar-size));
+        left: -18px;
     }
 
     50% {
