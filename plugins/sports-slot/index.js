@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.37";
+const PLUGIN_VERSION = "0.3.38";
 const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
@@ -2350,8 +2350,8 @@ function renderTimelinePanel(timeline, focusGame = null, sport = "soccer") {
       <div class="sports-slot__timeline">
         ${scoreBarHtml}
         <div class="sports-slot__timeline-body">
-        <div class="sports-slot__timeline-spine" aria-hidden="true"></div>
         <div class="sports-slot__timeline-events">
+          <div class="sports-slot__timeline-spine" aria-hidden="true"></div>
           ${orderedTimeline
             .map((event) => {
               const tone = timelineEventTone(event);

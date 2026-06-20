@@ -1284,6 +1284,8 @@
     transform: translateX(-50%);
     border-radius: 999px;
     background: color-mix(in srgb, var(--border) 82%, var(--text-secondary) 18%);
+    pointer-events: none;
+    z-index: 0;
 }
 
 .sports-slot__timeline-events {
@@ -1315,6 +1317,8 @@
 }
 
 .sports-slot__timeline-event {
+    position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
     gap: 0.55rem;
