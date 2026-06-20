@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.40";
+const PLUGIN_VERSION = "0.3.41";
 const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
@@ -2282,6 +2282,33 @@ function parseCommentaryAthleteTeam(text = "") {
   return { athlete: "", team: "" };
 }
 
+const COMMENTARY_EVENT_TEAM_PREFIX =
+  /^(?:Corner|Free kick|Goal kick|Throw[- ]in|Offside|Foul|VAR|Penalty(?: awarded)?|Hand ball|Handball|Save|Miss|Attempt blocked|Shot blocked|Goal ruled out),?\s*([^.]+)\./i;
+
+function parseCommentaryEventTeam(text = "") {
+  const source = String(text || "").trim();
+  if (!source) return "";
+
+  const { team: athleteTeam } = parseCommentaryAthleteTeam(source);
+  if (athleteTeam) return athleteTeam;
+
+  const eventTeamMatch = source.match(COMMENTARY_EVENT_TEAM_PREFIX);
+  if (eventTeamMatch?.[1]) return eventTeamMatch[1].trim();
+
+  return "";
+}
+
+function parseCommentaryEventType(text = "") {
+  const source = String(text || "").trim();
+  const match = source.match(
+    /^(Corner|Free kick|Goal kick|Throw[- ]in|Offside|Foul|VAR|Penalty(?: awarded)?|Hand ball|Handball|Save|Miss|Attempt blocked|Shot blocked|Goal ruled out)/i,
+  );
+  if (!match?.[1]) return "Play";
+  return match[1]
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .replace(/Handball/i, "Hand ball");
+}
+
 function resolveTimelineTeamSide(eventTeam = "", focusGame = null, event = null) {
   if (!focusGame) return "neutral";
 
@@ -2289,10 +2316,10 @@ function resolveTimelineTeamSide(eventTeam = "", focusGame = null, event = null)
   if (eventTeam) teamCandidates.push(eventTeam);
 
   if (event) {
-    const parsed = parseCommentaryAthleteTeam(
+    const teamFromText = parseCommentaryEventTeam(
       event.text || event.detail || eventTeam || "",
     );
-    if (parsed.team) teamCandidates.push(parsed.team);
+    if (teamFromText) teamCandidates.push(teamFromText);
   }
 
   if (!teamCandidates.length) return "neutral";
@@ -4971,15 +4998,17 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         isPlay: false,
       };
     } else if (minute) {
-      const { athlete, team } = parseCommentaryAthleteTeam(text);
+      const { athlete } = parseCommentaryAthleteTeam(text);
+      const team = parseCommentaryEventTeam(text);
+      const eventType = parseCommentaryEventType(text);
       const enriched =
         athlete && lookup.get(`${minute}|${normalizeText(athlete)}`);
       parsed = {
-        type: enriched?.type || "Play",
+        type: enriched?.type || eventType,
         minute,
         athlete,
         team: enriched?.team || team,
-        text: enriched?.text || text,
+        text: enriched?.text || `${text.split(".")[0]}.`,
         detail: enriched?.detail || text,
         assist: enriched?.assist || "",
         scoring: Boolean(enriched?.scoring),
@@ -4987,7 +5016,7 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         redCard: Boolean(enriched?.redCard),
         substitution: Boolean(enriched?.substitution),
         isPeriod: false,
-        isPlay: !team,
+        isPlay: !team && !athlete,
       };
     }
 
@@ -6544,6 +6573,7 @@ export const lineupLayoutTestHelpers = {
 export const timelineTestHelpers = {
   parseSoccerCommentaryTimeline,
   parseCommentaryAthleteTeam,
+  parseCommentaryEventTeam,
   resolveTimelineTeamSide,
 };
 

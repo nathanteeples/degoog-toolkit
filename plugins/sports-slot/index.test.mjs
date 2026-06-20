@@ -5,8 +5,12 @@ import { lineupLayoutTestHelpers, routes, slot, timelineTestHelpers } from "./in
 
 const { layoutPitchPlayers, getFormationRows, resolveEffectiveFormation } =
   lineupLayoutTestHelpers;
-const { parseSoccerCommentaryTimeline, parseCommentaryAthleteTeam, resolveTimelineTeamSide } =
-  timelineTestHelpers;
+const {
+  parseSoccerCommentaryTimeline,
+  parseCommentaryAthleteTeam,
+  parseCommentaryEventTeam,
+  resolveTimelineTeamSide,
+} = timelineTestHelpers;
 
 test("4-4-2 lineup rows use tactical X and shared row Y", () => {
   const ivoryCoastStarters = [
@@ -145,6 +149,42 @@ test("execute runs World Cup and matchup queries successfully", async () => {
   const soccerResult = await slot.execute("soccer", {});
   assert.ok(soccerResult.html);
   assert.match(soccerResult.html, /FIFA World Cup/i);
+});
+
+test("corner commentary assigns team for timeline side", () => {
+  const timeline = parseSoccerCommentaryTimeline(
+    [
+      {
+        sequence: 11,
+        time: { displayValue: "45'+4'" },
+        text: "Corner, Côte d'Ivoire. Conceded by Nico Schlotterbeck.",
+      },
+    ],
+    [],
+  );
+
+  assert.equal(timeline.length, 1);
+  assert.equal(timeline[0].team, "Côte d'Ivoire");
+  assert.equal(timeline[0].type, "Corner");
+  assert.equal(timeline[0].isPlay, false);
+});
+
+test("resolveTimelineTeamSide resolves corner team label", () => {
+  const focusGame = {
+    awayTeam: "Germany",
+    awayAbbr: "GER",
+    homeTeam: "Ivory Coast",
+    homeAbbr: "CIV",
+    awayBrand: {},
+    homeBrand: {},
+  };
+
+  assert.equal(
+    resolveTimelineTeamSide("Côte d'Ivoire", focusGame, {
+      text: "Corner, Côte d'Ivoire. Conceded by Nico Schlotterbeck.",
+    }),
+    "home",
+  );
 });
 
 test("commentary attempt blocked extracts embedded player team", () => {
