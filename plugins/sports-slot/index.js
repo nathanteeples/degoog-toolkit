@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.32";
+const PLUGIN_VERSION = "0.3.34";
 const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
@@ -1850,9 +1850,9 @@ function getLiveBadgeLabel(game) {
   return status && !/^live$/i.test(status) ? status : game.status || "Live";
 }
 
-function renderLiveBadge(label, game = null) {
+function renderLiveIndicator(text, { clock = false, game = null } = {}) {
   const liveClockAttr =
-    game?.liveClockSeconds != null
+    clock && game?.liveClockSeconds != null
       ? `data-live-status data-live-prefix="${escapeHtml(
           game.liveStatusPrefix || "",
         )}" data-live-seconds="${escapeHtml(
@@ -1861,10 +1861,30 @@ function renderLiveBadge(label, game = null) {
       : "";
 
   return `
-    <span class="sports-slot__badge sports-slot__badge--live" ${liveClockAttr}>
-      ${escapeHtml(label)}
+    <span class="sports-slot__live-status"${liveClockAttr ? ` ${liveClockAttr}` : ""}>
+      <span class="sports-slot__live-status-text">${escapeHtml(text)}</span>
+      <span class="sports-slot__live-track" aria-hidden="true">
+        <span class="sports-slot__live-bar"></span>
+      </span>
+    </span>`;
+}
+
+function renderLiveBadge(label, game = null) {
+  return `
+    <span class="sports-slot__badge sports-slot__badge--live">
+      ${renderLiveIndicator(label, { clock: true, game })}
     </span>
   `;
+}
+
+function renderTimelineScoreBarStatus(focusGame, sport = "soccer") {
+  if (focusGame.state === "live") {
+    return renderLiveIndicator("Live", { clock: false });
+  }
+  if (focusGame.state === "final") {
+    return escapeHtml(sport === "soccer" ? "Full-time" : "Final");
+  }
+  return "";
 }
 
 function renderProviderFooter(providerLabel, providerUrl, extraText = "") {
@@ -1975,14 +1995,10 @@ function renderFocusScoreboard(game, sport, scorersHtml = "") {
     new Date(game.sortDate).toDateString() === new Date().toDateString();
   const metaLeft = `${game.competitionLabel || ""}${isToday ? " • Today" : ""}`;
   const metaRight = formatMaybeTimestamp(statusText);
-  const liveClockAttr =
-    game.liveClockSeconds != null
-      ? `data-live-status data-live-prefix="${escapeHtml(
-          game.liveStatusPrefix || "",
-        )}" data-live-seconds="${escapeHtml(
-          game.liveClockSeconds,
-        )}" data-live-direction="down"`
-      : "";
+  const statusHtml =
+    game.state === "live"
+      ? renderLiveIndicator(metaRight, { clock: true, game })
+      : escapeHtml(metaRight);
 
   const subLabelHtml = game.subLabel
     ? `<div class="sports-slot__scoreboard-sublabel">${escapeHtml(game.subLabel)}</div>`
@@ -1999,9 +2015,7 @@ function renderFocusScoreboard(game, sport, scorersHtml = "") {
         <span class="sports-slot__scoreboard-header-meta">${escapeHtml(metaLeft)}</span>
         <span class="sports-slot__scoreboard-header-status${
           game.state === "live" ? " sports-slot__scoreboard-header-status--live" : ""
-        }" ${liveClockAttr}>${escapeHtml(
-          metaRight,
-        )}</span>
+        }">${statusHtml}</span>
       </div>
       <div class="sports-slot__scoreboard-body">
         <div class="sports-slot__scoreboard-team sports-slot__scoreboard-team--away">
@@ -2254,19 +2268,7 @@ function annotateTimelineScores(timeline, focusGame) {
 function renderTimelineScoreBar(focusGame, sport = "soccer") {
   if (!focusGame) return "";
 
-  let statusText = focusGame.status || "";
-  if (sport === "soccer" && focusGame.state === "final" && statusText === "Final") {
-    statusText = "Full-time";
-  }
-
-  const liveClockAttr =
-    focusGame.liveClockSeconds != null
-      ? `data-live-status data-live-prefix="${escapeHtml(
-          focusGame.liveStatusPrefix || "",
-        )}" data-live-seconds="${escapeHtml(
-          focusGame.liveClockSeconds,
-        )}" data-live-direction="down"`
-      : "";
+  const timelineStatusHtml = renderTimelineScoreBarStatus(focusGame, sport);
 
   const awayScore = escapeHtml(focusGame.awayScore ?? "—");
   const homeScore = escapeHtml(focusGame.homeScore ?? "—");
@@ -2290,11 +2292,15 @@ function renderTimelineScoreBar(focusGame, sport = "soccer") {
               </div>`
             : `<span class="sports-slot__timeline-scorebar-vs">vs</span>`
         }
-        <span class="sports-slot__timeline-scorebar-status${
-          focusGame.state === "live"
-            ? " sports-slot__timeline-scorebar-status--live"
+        ${
+          timelineStatusHtml
+            ? `<span class="sports-slot__timeline-scorebar-status${
+                focusGame.state === "live"
+                  ? " sports-slot__timeline-scorebar-status--live"
+                  : ""
+              }">${timelineStatusHtml}</span>`
             : ""
-        }" ${liveClockAttr}>${escapeHtml(formatMaybeTimestamp(statusText) || statusText)}</span>
+        }
       </div>
       <div class="sports-slot__timeline-scorebar-team sports-slot__timeline-scorebar-team--home">
         ${renderTeamMark(focusGame.homeBrand, focusGame.homeTeam, focusGame.homeAbbr)}

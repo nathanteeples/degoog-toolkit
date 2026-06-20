@@ -7,7 +7,7 @@
       "path": "themes/literallygoogle",
       "name": "LiterallyGoogle",
       "description": "A Google-like theme with a sticky header and full-width above-results plugin slots.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "2.1.82"
+      "version": "2.1.83"
     },
     {
       "path": "themes/literallyapple",
@@ -182,7 +182,7 @@
       "path": "plugins/sports-slot",
       "name": "Sports",
       "description": "Shows live sports scores, schedules, and standings. Activates on natural queries like team names, 'premier league standings', or 'lakers vs warriors'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "0.3.33",
+      "version": "0.3.34",
       "type": "slot"
     }
   ],
