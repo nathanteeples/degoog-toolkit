@@ -5494,7 +5494,10 @@ function layoutPitchPlayers(arg1, arg2, arg3, arg4) {
   if (gk) placed.push({ ...gk, x: 50, y: PITCH_ROW_Y[team].gk });
 
   outfieldRows.forEach((row, i) => {
-    const xs = getRowXPositions(row.length);
+    let xs = getRowXPositions(row.length);
+    if (team === "home") {
+      xs = xs.map(x => 100 - x);
+    }
     row.forEach((player, j) => placed.push({ ...player, x: xs[j], y: rowYs[i] }));
   });
 

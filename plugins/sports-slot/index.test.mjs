@@ -48,8 +48,8 @@ test("4-4-2 lineup uses shared row Y and left-to-right X ordering", () => {
   const defXs = rows[1].map((place) => coords.get(String(place)).x);
   assert.ok(defXs.some((x) => x < 40));
   assert.ok(defXs.some((x) => x > 60));
-  assert.ok(coords.get("3").x < coords.get("2").x);
-  assert.ok(coords.get("11").x < coords.get("7").x);
+  assert.ok(coords.get("3").x > coords.get("2").x);
+  assert.ok(coords.get("11").x > coords.get("7").x);
 });
 
 test("ESPN 4-4-2 label resolves to 3-4-3 for wingback sides", () => {
