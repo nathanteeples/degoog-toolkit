@@ -3080,6 +3080,8 @@ function renderLineupBench(team) {
             (player) => `
               <li class="sports-slot__lineup-bench-item${
                 player.subbedIn ? " sports-slot__lineup-bench-item--in" : ""
+              }${
+                player.subbedOut ? " sports-slot__lineup-bench-item--out" : ""
               }">
                 ${
                   player.imageUrl
@@ -5745,6 +5747,22 @@ function normalizeLineupPlayer(player) {
     positionUpper === "GK" ||
     Number(player.formationPlace) === 1;
 
+  const getSubKey = (obj, keys) => {
+    if (!obj) return false;
+    for (const key of keys) {
+      if (obj[key] === true || obj[key] === "true") return true;
+    }
+    return false;
+  };
+
+  const subbedOut =
+    getSubKey(player, ["subbedOut", "substitutedOut", "subOut", "substitutionOut", "substituted"]) ||
+    getSubKey(player.athlete, ["subbedOut", "substitutedOut", "subOut", "substitutionOut", "substituted"]);
+
+  const subbedIn =
+    getSubKey(player, ["subbedIn", "substitutedIn", "subIn", "substitutionIn"]) ||
+    getSubKey(player.athlete, ["subbedIn", "substitutedIn", "subIn", "substitutionIn"]);
+
   return {
     name: player.athlete?.shortName || player.athlete?.displayName || "",
     fullName: player.athlete?.displayName || "",
@@ -5753,8 +5771,8 @@ function normalizeLineupPlayer(player) {
     position,
     formationPlace: String(player.formationPlace || ""),
     imageUrl: getJerseyImageUrl(player.athlete?.jerseyImages?.[0]?.href || ""),
-    subbedOut: Boolean(player.subbedOut),
-    subbedIn: Boolean(player.subbedIn),
+    subbedOut,
+    subbedIn,
     isGoalkeeper,
     isCaptain: Boolean(player.captain) || Boolean(player.athlete?.captain),
     card: player.card || null,
@@ -5791,22 +5809,64 @@ function inferLineupHomeAway(block, summaryData, rosterIndex = 0, rosterCount = 
   return "home";
 }
 
-function namesMatch(player, commentName) {
-  const pFull = String(player.fullName || "").toLowerCase();
-  const pShort = String(player.name || "").toLowerCase();
-  const cName = String(commentName || "").toLowerCase();
+function stripAccents(str) {
+  if (typeof str !== "string") return "";
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
 
+function matchParts(pParts, cParts) {
+  if (pParts.length === 0 || cParts.length === 0) return false;
+
+  if (cParts.length === 1) {
+    const word = cParts[0];
+    return pParts.includes(word);
+  }
+
+  const cLast = cParts[cParts.length - 1];
+  const pLast = pParts[pParts.length - 1];
+
+  if (cLast !== pLast) return false;
+
+  const cFirst = cParts[0];
+  const pFirst = pParts[0];
+
+  if (cFirst.length === 1) {
+    return pFirst.startsWith(cFirst);
+  }
+
+  if (pFirst.length === 1) {
+    return cFirst.startsWith(pFirst);
+  }
+
+  return cFirst === pFirst || cFirst.includes(pFirst) || pFirst.includes(cFirst);
+}
+
+function namesMatch(player, commentName) {
+  let pFull = String(player.fullName || "").toLowerCase();
+  let pShort = String(player.name || "").toLowerCase();
+  let cName = String(commentName || "").toLowerCase();
+
+  pFull = stripAccents(pFull);
+  pShort = stripAccents(pShort);
+  cName = stripAccents(cName);
+
+  if (pFull === cName || pShort === cName) return true;
   if (pFull.includes(cName) || cName.includes(pFull)) return true;
   if (pShort.includes(cName) || cName.includes(pShort)) return true;
 
-  // Check last names
-  const pFullParts = pFull.split(/\s+/).filter(Boolean);
-  const pShortParts = pShort.split(/\s+/).filter(Boolean);
-  const cParts = cName.split(/\s+/).filter(Boolean);
-  if (cParts.length > 0) {
-    const cLast = cParts[cParts.length - 1];
-    if (pFullParts.includes(cLast) || pShortParts.includes(cLast)) return true;
-  }
+  const getParts = (str) =>
+    str.replace(/[.,]/g, " ")
+       .split(/\s+/)
+       .filter(Boolean);
+
+  const cParts = getParts(cName);
+  const pFullParts = getParts(pFull);
+  const pShortParts = getParts(pShort);
+
+  if (cParts.length === 0) return false;
+
+  if (matchParts(pFullParts, cParts)) return true;
+  if (matchParts(pShortParts, cParts)) return true;
 
   return false;
 }
@@ -7383,6 +7443,8 @@ export const lineupLayoutTestHelpers = {
   assignPlayersToFormationRows,
   getFormationRowY,
   resolveEffectiveFormation,
+  namesMatch,
+  applyLineupSubstitutions,
 };
 
 export const timelineTestHelpers = {

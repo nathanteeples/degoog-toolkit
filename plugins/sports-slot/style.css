@@ -2169,6 +2169,10 @@
     border-color: color-mix(in srgb, var(--success) 45%, var(--border));
 }
 
+.sports-slot__lineup-bench-item--out {
+    opacity: 0.45;
+}
+
 .sports-slot__stats-list--dense {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

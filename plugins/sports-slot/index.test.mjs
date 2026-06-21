@@ -9,6 +9,8 @@ const {
   assignPlayersToFormationRows,
   getFormationRowY,
   resolveEffectiveFormation,
+  namesMatch,
+  applyLineupSubstitutions,
 } = lineupLayoutTestHelpers;
 const {
   parseSoccerCommentaryTimeline,
@@ -427,4 +429,51 @@ test("hockey slot triggers and parses query", () => {
   assert.equal(slot.trigger("nhl"), true);
   assert.equal(slot.trigger("hockey"), true);
   assert.equal(slot.trigger("blackhawks score"), true);
+});
+
+test("namesMatch matches accented names and initials", () => {
+  // Accent mismatch
+  assert.ok(namesMatch({ fullName: "Damián Bobadilla", name: "Bobadilla" }, "Damian Bobadilla"));
+  assert.ok(namesMatch({ fullName: "Piero Hincapié", name: "Hincapié" }, "Hincapie"));
+  
+  // Initials matching for duplicate surnames
+  assert.ok(namesMatch({ fullName: "Juninho Bacuna", name: "J. Bacuna" }, "J. Bacuna"));
+  assert.ok(namesMatch({ fullName: "Juninho Bacuna", name: "J. Bacuna" }, "j.bacuna"));
+  assert.ok(namesMatch({ fullName: "Juninho Bacuna", name: "Juninho Bacuna" }, "j. bacuna"));
+  assert.ok(!namesMatch({ fullName: "Leandro Bacuna", name: "L. Bacuna" }, "j. bacuna"));
+});
+
+test("applyLineupSubstitutions swaps players correctly, including accented ones", () => {
+  const starters = [
+    { fullName: "Damián Bobadilla", name: "Bobadilla", formationPlace: "4", subbedOut: false, subbedIn: false },
+    { fullName: "Jhon Arias", name: "Arias", formationPlace: "8", subbedOut: false, subbedIn: false },
+  ];
+  const subs = [
+    { fullName: "Hernesto Caballero", name: "Caballero", formationPlace: "", subbedOut: false, subbedIn: false },
+    { fullName: "Yaser Asprilla", name: "Asprilla", formationPlace: "", subbedOut: false, subbedIn: false },
+  ];
+  const commentary = [
+    { text: "Substitution, Paraguay. Hernesto Caballero replaces Damian Bobadilla." },
+    { text: "Substitution, Colombia. Yaser Asprilla replaces Jhon Arias." },
+  ];
+
+  applyLineupSubstitutions(starters, subs, commentary);
+
+  // Check Paraguay substitution
+  const caballero = starters.find(p => p.fullName === "Hernesto Caballero");
+  const bobadilla = subs.find(p => p.fullName === "Damián Bobadilla");
+  assert.ok(caballero);
+  assert.ok(bobadilla);
+  assert.equal(caballero.formationPlace, "4");
+  assert.ok(caballero.subbedIn);
+  assert.ok(bobadilla.subbedOut);
+
+  // Check Colombia substitution
+  const asprilla = starters.find(p => p.fullName === "Yaser Asprilla");
+  const arias = subs.find(p => p.fullName === "Jhon Arias");
+  assert.ok(asprilla);
+  assert.ok(arias);
+  assert.equal(asprilla.formationPlace, "8");
+  assert.ok(asprilla.subbedIn);
+  assert.ok(arias.subbedOut);
 });
