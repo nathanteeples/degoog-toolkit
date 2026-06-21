@@ -33,7 +33,8 @@ const ivoryCoastStarters = [
 
 test("4-4-2 lineup uses shared row Y and left-to-right X ordering", () => {
   const rows = assignPlayersToFormationRows(ivoryCoastStarters, "4-4-2");
-  const coords = layoutPitchPlayers(ivoryCoastStarters, "4-4-2", "home");
+  const placed = layoutPitchPlayers(ivoryCoastStarters, "4-4-2", "home");
+  const coords = new Map(placed.map(p => [String(p.formationPlace), { x: p.x, y: p.y }]));
   const defY = coords.get("3").y;
   const midY = coords.get(String(rows[2][0])).y;
   const fwdY = coords.get("9").y;
@@ -71,9 +72,10 @@ test("ESPN 4-4-2 label resolves to 3-4-3 for wingback sides", () => {
   assert.equal(ivoryCoast.rows?.[1]?.length, 4);
   assert.equal(ivoryCoast.rows?.[3]?.length, 2);
 
-  const coords = layoutPitchPlayers(ecuadorStarters, ecuador.formation, "away", {
+  const placed = layoutPitchPlayers(ecuadorStarters, ecuador.formation, "away", {
     rows: ecuador.rows,
   });
+  const coords = new Map(placed.map(p => [String(p.formationPlace), { x: p.x, y: p.y }]));
   assert.equal(coords.get("7").y, coords.get("4").y);
   assert.equal(coords.get("9").y, coords.get("10").y);
   assert.notEqual(coords.get("2").y, coords.get("3").y);
@@ -112,18 +114,20 @@ test("5-4-1 keeps defenders deep and striker advanced on the correct half", () =
   assert.ok(rows[1].includes(6));
   assert.equal(rows[3][0], 9);
 
-  const homeCoords = layoutPitchPlayers(starters541, "5-4-1", "home", { rows });
-  const awayCoords = layoutPitchPlayers(starters541, "5-4-1", "away", { rows });
+  const homePlaced = layoutPitchPlayers(starters541, "5-4-1", "home", { rows });
+  const awayPlaced = layoutPitchPlayers(starters541, "5-4-1", "away", { rows });
+  const homeCoords = new Map(homePlaced.map(p => [String(p.formationPlace), { x: p.x, y: p.y }]));
+  const awayCoords = new Map(awayPlaced.map(p => [String(p.formationPlace), { x: p.x, y: p.y }]));
 
   assert.ok(homeCoords.get("1").y < homeCoords.get("4").y);
   assert.ok(homeCoords.get("4").y < homeCoords.get("9").y);
-  assert.equal(homeCoords.get("9").y, 44);
+  assert.equal(homeCoords.get("9").y, 46);
   assert.equal(homeCoords.get("9").x, 50);
   assert.equal(homeCoords.get("1").y, 10);
 
   assert.ok(awayCoords.get("1").y > awayCoords.get("4").y);
   assert.ok(awayCoords.get("4").y > awayCoords.get("9").y);
-  assert.equal(awayCoords.get("9").y, 60);
+  assert.equal(awayCoords.get("9").y, 54);
   assert.equal(awayCoords.get("9").x, 50);
   assert.equal(awayCoords.get("1").y, 90);
 
@@ -150,12 +154,14 @@ test("3-1-4-2 keeps pivot deep and both teams on their own half", () => {
   assert.deepEqual(rows.map((row) => row.length), [1, 3, 1, 4, 2]);
   assert.deepEqual(rows[2], [23]);
 
-  const awayCoords = layoutPitchPlayers(ecuadorStarters, "3-1-4-2", "away", {
+  const awayPlaced = layoutPitchPlayers(ecuadorStarters, "3-1-4-2", "away", {
     rows,
   });
-  const homeCoords = layoutPitchPlayers(ecuadorStarters, "3-1-4-2", "home", {
+  const homePlaced = layoutPitchPlayers(ecuadorStarters, "3-1-4-2", "home", {
     rows,
   });
+  const awayCoords = new Map(awayPlaced.map(p => [String(p.formationPlace), { x: p.x, y: p.y }]));
+  const homeCoords = new Map(homePlaced.map(p => [String(p.formationPlace), { x: p.x, y: p.y }]));
 
   assert.ok(homeCoords.get("1").y < homeCoords.get("23").y);
   assert.ok(homeCoords.get("23").y < homeCoords.get("13").y);
@@ -416,3 +422,9 @@ function normalizeTimelineLabel(event) {
     .trim()
     .toLowerCase();
 }
+
+test("hockey slot triggers and parses query", () => {
+  assert.equal(slot.trigger("nhl"), true);
+  assert.equal(slot.trigger("hockey"), true);
+  assert.equal(slot.trigger("blackhawks score"), true);
+});

@@ -65,13 +65,14 @@
 
         const handleFailure = () => {
           if (avatar?.classList.contains("sports-slot__pitch-player-avatar")) {
-            image.remove();
             avatar.classList.remove("sports-slot__pitch-player-avatar--ready");
             if (!avatar.querySelector(".sports-slot__pitch-player-initials")) {
               const initials = document.createElement("span");
               initials.className = "sports-slot__pitch-player-initials";
               initials.textContent = avatar.dataset.jersey || "?";
-              avatar.appendChild(initials);
+              image.replaceWith(initials);
+            } else {
+              image.remove();
             }
             return;
           }

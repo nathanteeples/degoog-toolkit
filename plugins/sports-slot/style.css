@@ -1234,8 +1234,14 @@
 }
 
 .sports-slot__timeline-scorebar-team .sports-slot__team-mark {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 2.25rem;
+    border-radius: 8px;
+}
+
+.sports-slot__timeline-scorebar-team .sports-slot__team-mark-image {
+    padding: 0.15rem;
 }
 
 .sports-slot__timeline-scorebar-abbr {
@@ -1971,9 +1977,7 @@
 }
 
 .sports-slot__pitch-player--captain .sports-slot__pitch-player-avatar {
-    box-shadow:
-        0 0 0 2px #d9a441,
-        0 2px 8px color-mix(in srgb, #000000 34%, transparent);
+    box-shadow: 0 0 0 2px #d9a441;
 }
 
 .sports-slot__pitch-player--card-yellow .sports-slot__pitch-player-avatar::after,
@@ -2254,4 +2258,127 @@
         overflow: hidden;
         text-overflow: ellipsis;
     }
+}
+
+/* ── Non-soccer roster / lineup list styling ───────────────────────────────── */
+
+.sports-slot__lineup-lists {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 0.5rem;
+    background: var(--bg);
+}
+
+.sports-slot__lineup-team-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--sports-radius-card);
+    background: var(--bg-light);
+    border-top: 4px solid var(--team-brand-color, var(--primary));
+}
+
+.sports-slot__lineup-team-name {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.sports-slot__lineup-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sports-slot__lineup-section-title {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.25rem;
+}
+
+.sports-slot__lineup-player-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.sports-slot__lineup-player-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+}
+
+.sports-slot__lineup-player-avatar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.sports-slot__lineup-player-avatar-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--text-secondary);
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.sports-slot__lineup-player-avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sports-slot__lineup-player-num {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--text-secondary);
+    min-width: 1.2rem;
+}
+
+.sports-slot__lineup-player-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sports-slot__lineup-player-pos {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    background: var(--bg-light);
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
 }

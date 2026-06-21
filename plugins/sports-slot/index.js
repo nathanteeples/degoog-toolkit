@@ -903,10 +903,206 @@ const SOCCER_CLUBS = [
   },
 ];
 
+const HOCKEY_TEAMS = [
+  {
+    sport: "hockey",
+    abbreviation: "ANA",
+    canonicalName: "Anaheim Ducks",
+    aliases: ["ana", "ducks", "anaheim ducks"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "BOS",
+    canonicalName: "Boston Bruins",
+    aliases: ["bruins", "boston bruins"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "BUF",
+    canonicalName: "Buffalo Sabres",
+    aliases: ["buf", "sabres", "buffalo sabres"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "CAR",
+    canonicalName: "Carolina Hurricanes",
+    aliases: ["car", "hurricanes", "canes", "carolina hurricanes"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "CBJ",
+    canonicalName: "Columbus Blue Jackets",
+    aliases: ["cbj", "blue jackets", "columbus blue jackets"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "CGY",
+    canonicalName: "Calgary Flames",
+    aliases: ["cgy", "flames", "calgary flames"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "CHI",
+    canonicalName: "Chicago Blackhawks",
+    aliases: ["chi", "blackhawks", "hawks", "chicago blackhawks"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "COL",
+    canonicalName: "Colorado Avalanche",
+    aliases: ["col", "avalanche", "avs", "colorado avalanche"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "DAL",
+    canonicalName: "Dallas Stars",
+    aliases: ["dal", "stars", "dallas stars"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "DET",
+    canonicalName: "Detroit Red Wings",
+    aliases: ["det", "red wings", "wings", "detroit red wings"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "EDM",
+    canonicalName: "Edmonton Oilers",
+    aliases: ["edm", "oilers", "edmonton oilers"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "FLA",
+    canonicalName: "Florida Panthers",
+    aliases: ["fla", "panthers", "florida panthers"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "LAK",
+    canonicalName: "Los Angeles Kings",
+    aliases: ["lak", "kings", "la kings", "los angeles kings"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "MIN",
+    canonicalName: "Minnesota Wild",
+    aliases: ["min", "wild", "minnesota wild"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "MTL",
+    canonicalName: "Montreal Canadiens",
+    aliases: ["mtl", "canadiens", "habs", "montreal canadiens"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "NJ",
+    canonicalName: "New Jersey Devils",
+    aliases: ["nj", "devils", "new jersey devils"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "NSH",
+    canonicalName: "Nashville Predators",
+    aliases: ["nsh", "predators", "preds", "nashville predators"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "NYI",
+    canonicalName: "New York Islanders",
+    aliases: ["nyi", "islanders", "new york islanders"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "NYR",
+    canonicalName: "New York Rangers",
+    aliases: ["nyr", "rangers", "new york rangers"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "OTT",
+    canonicalName: "Ottawa Senators",
+    aliases: ["ott", "senators", "sens", "ottawa senators"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "PHI",
+    canonicalName: "Philadelphia Flyers",
+    aliases: ["phi", "flyers", "philadelphia flyers"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "PIT",
+    canonicalName: "Pittsburgh Penguins",
+    aliases: ["pit", "penguins", "pens", "pittsburgh penguins"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "SJ",
+    canonicalName: "San Jose Sharks",
+    aliases: ["sj", "sharks", "san jose sharks"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "SEA",
+    canonicalName: "Seattle Kraken",
+    aliases: ["sea", "kraken", "seattle kraken"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "STL",
+    canonicalName: "St. Louis Blues",
+    aliases: ["stl", "blues", "st louis blues"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "TB",
+    canonicalName: "Tampa Bay Lightning",
+    aliases: ["tb", "lightning", "bolts", "tampa bay lightning"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "TOR",
+    canonicalName: "Toronto Maple Leafs",
+    aliases: ["tor", "leafs", "maple leafs", "toronto maple leafs"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "UTA",
+    canonicalName: "Utah Hockey Club",
+    aliases: ["uta", "utah", "utah hockey club", "coyotes", "arizona coyotes"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "VAN",
+    canonicalName: "Vancouver Canucks",
+    aliases: ["van", "canucks", "nucks", "vancouver canucks"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "VGK",
+    canonicalName: "Vegas Golden Knights",
+    aliases: ["vgk", "golden knights", "knights", "vegas golden knights"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "WSH",
+    canonicalName: "Washington Capitals",
+    aliases: ["wsh", "capitals", "caps", "washington capitals"],
+  },
+  {
+    sport: "hockey",
+    abbreviation: "WPG",
+    canonicalName: "Winnipeg Jets",
+    aliases: ["wpg", "jets", "winnipeg jets"],
+  },
+];
+
 const KNOWN_ENTITIES = [
   ...NBA_TEAMS,
   ...NFL_TEAMS,
   ...MLB_TEAMS,
+  ...HOCKEY_TEAMS,
   ...WORLD_CUP_TEAM_ENTITIES,
   ...SOCCER_CLUBS,
 ];
@@ -1127,8 +1323,44 @@ const TEAM_PRIMARY_COLORS = {
     STL: "#C41E3A",
     TB: "#092C5C",
     TEX: "#003278",
-    TOR: "#134A8E",
     WSH: "#AB0003",
+  },
+  hockey: {
+    ANA: "#F47A38",
+    BOS: "#FFB81C",
+    BUF: "#002654",
+    CAR: "#CC0000",
+    CBJ: "#002654",
+    CGY: "#C8102E",
+    CHI: "#CF0A2C",
+    COL: "#6F263D",
+    DAL: "#006847",
+    DET: "#C8102E",
+    EDM: "#041E42",
+    FLA: "#041E42",
+    LAK: "#111111",
+    MIN: "#154734",
+    MTL: "#AF1E2D",
+    NJ: "#CE1126",
+    NJD: "#CE1126",
+    NSH: "#FFB81C",
+    NYI: "#00539C",
+    NYR: "#0038A8",
+    OTT: "#C8102E",
+    PHI: "#F74902",
+    PIT: "#FCB827",
+    SJ: "#006D75",
+    SJS: "#006D75",
+    SEA: "#001628",
+    STL: "#002F87",
+    TB: "#002868",
+    TBL: "#002868",
+    TOR: "#00205B",
+    UTA: "#000000",
+    VAN: "#00205B",
+    VGK: "#B4975A",
+    WSH: "#C8102E",
+    WPG: "#004C87",
   },
 };
 
@@ -1143,6 +1375,16 @@ const NBA_LOGO_KEYS = {
 
 const NFL_LOGO_KEYS = {
   WAS: "wsh",
+};
+
+const HOCKEY_LOGO_KEYS = {
+  NJ: "nj",
+  NJD: "nj",
+  SJ: "sj",
+  SJS: "sj",
+  TB: "tb",
+  TBL: "tb",
+  UTA: "utah",
 };
 
 const MLB_LOGO_KEYS = {
@@ -1181,6 +1423,7 @@ function getSportDisplayName(sport) {
   if (sport === "nba") return "NBA";
   if (sport === "nfl") return "NFL";
   if (sport === "mlb") return "MLB";
+  if (sport === "hockey") return "NHL";
   if (sport === "soccer") return t("soccerSport");
   return "Sports";
 }
@@ -1195,6 +1438,7 @@ function getEspnLogoKey(sport, abbreviation) {
   if (sport === "nba") return (NBA_LOGO_KEYS[upper] ?? upper).toLowerCase();
   if (sport === "nfl") return (NFL_LOGO_KEYS[upper] ?? upper).toLowerCase();
   if (sport === "mlb") return (MLB_LOGO_KEYS[upper] ?? upper).toLowerCase();
+  if (sport === "hockey") return (HOCKEY_LOGO_KEYS[upper] ?? upper).toLowerCase();
   return "";
 }
 
@@ -1291,7 +1535,7 @@ function getJerseyImageUrl(jerseyHref = "") {
 
 function getLogoUrlForTeam(sport, abbreviation, crestUrl = "") {
   const abbr = String(abbreviation ?? "").toUpperCase();
-  if (sport === "nba" || sport === "nfl" || sport === "mlb" || sport === "soccer") {
+  if (sport === "nba" || sport === "nfl" || sport === "mlb" || sport === "hockey" || sport === "soccer") {
     if (!abbr && !crestUrl) return "";
     const params = new URLSearchParams({
       sport,
@@ -1542,6 +1786,7 @@ function detectSportHint(normalizedQuery) {
     return "nfl";
   }
   if (/\b(mlb|baseball|world series)\b/.test(normalizedQuery)) return "mlb";
+  if (/\b(nhl|hockey|stanley cup)\b/.test(normalizedQuery)) return "hockey";
 
   return null;
 }
@@ -1549,7 +1794,7 @@ function detectSportHint(normalizedQuery) {
 function cleanupEntityText(rawText) {
   return normalizeText(rawText)
     .replace(
-      /\b(whats|what is|what are|show|me|the|a|an|for|today|tonight|tomorrow|latest|last|next|live|score|scores|scored|result|results|schedule|schedules|fixtures|fixture|game|games|match|matches|table|tables|standings|standing|rankings|ranking|bracket|knockout|group|groups|stage|world|cup|fifa|nfl|nba|mlb|basketball|baseball|soccer|football|american|who|won)\b/g,
+      /\b(whats|what is|what are|show|me|the|a|an|for|today|tonight|tomorrow|latest|last|next|live|score|scores|scored|result|results|schedule|schedules|fixtures|fixture|game|games|match|matches|table|tables|standings|standing|rankings|ranking|bracket|knockout|group|groups|stage|world|cup|fifa|nfl|nba|mlb|nhl|hockey|basketball|baseball|soccer|football|american|who|won)\b/g,
       " ",
     )
     .trim()
@@ -1643,7 +1888,7 @@ function parseQuery(rawQuery) {
     /\bfootball\b/.test(normalized) && !worldCupMentioned ? "nfl" : null;
   const intent = detectIntent(normalized);
   const competition = resolveCompetition(normalized);
-  const isBareSport = /^(soccer|football|nba|nfl|mlb|basketball|baseball)$/i.test(normalized);
+  const isBareSport = /^(soccer|football|nba|nfl|mlb|hockey|nhl|basketball|baseball)$/i.test(normalized);
   const cues = hasSportsCue(normalized) || isBareSport;
 
   const matchup = splitMatchup(query);
@@ -2090,6 +2335,16 @@ function renderMiniGameCard(game, options = {}) {
       ? ` data-sports-match-id="${escapeHtml(String(game.id))}" role="button" tabindex="0" aria-pressed="${isFocus ? "true" : "false"}"`
       : "";
 
+  let statusText = game.status;
+  if (game.state === "scheduled") {
+    const date = new Date(game.sortDate || game.date || game.datetime);
+    if (!Number.isNaN(date.getTime())) {
+      statusText = formatShortDate(date);
+    } else {
+      statusText = String(game.status).split(/ • |, /)[0];
+    }
+  }
+
   const scoreHtml =
     game.state === "scheduled"
       ? ""
@@ -2103,7 +2358,7 @@ function renderMiniGameCard(game, options = {}) {
         <span class="sports-slot__mini-game-label">${escapeHtml(game.label || "Game")}</span>
         <span class="sports-slot__mini-game-status sports-slot__mini-game-status--${escapeHtml(
           toStatusTone(game.state),
-        )}">${escapeHtml(formatMaybeTimestamp(game.status))}</span>
+        )}">${escapeHtml(formatMaybeTimestamp(statusText))}</span>
       </div>
       <div class="sports-slot__mini-game-score">
         <span class="sports-slot__mini-game-matchup">
@@ -2233,7 +2488,13 @@ function timelineEventTone(event) {
 
 function timelineEventIcon(event) {
   if (event.isPeriod) return "◆";
-  if (event.scoring) return "⚽";
+  if (event.scoring) {
+    if (event.sport === "nba") return "🏀";
+    if (event.sport === "mlb") return "⚾";
+    if (event.sport === "nfl") return "🏈";
+    if (event.sport === "hockey") return "🏒";
+    return "⚽";
+  }
   if (event.redCard) return "🟥";
   if (event.yellowCard) return "🟨";
   if (event.substitution) return "↔";
@@ -2479,6 +2740,19 @@ function annotateTimelineScores(timeline, focusGame) {
   return timeline.map((event) => {
     if (!event.scoring) return event;
 
+    if (event.homeScore != null && event.awayScore != null) {
+      const parsedHome = parseInt(event.homeScore, 10);
+      const parsedAway = parseInt(event.awayScore, 10);
+      if (!Number.isNaN(parsedHome) && !Number.isNaN(parsedAway)) {
+        home = parsedHome;
+        away = parsedAway;
+      }
+      return {
+        ...event,
+        scoreAfter: { away, home, label: `${home}-${away}` },
+      };
+    }
+
     const side = resolveTimelineTeamSide(event.team, focusGame, event);
     if (side === "away") away += 1;
     else if (side === "home") home += 1;
@@ -2660,14 +2934,10 @@ function formatSurname(name = "") {
   return parts.length ? parts[parts.length - 1] : "";
 }
 
-function renderLineupPlayer(player, team, coordsMap, pitchSide = "home") {
-  const coords =
-    coordsMap?.get(String(player.formationPlace)) ||
-    getPitchCoords(player.formationPlace, pitchSide);
-  const teamSide = normalizeHomeAway(team.homeAway || pitchSide);
+function renderLineupPlayer(player, team, coords) {
   const fillColor = player.isGoalkeeper
     ? "var(--sports-slot-gk-color, #5b8a3a)"
-    : `var(--sports-slot-${teamSide}-color)`;
+    : `var(--sports-slot-${team}-color)`;
 
   const statusClass = player.subbedOut
     ? "sports-slot__pitch-player--out"
@@ -2677,49 +2947,36 @@ function renderLineupPlayer(player, team, coordsMap, pitchSide = "home") {
 
   const statusClasses = [
     player.isCaptain ? "sports-slot__pitch-player--captain" : "",
-    player.card ? `sports-slot__pitch-player--card-${player.card}` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+    player.card ? `sports-slot__pitch-player--card-${player.card}` : "", // "yellow" | "red"
+  ].filter(Boolean).join(" ");
+
+  const playerNumber = player.number || player.jersey || "?";
+  const playerImage = player.imageUrl || player.image;
 
   const ariaLabel = [
-    player.fullName || player.name,
-    player.number || player.jersey ? `number ${player.number || player.jersey}` : null,
+    player.name,
+    `number ${playerNumber}`,
     player.isGoalkeeper ? "goalkeeper" : null,
     player.isCaptain ? "captain" : null,
     player.card ? "booked" : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  ].filter(Boolean).join(", ");
 
-  const jerseyLabel = escapeHtml(player.number || player.jersey || "?");
-  const imageHtml = player.imageUrl
-    ? `<img class="sports-slot__pitch-player-image" src="${escapeHtml(
-        player.imageUrl,
-      )}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
-    : "";
+  const imageHtml = playerImage
+    ? `<img class="sports-slot__pitch-player-image" src="${escapeHtml(playerImage)}" alt="" loading="lazy">`
+    : `<span class="sports-slot__pitch-player-initials">${escapeHtml(playerNumber)}</span>`;
 
   return `
     <div
-      class="sports-slot__pitch-player ${statusClass}${statusClasses ? ` ${statusClasses}` : ""}"
+      class="sports-slot__pitch-player ${statusClass} ${statusClasses}"
       style="left:${coords.x}%;top:${coords.y}%"
       tabindex="0"
       role="img"
-      aria-label="${escapeHtml(ariaLabel)}"
-    >
-      <div
-        class="sports-slot__pitch-player-avatar"
-        style="background:${fillColor}"
-        data-jersey="${jerseyLabel}"
-      >
-        <span class="sports-slot__pitch-player-initials">${jerseyLabel}</span>
+      aria-label="${escapeHtml(ariaLabel)}">
+      <div class="sports-slot__pitch-player-avatar" style="background:${fillColor}" data-jersey="${escapeHtml(playerNumber)}">
         ${imageHtml}
       </div>
-      <span class="sports-slot__pitch-player-name">${escapeHtml(
-        formatSurname(player.name),
-      )}</span>
-    </div>
-  `;
+      <span class="sports-slot__pitch-player-name">${escapeHtml(formatSurname(player.name))}</span>
+    </div>`;
 }
 
 function renderPitchTeamBar(team, placement) {
@@ -2780,7 +3037,7 @@ function renderLineupBench(team) {
   `;
 }
 
-function renderLineupPanel(lineups) {
+function renderLineupPanel(lineups, sport = "soccer") {
   if (!lineups?.length) return "";
 
   const awayTeam = lineups.find((team) => team.homeAway === "away") || lineups[0];
@@ -2789,24 +3046,77 @@ function renderLineupPanel(lineups) {
     lineups.find((team) => team !== awayTeam) ||
     lineups[0];
 
+  if (sport !== "soccer") {
+    const renderTeamRosterList = (team) => {
+      if (!team) return "";
+      const starters = team.starters || [];
+      const subs = team.subs || [];
+
+      const renderPlayerRow = (player) => {
+        const fallback = player.jersey || "?";
+        const avatarHtml = player.imageUrl
+          ? `<span class="sports-slot__lineup-player-avatar"><span class="sports-slot__lineup-player-avatar-fallback">${escapeHtml(fallback)}</span><img class="sports-slot__lineup-player-avatar-image" src="${escapeHtml(player.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" /></span>`
+          : `<span class="sports-slot__lineup-player-avatar-fallback">${escapeHtml(fallback)}</span>`;
+
+        return `
+          <div class="sports-slot__lineup-player-item">
+            ${avatarHtml}
+            <span class="sports-slot__lineup-player-num">${escapeHtml(player.jersey || "")}</span>
+            <span class="sports-slot__lineup-player-name">${escapeHtml(player.fullName || player.name)}</span>
+            <span class="sports-slot__lineup-player-pos">${escapeHtml(player.position || "")}</span>
+          </div>
+        `;
+      };
+
+      const startersHtml = starters.length
+        ? `<div class="sports-slot__lineup-section">
+            <h5 class="sports-slot__lineup-section-title">Starters</h5>
+            <div class="sports-slot__lineup-player-list">
+              ${starters.map(renderPlayerRow).join("")}
+            </div>
+           </div>`
+        : "";
+
+      const subsHtml = subs.length
+        ? `<div class="sports-slot__lineup-section">
+            <h5 class="sports-slot__lineup-section-title">Bench / Reserves</h5>
+            <div class="sports-slot__lineup-player-list">
+              ${subs.map(renderPlayerRow).join("")}
+            </div>
+           </div>`
+        : "";
+
+      return `
+        <div class="sports-slot__lineup-team-list" style="--team-brand-color: ${escapeHtml(team.color || "var(--primary)")}">
+          <h4 class="sports-slot__lineup-team-name">${escapeHtml(team.team)}</h4>
+          ${startersHtml}
+          ${subsHtml}
+        </div>
+      `;
+    };
+
+    return `
+      <div class="sports-slot__tab-panel" data-panel="lineup" style="display: none;">
+        <div class="sports-slot__lineup-lists">
+          ${renderTeamRosterList(homeTeam)}
+          ${renderTeamRosterList(awayTeam)}
+        </div>
+      </div>
+    `;
+  }
+
   const renderTeamPitchPlayers = (team, pitchSide) => {
     if (!team) return "";
-    const coordsMap = layoutPitchPlayers(
-      team.starters ?? [],
+    const placedPlayers = layoutPitchPlayers(
       team.formation,
-      pitchSide,
-      {
-        rows: team.formationRows,
-        layoutKey: team.formationLayoutKey,
-      },
+      team.starters ?? [],
+      pitchSide
     );
-    return [...(team.starters ?? [])]
-      .sort((left, right) => {
-        const leftCoords = coordsMap.get(String(left.formationPlace)) || { y: 0, x: 0 };
-        const rightCoords = coordsMap.get(String(right.formationPlace)) || { y: 0, x: 0 };
-        return leftCoords.y - rightCoords.y || leftCoords.x - rightCoords.x;
-      })
-      .map((player) => renderLineupPlayer(player, team, coordsMap, pitchSide))
+    // Sort placedPlayers to ensure predictable tab order top-to-bottom, left-to-right:
+    placedPlayers.sort((left, right) => left.y - right.y || left.x - right.x);
+
+    return placedPlayers
+      .map((player) => renderLineupPlayer(player, pitchSide, { x: player.x, y: player.y }))
       .join("");
   };
 
@@ -3603,7 +3913,7 @@ function normalizeMlbGame(game) {
       : final
         ? "Final"
         : scheduled
-          ? scheduledStatus
+          ? "Live!"
           : inningText || "Live",
     awayTeam,
     homeTeam,
@@ -4380,6 +4690,7 @@ function getEspnSportAndLeague(parsed) {
   if (parsed.sport === "nba") return { sport: "basketball", league: "nba" };
   if (parsed.sport === "nfl") return { sport: "football", league: "nfl" };
   if (parsed.sport === "mlb") return { sport: "baseball", league: "mlb" };
+  if (parsed.sport === "hockey") return { sport: "hockey", league: "nhl" };
   return null;
 }
 
@@ -4441,51 +4752,84 @@ function extractSoccerGoals(summaryData, awayTeamId, homeTeamId) {
   return goals;
 }
 
-const ESPN_SOCCER_BOX_SCORE_STATS = [
-  { name: "possessionPct", label: "Possession" },
-  { name: "totalShots", label: "Shots" },
-  { name: "shotsOnTarget", label: "Shots on goal" },
-  { name: "wonCorners", label: "Corner kicks" },
-  { name: "totalPasses", label: "Total passes" },
-  { name: "passPct", label: "Passing accuracy" },
-  { name: "offsides", label: "Offsides" },
-  { name: "foulsCommitted", label: "Fouls" },
-  { name: "yellowCards", label: "Yellow cards" },
-  { name: "redCards", label: "Red cards" },
-  { name: "shotPct", label: "Shot accuracy" },
-  { name: "saves", label: "Saves" },
-  { name: "accuratePasses", label: "Accurate passes" },
-  { name: "blockedShots", label: "Blocked shots" },
-  { name: "totalCrosses", label: "Crosses" },
-  { name: "accurateCrosses", label: "Accurate crosses" },
-  { name: "totalLongBalls", label: "Long balls" },
-  { name: "accurateLongBalls", label: "Accurate long balls" },
-  { name: "effectiveTackles", label: "Tackles won" },
-  { name: "totalTackles", label: "Total tackles" },
-  { name: "interceptions", label: "Interceptions" },
-  { name: "effectiveClearance", label: "Clearances" },
-  { name: "penaltyKickGoals", label: "Penalty goals" },
-];
-
-const ESPN_DEFAULT_BOX_SCORE_STATS = [
-  { name: "possessionPct", label: "Possession" },
-  { name: "totalShots", label: "Shots" },
-  { name: "shotsOnTarget", label: "Shots on goal" },
-  { name: "wonCorners", label: "Corner kicks" },
-  { name: "totalPasses", label: "Total passes" },
-  { name: "passPct", label: "Passing accuracy" },
-  { name: "offsides", label: "Offsides" },
-  { name: "foulsCommitted", label: "Fouls" },
-  { name: "yellowCards", label: "Yellow cards" },
-  { name: "redCards", label: "Red cards" },
-];
+const ESPN_STATS_KEYS = {
+  soccer: [
+    { name: "possessionPct", label: "Possession" },
+    { name: "totalShots", label: "Shots" },
+    { name: "shotsOnTarget", label: "Shots on goal" },
+    { name: "wonCorners", label: "Corner kicks" },
+    { name: "totalPasses", label: "Total passes" },
+    { name: "passPct", label: "Passing accuracy" },
+    { name: "offsides", label: "Offsides" },
+    { name: "foulsCommitted", label: "Fouls" },
+    { name: "yellowCards", label: "Yellow cards" },
+    { name: "redCards", label: "Red cards" },
+    { name: "shotPct", label: "Shot accuracy" },
+    { name: "saves", label: "Saves" },
+    { name: "accuratePasses", label: "Accurate passes" },
+    { name: "blockedShots", label: "Blocked shots" },
+    { name: "totalCrosses", label: "Crosses" },
+    { name: "accurateCrosses", label: "Accurate crosses" },
+    { name: "totalLongBalls", label: "Long balls" },
+    { name: "accurateLongBalls", label: "Accurate long balls" },
+    { name: "effectiveTackles", label: "Tackles won" },
+    { name: "totalTackles", label: "Total tackles" },
+    { name: "interceptions", label: "Interceptions" },
+    { name: "effectiveClearance", label: "Clearances" },
+    { name: "penaltyKickGoals", label: "Penalty goals" },
+  ],
+  nba: [
+    { name: "fieldGoalPct", label: "Field Goal %" },
+    { name: "threePointFieldGoalPct", label: "3-Point %" },
+    { name: "freeThrowPct", label: "Free Throw %" },
+    { name: "rebounds", label: "Rebounds" },
+    { name: "assists", label: "Assists" },
+    { name: "steals", label: "Steals" },
+    { name: "blocks", label: "Blocks" },
+    { name: "turnovers", label: "Turnovers" },
+    { name: "fastBreakPoints", label: "Fast Break Points" },
+    { name: "pointsInPaint", label: "Points in Paint" },
+    { name: "personalFouls", label: "Fouls" },
+  ],
+  nfl: [
+    { name: "firstDowns", label: "First Downs" },
+    { name: "thirdDownEff", label: "3rd Down Eff" },
+    { name: "fourthDownEff", label: "4th Down Eff" },
+    { name: "totalYards", label: "Total Yards" },
+    { name: "rushingYards", label: "Rushing Yards" },
+    { name: "netPassingYards", label: "Passing Yards" },
+    { name: "sacksYardsLost", label: "Sacks-Yards Lost" },
+    { name: "turnovers", label: "Turnovers" },
+    { name: "totalPenaltiesYards", label: "Penalties-Yards" },
+    { name: "possessionTime", label: "Possession Time" },
+  ],
+  mlb: [
+    { name: "runs", label: "Runs" },
+    { name: "hits", label: "Hits" },
+    { name: "errors", label: "Errors" },
+    { name: "homeRuns", label: "Home Runs" },
+    { name: "strikeouts", label: "Strikeouts" },
+    { name: "walks", label: "Walks" },
+    { name: "leftOnBase", label: "Left on Base" },
+  ],
+  hockey: [
+    { name: "shotsOnGoal", label: "Shots on Goal" },
+    { name: "blockedShots", label: "Blocked Shots" },
+    { name: "hits", label: "Hits" },
+    { name: "powerPlayGoals", label: "Power Play Goals" },
+    { name: "penaltyMinutes", label: "Penalty Minutes" },
+    { name: "faceOffWinPct", label: "Faceoff Win %" },
+    { name: "giveaways", label: "Giveaways" },
+    { name: "takeaways", label: "Takeaways" },
+  ],
+};
 
 function extractMatchTimeline(summaryData, sport = "soccer") {
   if (sport === "soccer" && summaryData?.commentary?.length) {
     return parseSoccerCommentaryTimeline(
       summaryData.commentary,
       summaryData.keyEvents,
-    );
+    ).map(e => ({ ...e, sport }));
   }
 
   const skipTypes = new Set(["Kickoff", "Start Delay", "End Delay"]);
@@ -4497,32 +4841,70 @@ function extractMatchTimeline(summaryData, sport = "soccer") {
     "Penalty Shootout",
   ]);
 
-  return (summaryData?.keyEvents || [])
-    .filter((event) => !skipTypes.has(event.type?.text || ""))
-    .map((event) => {
-      const type = event.type?.text || "Event";
-      const isPeriod = periodTypes.has(type);
+  let events = [];
+  if (sport !== "soccer" && summaryData?.plays?.length) {
+    const plays = summaryData.plays;
+    const sliceCount = 25;
+    const lastPlays = plays.slice(-sliceCount);
+
+    events = lastPlays.map((play) => {
+      const clockDisplay = play.clock?.displayValue || "";
+      const periodNum = play.period?.number || "";
+      let minute = clockDisplay;
+      if (periodNum) {
+        const pLabel = sport === "nba" || sport === "nfl" ? `Q${periodNum}` : `P${periodNum}`;
+        minute = clockDisplay ? `${pLabel} ${clockDisplay}` : `${pLabel}`;
+      }
+
+      const scoring = Boolean(play.scoringPlay);
+
       return {
-        id: event.id,
-        minute: event.clock?.displayValue || "",
-        type,
-        team:
-          event.team?.abbreviation ||
-          event.team?.displayName ||
-          parseCommentaryEventTeam(event.text || event.shortText || "") ||
-          "",
-        athlete: event.participants?.[0]?.athlete?.displayName || "",
-        assist: event.participants?.[1]?.athlete?.displayName || "",
-        text: event.shortText || event.text || type,
-        detail: event.text || "",
-        scoring: Boolean(event.scoringPlay),
-        redCard: Boolean(event.redCard) || /red card/i.test(type),
-        yellowCard: /yellow card/i.test(type),
-        substitution: /substitution/i.test(type),
-        isPeriod,
-        isPlay: false,
+        id: play.id,
+        minute,
+        type: scoring ? "Score" : "Play",
+        team: play.team?.abbreviation || "",
+        athlete: play.participants?.[0]?.athlete?.displayName || "",
+        text: play.text || "",
+        detail: play.text || "",
+        scoring,
+        isPeriod: false,
+        isPlay: true,
+        sport,
+        homeScore: play.homeScore != null ? String(play.homeScore) : null,
+        awayScore: play.awayScore != null ? String(play.awayScore) : null,
       };
     });
+  } else {
+    events = (summaryData?.keyEvents || [])
+      .filter((event) => !skipTypes.has(event.type?.text || ""))
+      .map((event) => {
+        const type = event.type?.text || "Event";
+        const isPeriod = periodTypes.has(type);
+        return {
+          id: event.id,
+          minute: event.clock?.displayValue || "",
+          type,
+          team:
+            event.team?.abbreviation ||
+            event.team?.displayName ||
+            parseCommentaryEventTeam(event.text || event.shortText || "") ||
+            "",
+          athlete: event.participants?.[0]?.athlete?.displayName || "",
+          assist: event.participants?.[1]?.athlete?.displayName || "",
+          text: event.shortText || event.text || type,
+          detail: event.text || "",
+          scoring: Boolean(event.scoringPlay),
+          redCard: Boolean(event.redCard) || /red card/i.test(type),
+          yellowCard: /yellow card/i.test(type),
+          substitution: /substitution/i.test(type),
+          isPeriod,
+          isPlay: false,
+          sport,
+        };
+      });
+  }
+
+  return events;
 }
 
 const PITCH_ROW_Y = {
@@ -4942,64 +5324,121 @@ function getFormationRows(formation = "", starters = null) {
   return [[1], ...lines.map((count) => Array.from({ length: count }, () => null))];
 }
 
-function layoutPitchPlayers(
-  starters = [],
-  formation = "",
-  homeAway = "home",
-  options = {},
-) {
-  const side = normalizeHomeAway(homeAway);
-  const rows =
-    options.rows?.length && options.rows.some((row) => row?.length)
-      ? options.rows
-      : assignPlayersToFormationRows(starters, formation);
-  if (!rows?.length) return new Map();
+function parseFormation(formation) {
+  return String(formation || "")
+    .replace(/\s/g, "")
+    .split("-")
+    .map(Number)
+    .filter((n) => !isNaN(n) && n > 0);
+}
 
-  const rowCount = rows.length;
-  const starterByPlace = new Map(
-    starters.map((player) => [Number(player.formationPlace), player]),
-  );
-  const coords = new Map();
+function buildOutfieldRows(outfieldPlayers, formation) {
+  const rowSizes = parseFormation(formation);
+  const rows = [];
+  let cursor = 0;
+  for (const size of rowSizes) {
+    rows.push(outfieldPlayers.slice(cursor, cursor + size));
+    cursor += size;
+  }
+  return rows;
+}
 
-  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
-    const band = getRowBand(rowIndex, rowCount);
-    const rowPlayers = rows[rowIndex]
-      .map((place) => starterByPlace.get(Number(place)))
-      .filter(Boolean)
-      .map((player) => ({
-        place: String(player.formationPlace),
-        position: String(player.position || ""),
-      }));
+function getRowXPositions(count, { maxSpan = 76, centerX = 50, playerSpacing = 22 } = {}) {
+  if (count <= 1) return [centerX];
+  const span = Math.min(maxSpan, (count - 1) * playerSpacing);
+  const step = span / (count - 1);
+  const startX = centerX - span / 2;
+  return Array.from({ length: count }, (_, i) => Math.round(startX + step * i));
+}
 
-    if (band === "gk") {
-      for (const player of rowPlayers) {
-        coords.set(player.place, {
-          x: 50,
-          y: PITCH_ROW_Y[side].gk,
-        });
+function getRowYPositions(rowCount, team) {
+  const isHome = team === "home";
+  const start = isHome ? 18 : 82; // just past the keeper
+  const end   = isHome ? 46 : 54; // clearance before halfway
+  const step  = rowCount > 1 ? (end - start) / (rowCount - 1) : 0;
+  return Array.from({ length: rowCount }, (_, i) => Math.round(start + step * i));
+}
+
+function checkIsGoalkeeper(player) {
+  if (player.isGoalkeeper !== undefined) return player.isGoalkeeper;
+  const pos = String(player.position || "").toUpperCase();
+  return /^G/.test(pos) || pos === "GK" || Number(player.formationPlace) === 1;
+}
+
+function getPlayerRank(player) {
+  const pos = String(player.position || "").toUpperCase();
+  if (checkIsGoalkeeper(player)) return 0;
+  if (/^(LB|RB|LWB|RWB|CB|CD|LCB|RCB|DEF)\b/.test(pos) || /CD-[LR]|LCB|RCB/.test(pos)) return 1;
+  if (/^(CDM|DM)\b/.test(pos) || /DM-[LR]/.test(pos)) return 2;
+  if (/^(CM|LCM|RCM)\b/.test(pos) || /CM-[LR]/.test(pos)) return 3;
+  if (/^(LM|RM|AM|CAM)\b/.test(pos) || /AM-[LR]/.test(pos)) return 4;
+  if (/^(LW|RW|LF|RF)\b/.test(pos) || /LF|RF/.test(pos)) return 4.5;
+  if (/^(CF|ST|FW|SS)\b/.test(pos) || /CF-[LR]/.test(pos)) return 5;
+  return 3; // Default midfield
+}
+
+function layoutPitchPlayers(arg1, arg2, arg3, arg4) {
+  let formation, players, team, options;
+  if (Array.isArray(arg1)) {
+    // Old signature: layoutPitchPlayers(starters, formation, homeAway, options)
+    players = arg1;
+    formation = arg2;
+    team = arg3;
+    options = arg4;
+  } else {
+    // New signature: layoutPitchPlayers(formation, players, team, options)
+    formation = arg1;
+    players = arg2;
+    team = arg3;
+    options = arg4;
+  }
+
+  const gk = players.find(p => checkIsGoalkeeper(p));
+  const outfield = players.filter(p => !checkIsGoalkeeper(p));
+
+  let outfieldRows;
+  if (options && options.rows && options.rows.length > 0) {
+    const playersMap = new Map(players.map(p => [String(p.formationPlace), p]));
+    const outfieldPlaceRows = options.rows[0].includes(1) || options.rows[0].includes("1")
+      ? options.rows.slice(1)
+      : options.rows;
+    outfieldRows = outfieldPlaceRows.map(row => 
+      row.map(place => playersMap.get(String(place))).filter(Boolean)
+    );
+  } else {
+    const sortedOutfield = [...outfield].sort((left, right) => {
+      const rankL = getPlayerRank(left);
+      const rankR = getPlayerRank(right);
+      if (rankL !== rankR) return rankL - rankR;
+      const biasL = getHorizontalBias(left.position);
+      const biasR = getHorizontalBias(right.position);
+      if (biasL !== biasR) return biasL - biasR;
+      return Number(left.formationPlace || 0) - Number(right.formationPlace || 0);
+    });
+    outfieldRows = buildOutfieldRows(sortedOutfield, formation);
+  }
+
+  const rowYs = getRowYPositions(outfieldRows.length, team);
+  const placed = [];
+  if (gk) placed.push({ ...gk, x: 50, y: team === "home" ? 10 : 90 });
+
+  outfieldRows.forEach((row, i) => {
+    const xs = getRowXPositions(row.length);
+    row.forEach((player, j) => placed.push({ ...player, x: xs[j], y: rowYs[i] }));
+  });
+
+  if (typeof process !== "undefined" && process.env?.NODE_ENV !== "production") {
+    const seen = new Set();
+    for (const p of placed) {
+      const key = `${p.x},${p.y}`;
+      if (seen.has(key)) {
+        console.warn(`sports-slot: overlapping coordinates at ${key} — formation "${formation}" not laying out correctly`);
       }
-      continue;
-    }
-
-    const y = getFormationRowY(rowIndex, rowCount, side);
-    const placed = layoutRowX(rowPlayers, side, band);
-
-    for (const entry of placed) {
-      coords.set(entry.place, { x: entry.x, y });
+      seen.add(key);
     }
   }
 
-  for (const player of starters) {
-    const place = String(player.formationPlace);
-    if (!coords.has(place)) {
-      coords.set(place, {
-        x: 50,
-        y: getFormationRowY(Math.min(1, rowCount - 1), rowCount, side),
-      });
-    }
-  }
-
-  return coords;
+  return placed;
 }
 
 function buildKeyEventLookup(keyEvents) {
@@ -5277,14 +5716,21 @@ function inferLineupHomeAway(block, summaryData, rosterIndex = 0, rosterCount = 
   return "home";
 }
 
-function extractLineups(summaryData) {
+function extractLineups(summaryData, sport = "soccer") {
   const rosters = summaryData?.rosters || [];
   if (!rosters.length) return [];
 
   return rosters
     .map((block, rosterIndex) => {
       const players = block.roster || [];
-      const starters = players.filter((player) => player.starter);
+      let starters = players.filter((player) => player.starter);
+      let subs = players.filter((player) => !player.starter && player.active !== false);
+
+      if (!starters.length && players.length > 0) {
+        starters = players;
+        subs = [];
+      }
+
       if (!starters.length) return null;
 
       const homeAway = inferLineupHomeAway(
@@ -5298,24 +5744,27 @@ function extractLineups(summaryData) {
           ? block.formation
           : block.formation?.text || "";
       const normalizedStarters = starters.map(normalizeLineupPlayer);
-      const resolved = resolveEffectiveFormation(
-        normalizedStarters,
-        espnFormation,
-        homeAway,
-      );
+      const normalizedSubs = subs.map(normalizeLineupPlayer);
+
+      let resolved = { formation: espnFormation, layoutKey: "", rows: null };
+      if (sport === "soccer") {
+        resolved = resolveEffectiveFormation(
+          normalizedStarters,
+          espnFormation,
+          homeAway,
+        );
+      }
 
       return {
         team: block.team?.displayName || block.team?.name || "Team",
         abbreviation: block.team?.abbreviation || "",
-        color: getBrandColorForTeam("soccer", block.team?.abbreviation || ""),
+        color: getBrandColorForTeam(sport, block.team?.abbreviation || ""),
         homeAway,
         formation: resolved.formation || espnFormation,
         formationLayoutKey: resolved.layoutKey || "",
         formationRows: resolved.rows || null,
         starters: normalizedStarters,
-        subs: players
-          .filter((player) => !player.starter && player.active !== false)
-          .map(normalizeLineupPlayer),
+        subs: normalizedSubs,
       };
     })
     .filter(Boolean);
@@ -5480,7 +5929,7 @@ function buildEspnSummaryEnrichment(summaryData, focusGame, sport) {
     matchFacts: extractMatchFacts(summaryData),
     teamForm: orderTeamFormForMatch(extractTeamForm(summaryData), focusGame),
     headToHead: extractHeadToHead(summaryData),
-    lineups: sport === "soccer" ? extractLineups(summaryData) : [],
+    lineups: extractLineups(summaryData, sport),
   };
 }
 
@@ -5669,7 +6118,7 @@ function normalizeEspnEvent(event, sport) {
     state,
     competitionLabel: comp?.type?.text || (sport === "soccer" ? "Soccer" : sport.toUpperCase()),
     status: state === "scheduled"
-      ? formatDisplayTime(date)
+      ? (sport === "mlb" ? "Live!" : formatDisplayTime(date))
       : state === "live"
         ? comp?.status?.displayClock || detail || "Live"
         : state === "final"
@@ -5788,8 +6237,7 @@ function parseEspnStats(boxscore, awayAbbr, homeAbbr, sport = "soccer") {
     return stat ? stat.displayValue : "";
   };
 
-  const statsKeys =
-    sport === "soccer" ? ESPN_SOCCER_BOX_SCORE_STATS : ESPN_DEFAULT_BOX_SCORE_STATS;
+  const statsKeys = ESPN_STATS_KEYS[sport] || ESPN_STATS_KEYS.soccer;
 
   return statsKeys.map(k => {
     const awayVal = getStatVal(awayTeam, k.name);
@@ -5989,7 +6437,7 @@ function renderEspnCard(model) {
     model.focusGame,
     model.sport,
   );
-  const lineupTabPanel = renderLineupPanel(model.lineups);
+  const lineupTabPanel = renderLineupPanel(model.lineups, model.sport);
 
   let standingsTabPanel = "";
   if (model.standings) {
