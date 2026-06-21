@@ -5788,6 +5788,95 @@ function inferLineupHomeAway(block, summaryData, rosterIndex = 0, rosterCount = 
   return "home";
 }
 
+function namesMatch(player, commentName) {
+  const pFull = String(player.fullName || "").toLowerCase();
+  const pShort = String(player.name || "").toLowerCase();
+  const cName = String(commentName || "").toLowerCase();
+
+  if (pFull.includes(cName) || cName.includes(pFull)) return true;
+  if (pShort.includes(cName) || cName.includes(pShort)) return true;
+
+  // Check last names
+  const pFullParts = pFull.split(/\s+/).filter(Boolean);
+  const pShortParts = pShort.split(/\s+/).filter(Boolean);
+  const cParts = cName.split(/\s+/).filter(Boolean);
+  if (cParts.length > 0) {
+    const cLast = cParts[cParts.length - 1];
+    if (pFullParts.includes(cLast) || pShortParts.includes(cLast)) return true;
+  }
+
+  return false;
+}
+
+function applyLineupSubstitutions(starters, subs, commentary) {
+  const subEvents = [];
+  for (const entry of commentary || []) {
+    const text = String(entry.text || "").trim();
+    if (/^Substitution,/i.test(text)) {
+      const match = text.match(/^Substitution,\s*([^.]+)\.\s*(.+?)\s+replaces\s+(.+?)\.?$/i);
+      if (match) {
+        subEvents.push({
+          incoming: match[2].trim().toLowerCase(),
+          outgoing: match[3].trim().toLowerCase(),
+        });
+      }
+    }
+  }
+
+  const matchedStarters = new Set();
+  const matchedSubs = new Set();
+
+  // 1. Pair using timeline commentary matches
+  for (const event of subEvents) {
+    const starterIdx = starters.findIndex(
+      (p) => !matchedStarters.has(p) && namesMatch(p, event.outgoing)
+    );
+    const subIdx = subs.findIndex(
+      (p) => !matchedSubs.has(p) && namesMatch(p, event.incoming)
+    );
+
+    if (starterIdx !== -1 && subIdx !== -1) {
+      const starter = starters[starterIdx];
+      const sub = subs[subIdx];
+
+      matchedStarters.add(starter);
+      matchedSubs.add(sub);
+
+      // Perform swap of layout coordinate attributes
+      sub.formationPlace = starter.formationPlace;
+      starter.subbedOut = true;
+      sub.subbedIn = true;
+
+      starters[starterIdx] = sub;
+      subs[subIdx] = starter;
+    }
+  }
+
+  // 2. Fallback: pair remaining unmatched subbedOut starters with subbedIn subs
+  const remainingOutIndices = starters
+    .map((p, idx) => (p.subbedOut && !matchedStarters.has(p) ? idx : -1))
+    .filter((idx) => idx !== -1);
+  const remainingInIndices = subs
+    .map((p, idx) => (p.subbedIn && !matchedSubs.has(p) ? idx : -1))
+    .filter((idx) => idx !== -1);
+
+  const pairCount = Math.min(remainingOutIndices.length, remainingInIndices.length);
+  for (let i = 0; i < pairCount; i++) {
+    const starterIdx = remainingOutIndices[i];
+    const subIdx = remainingInIndices[i];
+
+    const starter = starters[starterIdx];
+    const sub = subs[subIdx];
+
+    sub.formationPlace = starter.formationPlace;
+    starter.subbedOut = true;
+    sub.subbedIn = true;
+
+    starters[starterIdx] = sub;
+    subs[subIdx] = starter;
+  }
+}
+
 function extractLineups(summaryData, sport = "soccer") {
   const rosters = summaryData?.rosters || [];
   if (!rosters.length) return [];
@@ -5825,6 +5914,7 @@ function extractLineups(summaryData, sport = "soccer") {
           espnFormation,
           homeAway,
         );
+        applyLineupSubstitutions(normalizedStarters, normalizedSubs, summaryData?.commentary);
       }
 
       return {
