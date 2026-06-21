@@ -3010,6 +3010,17 @@ function renderLineupPlayer(player, team, coords) {
     player.card ? "booked" : null,
   ].filter(Boolean).join(", ");
 
+  const tooltipParts = [
+    player.fullName || player.name,
+    `No. ${playerNumber} · ${player.position || ""}`,
+  ];
+  if (player.isCaptain) tooltipParts.push("Captain");
+  if (player.card === "yellow") tooltipParts.push("Yellow Card");
+  if (player.card === "red") tooltipParts.push("Red Card");
+  if (player.subbedOut) tooltipParts.push("Subbed Out");
+  if (player.subbedIn) tooltipParts.push("Subbed In");
+  const tooltipText = tooltipParts.join("\n");
+
   const imageHtml = playerImage
     ? `<img class="sports-slot__pitch-player-image" src="${escapeHtml(playerImage)}" alt="" loading="lazy">`
     : `<span class="sports-slot__pitch-player-initials">${escapeHtml(playerNumber)}</span>`;
@@ -3018,6 +3029,7 @@ function renderLineupPlayer(player, team, coords) {
     <div
       class="sports-slot__pitch-player ${statusClass} ${statusClasses}"
       style="left:${coords.x}%;top:${coords.y}%"
+      title="${escapeHtml(tooltipText)}"
       tabindex="0"
       role="img"
       aria-label="${escapeHtml(ariaLabel)}">
