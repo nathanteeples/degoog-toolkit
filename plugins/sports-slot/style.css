@@ -159,10 +159,9 @@
     text-transform: uppercase;
 }
 
-/* ── Badges & refresh ──────────────────────────────────────────────────── */
+/* ── Badges & live status ──────────────────────────────────────────────── */
 
-.sports-slot__badge,
-.sports-slot__refresh {
+.sports-slot__badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -176,24 +175,6 @@
     font-size: 0.82rem;
     font-weight: 700;
     line-height: 1;
-}
-
-.sports-slot__refresh {
-    cursor: pointer;
-    transition:
-        transform 160ms ease,
-        opacity 160ms ease,
-        border-color 160ms ease;
-}
-
-.sports-slot__refresh:hover:not(:disabled) {
-    transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
-}
-
-.sports-slot__refresh:disabled {
-    cursor: default;
-    opacity: 0.68;
 }
 
 .sports-slot__badge--live {
@@ -219,6 +200,31 @@
     line-height: 1.1;
     text-align: center;
     white-space: nowrap;
+}
+
+.sports-slot__live-status--refresh {
+    cursor: pointer;
+    border-radius: var(--sports-radius-pill);
+    transition:
+        opacity 160ms ease,
+        transform 160ms ease;
+}
+
+.sports-slot__live-status--refresh:hover:not(.sports-slot__live-status--cooldown):not(.sports-slot__live-status--refreshing)
+    .sports-slot__live-status-text {
+    text-decoration: underline;
+    text-underline-offset: 0.14em;
+}
+
+.sports-slot__live-status--refresh:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--danger) 55%, transparent);
+    outline-offset: 2px;
+}
+
+.sports-slot__live-status--cooldown,
+.sports-slot__live-status--refreshing {
+    cursor: default;
+    opacity: 0.72;
 }
 
 .sports-slot__live-track {
@@ -779,6 +785,7 @@
 
 .sports-slot__stat-bar {
     height: 100%;
+    transition: width 650ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sports-slot__stat-bar--home {
@@ -2010,5 +2017,25 @@
 
     .sports-slot__table-row {
         grid-template-columns: 30px minmax(0, 1fr) 64px 48px 40px;
+    }
+
+    .sports-slot__pitch-player {
+        width: 52px;
+        gap: 0.1rem;
+    }
+
+    .sports-slot__pitch-player-avatar {
+        width: 34px;
+        height: 34px;
+        border-width: 1.5px;
+    }
+
+    .sports-slot__pitch-player-fallback {
+        font-size: 0.62rem;
+    }
+
+    .sports-slot__pitch-player-name {
+        font-size: 0.52rem;
+        max-width: 52px;
     }
 }

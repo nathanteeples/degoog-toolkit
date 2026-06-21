@@ -3,8 +3,13 @@ import test from "node:test";
 
 import { lineupLayoutTestHelpers, routes, slot, timelineTestHelpers } from "./index.js";
 
-const { layoutPitchPlayers, getFormationRows, resolveEffectiveFormation } =
-  lineupLayoutTestHelpers;
+const {
+  layoutPitchPlayers,
+  getFormationRows,
+  assignPlayersToFormationRows,
+  getFormationRowY,
+  resolveEffectiveFormation,
+} = lineupLayoutTestHelpers;
 const {
   parseSoccerCommentaryTimeline,
   parseCommentaryAthleteTeam,
@@ -12,24 +17,25 @@ const {
   resolveTimelineTeamSide,
 } = timelineTestHelpers;
 
-test("4-4-2 lineup rows use tactical X and shared row Y", () => {
-  const ivoryCoastStarters = [
-    { formationPlace: "1", position: "G" },
-    { formationPlace: "2", position: "RB" },
-    { formationPlace: "3", position: "LB" },
-    { formationPlace: "4", position: "CM-R" },
-    { formationPlace: "5", position: "CD-R" },
-    { formationPlace: "6", position: "CD-L" },
-    { formationPlace: "7", position: "RM" },
-    { formationPlace: "8", position: "CM-L" },
-    { formationPlace: "9", position: "CF-L" },
-    { formationPlace: "10", position: "CF-R" },
-    { formationPlace: "11", position: "LM" },
-  ];
+const ivoryCoastStarters = [
+  { formationPlace: "1", position: "G" },
+  { formationPlace: "2", position: "RB" },
+  { formationPlace: "3", position: "LB" },
+  { formationPlace: "4", position: "CM-R" },
+  { formationPlace: "5", position: "CD-R" },
+  { formationPlace: "6", position: "CD-L" },
+  { formationPlace: "7", position: "RM" },
+  { formationPlace: "8", position: "CM-L" },
+  { formationPlace: "9", position: "CF-L" },
+  { formationPlace: "10", position: "CF-R" },
+  { formationPlace: "11", position: "LM" },
+];
 
+test("4-4-2 lineup uses shared row Y and left-to-right X ordering", () => {
+  const rows = assignPlayersToFormationRows(ivoryCoastStarters, "4-4-2");
   const coords = layoutPitchPlayers(ivoryCoastStarters, "4-4-2", "home");
   const defY = coords.get("3").y;
-  const midY = coords.get("11").y;
+  const midY = coords.get(String(rows[2][0])).y;
   const fwdY = coords.get("9").y;
 
   assert.equal(coords.get("6").y, defY);
@@ -38,47 +44,18 @@ test("4-4-2 lineup rows use tactical X and shared row Y", () => {
   assert.notEqual(defY, midY);
   assert.notEqual(midY, fwdY);
 
-  assert.ok(coords.get("3").x < coords.get("6").x);
-  assert.ok(coords.get("6").x < coords.get("5").x);
-  assert.ok(coords.get("5").x < coords.get("2").x);
+  const defXs = rows[1].map((place) => coords.get(String(place)).x);
+  assert.ok(defXs.every((x, index) => index === 0 || x >= defXs[index - 1] - 0.01));
+  assert.ok(defXs[0] < defXs[defXs.length - 1]);
 
-  assert.ok(coords.get("11").x < coords.get("8").x);
-  assert.ok(coords.get("8").x < coords.get("4").x);
-  assert.ok(coords.get("4").x < coords.get("7").x);
-
-  assert.notEqual(coords.get("4").x, coords.get("6").x);
-  assert.notEqual(coords.get("8").x, coords.get("6").x);
+  const midXs = rows[2].map((place) => coords.get(String(place)).x);
+  assert.ok(midXs.every((x, index) => index === 0 || x >= midXs[index - 1] - 0.01));
+  assert.ok(coords.get("3").x < coords.get("2").x);
+  assert.ok(coords.get("11").x < coords.get("7").x);
 });
 
 test("ESPN 4-4-2 label resolves to 3-4-3 for wingback sides", () => {
-  const ecuadorStarters = [
-    { formationPlace: "1", position: "G" },
-    { formationPlace: "2", position: "RB" },
-    { formationPlace: "3", position: "LB" },
-    { formationPlace: "4", position: "CM-R" },
-    { formationPlace: "5", position: "CD-R" },
-    { formationPlace: "6", position: "CD-L" },
-    { formationPlace: "7", position: "RM" },
-    { formationPlace: "8", position: "CM-L" },
-    { formationPlace: "9", position: "CF-L" },
-    { formationPlace: "10", position: "CF-R" },
-    { formationPlace: "11", position: "LM" },
-  ];
-
-  const ivoryCoastStarters = [
-    { formationPlace: "1", position: "G" },
-    { formationPlace: "2", position: "RB" },
-    { formationPlace: "3", position: "LB" },
-    { formationPlace: "4", position: "CM-R" },
-    { formationPlace: "5", position: "CD-R" },
-    { formationPlace: "6", position: "CD-L" },
-    { formationPlace: "7", position: "RM" },
-    { formationPlace: "8", position: "CM-L" },
-    { formationPlace: "9", position: "CF-L" },
-    { formationPlace: "10", position: "CF-R" },
-    { formationPlace: "11", position: "LM" },
-  ];
-
+  const ecuadorStarters = [...ivoryCoastStarters];
   const ecuador = resolveEffectiveFormation(ecuadorStarters, "4-4-2", "away");
   const ivoryCoast = resolveEffectiveFormation(
     ivoryCoastStarters,
@@ -87,26 +64,80 @@ test("ESPN 4-4-2 label resolves to 3-4-3 for wingback sides", () => {
   );
 
   assert.equal(ecuador.formation, "3-4-3");
-  assert.deepEqual(ecuador.rows?.[1], [3, 5, 6]);
-  assert.deepEqual(ecuador.rows?.[3], [7, 9, 10]);
+  assert.equal(ecuador.rows?.[1]?.length, 3);
+  assert.equal(ecuador.rows?.[2]?.length, 4);
+  assert.equal(ecuador.rows?.[3]?.length, 3);
+  assert.ok(ecuador.rows?.[2]?.includes(2));
+  assert.ok(ecuador.rows?.[1]?.includes(3));
 
   assert.equal(ivoryCoast.formation, "4-4-2");
-  assert.deepEqual(ivoryCoast.rows?.[1], [2, 3, 5, 6]);
-  assert.deepEqual(ivoryCoast.rows?.[3], [9, 10]);
+  assert.equal(ivoryCoast.rows?.[1]?.length, 4);
+  assert.equal(ivoryCoast.rows?.[3]?.length, 2);
 
   const coords = layoutPitchPlayers(ecuadorStarters, ecuador.formation, "away", {
     rows: ecuador.rows,
-    layoutKey: ecuador.layoutKey,
   });
-  assert.equal(coords.get("7").y, coords.get("9").y);
+  assert.equal(coords.get("7").y, coords.get("4").y);
+  assert.equal(coords.get("9").y, coords.get("10").y);
   assert.notEqual(coords.get("2").y, coords.get("3").y);
+  assert.ok(coords.get("9").y > coords.get("7").y);
 });
 
-test("getFormationRows covers common World Cup shapes", () => {
-  assert.deepEqual(getFormationRows("4-4-2")?.[2], [4, 7, 8, 11]);
-  assert.deepEqual(getFormationRows("4-3-3")?.[3], [9, 10, 11]);
-  assert.deepEqual(getFormationRows("3-4-2-1")?.[3], [10, 11]);
-  assert.deepEqual(getFormationRows("5-4-1")?.[1], [2, 3, 4, 5, 6]);
+test("getFormationRows derives row sizes from any formation string", () => {
+  assert.equal(getFormationRows("4-4-2")?.[1]?.length, 4);
+  assert.equal(getFormationRows("4-4-2")?.[2]?.length, 4);
+  assert.equal(getFormationRows("4-3-3")?.[3]?.length, 3);
+  assert.equal(getFormationRows("3-4-2-1")?.[3]?.length, 2);
+  assert.equal(getFormationRows("5-4-1")?.[1]?.length, 5);
+  assert.equal(getFormationRows("4-2-3-1")?.length, 5);
+  assert.equal(getFormationRows("4-2-3-1")?.[2]?.length, 2);
+  assert.equal(getFormationRows("4-2-3-1")?.[3]?.length, 3);
+});
+
+test("5-4-1 keeps defenders deep and striker advanced on the correct half", () => {
+  const starters541 = [
+    { formationPlace: "1", position: "G" },
+    { formationPlace: "2", position: "RWB" },
+    { formationPlace: "3", position: "LWB" },
+    { formationPlace: "4", position: "CB" },
+    { formationPlace: "5", position: "CB" },
+    { formationPlace: "6", position: "CB" },
+    { formationPlace: "7", position: "RM" },
+    { formationPlace: "8", position: "CM" },
+    { formationPlace: "10", position: "CM" },
+    { formationPlace: "11", position: "LM" },
+    { formationPlace: "9", position: "CF" },
+  ];
+
+  const rows = assignPlayersToFormationRows(starters541, "5-4-1");
+  assert.deepEqual(rows.map((row) => row.length), [1, 5, 4, 1]);
+  assert.ok(rows[1].includes(2));
+  assert.ok(rows[1].includes(6));
+  assert.equal(rows[3][0], 9);
+
+  const homeCoords = layoutPitchPlayers(starters541, "5-4-1", "home", { rows });
+  const awayCoords = layoutPitchPlayers(starters541, "5-4-1", "away", { rows });
+
+  assert.ok(homeCoords.get("1").y > homeCoords.get("4").y);
+  assert.ok(homeCoords.get("4").y > homeCoords.get("9").y);
+  assert.equal(homeCoords.get("9").y, 50);
+
+  assert.ok(awayCoords.get("1").y < awayCoords.get("4").y);
+  assert.ok(awayCoords.get("4").y < awayCoords.get("9").y);
+  assert.equal(awayCoords.get("9").y, 50);
+
+  assert.equal(homeCoords.get("1").y, getFormationRowY(0, rows.length, "home"));
+  assert.equal(awayCoords.get("1").y, getFormationRowY(0, rows.length, "away"));
+});
+
+test("four-row formations evenly divide vertical space", () => {
+  const rows = getFormationRows("4-2-3-1");
+  assert.equal(rows.length, 5);
+
+  const yValues = [0, 1, 2, 3, 4].map((index) =>
+    getFormationRowY(index, rows.length, "home"),
+  );
+  assert.deepEqual(yValues, [90, 80, 70, 60, 50]);
 });
 
 test("refresh route renders without relying on an undefined request alias", async () => {
@@ -326,4 +357,3 @@ function normalizeTimelineLabel(event) {
     .trim()
     .toLowerCase();
 }
-

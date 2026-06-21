@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.43";
+const PLUGIN_VERSION = "0.3.46";
 const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
@@ -1850,7 +1850,7 @@ function getLiveBadgeLabel(game) {
   return status && !/^live$/i.test(status) ? status : game.status || "Live";
 }
 
-function renderLiveIndicator(text, { clock = false, game = null } = {}) {
+function renderLiveIndicator(text, { clock = false, game = null, refreshable = false } = {}) {
   const liveClockAttr =
     clock && game?.liveClockSeconds != null
       ? `data-live-status data-live-prefix="${escapeHtml(
@@ -1859,9 +1859,16 @@ function renderLiveIndicator(text, { clock = false, game = null } = {}) {
           game.liveClockSeconds,
         )}" data-live-direction="down"`
       : "";
+  const refreshAttrs = refreshable
+    ? ` data-sports-refresh-trigger role="button" tabindex="0" aria-label="${escapeHtml(
+        t("refresh"),
+      )}"`
+    : "";
 
   return `
-    <span class="sports-slot__live-status"${liveClockAttr ? ` ${liveClockAttr}` : ""}>
+    <span class="sports-slot__live-status${
+      refreshable ? " sports-slot__live-status--refresh" : ""
+    }"${liveClockAttr ? ` ${liveClockAttr}` : ""}${refreshAttrs}>
       <span class="sports-slot__live-status-text">${escapeHtml(text)}</span>
       <span class="sports-slot__live-track" aria-hidden="true">
         <span class="sports-slot__live-bar"></span>
@@ -1869,10 +1876,10 @@ function renderLiveIndicator(text, { clock = false, game = null } = {}) {
     </span>`;
 }
 
-function renderLiveBadge(label, game = null) {
+function renderLiveBadge(label, game = null, refreshable = false) {
   return `
     <span class="sports-slot__badge sports-slot__badge--live">
-      ${renderLiveIndicator(label, { clock: true, game })}
+      ${renderLiveIndicator(label, { clock: true, game, refreshable })}
     </span>
   `;
 }
@@ -1895,28 +1902,59 @@ function renderProviderFooter(providerLabel, providerUrl, extraText = "") {
   `;
 }
 
-function renderRefreshButton(model) {
-  if (!model.refreshable) return "";
+function normalizeStatKey(label = "") {
+  return String(label)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function renderFocusStatRow(stat) {
+  const awayVal = parseFloat(stat.away) || 0;
+  const homeVal = parseFloat(stat.home) || 0;
+  const total = awayVal + homeVal;
+  let awayPct = 50;
+  let homePct = 50;
+  if (total > 0) {
+    awayPct = (awayVal / total) * 100;
+    homePct = (homeVal / total) * 100;
+  }
+  const isPossession = stat.label.toLowerCase() === "possession";
+  const awayDisp = isPossession ? `${stat.away}%` : stat.away;
+  const homeDisp = isPossession ? `${stat.home}%` : stat.home;
+
   return `
-    <button
-      class="sports-slot__refresh"
-      type="button"
-      data-sports-refresh
-      ${
-        model.refreshMinIntervalMs
-          ? `data-refresh-ms="${escapeHtml(model.refreshMinIntervalMs)}"`
-          : ""
-      }
-    >
-      ${t("refresh")}
-    </button>
+    <div class="sports-slot__stat-row" data-stat-key="${escapeHtml(
+      normalizeStatKey(stat.label),
+    )}">
+      <span class="sports-slot__stat-val sports-slot__stat-val--home">${escapeHtml(
+        homeDisp,
+      )}</span>
+      <div class="sports-slot__stat-bar-track">
+        <div
+          class="sports-slot__stat-bar sports-slot__stat-bar--home"
+          style="width: ${homePct}%"
+          data-stat-home-pct="${homePct}"
+        ></div>
+        <div
+          class="sports-slot__stat-bar sports-slot__stat-bar--away"
+          style="width: ${awayPct}%"
+          data-stat-away-pct="${awayPct}"
+        ></div>
+      </div>
+      <span class="sports-slot__stat-val sports-slot__stat-val--away">${escapeHtml(
+        awayDisp,
+      )}</span>
+      <span class="sports-slot__stat-label">${escapeHtml(stat.label)}</span>
+    </div>
   `;
 }
 
 function renderToolbar(model) {
   const badgeHtml = model.badge
     ? model.badgeTone === "live"
-      ? renderLiveBadge(model.badge, model.focusGame)
+      ? renderLiveBadge(model.badge, model.focusGame, model.refreshable)
       : `<span class="sports-slot__badge sports-slot__badge--${escapeHtml(
           model.badgeTone || "scheduled",
         )}">${escapeHtml(model.badge)}</span>`
@@ -1943,7 +1981,6 @@ function renderToolbar(model) {
       </div>
       <div class="sports-slot__toolbar-actions">
         ${badgeHtml}
-        ${renderRefreshButton(model)}
       </div>
     </header>
   `;
@@ -4413,290 +4450,14 @@ function extractMatchTimeline(summaryData, sport = "soccer") {
     });
 }
 
-const FORMATION_PLACE_COORDS = {
-  1: { x: 50, y: 100 },
-  2: { x: 88, y: 78 },
-  3: { x: 12, y: 78 },
-  4: { x: 80, y: 55 },
-  5: { x: 68, y: 78 },
-  6: { x: 32, y: 78 },
-  7: { x: 20, y: 55 },
-  8: { x: 50, y: 55 },
-  9: { x: 50, y: 28 },
-  10: { x: 80, y: 28 },
-  11: { x: 20, y: 28 },
+const PITCH_ROW_Y = {
+  home: { defensive: 90, attacking: 50 },
+  away: { defensive: 10, attacking: 50 },
 };
 
-const FORMATION_PLACE_X = {
-  "4-4-2": {
-    1: 50,
-    2: 82,
-    3: 18,
-    4: 65,
-    5: 62,
-    6: 38,
-    7: 85,
-    8: 32,
-    9: 38,
-    10: 62,
-    11: 15,
-  },
-  "4-3-3": {
-    1: 50,
-    2: 82,
-    3: 18,
-    5: 62,
-    6: 38,
-    4: 50,
-    7: 72,
-    8: 28,
-    9: 50,
-    10: 78,
-    11: 22,
-  },
-  "4-2-3-1": {
-    1: 50,
-    2: 82,
-    3: 18,
-    5: 62,
-    6: 38,
-    4: 35,
-    8: 65,
-    7: 78,
-    10: 50,
-    11: 22,
-    9: 50,
-  },
-  "4-3-1-2": {
-    1: 50,
-    2: 82,
-    3: 18,
-    5: 62,
-    6: 38,
-    4: 50,
-    7: 72,
-    11: 28,
-    8: 50,
-    9: 38,
-    10: 62,
-  },
-  "4-1-4-1": {
-    1: 50,
-    2: 82,
-    3: 18,
-    5: 62,
-    6: 38,
-    4: 50,
-    7: 85,
-    8: 32,
-    10: 62,
-    11: 15,
-    9: 50,
-  },
-  "4-5-1": {
-    1: 50,
-    2: 82,
-    3: 18,
-    5: 62,
-    6: 38,
-    4: 50,
-    7: 85,
-    8: 50,
-    10: 32,
-    11: 15,
-    9: 50,
-  },
-  "3-4-3": {
-    1: 50,
-    4: 22,
-    5: 50,
-    6: 78,
-    2: 85,
-    3: 15,
-    7: 65,
-    8: 35,
-    9: 50,
-    10: 78,
-    11: 22,
-  },
-  // ESPN sometimes labels 3-4-3 sides as 4-4-2 while keeping place 4 as a midfielder.
-  "3-4-3-wb": {
-    1: 50,
-    3: 22,
-    5: 50,
-    6: 78,
-    2: 85,
-    11: 15,
-    8: 35,
-    4: 65,
-    7: 78,
-    9: 22,
-    10: 50,
-  },
-  "3-4-2-1": {
-    1: 50,
-    4: 22,
-    5: 50,
-    6: 78,
-    2: 85,
-    3: 15,
-    7: 65,
-    8: 35,
-    10: 72,
-    11: 28,
-    9: 50,
-  },
-  "3-5-2": {
-    1: 50,
-    4: 22,
-    5: 50,
-    6: 78,
-    2: 88,
-    3: 12,
-    7: 65,
-    8: 50,
-    11: 15,
-    9: 38,
-    10: 62,
-  },
-  "5-4-1": {
-    1: 50,
-    2: 88,
-    3: 12,
-    4: 68,
-    5: 50,
-    6: 32,
-    7: 85,
-    8: 32,
-    10: 62,
-    11: 15,
-    9: 50,
-  },
-  "5-3-2": {
-    1: 50,
-    2: 88,
-    3: 12,
-    4: 68,
-    5: 50,
-    6: 32,
-    7: 72,
-    8: 50,
-    11: 28,
-    9: 38,
-    10: 62,
-  },
-};
-
-function getFormationPlaceX(formation = "", formationPlace = 0) {
-  const key = String(formation).replace(/\s/g, "");
-  const place = Number(formationPlace);
-  const table = FORMATION_PLACE_X[key];
-  if (table?.[place] != null) return table[place];
-  return FORMATION_PLACE_COORDS[place]?.x ?? 50;
+function normalizeHomeAway(value = "") {
+  return String(value).trim().toLowerCase() === "away" ? "away" : "home";
 }
-
-function getFormationRowY(rowIndex = 0, rowCount = 1, homeAway = "home") {
-  const maxIndex = Math.max(rowCount - 1, 1);
-  const depth = rowIndex / maxIndex;
-
-  if (homeAway === "away") {
-    return 6 + depth * 38;
-  }
-
-  return 94 - depth * 38;
-}
-
-const ESPN_FORMATION_ROWS = {
-  "4-4-2": [[1], [2, 3, 5, 6], [4, 7, 8, 11], [9, 10]],
-  "4-3-3": [[1], [2, 3, 5, 6], [4, 7, 8], [9, 10, 11]],
-  "4-2-3-1": [[1], [2, 3, 5, 6], [4, 8], [7, 10, 11], [9]],
-  "4-3-1-2": [[1], [2, 3, 5, 6], [4, 7, 11], [8], [9, 10]],
-  "4-1-4-1": [[1], [2, 3, 5, 6], [4], [7, 8, 10, 11], [9]],
-  "4-5-1": [[1], [2, 3, 5, 6], [4, 7, 8, 10, 11], [9]],
-  "3-4-3": [[1], [4, 5, 6], [2, 3, 7, 8], [9, 10, 11]],
-  "3-4-2-1": [[1], [4, 5, 6], [2, 3, 7, 8], [10, 11], [9]],
-  "3-5-2": [[1], [4, 5, 6], [2, 3, 7, 8, 11], [9, 10]],
-  "5-4-1": [[1], [2, 3, 4, 5, 6], [7, 8, 10, 11], [9]],
-  "5-3-2": [[1], [2, 3, 4, 5, 6], [7, 8, 11], [9, 10]],
-};
-
-function buildFourBackFormationRows(lineCounts) {
-  const rows = [[1], [2, 3, 5, 6]];
-  const rest = lineCounts.slice(1);
-  const midPool = [4, 7, 8, 11];
-  const fwdPool = [9, 10, 11];
-
-  if (rest.length === 1) {
-    if (rest[0] === 1) rows.push([9]);
-    else rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
-    return rows;
-  }
-
-  if (rest.length === 2) {
-    rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
-    rows.push(fwdPool.slice(0, Math.min(rest[1], fwdPool.length)));
-    return rows;
-  }
-
-  if (rest.length === 3 && rest[0] === 2 && rest[1] === 3 && rest[2] === 1) {
-    rows.push([4, 8], [7, 10, 11], [9]);
-    return rows;
-  }
-
-  if (rest.length === 3) {
-    rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
-    if (rest[1] === 1) rows.push([8]);
-    rows.push(fwdPool.slice(0, Math.min(rest[2] ?? rest[1], fwdPool.length)));
-    return rows;
-  }
-
-  return rows;
-}
-
-function buildThreeBackFormationRows(lineCounts) {
-  const rows = [[1], [4, 5, 6]];
-  const rest = lineCounts.slice(1);
-  const midPool = [2, 3, 7, 8, 11];
-  const fwdPool = [9, 10, 11];
-
-  if (rest.length === 1) {
-    rows.push(fwdPool.slice(0, Math.min(rest[0], fwdPool.length)));
-    return rows;
-  }
-
-  if (rest.length === 2) {
-    rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
-    rows.push(fwdPool.slice(0, Math.min(rest[1], fwdPool.length)));
-    return rows;
-  }
-
-  if (rest.length === 3 && rest[1] === 2 && rest[2] === 1) {
-    rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
-    rows.push([10, 11]);
-    rows.push([9]);
-    return rows;
-  }
-
-  return rows;
-}
-
-function buildFiveBackFormationRows(lineCounts) {
-  const rows = [[1], [2, 3, 4, 5, 6]];
-  const rest = lineCounts.slice(1);
-  const midPool = [7, 8, 10, 11];
-  const fwdPool = [9, 10, 11];
-
-  if (rest.length === 1) {
-    rows.push(fwdPool.slice(0, Math.min(rest[0], fwdPool.length)));
-    return rows;
-  }
-
-  rows.push(midPool.slice(0, Math.min(rest[0], midPool.length)));
-  if (rest[1]) rows.push(fwdPool.slice(0, Math.min(rest[1], fwdPool.length)));
-  return rows;
-}
-
-const FORMATION_343_WINGBACK_ROWS = [[1], [3, 5, 6], [2, 11, 8, 4], [7, 9, 10]];
 
 function isDefenderPosition(position = "") {
   const pos = String(position).toUpperCase();
@@ -4713,6 +4474,173 @@ function isForwardPosition(position = "") {
   return /^(CF|ST|FW|LF|RF|SS)/.test(pos) || /CF-[LR]|LF|RF/.test(pos);
 }
 
+function getHorizontalBias(position = "") {
+  const pos = String(position || "").toUpperCase();
+  if (/(^|[^A-Z])(LWB|LB|LCB|CD-L|LM|LW|LF)([^A-Z]|$)/.test(pos) || pos.endsWith("-L")) {
+    return 0.14;
+  }
+  if (/(^|[^A-Z])(RWB|RB|RCB|CD-R|RM|RW|RF)([^A-Z]|$)/.test(pos) || pos.endsWith("-R")) {
+    return 0.86;
+  }
+  if (/\b(CDM|DM)\b/.test(pos)) return 0.5;
+  if (/\b(CAM|AM)\b/.test(pos)) return 0.5;
+  return 0.5;
+}
+
+function getPositionTargetX(position = "", margin = 10) {
+  const bias = getHorizontalBias(position);
+  return margin + bias * (100 - margin * 2);
+}
+
+function layoutRowX(rowPlayers = [], margin = 10, minGap = 9) {
+  if (!rowPlayers.length) return [];
+  if (rowPlayers.length === 1) {
+    return [
+      {
+        place: rowPlayers[0].place,
+        x: getPositionTargetX(rowPlayers[0].position, margin),
+      },
+    ];
+  }
+
+  const sorted = [...rowPlayers].sort(
+    (left, right) =>
+      getHorizontalBias(left.position) - getHorizontalBias(right.position) ||
+      Number(left.place) - Number(right.place),
+  );
+
+  let xs = sorted.map((player) => getPositionTargetX(player.position, margin));
+
+  for (let index = 1; index < xs.length; index += 1) {
+    if (xs[index] - xs[index - 1] < minGap) {
+      xs[index] = xs[index - 1] + minGap;
+    }
+  }
+
+  const maxX = 100 - margin;
+  if (xs[xs.length - 1] > maxX) {
+    const overflow = xs[xs.length - 1] - maxX;
+    xs = xs.map((value) => value - overflow);
+  }
+  if (xs[0] < margin) {
+    const shift = margin - xs[0];
+    xs = xs.map((value) => value + shift);
+  }
+
+  if (xs[xs.length - 1] > maxX || xs[0] < margin) {
+    return sorted.map((player, index) => ({
+      place: player.place,
+      x: getEvenRowX(index, sorted.length, margin),
+    }));
+  }
+
+  return sorted.map((player, index) => ({
+    place: player.place,
+    x: xs[index],
+  }));
+}
+
+function parseFormationLines(formation = "") {
+  return String(formation)
+    .split("-")
+    .map((part) => Number(part.trim()))
+    .filter((count) => Number.isFinite(count) && count > 0);
+}
+
+function classifyPlayerBand(position = "") {
+  const pos = String(position || "").toUpperCase();
+  if (/^G/.test(pos) || pos === "GK") return "gk";
+  if (isDefenderPosition(pos)) return "def";
+  if (isForwardPosition(pos)) return "fwd";
+  if (/^(RW|LW|RM|LM)\b/.test(pos)) return "mid";
+  if (isMidfieldPosition(pos)) return "mid";
+  return "mid";
+}
+
+function getEvenRowX(index = 0, count = 1, margin = 10) {
+  if (count <= 1) return 50;
+  return margin + (index / (count - 1)) * (100 - margin * 2);
+}
+
+function getFormationRowY(rowIndex = 0, rowCount = 1, homeAway = "home") {
+  const side = normalizeHomeAway(homeAway);
+  const bounds = PITCH_ROW_Y[side];
+
+  if (rowCount <= 1) return bounds.defensive;
+
+  const depth = rowIndex / (rowCount - 1);
+  return bounds.defensive + depth * (bounds.attacking - bounds.defensive);
+}
+
+function assignPlayersToFormationRows(starters = [], formation = "") {
+  const lines = parseFormationLines(formation);
+  if (!lines.length) return [[1]];
+
+  const outfield = starters
+    .filter((player) => Number(player.formationPlace) !== 1)
+    .map((player) => ({
+      place: Number(player.formationPlace),
+      position: String(player.position || ""),
+      band: classifyPlayerBand(player.position),
+      bias: getHorizontalBias(player.position),
+    }))
+    .sort((left, right) => left.place - right.place);
+
+  const lineRows = lines.map(() => []);
+  let remaining = [...outfield];
+
+  const takeMatching = (rowIndex, predicate) => {
+    const capacity = lines[rowIndex];
+    while (lineRows[rowIndex].length < capacity && remaining.length) {
+      const matchIndex = remaining.findIndex(predicate);
+      if (matchIndex === -1) break;
+      lineRows[rowIndex].push(remaining.splice(matchIndex, 1)[0]);
+    }
+  };
+
+  for (let rowIndex = 0; rowIndex < lines.length; rowIndex += 1) {
+    if (rowIndex === 0) {
+      if (lines[0] === 3) {
+        takeMatching(
+          rowIndex,
+          (player) =>
+            player.band === "def" && !/^(RB|RWB)\b/i.test(player.position),
+        );
+      }
+      takeMatching(rowIndex, (player) => player.band === "def");
+    } else if (rowIndex === lines.length - 1) {
+      takeMatching(rowIndex, (player) => player.band === "fwd");
+    } else if (lines[0] === 3 && rowIndex === 1) {
+      takeMatching(
+        rowIndex,
+        (player) => /^(RB|LB|RWB|LWB)\b/i.test(player.position),
+      );
+      takeMatching(rowIndex, (player) => player.band === "mid");
+      takeMatching(
+        rowIndex,
+        (player) => /^(RB|LB|RWB|LWB)\b/i.test(player.position),
+      );
+    } else {
+      takeMatching(rowIndex, (player) => player.band === "mid");
+    }
+  }
+
+  remaining.sort((left, right) => left.place - right.place);
+  for (let rowIndex = 0; rowIndex < lines.length; rowIndex += 1) {
+    while (lineRows[rowIndex].length < lines[rowIndex] && remaining.length) {
+      lineRows[rowIndex].push(remaining.shift());
+    }
+  }
+
+  const rows = [[1]];
+  for (const row of lineRows) {
+    row.sort((left, right) => left.bias - right.bias || left.place - right.place);
+    rows.push(row.map((player) => player.place));
+  }
+
+  return rows;
+}
+
 function scorePlayerRowFit(position = "", rowBand = "") {
   const pos = String(position || "");
   if (rowBand === "gk") return 10;
@@ -4723,7 +4651,7 @@ function scorePlayerRowFit(position = "", rowBand = "") {
   }
   if (rowBand === "mid") {
     if (isMidfieldPosition(pos)) return 10;
-    if (isDefenderPosition(pos)) return 10;
+    if (isDefenderPosition(pos)) return 4;
     if (isForwardPosition(pos)) return 5;
     return 0;
   }
@@ -4762,6 +4690,16 @@ function scoreFormationLayout(starters = [], rows = []) {
     }
   }
 
+  const place4 = byPlace.get(4);
+  if (
+    place4 &&
+    isMidfieldPosition(place4.position) &&
+    !isDefenderPosition(place4.position) &&
+    rows[1]?.includes(4)
+  ) {
+    total -= 25;
+  }
+
   return total;
 }
 
@@ -4775,31 +4713,40 @@ function isMidfieldAtPlace4(starters = []) {
 
 function resolveEffectiveFormation(starters = [], espnFormation = "", homeAway = "") {
   const key = String(espnFormation).replace(/\s/g, "") || "4-4-2";
-  const candidates = [
-    {
-      formation: key,
-      rows: getFormationRows(key),
-      layoutKey: key,
-    },
-  ];
+  const candidateFormations = [key];
 
   if (key === "4-4-2" && isMidfieldAtPlace4(starters)) {
-    candidates.push({
-      formation: "3-4-3",
-      rows: FORMATION_343_WINGBACK_ROWS,
-      layoutKey: "3-4-3-wb",
-    });
+    candidateFormations.push("3-4-3");
   }
 
-  const scored = candidates
-    .filter((candidate) => candidate.rows?.length)
-    .map((candidate) => ({
-      ...candidate,
-      score: scoreFormationLayout(starters, candidate.rows),
-    }));
+  const scored = candidateFormations
+    .map((formation) => {
+      const rows = assignPlayersToFormationRows(starters, formation);
+      return {
+        formation,
+        layoutKey: formation,
+        rows,
+        score: scoreFormationLayout(starters, rows),
+      };
+    })
+    .filter((candidate) => candidate.rows?.length);
+
+  if (
+    key === "4-4-2" &&
+    isMidfieldAtPlace4(starters) &&
+    normalizeHomeAway(homeAway) === "away"
+  ) {
+    const mislabeled = scored.find((candidate) => candidate.formation === "3-4-3");
+    if (mislabeled) return mislabeled;
+  }
 
   scored.sort((left, right) => {
     if (right.score !== left.score) return right.score - left.score;
+
+    if (isMidfieldAtPlace4(starters)) {
+      if (left.formation === "3-4-3" && right.formation === "4-4-2") return -1;
+      if (right.formation === "3-4-3" && left.formation === "4-4-2") return 1;
+    }
 
     if (left.formation === "3-4-3" && homeAway === "away" && right.formation === "4-4-2") {
       return -1;
@@ -4817,69 +4764,24 @@ function resolveEffectiveFormation(starters = [], espnFormation = "", homeAway =
     return 0;
   });
 
-  return scored[0] || candidates[0];
-}
-
-function getFormationRows(formation = "") {
-  const key = String(formation).replace(/\s/g, "");
-  if (ESPN_FORMATION_ROWS[key]) return ESPN_FORMATION_ROWS[key];
-
-  const lineCounts = parseFormationLines(key);
-  if (!lineCounts.length) return null;
-
-  if (lineCounts[0] >= 5) return buildFiveBackFormationRows(lineCounts);
-  if (lineCounts[0] === 4) return buildFourBackFormationRows(lineCounts);
-  if (lineCounts[0] === 3) return buildThreeBackFormationRows(lineCounts);
-  return buildFourBackFormationRows(lineCounts);
-}
-
-function parseFormationLines(formation = "") {
-  return String(formation)
-    .split("-")
-    .map((part) => Number(part.trim()))
-    .filter((count) => Number.isFinite(count) && count > 0);
-}
-
-function getFormationDepthBand(position = "", formationLines = []) {
-  const pos = String(position).toUpperCase();
-  if (/^G/.test(pos) || pos === "GK") return 0;
-
-  const lineCount = formationLines.length;
-  if (!lineCount) return 2;
-
-  if (/^(LB|RB|LWB|RWB|CB|CD)/.test(pos) || /CD-[LR]|LCB|RCB/.test(pos)) {
-    return 1;
-  }
-
-  if (lineCount >= 4) {
-    if (/^(CF|SS)/.test(pos) || /CF-[LR]/.test(pos)) return lineCount - 1;
-    if (/^(F|ST)\b/.test(pos)) return lineCount;
-    if (/^(LM|RM|LW|RW|CM|AM|DM|CDM)/.test(pos) || /CM-[LR]|DM-[LR]/.test(pos)) {
-      return 2;
+  return (
+    scored[0] || {
+      formation: key,
+      layoutKey: key,
+      rows: assignPlayersToFormationRows(starters, key),
     }
-    return 2;
-  }
-
-  if (/^(CM|CDM|DM|AM|RM|LM|LW|RW|CAM)/.test(pos) || /CM-[LR]/.test(pos)) {
-    return 2;
-  }
-
-  if (/^(F|ST|CF|LF|RF|LW|RW|SS)/.test(pos) || /CF-[LR]|LF|RF/.test(pos)) {
-    return lineCount;
-  }
-
-  return 2;
+  );
 }
 
-function getHorizontalBias(position = "") {
-  const pos = String(position).toUpperCase();
-  if (/(^|[^A-Z])(L|LF|LM|LW|LB|LCB|CD-L)([^A-Z]|$)/.test(pos) || pos.endsWith("-L")) {
-    return 0;
+function getFormationRows(formation = "", starters = null) {
+  const lines = parseFormationLines(formation);
+  if (!lines.length) return null;
+
+  if (starters?.length) {
+    return assignPlayersToFormationRows(starters, formation);
   }
-  if (/(^|[^A-Z])(R|RF|RM|RW|RB|RCB|CD-R)([^A-Z]|$)/.test(pos) || pos.endsWith("-R")) {
-    return 1;
-  }
-  return 0.5;
+
+  return [[1], ...lines.map((count) => Array.from({ length: count }, () => null))];
 }
 
 function layoutPitchPlayers(
@@ -4888,30 +4790,50 @@ function layoutPitchPlayers(
   homeAway = "home",
   options = {},
 ) {
-  const layoutKey = options.layoutKey || String(formation).replace(/\s/g, "");
-  const rows = options.rows || getFormationRows(formation);
-  const placeToRow = new Map();
-  const formationLines = parseFormationLines(formation);
-  const rowCount = rows?.length || 1;
+  const side = normalizeHomeAway(homeAway);
+  const rows =
+    options.rows?.length && options.rows.some((row) => row?.length)
+      ? options.rows
+      : assignPlayersToFormationRows(starters, formation);
+  if (!rows?.length) return new Map();
 
-  if (rows?.length) {
-    rows.forEach((rowPlaces, rowIndex) => {
-      for (const place of rowPlaces) {
-        placeToRow.set(String(place), rowIndex);
-      }
-    });
+  const rowCount = rows.length;
+  const starterByPlace = new Map(
+    starters.map((player) => [Number(player.formationPlace), player]),
+  );
+  const coords = new Map();
+
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const rowPlayers = rows[rowIndex]
+      .map((place) => starterByPlace.get(Number(place)))
+      .filter(Boolean)
+      .map((player) => ({
+        place: String(player.formationPlace),
+        position: String(player.position || ""),
+      }));
+
+    const y = getFormationRowY(rowIndex, rowCount, side);
+    const placed =
+      rowIndex === 0 && rowPlayers.some((player) => player.place === "1")
+        ? rowPlayers.map((player) => ({
+            place: player.place,
+            x: 50,
+          }))
+        : layoutRowX(rowPlayers);
+
+    for (const entry of placed) {
+      coords.set(entry.place, { x: entry.x, y });
+    }
   }
 
-  const coords = new Map();
   for (const player of starters) {
-    const place = String(player.formationPlace || "");
-    const placeNum = Number(player.formationPlace);
-    const rowIndex =
-      placeToRow.get(place) ??
-      getFormationDepthBand(player.position, formationLines);
-    const x = getFormationPlaceX(layoutKey, placeNum);
-    const y = getFormationRowY(rowIndex, rowCount, homeAway);
-    coords.set(place, { x, y });
+    const place = String(player.formationPlace);
+    if (!coords.has(place)) {
+      coords.set(place, {
+        x: 50,
+        y: getFormationRowY(Math.min(1, rowCount - 1), rowCount, side),
+      });
+    }
   }
 
   return coords;
@@ -5189,16 +5111,14 @@ function extractLineups(summaryData) {
 }
 
 function getPitchCoords(formationPlace, homeAway) {
-  const base = FORMATION_PLACE_COORDS[Number(formationPlace)];
-  if (!base) return { x: 50, y: 50 };
+  const place = Number(formationPlace);
+  const side = normalizeHomeAway(homeAway);
 
-  const depth = (100 - base.y) / 72;
-
-  if (homeAway === "away") {
-    return { x: base.x, y: 8 + depth * 38 };
+  if (place === 1) {
+    return { x: 50, y: PITCH_ROW_Y[side].defensive };
   }
 
-  return { x: base.x, y: 92 - depth * 38 };
+  return { x: 50, y: PITCH_ROW_Y[side].attacking };
 }
 
 function extractMatchFacts(summaryData) {
@@ -5906,38 +5826,7 @@ function renderEspnCard(model) {
 
   let statsTabPanel = "";
   if (model.teamStats) {
-    const statsHtml = (model.teamStats ?? [])
-      .map((stat) => {
-        const awayVal = parseFloat(stat.away) || 0;
-        const homeVal = parseFloat(stat.home) || 0;
-        const total = awayVal + homeVal;
-        let awayPct = 50;
-        let homePct = 50;
-        if (total > 0) {
-          awayPct = (awayVal / total) * 100;
-          homePct = (homeVal / total) * 100;
-        }
-        const isPossession = stat.label.toLowerCase() === "possession";
-        const awayDisp = isPossession ? `${stat.away}%` : stat.away;
-        const homeDisp = isPossession ? `${stat.home}%` : stat.home;
-
-        return `
-          <div class="sports-slot__stat-row">
-            <span class="sports-slot__stat-val sports-slot__stat-val--home">${escapeHtml(
-              homeDisp,
-            )}</span>
-            <div class="sports-slot__stat-bar-track">
-              <div class="sports-slot__stat-bar sports-slot__stat-bar--home" style="width: ${homePct}%"></div>
-              <div class="sports-slot__stat-bar sports-slot__stat-bar--away" style="width: ${awayPct}%"></div>
-            </div>
-            <span class="sports-slot__stat-val sports-slot__stat-val--away">${escapeHtml(
-              awayDisp,
-            )}</span>
-            <span class="sports-slot__stat-label">${escapeHtml(stat.label)}</span>
-          </div>
-        `;
-      })
-      .join("");
+    const statsHtml = (model.teamStats ?? []).map(renderFocusStatRow).join("");
 
     statsTabPanel = `
       <div class="sports-slot__tab-panel" data-panel="stats" style="display: none;">
@@ -6663,7 +6552,7 @@ export const slotPlugin = slot;
 export const lineupLayoutTestHelpers = {
   layoutPitchPlayers,
   getFormationRows,
-  getFormationPlaceX,
+  assignPlayersToFormationRows,
   getFormationRowY,
   resolveEffectiveFormation,
 };

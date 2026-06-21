@@ -11,17 +11,21 @@
     return `${minutes}:${remaining}`;
   }
 
-  function updateRefreshButton(panel) {
-    const button = panel.querySelector("[data-sports-refresh]");
-    if (!button) return;
+  function updateRefreshTrigger(panel) {
+    const trigger = panel.querySelector("[data-sports-refresh-trigger]");
+    if (!trigger) return;
 
     const nextRefreshAt = Number(panel.dataset.nextRefreshAt || 0);
     const remaining = nextRefreshAt - Date.now();
     const isRefreshing = panel.dataset.refreshing === "true";
+    const onCooldown = remaining > 0 && !isRefreshing;
 
-    button.disabled = remaining > 0 || isRefreshing;
-    if (button.textContent === "Refreshing...") return;
-    button.textContent = "Refresh";
+    trigger.classList.toggle("sports-slot__live-status--cooldown", onCooldown);
+    trigger.classList.toggle("sports-slot__live-status--refreshing", isRefreshing);
+    trigger.setAttribute(
+      "aria-disabled",
+      onCooldown || isRefreshing ? "true" : "false",
+    );
   }
 
   function updateLiveClock(panel) {
@@ -113,6 +117,101 @@
     });
   }
 
+  function collectStatState(panel) {
+    const stats = new Map();
+
+    panel.querySelectorAll("[data-stat-key]").forEach((row) => {
+      const homeBar = row.querySelector(".sports-slot__stat-bar--home");
+      const awayBar = row.querySelector(".sports-slot__stat-bar--away");
+      const homeVal = row.querySelector(".sports-slot__stat-val--home");
+      const awayVal = row.querySelector(".sports-slot__stat-val--away");
+
+      stats.set(row.dataset.statKey, {
+        homeWidth:
+          homeBar?.style.width ||
+          `${homeBar?.dataset.statHomePct || 50}%`,
+        awayWidth:
+          awayBar?.style.width ||
+          `${awayBar?.dataset.statAwayPct || 50}%`,
+        homeText: homeVal?.textContent?.trim() || "",
+        awayText: awayVal?.textContent?.trim() || "",
+      });
+    });
+
+    return stats;
+  }
+
+  function formatAnimatedStatValue(value, template = "") {
+    const rounded = Math.round(value * 10) / 10;
+    const display = Number.isInteger(rounded)
+      ? String(Math.round(rounded))
+      : rounded.toFixed(1);
+
+    if (String(template).includes("%")) return `${display}%`;
+    return display;
+  }
+
+  function animateStatValue(node, fromText, toText, duration = 650) {
+    if (!node || fromText === toText) return;
+
+    const fromNum = parseFloat(String(fromText).replace(/[^\d.]/g, ""));
+    const toNum = parseFloat(String(toText).replace(/[^\d.]/g, ""));
+
+    if (!Number.isFinite(fromNum) || !Number.isFinite(toNum) || fromNum === toNum) {
+      node.textContent = toText;
+      return;
+    }
+
+    const start = performance.now();
+    const step = (now) => {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - progress) ** 3;
+      const value = fromNum + (toNum - fromNum) * eased;
+      node.textContent = formatAnimatedStatValue(value, toText);
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        node.textContent = toText;
+      }
+    };
+
+    requestAnimationFrame(step);
+  }
+
+  function animateStatBars(panel, previousStats) {
+    if (!previousStats?.size) return;
+
+    panel.querySelectorAll("[data-stat-key]").forEach((row) => {
+      const previous = previousStats.get(row.dataset.statKey);
+      if (!previous) return;
+
+      const homeBar = row.querySelector(".sports-slot__stat-bar--home");
+      const awayBar = row.querySelector(".sports-slot__stat-bar--away");
+      const homeVal = row.querySelector(".sports-slot__stat-val--home");
+      const awayVal = row.querySelector(".sports-slot__stat-val--away");
+
+      if (homeBar) {
+        const targetWidth = homeBar.style.width;
+        homeBar.style.width = previous.homeWidth;
+        requestAnimationFrame(() => {
+          homeBar.style.width = targetWidth;
+        });
+      }
+
+      if (awayBar) {
+        const targetWidth = awayBar.style.width;
+        awayBar.style.width = previous.awayWidth;
+        requestAnimationFrame(() => {
+          awayBar.style.width = targetWidth;
+        });
+      }
+
+      animateStatValue(homeVal, previous.homeText, homeVal?.textContent?.trim() || "");
+      animateStatValue(awayVal, previous.awayText, awayVal?.textContent?.trim() || "");
+    });
+  }
+
   function collectTimelineKeys(panel) {
     return new Set(
       [...panel.querySelectorAll("[data-timeline-key]")].map(
@@ -178,15 +277,20 @@
     const nextRefreshAt = Number(panel.dataset.nextRefreshAt || 0);
     const isBrowseAction = browseOverrides.focusEventId !== undefined;
     if (manual && !isBrowseAction && nextRefreshAt > Date.now()) {
-      updateRefreshButton(panel);
+      updateRefreshTrigger(panel);
       return;
     }
 
     panel.dataset.refreshing = "true";
-    const button = panel.querySelector("[data-sports-refresh]");
-    if (button) {
-      button.disabled = true;
-      button.textContent = "Refreshing...";
+    updateRefreshTrigger(panel);
+
+    const refreshTrigger = panel.querySelector("[data-sports-refresh-trigger]");
+    const refreshTextNode = refreshTrigger?.querySelector(
+      ".sports-slot__live-status-text",
+    );
+    const previousRefreshLabel = refreshTextNode?.textContent || "";
+    if (refreshTextNode) {
+      refreshTextNode.textContent = "Refreshing...";
     }
 
     const controller =
@@ -224,6 +328,7 @@
           const scrollY = window.scrollY;
           const timelineScrollTop = getTimelineBodyScroll(panel);
           const timelineKeys = collectTimelineKeys(panel);
+          const statState = collectStatState(panel);
 
           panel.replaceWith(nextPanel);
           initPanel(nextPanel);
@@ -241,18 +346,41 @@
           restoreScrollPosition(scrollY);
           restoreTimelineBodyScroll(nextPanel, timelineScrollTop);
           animateNewTimelineEvents(nextPanel, timelineKeys);
+          animateStatBars(nextPanel, statState);
           return;
         }
       }
     } catch {
       panel.dataset.nextRefreshAt = String(Date.now() + refreshMs);
+      if (refreshTextNode && previousRefreshLabel) {
+        refreshTextNode.textContent = previousRefreshLabel;
+      }
     } finally {
       if (timeout) window.clearTimeout(timeout);
       panel.dataset.refreshing = "false";
       if (document.body.contains(panel)) {
-        updateRefreshButton(panel);
+        updateRefreshTrigger(panel);
       }
     }
+  }
+
+  function bindRefreshTrigger(panel) {
+    const trigger = panel.querySelector("[data-sports-refresh-trigger]");
+    if (!trigger || trigger.dataset.sportsRefreshBound === "true") return;
+
+    trigger.dataset.sportsRefreshBound = "true";
+
+    const activate = () => {
+      if (trigger.getAttribute("aria-disabled") === "true") return;
+      refreshPanel(panel, true);
+    };
+
+    trigger.addEventListener("click", activate);
+    trigger.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      activate();
+    });
   }
 
   function bindMatchBrowsing(panel) {
@@ -288,10 +416,10 @@
       );
     }
 
-    const refreshButton = panel.querySelector("[data-sports-refresh]");
-    if (refreshButton) {
-      refreshButton.addEventListener("click", () => refreshPanel(panel, true));
-      updateRefreshButton(panel);
+    const refreshTrigger = panel.querySelector("[data-sports-refresh-trigger]");
+    if (refreshTrigger) {
+      bindRefreshTrigger(panel);
+      updateRefreshTrigger(panel);
     }
 
     const initialActiveTab = panel.querySelector(".sports-slot__tab--active")?.dataset.tab;
@@ -344,7 +472,7 @@
         return;
       }
 
-      updateRefreshButton(panel);
+      updateRefreshTrigger(panel);
 
       if (panel.dataset.sportsLive === "true") {
         updateLiveClock(panel);
