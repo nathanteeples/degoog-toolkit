@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.47";
+const PLUGIN_VERSION = "0.3.51";
 const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
@@ -1859,20 +1859,27 @@ function renderLiveIndicator(text, { clock = false, game = null, refreshable = f
           game.liveClockSeconds,
         )}" data-live-direction="down"`
       : "";
-  const refreshAttrs = refreshable
-    ? ` data-sports-refresh-trigger role="button" tabindex="0" aria-label="${escapeHtml(
-        t("refresh"),
-      )}"`
-    : "";
 
-  return `
-    <span class="sports-slot__live-status${
-      refreshable ? " sports-slot__live-status--refresh" : ""
-    }"${liveClockAttr ? ` ${liveClockAttr}` : ""}${refreshAttrs}>
+  const liveStatusInner = `
       <span class="sports-slot__live-status-text">${escapeHtml(text)}</span>
       <span class="sports-slot__live-track" aria-hidden="true">
         <span class="sports-slot__live-bar"></span>
-      </span>
+      </span>`;
+
+  if (!refreshable) {
+    return `<span class="sports-slot__live-status"${
+      liveClockAttr ? ` ${liveClockAttr}` : ""
+    }>${liveStatusInner}</span>`;
+  }
+
+  return `
+    <span class="sports-slot__live-control" data-sports-refresh-control>
+      <span class="sports-slot__live-refresh-spinner" aria-hidden="true"></span>
+      <span class="sports-slot__live-status sports-slot__live-status--refresh"${
+        liveClockAttr ? ` ${liveClockAttr}` : ""
+      } data-sports-refresh-trigger role="button" tabindex="0" aria-label="${escapeHtml(
+        t("refresh"),
+      )}">${liveStatusInner}</span>
     </span>`;
 }
 
@@ -2009,7 +2016,12 @@ function renderSlotRootAttrs(model) {
   `;
 }
 
-function renderFocusScoreboard(game, sport, scorersHtml = "") {
+function renderFocusScoreboard(
+  game,
+  sport,
+  scorersHtml = "",
+  { refreshable = false } = {},
+) {
   if (!game) return "";
 
   let statusText = game.status || "";
@@ -2024,7 +2036,7 @@ function renderFocusScoreboard(game, sport, scorersHtml = "") {
   const metaRight = formatMaybeTimestamp(statusText);
   const statusHtml =
     game.state === "live"
-      ? renderLiveIndicator(metaRight, { clock: true, game })
+      ? renderLiveIndicator(metaRight, { clock: true, game, refreshable })
       : escapeHtml(metaRight);
 
   const subLabelHtml = game.subLabel
@@ -2643,37 +2655,69 @@ function renderTimelinePanel(timeline, focusGame = null, sport = "soccer") {
   `;
 }
 
+function formatSurname(name = "") {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : "";
+}
+
 function renderLineupPlayer(player, team, coordsMap, pitchSide = "home") {
   const coords =
     coordsMap?.get(String(player.formationPlace)) ||
     getPitchCoords(player.formationPlace, pitchSide);
+  const teamSide = normalizeHomeAway(team.homeAway || pitchSide);
+  const fillColor = player.isGoalkeeper
+    ? "var(--sports-slot-gk-color, #5b8a3a)"
+    : `var(--sports-slot-${teamSide}-color)`;
+
   const statusClass = player.subbedOut
     ? "sports-slot__pitch-player--out"
     : player.subbedIn
       ? "sports-slot__pitch-player--in"
       : "";
+
+  const statusClasses = [
+    player.isCaptain ? "sports-slot__pitch-player--captain" : "",
+    player.card ? `sports-slot__pitch-player--card-${player.card}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const ariaLabel = [
+    player.fullName || player.name,
+    player.number || player.jersey ? `number ${player.number || player.jersey}` : null,
+    player.isGoalkeeper ? "goalkeeper" : null,
+    player.isCaptain ? "captain" : null,
+    player.card ? "booked" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const jerseyLabel = escapeHtml(player.number || player.jersey || "?");
   const imageHtml = player.imageUrl
     ? `<img class="sports-slot__pitch-player-image" src="${escapeHtml(
         player.imageUrl,
       )}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
     : "";
-  const teamColorStyle = team.color
-    ? ` style="--sports-player-team-color:${escapeHtml(team.color)}"`
-    : "";
 
   return `
     <div
-      class="sports-slot__pitch-player ${statusClass}"
+      class="sports-slot__pitch-player ${statusClass}${statusClasses ? ` ${statusClasses}` : ""}"
       style="left:${coords.x}%;top:${coords.y}%"
-      title="${escapeHtml(player.fullName || player.name)}"
+      tabindex="0"
+      role="img"
+      aria-label="${escapeHtml(ariaLabel)}"
     >
-      <span class="sports-slot__pitch-player-avatar"${teamColorStyle}>
-        <span class="sports-slot__pitch-player-fallback">${escapeHtml(
-          player.jersey || player.position || "?",
-        )}</span>
+      <div
+        class="sports-slot__pitch-player-avatar"
+        style="background:${fillColor}"
+        data-jersey="${jerseyLabel}"
+      >
+        <span class="sports-slot__pitch-player-initials">${jerseyLabel}</span>
         ${imageHtml}
-      </span>
-      <span class="sports-slot__pitch-player-name">${escapeHtml(player.name)}</span>
+      </div>
+      <span class="sports-slot__pitch-player-name">${escapeHtml(
+        formatSurname(player.name),
+      )}</span>
     </div>
   `;
 }
@@ -2689,6 +2733,21 @@ function renderPitchTeamBar(team, placement) {
           : ""
       }
     </div>
+  `;
+}
+
+function renderPitchMarkings() {
+  return `
+    <div class="sports-slot__pitch-six-yard sports-slot__pitch-six-yard--top"></div>
+    <div class="sports-slot__pitch-six-yard sports-slot__pitch-six-yard--bottom"></div>
+    <div class="sports-slot__pitch-penalty-arc sports-slot__pitch-penalty-arc--top"></div>
+    <div class="sports-slot__pitch-penalty-arc sports-slot__pitch-penalty-arc--bottom"></div>
+    <div class="sports-slot__pitch-corner-arc sports-slot__pitch-corner-arc--tl"></div>
+    <div class="sports-slot__pitch-corner-arc sports-slot__pitch-corner-arc--tr"></div>
+    <div class="sports-slot__pitch-corner-arc sports-slot__pitch-corner-arc--bl"></div>
+    <div class="sports-slot__pitch-corner-arc sports-slot__pitch-corner-arc--br"></div>
+    <div class="sports-slot__pitch-goal sports-slot__pitch-goal--top"></div>
+    <div class="sports-slot__pitch-goal sports-slot__pitch-goal--bottom"></div>
   `;
 }
 
@@ -2741,29 +2800,39 @@ function renderLineupPanel(lineups) {
         layoutKey: team.formationLayoutKey,
       },
     );
-    return (team.starters ?? [])
+    return [...(team.starters ?? [])]
+      .sort((left, right) => {
+        const leftCoords = coordsMap.get(String(left.formationPlace)) || { y: 0, x: 0 };
+        const rightCoords = coordsMap.get(String(right.formationPlace)) || { y: 0, x: 0 };
+        return leftCoords.y - rightCoords.y || leftCoords.x - rightCoords.x;
+      })
       .map((player) => renderLineupPlayer(player, team, coordsMap, pitchSide))
       .join("");
   };
 
   const pitchPlayers = [
-    renderTeamPitchPlayers(awayTeam, "away"),
     renderTeamPitchPlayers(homeTeam, "home"),
+    renderTeamPitchPlayers(awayTeam, "away"),
   ].join("");
 
   const benchHtml = lineups.map((team) => renderLineupBench(team)).join("");
+  const pitchStyle =
+    `--sports-slot-home-color:${escapeHtml(homeTeam?.color || "#1c3f60")};` +
+    `--sports-slot-away-color:${escapeHtml(awayTeam?.color || "#7a2734")};` +
+    `--sports-slot-gk-color:#5b8a3a;`;
 
   return `
     <div class="sports-slot__tab-panel" data-panel="lineup" style="display: none;">
       <section class="sports-slot__lineup">
         <div class="sports-slot__pitch-wrap">
-          <div class="sports-slot__pitch" aria-label="Match lineup">
+          <div class="sports-slot__pitch" aria-label="Match lineup" style="${pitchStyle}">
             ${renderPitchTeamBar(homeTeam, "home")}
             <div class="sports-slot__pitch-surface"></div>
             <div class="sports-slot__pitch-center-circle"></div>
             <div class="sports-slot__pitch-halfway"></div>
             <div class="sports-slot__pitch-box sports-slot__pitch-box--top"></div>
             <div class="sports-slot__pitch-box sports-slot__pitch-box--bottom"></div>
+            ${renderPitchMarkings()}
             <div class="sports-slot__pitch-players">${pitchPlayers}</div>
             ${renderPitchTeamBar(awayTeam, "away")}
           </div>
@@ -2984,7 +3053,9 @@ function renderCard(model) {
     `
     : "";
 
-  const scoreboardHtml = renderFocusScoreboard(model.focusGame, model.sport);
+  const scoreboardHtml = renderFocusScoreboard(model.focusGame, model.sport, "", {
+    refreshable: model.refreshable,
+  });
   const gamesSectionHtml = gamesHtml
     ? `
       <section class="sports-slot__pane sports-slot__pane--games">
@@ -4455,8 +4526,21 @@ function extractMatchTimeline(summaryData, sport = "soccer") {
 }
 
 const PITCH_ROW_Y = {
-  home: { defensive: 95, attacking: 52 },
-  away: { defensive: 5, attacking: 48 },
+  home: { gk: 10, def: 20, fwd: 44 },
+  away: { gk: 90, def: 80, fwd: 60 },
+};
+
+const PITCH_ROW_X = {
+  home: {
+    def: { 3: [20, 18, 20], 4: [20, 18, 18, 20], 5: [12, 18, 20, 18, 12] },
+    mid: { 3: [32, 29, 32], 4: [28, 32, 32, 28] },
+    fwd: { 1: [44], 2: [40, 44], 3: [40, 44, 40] },
+  },
+  away: {
+    def: { 3: [80, 82, 80], 4: [80, 82, 82, 80], 5: [88, 82, 80, 82, 88] },
+    mid: { 3: [68, 70, 70], 4: [68, 70, 70, 68] },
+    fwd: { 1: [60], 2: [58, 62], 3: [56, 60, 64] },
+  },
 };
 
 function normalizeHomeAway(value = "") {
@@ -4489,18 +4573,97 @@ function getHorizontalBias(position = "") {
   return 0.5;
 }
 
-function layoutRowX(rowPlayers = [], margin = 12) {
+function getRowBand(rowIndex = 0, rowCount = 1) {
+  if (rowIndex === 0) return "gk";
+  if (rowIndex === 1) return "def";
+  if (rowIndex === rowCount - 1) return "fwd";
+  return "mid";
+}
+
+function countMidRows(rowCount = 1) {
+  return Math.max(0, rowCount - 3);
+}
+
+function getMidRowY(side, midIndex = 0, midTotal = 1) {
+  const defY = PITCH_ROW_Y[side].def;
+  const fwdY = PITCH_ROW_Y[side].fwd;
+  if (midTotal <= 0) return (defY + fwdY) / 2;
+  const step = (fwdY - defY) / (midTotal + 1);
+  return defY + step * (midIndex + 1);
+}
+
+function getFormationRowY(rowIndex = 0, rowCount = 1, homeAway = "home") {
+  const side = normalizeHomeAway(homeAway);
+  const band = getRowBand(rowIndex, rowCount);
+
+  if (band === "gk") return PITCH_ROW_Y[side].gk;
+  if (band === "def") return PITCH_ROW_Y[side].def;
+  if (band === "fwd") return PITCH_ROW_Y[side].fwd;
+
+  return getMidRowY(side, rowIndex - 2, countMidRows(rowCount));
+}
+
+function expandSymmetricRowXs(preset, side = "home") {
+  if (!preset?.length) return [];
+  if (normalizeHomeAway(side) === "away") return [...preset];
+  if (preset.length === 1) return [50];
+
+  const center = 50;
+  if (preset[0] === preset[preset.length - 1]) {
+    if (preset.length % 2 === 1) {
+      return preset.map((value, index) => {
+        const mid = Math.floor(preset.length / 2);
+        if (index < mid) return center - value;
+        if (index > mid) return center + value;
+        return center;
+      });
+    }
+
+    const half = preset.length / 2;
+    const leftOffsets = preset.slice(0, half);
+    return [
+      ...leftOffsets.map((value) => center - value),
+      ...[...leftOffsets].reverse().map((value) => center + value),
+    ];
+  }
+
+  return [...preset];
+}
+
+function pickRowXs(side, band, count) {
+  if (count <= 0) return [];
+  if (count === 1) return [50];
+
+  const preset = PITCH_ROW_X[side]?.[band]?.[count];
+  if (preset) return expandSymmetricRowXs(preset, side);
+
+  const bandTable = PITCH_ROW_X[side]?.[band];
+  if (bandTable) {
+    const values = Object.values(bandTable).flat();
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    return Array.from({ length: count }, (_, index) =>
+      min + (index / (count - 1)) * (max - min),
+    );
+  }
+
+  return Array.from({ length: count }, (_, index) => getEvenRowX(index, count, 12));
+}
+
+function layoutRowX(rowPlayers = [], side = "home", band = "mid") {
   if (!rowPlayers.length) return [];
 
+  const normalizedSide = normalizeHomeAway(side);
   const sorted = [...rowPlayers].sort(
     (left, right) =>
       getHorizontalBias(left.position) - getHorizontalBias(right.position) ||
       Number(left.place) - Number(right.place),
   );
+  const xs = pickRowXs(normalizedSide, band, sorted.length);
 
   return sorted.map((player, index) => ({
     place: player.place,
-    x: getEvenRowX(index, sorted.length, margin),
+    x: xs[index] ?? 50,
   }));
 }
 
@@ -4524,16 +4687,6 @@ function classifyPlayerBand(position = "") {
 function getEvenRowX(index = 0, count = 1, margin = 12) {
   if (count <= 1) return 50;
   return margin + (index / (count - 1)) * (100 - margin * 2);
-}
-
-function getFormationRowY(rowIndex = 0, rowCount = 1, homeAway = "home") {
-  const side = normalizeHomeAway(homeAway);
-  const bounds = PITCH_ROW_Y[side];
-
-  if (rowCount <= 1) return bounds.defensive;
-
-  const depth = rowIndex / (rowCount - 1);
-  return bounds.defensive + depth * (bounds.attacking - bounds.defensive);
 }
 
 function assignPlayersToFormationRows(starters = [], formation = "") {
@@ -4678,15 +4831,53 @@ function isMidfieldAtPlace4(starters = []) {
   );
 }
 
+function inferFormationCandidates(starters = []) {
+  const outfield = starters
+    .filter((player) => Number(player.formationPlace) !== 1)
+    .map((player) => ({
+      band: classifyPlayerBand(player.position),
+      position: String(player.position || "").toUpperCase(),
+    }));
+
+  if (outfield.length !== 10) return [];
+
+  let def = 0;
+  let fwd = 0;
+  const mids = [];
+
+  for (const player of outfield) {
+    if (player.band === "def") def += 1;
+    else if (player.band === "fwd") fwd += 1;
+    else mids.push(player);
+  }
+
+  if (def < 1 || fwd < 1 || def + mids.length + fwd !== 10) return [];
+
+  const candidates = [`${def}-${mids.length}-${fwd}`];
+  const pivotCount = mids.filter((player) =>
+    /^(CDM|DM)\b/.test(player.position),
+  ).length;
+
+  if (pivotCount === 1 && mids.length >= 3) {
+    candidates.push(`${def}-1-${mids.length - 1}-${fwd}`);
+  }
+
+  if (def === 4 && pivotCount === 2 && fwd === 1 && mids.length === 5) {
+    candidates.push("4-2-3-1");
+  }
+
+  return [...new Set(candidates)];
+}
+
 function resolveEffectiveFormation(starters = [], espnFormation = "", homeAway = "") {
   const key = String(espnFormation).replace(/\s/g, "") || "4-4-2";
-  const candidateFormations = [key];
+  const candidateFormations = [key, ...inferFormationCandidates(starters)];
 
   if (key === "4-4-2" && isMidfieldAtPlace4(starters)) {
     candidateFormations.push("3-4-3");
   }
 
-  const scored = candidateFormations
+  const scored = [...new Set(candidateFormations)]
     .map((formation) => {
       const rows = assignPlayersToFormationRows(starters, formation);
       return {
@@ -4771,6 +4962,7 @@ function layoutPitchPlayers(
   const coords = new Map();
 
   for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const band = getRowBand(rowIndex, rowCount);
     const rowPlayers = rows[rowIndex]
       .map((place) => starterByPlace.get(Number(place)))
       .filter(Boolean)
@@ -4779,14 +4971,18 @@ function layoutPitchPlayers(
         position: String(player.position || ""),
       }));
 
+    if (band === "gk") {
+      for (const player of rowPlayers) {
+        coords.set(player.place, {
+          x: 50,
+          y: PITCH_ROW_Y[side].gk,
+        });
+      }
+      continue;
+    }
+
     const y = getFormationRowY(rowIndex, rowCount, side);
-    const placed =
-      rowIndex === 0 && rowPlayers.some((player) => player.place === "1")
-        ? rowPlayers.map((player) => ({
-            place: player.place,
-            x: 50,
-          }))
-        : layoutRowX(rowPlayers);
+    const placed = layoutRowX(rowPlayers, side, band);
 
     for (const entry of placed) {
       coords.set(entry.place, { x: entry.x, y });
@@ -5027,15 +5223,27 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
 }
 
 function normalizeLineupPlayer(player) {
+  const position =
+    player.position?.abbreviation || player.position?.displayName || "";
+  const positionUpper = String(position).toUpperCase();
+  const isGoalkeeper =
+    /^G/.test(positionUpper) ||
+    positionUpper === "GK" ||
+    Number(player.formationPlace) === 1;
+
   return {
     name: player.athlete?.shortName || player.athlete?.displayName || "",
     fullName: player.athlete?.displayName || "",
     jersey: String(player.jersey || ""),
-    position: player.position?.abbreviation || player.position?.displayName || "",
+    number: String(player.jersey || ""),
+    position,
     formationPlace: String(player.formationPlace || ""),
     imageUrl: getJerseyImageUrl(player.athlete?.jerseyImages?.[0]?.href || ""),
     subbedOut: Boolean(player.subbedOut),
     subbedIn: Boolean(player.subbedIn),
+    isGoalkeeper,
+    isCaptain: Boolean(player.captain) || Boolean(player.athlete?.captain),
+    card: player.card || null,
   };
 }
 
@@ -5118,10 +5326,13 @@ function getPitchCoords(formationPlace, homeAway) {
   const side = normalizeHomeAway(homeAway);
 
   if (place === 1) {
-    return { x: 50, y: PITCH_ROW_Y[side].defensive };
+    return { x: 50, y: PITCH_ROW_Y[side].gk };
   }
 
-  return { x: 50, y: PITCH_ROW_Y[side].attacking };
+  return {
+    x: 50,
+    y: (PITCH_ROW_Y[side].def + PITCH_ROW_Y[side].fwd) / 2,
+  };
 }
 
 function extractMatchFacts(summaryData) {
@@ -5732,6 +5943,7 @@ function renderEspnCard(model) {
     model.focusGame,
     model.sport,
     scorersHtml,
+    { refreshable: cardModel.refreshable },
   );
   const matchFactsHtml = renderMatchFactsStrip(model.matchFacts);
   const formHtml = renderFormPanels(model.teamForm);

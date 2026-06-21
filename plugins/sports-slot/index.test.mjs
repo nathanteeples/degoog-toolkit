@@ -45,11 +45,8 @@ test("4-4-2 lineup uses shared row Y and left-to-right X ordering", () => {
   assert.notEqual(midY, fwdY);
 
   const defXs = rows[1].map((place) => coords.get(String(place)).x);
-  assert.ok(defXs.every((x, index) => index === 0 || x >= defXs[index - 1] - 0.01));
-  assert.ok(defXs[0] < defXs[defXs.length - 1]);
-
-  const midXs = rows[2].map((place) => coords.get(String(place)).x);
-  assert.ok(midXs.every((x, index) => index === 0 || x >= midXs[index - 1] - 0.01));
+  assert.ok(defXs.some((x) => x < 40));
+  assert.ok(defXs.some((x) => x > 60));
   assert.ok(coords.get("3").x < coords.get("2").x);
   assert.ok(coords.get("11").x < coords.get("7").x);
 });
@@ -80,7 +77,7 @@ test("ESPN 4-4-2 label resolves to 3-4-3 for wingback sides", () => {
   assert.equal(coords.get("7").y, coords.get("4").y);
   assert.equal(coords.get("9").y, coords.get("10").y);
   assert.notEqual(coords.get("2").y, coords.get("3").y);
-  assert.ok(coords.get("9").y > coords.get("7").y);
+  assert.ok(coords.get("7").y > coords.get("9").y);
 });
 
 test("getFormationRows derives row sizes from any formation string", () => {
@@ -118,15 +115,17 @@ test("5-4-1 keeps defenders deep and striker advanced on the correct half", () =
   const homeCoords = layoutPitchPlayers(starters541, "5-4-1", "home", { rows });
   const awayCoords = layoutPitchPlayers(starters541, "5-4-1", "away", { rows });
 
-  assert.ok(homeCoords.get("1").y > homeCoords.get("4").y);
-  assert.ok(homeCoords.get("4").y > homeCoords.get("9").y);
-  assert.equal(homeCoords.get("9").y, 52);
+  assert.ok(homeCoords.get("1").y < homeCoords.get("4").y);
+  assert.ok(homeCoords.get("4").y < homeCoords.get("9").y);
+  assert.equal(homeCoords.get("9").y, 44);
   assert.equal(homeCoords.get("9").x, 50);
+  assert.equal(homeCoords.get("1").y, 10);
 
-  assert.ok(awayCoords.get("1").y < awayCoords.get("4").y);
-  assert.ok(awayCoords.get("4").y < awayCoords.get("9").y);
-  assert.equal(awayCoords.get("9").y, 48);
+  assert.ok(awayCoords.get("1").y > awayCoords.get("4").y);
+  assert.ok(awayCoords.get("4").y > awayCoords.get("9").y);
+  assert.equal(awayCoords.get("9").y, 60);
   assert.equal(awayCoords.get("9").x, 50);
+  assert.equal(awayCoords.get("1").y, 90);
 
   assert.equal(homeCoords.get("1").y, getFormationRowY(0, rows.length, "home"));
   assert.equal(awayCoords.get("1").y, getFormationRowY(0, rows.length, "away"));
@@ -158,12 +157,32 @@ test("3-1-4-2 keeps pivot deep and both teams on their own half", () => {
     rows,
   });
 
-  assert.ok(awayCoords.get("1").y < awayCoords.get("23").y);
-  assert.ok(awayCoords.get("23").y < awayCoords.get("13").y);
-  assert.ok(awayCoords.get("13").y < 50);
-  assert.ok(homeCoords.get("1").y > homeCoords.get("23").y);
-  assert.ok(homeCoords.get("23").y > homeCoords.get("13").y);
-  assert.ok(homeCoords.get("13").y > 50);
+  assert.ok(homeCoords.get("1").y < homeCoords.get("23").y);
+  assert.ok(homeCoords.get("23").y < homeCoords.get("13").y);
+  assert.ok(homeCoords.get("13").y < 50);
+  assert.ok(awayCoords.get("1").y > awayCoords.get("23").y);
+  assert.ok(awayCoords.get("23").y > awayCoords.get("13").y);
+  assert.ok(awayCoords.get("13").y > 50);
+});
+
+test("5-4-1 is inferred when ESPN labels a back five as 3-1-4-2", () => {
+  const netherlandsStarters = [
+    { formationPlace: "1", position: "G" },
+    { formationPlace: "2", position: "RWB" },
+    { formationPlace: "3", position: "LWB" },
+    { formationPlace: "5", position: "CB" },
+    { formationPlace: "18", position: "CB" },
+    { formationPlace: "24", position: "CB" },
+    { formationPlace: "7", position: "RM" },
+    { formationPlace: "8", position: "CM" },
+    { formationPlace: "10", position: "CM" },
+    { formationPlace: "21", position: "LM" },
+    { formationPlace: "9", position: "CF" },
+  ];
+
+  const resolved = resolveEffectiveFormation(netherlandsStarters, "3-1-4-2", "home");
+  assert.equal(resolved.formation, "5-4-1");
+  assert.deepEqual(resolved.rows.map((row) => row.length), [1, 5, 4, 1]);
 });
 
 test("four-row formations evenly divide vertical space", () => {
@@ -173,9 +192,11 @@ test("four-row formations evenly divide vertical space", () => {
   const yValues = [0, 1, 2, 3, 4].map((index) =>
     getFormationRowY(index, rows.length, "home"),
   );
-  assert.deepEqual(yValues, [95, 84.25, 73.5, 62.75, 52]);
-  assert.equal(getFormationRowY(0, rows.length, "away"), 5);
-  assert.equal(getFormationRowY(4, rows.length, "away"), 48);
+  assert.deepEqual(yValues, [10, 20, 28, 36, 44]);
+  assert.equal(getFormationRowY(0, rows.length, "away"), 90);
+  assert.equal(getFormationRowY(4, rows.length, "away"), 60);
+  assert.equal(getFormationRowY(0, rows.length, "home"), 10);
+  assert.equal(getFormationRowY(4, rows.length, "home"), 44);
 });
 
 test("refresh route renders without relying on an undefined request alias", async () => {

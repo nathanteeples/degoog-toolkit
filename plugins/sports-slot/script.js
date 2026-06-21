@@ -12,20 +12,15 @@
   }
 
   function updateRefreshTrigger(panel) {
-    const trigger = panel.querySelector("[data-sports-refresh-trigger]");
-    if (!trigger) return;
-
-    const nextRefreshAt = Number(panel.dataset.nextRefreshAt || 0);
-    const remaining = nextRefreshAt - Date.now();
     const isRefreshing = panel.dataset.refreshing === "true";
-    const onCooldown = remaining > 0 && !isRefreshing;
 
-    trigger.classList.toggle("sports-slot__live-status--cooldown", onCooldown);
-    trigger.classList.toggle("sports-slot__live-status--refreshing", isRefreshing);
-    trigger.setAttribute(
-      "aria-disabled",
-      onCooldown || isRefreshing ? "true" : "false",
-    );
+    panel.querySelectorAll("[data-sports-refresh-control]").forEach((control) => {
+      control.classList.toggle("sports-slot__live-control--refreshing", isRefreshing);
+    });
+
+    panel.querySelectorAll("[data-sports-refresh-trigger]").forEach((trigger) => {
+      trigger.setAttribute("aria-busy", isRefreshing ? "true" : "false");
+    });
   }
 
   function updateLiveClock(panel) {
@@ -69,6 +64,18 @@
         };
 
         const handleFailure = () => {
+          if (avatar?.classList.contains("sports-slot__pitch-player-avatar")) {
+            image.remove();
+            avatar.classList.remove("sports-slot__pitch-player-avatar--ready");
+            if (!avatar.querySelector(".sports-slot__pitch-player-initials")) {
+              const initials = document.createElement("span");
+              initials.className = "sports-slot__pitch-player-initials";
+              initials.textContent = avatar.dataset.jersey || "?";
+              avatar.appendChild(initials);
+            }
+            return;
+          }
+
           image.remove();
         };
 
@@ -274,24 +281,10 @@
     if (!query || panel.dataset.refreshing === "true") return;
 
     const refreshMs = Number(panel.dataset.refreshMs || 0);
-    const nextRefreshAt = Number(panel.dataset.nextRefreshAt || 0);
     const isBrowseAction = browseOverrides.focusEventId !== undefined;
-    if (manual && !isBrowseAction && nextRefreshAt > Date.now()) {
-      updateRefreshTrigger(panel);
-      return;
-    }
 
     panel.dataset.refreshing = "true";
     updateRefreshTrigger(panel);
-
-    const refreshTrigger = panel.querySelector("[data-sports-refresh-trigger]");
-    const refreshTextNode = refreshTrigger?.querySelector(
-      ".sports-slot__live-status-text",
-    );
-    const previousRefreshLabel = refreshTextNode?.textContent || "";
-    if (refreshTextNode) {
-      refreshTextNode.textContent = "Refreshing...";
-    }
 
     const controller =
       typeof AbortController === "function" ? new AbortController() : null;
@@ -352,9 +345,6 @@
       }
     } catch {
       panel.dataset.nextRefreshAt = String(Date.now() + refreshMs);
-      if (refreshTextNode && previousRefreshLabel) {
-        refreshTextNode.textContent = previousRefreshLabel;
-      }
     } finally {
       if (timeout) window.clearTimeout(timeout);
       panel.dataset.refreshing = "false";
@@ -365,21 +355,24 @@
   }
 
   function bindRefreshTrigger(panel) {
-    const trigger = panel.querySelector("[data-sports-refresh-trigger]");
-    if (!trigger || trigger.dataset.sportsRefreshBound === "true") return;
+    if (panel.dataset.sportsRefreshDelegated === "true") return;
+    panel.dataset.sportsRefreshDelegated = "true";
 
-    trigger.dataset.sportsRefreshBound = "true";
-
-    const activate = () => {
-      if (trigger.getAttribute("aria-disabled") === "true") return;
+    panel.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-sports-refresh-trigger]");
+      if (!trigger || !panel.contains(trigger)) return;
+      if (panel.dataset.refreshing === "true") return;
+      event.preventDefault();
       refreshPanel(panel, true);
-    };
+    });
 
-    trigger.addEventListener("click", activate);
-    trigger.addEventListener("keydown", (event) => {
+    panel.addEventListener("keydown", (event) => {
+      const trigger = event.target.closest("[data-sports-refresh-trigger]");
+      if (!trigger || !panel.contains(trigger)) return;
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
-      activate();
+      if (panel.dataset.refreshing === "true") return;
+      refreshPanel(panel, true);
     });
   }
 
@@ -416,8 +409,7 @@
       );
     }
 
-    const refreshTrigger = panel.querySelector("[data-sports-refresh-trigger]");
-    if (refreshTrigger) {
+    if (panel.dataset.refreshable === "true") {
       bindRefreshTrigger(panel);
       updateRefreshTrigger(panel);
     }
