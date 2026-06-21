@@ -120,11 +120,13 @@ test("5-4-1 keeps defenders deep and striker advanced on the correct half", () =
 
   assert.ok(homeCoords.get("1").y > homeCoords.get("4").y);
   assert.ok(homeCoords.get("4").y > homeCoords.get("9").y);
-  assert.equal(homeCoords.get("9").y, 50);
+  assert.equal(homeCoords.get("9").y, 52);
+  assert.equal(homeCoords.get("9").x, 50);
 
   assert.ok(awayCoords.get("1").y < awayCoords.get("4").y);
   assert.ok(awayCoords.get("4").y < awayCoords.get("9").y);
-  assert.equal(awayCoords.get("9").y, 50);
+  assert.equal(awayCoords.get("9").y, 48);
+  assert.equal(awayCoords.get("9").x, 50);
 
   assert.equal(homeCoords.get("1").y, getFormationRowY(0, rows.length, "home"));
   assert.equal(awayCoords.get("1").y, getFormationRowY(0, rows.length, "away"));
@@ -137,7 +139,9 @@ test("four-row formations evenly divide vertical space", () => {
   const yValues = [0, 1, 2, 3, 4].map((index) =>
     getFormationRowY(index, rows.length, "home"),
   );
-  assert.deepEqual(yValues, [90, 80, 70, 60, 50]);
+  assert.deepEqual(yValues, [95, 84.25, 73.5, 62.75, 52]);
+  assert.equal(getFormationRowY(0, rows.length, "away"), 5);
+  assert.equal(getFormationRowY(4, rows.length, "away"), 48);
 });
 
 test("refresh route renders without relying on an undefined request alias", async () => {

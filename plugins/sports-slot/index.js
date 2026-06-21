@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.46";
+const PLUGIN_VERSION = "0.3.47";
 const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
@@ -4451,8 +4451,8 @@ function extractMatchTimeline(summaryData, sport = "soccer") {
 }
 
 const PITCH_ROW_Y = {
-  home: { defensive: 90, attacking: 50 },
-  away: { defensive: 10, attacking: 50 },
+  home: { defensive: 95, attacking: 52 },
+  away: { defensive: 5, attacking: 48 },
 };
 
 function normalizeHomeAway(value = "") {
@@ -4477,31 +4477,16 @@ function isForwardPosition(position = "") {
 function getHorizontalBias(position = "") {
   const pos = String(position || "").toUpperCase();
   if (/(^|[^A-Z])(LWB|LB|LCB|CD-L|LM|LW|LF)([^A-Z]|$)/.test(pos) || pos.endsWith("-L")) {
-    return 0.14;
+    return 0;
   }
   if (/(^|[^A-Z])(RWB|RB|RCB|CD-R|RM|RW|RF)([^A-Z]|$)/.test(pos) || pos.endsWith("-R")) {
-    return 0.86;
+    return 1;
   }
-  if (/\b(CDM|DM)\b/.test(pos)) return 0.5;
-  if (/\b(CAM|AM)\b/.test(pos)) return 0.5;
   return 0.5;
 }
 
-function getPositionTargetX(position = "", margin = 10) {
-  const bias = getHorizontalBias(position);
-  return margin + bias * (100 - margin * 2);
-}
-
-function layoutRowX(rowPlayers = [], margin = 10, minGap = 9) {
+function layoutRowX(rowPlayers = [], margin = 12) {
   if (!rowPlayers.length) return [];
-  if (rowPlayers.length === 1) {
-    return [
-      {
-        place: rowPlayers[0].place,
-        x: getPositionTargetX(rowPlayers[0].position, margin),
-      },
-    ];
-  }
 
   const sorted = [...rowPlayers].sort(
     (left, right) =>
@@ -4509,34 +4494,9 @@ function layoutRowX(rowPlayers = [], margin = 10, minGap = 9) {
       Number(left.place) - Number(right.place),
   );
 
-  let xs = sorted.map((player) => getPositionTargetX(player.position, margin));
-
-  for (let index = 1; index < xs.length; index += 1) {
-    if (xs[index] - xs[index - 1] < minGap) {
-      xs[index] = xs[index - 1] + minGap;
-    }
-  }
-
-  const maxX = 100 - margin;
-  if (xs[xs.length - 1] > maxX) {
-    const overflow = xs[xs.length - 1] - maxX;
-    xs = xs.map((value) => value - overflow);
-  }
-  if (xs[0] < margin) {
-    const shift = margin - xs[0];
-    xs = xs.map((value) => value + shift);
-  }
-
-  if (xs[xs.length - 1] > maxX || xs[0] < margin) {
-    return sorted.map((player, index) => ({
-      place: player.place,
-      x: getEvenRowX(index, sorted.length, margin),
-    }));
-  }
-
   return sorted.map((player, index) => ({
     place: player.place,
-    x: xs[index],
+    x: getEvenRowX(index, sorted.length, margin),
   }));
 }
 
@@ -4557,7 +4517,7 @@ function classifyPlayerBand(position = "") {
   return "mid";
 }
 
-function getEvenRowX(index = 0, count = 1, margin = 10) {
+function getEvenRowX(index = 0, count = 1, margin = 12) {
   if (count <= 1) return 50;
   return margin + (index / (count - 1)) * (100 - margin * 2);
 }
