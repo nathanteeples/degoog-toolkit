@@ -116,6 +116,13 @@
       "type": "slot"
     },
     {
+      "path": "plugins/time",
+      "name": "Time",
+      "description": "Google-style world clock for cities and countries. Supports !time, natural phrases like \"time in France\", and trailing queries like \"Tokyo time\".\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
+      "version": "1.0.0",
+      "type": "slot"
+    },
+    {
       "path": "plugins/tip-calculator",
       "name": "Tip Calculator",
       "description": "Interactive tip calculator with real-time bill split, custom slider parameters, and animations.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",

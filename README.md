@@ -138,6 +138,13 @@ Click a plugin name to expand screenshots and previews.
 </details>
 
 <details>
+<summary><strong>Time</strong> — World clock for cities and countries (`time in France`, `!time Tokyo`)</summary>
+
+Google-style clock card with geocoded timezone lookup and a live-updating display.
+
+</details>
+
+<details>
 <summary><strong>Until</strong> — Countdown answers (`years until 3000`, `!until 5pm`)</summary>
 
 ![Until](plugins/until/screenshots/1.png)
