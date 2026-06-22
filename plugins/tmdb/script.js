@@ -781,6 +781,7 @@
           initSeasonRails(node);
           initTvRailHeightSync(node);
           initCastCarousels(node);
+          hydrateExtraMetadata(node);
         }
       });
     }
