@@ -2,6 +2,7 @@
 let tmdbApiKey = "";
 let omdbApiKey = "";
 let jellyfinUrl = "";
+let jellyfinExternalUrl = "";
 let jellyfinApiKey = "";
 let seerrUrl = "";
 let seerrApiKey = "";
@@ -167,7 +168,7 @@ const _parseQuery = (query) => {
 // Generous soft timeout for external service calls (Jellyfin, Seerr, OMDb).
 // Resolves with `fallback` instead of rejecting, so Promise.all never blows up
 // and the TMDB card still renders even when an external service is unreachable.
-const EXTERNAL_TIMEOUT_MS = 5000;
+const EXTERNAL_TIMEOUT_MS = 2500;
 const _withTimeout = (promise, ms = EXTERNAL_TIMEOUT_MS, label = "external call", fallback = null) => {
   let timer;
   const timeout = new Promise((resolve) => {
@@ -243,12 +244,14 @@ const _decodeAssetUrl = (value) => {
 };
 
 const _isConfiguredJellyfinAsset = (url) => {
-  if (!jellyfinUrl) return false;
   try {
-    return new URL(url).origin === new URL(jellyfinUrl).origin;
+    const parsed = new URL(url);
+    if (jellyfinUrl && parsed.origin === new URL(jellyfinUrl).origin) return true;
+    if (jellyfinExternalUrl && parsed.origin === new URL(jellyfinExternalUrl).origin) return true;
   } catch {
-    return false;
+    // Ignore invalid url or missing jellyfinUrl/jellyfinExternalUrl
   }
+  return false;
 };
 
 const _normalizeAssetUrl = (url) => {
@@ -722,32 +725,35 @@ const _resolveFromQuery = async (query, ctx) => {
 
 // ── Jellyfin ──────────────────────────────────────────────────────────────────
 const _jellyfinSearch = async (title, ctx) => {
-  if (!jellyfinUrl || !jellyfinApiKey || !title) return null;
+  const apiUrl = jellyfinUrl || jellyfinExternalUrl;
+  if (!apiUrl || !jellyfinApiKey || !title) return null;
   try {
     const fetchFn = _fetchFor(ctx);
     const url =
-      `${jellyfinUrl}/Items` +
+      `${apiUrl}/Items` +
       `?SearchTerm=${encodeURIComponent(title)}` +
       `&Recursive=true&Limit=3&IncludeItemTypes=Movie,Series&Fields=ImageTags`;
     const res = await fetchFn(url, {
       headers: { "X-MediaBrowser-Token": jellyfinApiKey },
     });
     if (!res.ok) {
-      console.warn(`[tmdb] Jellyfin search failed: HTTP ${res.status} for "${title}" at ${jellyfinUrl}`);
+      console.warn(`[tmdb] Jellyfin search failed: HTTP ${res.status} for "${title}" at ${apiUrl}`);
       return null;
     }
     const data = await res.json();
     return (data?.Items || [])[0] || null;
   } catch (err) {
-    console.warn(`[tmdb] Jellyfin search error for "${title}" at ${jellyfinUrl}:`, err?.message || err);
+    console.warn(`[tmdb] Jellyfin search error for "${title}" at ${apiUrl}:`, err?.message || err);
     return null;
   }
 };
 
 /** Jellyfin web UI URL for a library item (movies + TV). */
 const _jellyfinHrefForItem = (item) => {
-  if (!item?.Id || !jellyfinUrl) return "";
-  return `${jellyfinUrl}/web/index.html#!/details?id=${item.Id}`;
+  if (!item?.Id) return "";
+  const base = jellyfinExternalUrl || jellyfinUrl;
+  if (!base) return "";
+  return `${base}/web/index.html#!/details?id=${item.Id}`;
 };
 
 /** Fetch availability status and ratings from Seerr (Overseerr/Jellyseerr). */
@@ -1473,6 +1479,13 @@ const _buildRatingsHtml = (opts, ctx) => {
     jellyfinHref,
     seerrHref,
     seerrStatus,
+    tmdbId,
+    type,
+    title,
+    year,
+    imdbId,
+    isExtra,
+    noWrapper,
   } = opts;
 
   const parts = [];
@@ -1624,8 +1637,26 @@ const _buildRatingsHtml = (opts, ctx) => {
     );
   }
 
-  if (parts.length === 0) return "";
-  return `<div class="tmdb-ratings">${parts.join("")}</div>`;
+  const hasJellyfin = (jellyfinUrl || jellyfinExternalUrl) && jellyfinApiKey;
+  const hasSeerr = seerrUrl && seerrApiKey;
+  const hasOmdb = !!omdbApiKey;
+
+  if (parts.length === 0 && !(!isExtra && (hasJellyfin || hasSeerr || hasOmdb))) {
+    return "";
+  }
+
+  const loaderHtml = (!isExtra && (hasJellyfin || hasSeerr || hasOmdb))
+    ? `<span class="tmdb-ratings-loader" ` +
+      `data-tmdb-id="${_esc(tmdbId)}" ` +
+      `data-type="${_esc(type)}" ` +
+      `data-title="${_esc(title)}" ` +
+      `data-year="${_esc(year)}" ` +
+      `data-imdb-id="${_esc(imdbId)}"></span>`
+    : "";
+
+  const joined = parts.join("") + loaderHtml;
+  if (noWrapper) return joined;
+  return `<div class="tmdb-ratings">${joined}</div>`;
 };
 
 export const testBuildRatingsHtml = _buildRatingsHtml;
@@ -1692,6 +1723,12 @@ const _renderMovie = (
       jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
       seerrHref: omdbRatings?.seerrHref,
       seerrStatus: omdbRatings?.seerrStatus,
+      tmdbId: details.id,
+      type: "movie",
+      title: details.title || details.name || "",
+      year: (details.release_date || "").slice(0, 4),
+      imdbId: imdbId || "",
+      isExtra: false,
     },
     ctx,
   );
@@ -1830,6 +1867,12 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, imdbId, 
       jellyfinHref: _jellyfinHrefForItem(jellyfinItem),
       seerrHref: omdbRatings?.seerrHref,
       seerrStatus: omdbRatings?.seerrStatus,
+      tmdbId: details.id,
+      type: "tv",
+      title: details.name || "",
+      year: (details.first_air_date || "").slice(0, 4),
+      imdbId: imdbId || "",
+      isExtra: false,
     },
     ctx,
   );
@@ -1939,19 +1982,15 @@ const _renderTv = (details, credits, images, jellyfinItem, omdbRatings, imdbId, 
 const _buildMoviePanel = async (id, ctx) => {
   const details = await _tmdb(`movie/${id}`, ctx);
   if (!details) return null;
-  const [credits, images, jellyfinItem, ext, videos, seerrData] = await Promise.all([
+  const [credits, images, ext, videos] = await Promise.all([
     _tmdb(`movie/${id}/credits`, ctx),
     _tmdb(`movie/${id}/images?include_image_language=${encodeURIComponent(tmdbLanguage)},en,null`, ctx),
-    jellyfinUrl && jellyfinApiKey
-      ? _withTimeout(_jellyfinSearch(details.title || details.original_title || "", ctx), EXTERNAL_TIMEOUT_MS, `Jellyfin search for "${details.title || details.original_title || ""}" at ${jellyfinUrl}`)
-      : Promise.resolve(null),
     _tmdb(`movie/${id}/external_ids`, ctx),
     _tmdb(`movie/${id}/videos`, ctx),
-    seerrUrl && seerrApiKey
-      ? _withTimeout(_seerrLookup("movie", id, ctx), EXTERNAL_TIMEOUT_MS, `Seerr lookup for movie/${id} at ${seerrUrl}`)
-      : Promise.resolve(null),
   ]);
-  let omdbRatings = await _withTimeout(_loadOmdbRatings(details, ext, "movie", ctx), EXTERNAL_TIMEOUT_MS, "OMDb ratings");
+  const jellyfinItem = null;
+  const seerrData = null;
+  const omdbRatings = null;
   if (seerrData) {
     if (!omdbRatings) {
       omdbRatings = {
@@ -1997,20 +2036,15 @@ const _buildMoviePanel = async (id, ctx) => {
 const _buildTvPanel = async (id, ctx) => {
   const details = await _tmdb(`tv/${id}`, ctx);
   if (!details) return null;
-  const [credits, aggregateCredits, images, jellyfinItem, ext, seerrData] =
-    await Promise.all([
-      _tmdb(`tv/${id}/credits`, ctx),
-      _tmdb(`tv/${id}/aggregate_credits`, ctx),
-      _tmdb(`tv/${id}/images?include_image_language=${encodeURIComponent(tmdbLanguage)},en,null`, ctx),
-      jellyfinUrl && jellyfinApiKey
-        ? _withTimeout(_jellyfinSearch(details.name || details.original_name || "", ctx), EXTERNAL_TIMEOUT_MS, `Jellyfin search for "${details.name || details.original_name || ""}" at ${jellyfinUrl}`)
-        : Promise.resolve(null),
-      _tmdb(`tv/${id}/external_ids`, ctx),
-      seerrUrl && seerrApiKey
-        ? _withTimeout(_seerrLookup("tv", id, ctx), EXTERNAL_TIMEOUT_MS, `Seerr lookup for tv/${id} at ${seerrUrl}`)
-        : Promise.resolve(null),
-    ]);
-  let omdbRatings = await _withTimeout(_loadOmdbRatings(details, ext, "tv", ctx), EXTERNAL_TIMEOUT_MS, "OMDb ratings");
+  const [credits, aggregateCredits, images, ext] = await Promise.all([
+    _tmdb(`tv/${id}/credits`, ctx),
+    _tmdb(`tv/${id}/aggregate_credits`, ctx),
+    _tmdb(`tv/${id}/images?include_image_language=${encodeURIComponent(tmdbLanguage)},en,null`, ctx),
+    _tmdb(`tv/${id}/external_ids`, ctx),
+  ]);
+  const jellyfinItem = null;
+  const seerrData = null;
+  const omdbRatings = null;
   if (seerrData) {
     if (!omdbRatings) {
       omdbRatings = {
@@ -2230,11 +2264,147 @@ const _assetHandler = async (request, routeCtx) => {
   }
 };
 
+const _extraHandler = async (request) => {
+  try {
+    const ctx = _routeContext(request);
+    const url = new URL(request.url);
+    const idRaw = url.searchParams.get("id") || "";
+    const id = parseInt(idRaw, 10);
+    const type = url.searchParams.get("type") || "";
+    const title = url.searchParams.get("title") || "";
+    const year = url.searchParams.get("year") || "";
+    const imdbId = url.searchParams.get("imdbId") || "";
+
+    if (!id || Number.isNaN(id) || !type) {
+      return _jsonResponse({ error: "Missing or invalid id/type" }, 400);
+    }
+
+    const [jellyfinItem, seerrData] = await Promise.all([
+      (jellyfinUrl || jellyfinExternalUrl) && jellyfinApiKey
+        ? _withTimeout(_jellyfinSearch(title, ctx), EXTERNAL_TIMEOUT_MS, `Jellyfin search for "${title}"`)
+        : Promise.resolve(null),
+      seerrUrl && seerrApiKey
+        ? _withTimeout(_seerrLookup(type, id, ctx), EXTERNAL_TIMEOUT_MS, `Seerr lookup for ${type}/${id}`)
+        : Promise.resolve(null),
+    ]);
+
+    const dummyDetails = {
+      id,
+      title,
+      name: title,
+      release_date: year,
+      first_air_date: year,
+    };
+    const dummyExt = { imdb_id: imdbId };
+
+    let omdbRatings = await _withTimeout(_loadOmdbRatings(dummyDetails, dummyExt, type, ctx), EXTERNAL_TIMEOUT_MS, "OMDb ratings");
+
+    if (seerrData) {
+      if (!omdbRatings) {
+        omdbRatings = {
+          imdb: seerrData.imdbRating ? `${seerrData.imdbRating}/10` : null,
+          rottenTomatoes: seerrData.rtCritic ? `${seerrData.rtCritic}%` : null,
+          rottenTomatoesHref: seerrData.rtUrl || null,
+          imdbId: imdbId || null,
+        };
+      } else {
+        if (!omdbRatings.rottenTomatoes && seerrData.rtCritic) {
+          omdbRatings.rottenTomatoes = `${seerrData.rtCritic}%`;
+          if (!omdbRatings.rottenTomatoesHref) {
+            omdbRatings.rottenTomatoesHref = seerrData.rtUrl || null;
+          }
+        }
+        if (!omdbRatings.imdb && seerrData.imdbRating) {
+          omdbRatings.imdb = `${seerrData.imdbRating}/10`;
+        }
+      }
+      if (seerrData.rtAudience) {
+        omdbRatings.rottenTomatoesAudience = `${seerrData.rtAudience}%`;
+        omdbRatings.rottenTomatoesAudienceHref = seerrData.rtUrl || omdbRatings.rottenTomatoesHref || null;
+      }
+      omdbRatings.seerrHref = seerrData.href;
+      omdbRatings.seerrStatus = seerrData.statusKey;
+    }
+
+    const jellyfinHref = _jellyfinHrefForItem(jellyfinItem);
+    const seerrHref = seerrData?.href || omdbRatings?.seerrHref || "";
+    const seerrStatus = seerrData?.statusKey || omdbRatings?.seerrStatus || "";
+
+    const ratingsHtml = _buildRatingsHtml(
+      {
+        voteAverage: null,
+        voteCount: 0,
+        tmdbHref: "",
+        imdb: omdbRatings?.imdb,
+        imdbHref: _imdbHref(imdbId),
+        rottenTomatoes: omdbRatings?.rottenTomatoes,
+        rottenTomatoesHref: omdbRatings?.rottenTomatoesHref,
+        rottenTomatoesAudience: omdbRatings?.rottenTomatoesAudience,
+        rottenTomatoesAudienceHref: omdbRatings?.rottenTomatoesAudienceHref,
+        letterboxdHref: null,
+        jellyfinHref,
+        seerrHref,
+        seerrStatus,
+        isExtra: true,
+        noWrapper: true,
+      },
+      ctx,
+    );
+
+    const services = [
+      {
+        id: "tmdb",
+        name: "TMDB",
+        href: type === "movie" ? `https://www.themoviedb.org/movie/${id}` : `https://www.themoviedb.org/tv/${id}`,
+        icon: TMDB_LOGO,
+      },
+      {
+        id: "imdb",
+        name: "IMDb",
+        href: _imdbHref(imdbId),
+        icon: IMDB_LOGO,
+      },
+      {
+        id: "letterboxd",
+        name: "Letterboxd",
+        href: type === "movie" ? `https://letterboxd.com/tmdb/${id}/` : null,
+        icon: LETTERBOXD_LOGO,
+      },
+      {
+        id: "jellyfin",
+        name: "Jellyfin",
+        href: jellyfinHref,
+        icon: JELLYFIN_LOGO,
+      },
+      {
+        id: "seerr",
+        name: t("seerr", ctx),
+        href: seerrHref,
+        icon: SEERR_LOGO,
+      },
+    ];
+
+    const choices = _buildServiceChoices(services, ctx);
+
+    return _jsonResponse({
+      ratingsHtml,
+      choices,
+    }, 200);
+  } catch (err) {
+    return _jsonResponse({ error: "Internal error" }, 500);
+  }
+};
+
 export const routes = [
   {
     path: "asset",
     method: "get",
     handler: _assetHandler,
+  },
+  {
+    path: "extra",
+    method: "get",
+    handler: _extraHandler,
   },
   {
     path: "movie",
@@ -2317,12 +2487,21 @@ export const slot = {
     },
     {
       key: "jellyfinUrl",
-      label: "Jellyfin URL",
+      label: "Jellyfin URL (Internal)",
+      type: "url",
+      required: false,
+      placeholder: "http://172.17.0.1:8096",
+      description:
+        "Optional internal API address of your Jellyfin server. Use if degoog needs to query Jellyfin via a local network or Docker subnet.",
+    },
+    {
+      key: "jellyfinExternalUrl",
+      label: "Jellyfin URL (External)",
       type: "url",
       required: false,
       placeholder: "https://your-jellyfin-server.com",
       description:
-        "Optional. When set alongside a Jellyfin API key, adds a link card when the media is found in your Jellyfin library.",
+        "Optional public address of your Jellyfin server. Used to generate web links in the search card. Defaults to internal URL if empty.",
     },
     {
       key: "jellyfinApiKey",
@@ -2393,6 +2572,7 @@ export const slot = {
     tmdbApiKey = (settings?.apiKey || "").trim();
     omdbApiKey = (settings?.omdbApiKey || "").trim();
     jellyfinUrl = _normalizeBaseUrl(settings?.jellyfinUrl);
+    jellyfinExternalUrl = _normalizeBaseUrl(settings?.jellyfinExternalUrl);
     jellyfinApiKey = (settings?.jellyfinApiKey || "").trim();
     seerrUrl = _normalizeBaseUrl(settings?.seerrUrl);
     seerrApiKey = (settings?.seerrApiKey || "").trim();

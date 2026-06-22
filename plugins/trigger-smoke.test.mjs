@@ -42,6 +42,8 @@ const negativeCases = [
   ["stocks", "market shares"],
   ["stocks", "bitcoin price"],
   ["tip-calculator", "gardening tips"],
+  ["tip-calculator", "calculator"],
+  ["tip-calculator", "calculate"],
   ["translate-slot", "100 lb to kg"],
   ["translate-slot", "100 usd to eur"],
   ["undecideds", "120 sided dice"],

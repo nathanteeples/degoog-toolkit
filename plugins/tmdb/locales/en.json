@@ -12,8 +12,12 @@
         "description": "Used to fetch IMDb/Rotten Tomatoes ratings."
       },
       "jellyfinUrl": {
-        "label": "Jellyfin server URL",
-        "description": "Search your Jellyfin library for watch links."
+        "label": "Jellyfin URL (Internal)",
+        "description": "Optional internal API address of your Jellyfin server."
+      },
+      "jellyfinExternalUrl": {
+        "label": "Jellyfin URL (External)",
+        "description": "Optional public address of your Jellyfin server to generate web links."
       }
     },
     "overview": "Overview",

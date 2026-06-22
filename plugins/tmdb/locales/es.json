@@ -12,8 +12,12 @@
         "description": "Se usa para obtener calificaciones de IMDb/Rotten Tomatoes."
       },
       "jellyfinUrl": {
-        "label": "URL del servidor Jellyfin",
-        "description": "Busque en su biblioteca Jellyfin para obtener enlaces de reproducción."
+        "label": "URL de Jellyfin (Interna)",
+        "description": "Dirección API interna opcional de su servidor Jellyfin."
+      },
+      "jellyfinExternalUrl": {
+        "label": "URL de Jellyfin (Externa)",
+        "description": "Dirección pública opcional de su servidor Jellyfin para generar enlaces web."
       }
     },
     "overview": "Sinopsis",

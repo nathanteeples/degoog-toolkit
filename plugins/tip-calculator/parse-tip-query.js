@@ -12,6 +12,9 @@ const BILL_CONTEXT_RX =
 const TIP_CALCULATOR_RX =
   /^(?:please\s+)?(?:(?:open|show|run|start)\s+)?(?:a\s+)?(?:tip|gratuity)\s*(?:calculator|calc)?(?:\s+please)?[.!?]*$/i;
 
+const EXPLICIT_TIP_CALC_RX =
+  /\b(?:tip|gratuity|gratuities|split|bill)\s*(?:calculator|calculate|calc|compute|computation)\b|\b(?:calculator|calculate|calc|compute)\s*(?:tip|gratuity|gratuities|split|bill)\b/i;
+
 function isTipAdviceArticle(q) {
   if (/\b(?:tips?\s+on\s+[\d$]|[\d$]\d.*\b(?:tips?|gratuity)\b)/i.test(q)) return false;
   if (/\b(?:tips?\s+(?:to|on\s+how|for|about|with|and|from|in))\b/i.test(q)) return true;
@@ -21,7 +24,7 @@ function isTipAdviceArticle(q) {
 function hasTipIntent(q) {
   return (
     /\b(?:tips?|gratuity|gratuities)\b/i.test(q) ||
-    /\b(?:calculator|calculate|calc|compute)\b/i.test(q) ||
+    EXPLICIT_TIP_CALC_RX.test(q) ||
     /\d\s*(?:%|percent\b|pct\b)/i.test(q) ||
     (/\bsplit\b/i.test(q) && (/\d/.test(q) || /\b(?:bill|check|tab|total|meal)\b/i.test(q)))
   );
@@ -186,7 +189,7 @@ export function parseTipQuery(query) {
   if (!hasTipIntent(q)) return null;
   if (isTipAdviceArticle(q)) return null;
 
-  const explicitCalcKeywords = /\b(?:calculator|calculate|calc|compute)\b/i.test(q);
+  const explicitCalcKeywords = EXPLICIT_TIP_CALC_RX.test(q);
   const hasDigits = /\d/.test(q);
 
   if (!explicitCalcKeywords && !hasDigits) {
