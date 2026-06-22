@@ -163,6 +163,21 @@ const _parseQuery = (query) => {
 };
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
+
+// Generous soft timeout for external service calls (Jellyfin, Seerr, OMDb).
+// Resolves with `fallback` instead of rejecting, so Promise.all never blows up
+// and the TMDB card still renders even when an external service is unreachable.
+const EXTERNAL_TIMEOUT_MS = 5000;
+const _withTimeout = (promise, ms = EXTERNAL_TIMEOUT_MS, label = "external call", fallback = null) => {
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[tmdb] ${label} timed out after ${ms}ms — skipping`);
+      resolve(fallback);
+    }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
 const _esc = (s) => {
   if (typeof s !== "string") return "";
   return s
@@ -434,11 +449,15 @@ const _omdbFetch = async (query, ctx) => {
       return null;
     }
     const res = await fetchFn(u.toString());
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[tmdb] OMDb fetch failed: HTTP ${res.status} for ${query.i || query.t}`);
+      return null;
+    }
     const json = await res.json();
     if (!json || json.Response === "False") return null;
     return json;
-  } catch {
+  } catch (err) {
+    console.warn(`[tmdb] OMDb fetch error for ${query.i || query.t}:`, err?.message || err);
     return null;
   }
 };
@@ -713,10 +732,14 @@ const _jellyfinSearch = async (title, ctx) => {
     const res = await fetchFn(url, {
       headers: { "X-MediaBrowser-Token": jellyfinApiKey },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[tmdb] Jellyfin search failed: HTTP ${res.status} for "${title}" at ${jellyfinUrl}`);
+      return null;
+    }
     const data = await res.json();
     return (data?.Items || [])[0] || null;
-  } catch {
+  } catch (err) {
+    console.warn(`[tmdb] Jellyfin search error for "${title}" at ${jellyfinUrl}:`, err?.message || err);
     return null;
   }
 };
@@ -746,6 +769,8 @@ const _seerrLookup = async (mediaType, tmdbId, ctx) => {
       if (media && typeof media.status === "number") {
         status = media.status;
       }
+    } else {
+      console.warn(`[tmdb] Seerr status fetch failed: HTTP ${statusRes.status} for ${mediaType}/${tmdbId} at ${seerrUrl}`);
     }
 
     // 2) Fetch ratings
@@ -772,7 +797,8 @@ const _seerrLookup = async (mediaType, tmdbId, ctx) => {
       rtUrl,
       imdbRating,
     };
-  } catch {
+  } catch (err) {
+    console.warn(`[tmdb] Seerr lookup error for ${mediaType}/${tmdbId} at ${seerrUrl}:`, err?.message || err);
     return null;
   }
 };
@@ -1917,15 +1943,15 @@ const _buildMoviePanel = async (id, ctx) => {
     _tmdb(`movie/${id}/credits`, ctx),
     _tmdb(`movie/${id}/images?include_image_language=${encodeURIComponent(tmdbLanguage)},en,null`, ctx),
     jellyfinUrl && jellyfinApiKey
-      ? _jellyfinSearch(details.title || details.original_title || "", ctx)
+      ? _withTimeout(_jellyfinSearch(details.title || details.original_title || "", ctx), EXTERNAL_TIMEOUT_MS, `Jellyfin search for "${details.title || details.original_title || ""}" at ${jellyfinUrl}`)
       : Promise.resolve(null),
     _tmdb(`movie/${id}/external_ids`, ctx),
     _tmdb(`movie/${id}/videos`, ctx),
     seerrUrl && seerrApiKey
-      ? _seerrLookup("movie", id, ctx)
+      ? _withTimeout(_seerrLookup("movie", id, ctx), EXTERNAL_TIMEOUT_MS, `Seerr lookup for movie/${id} at ${seerrUrl}`)
       : Promise.resolve(null),
   ]);
-  let omdbRatings = await _loadOmdbRatings(details, ext, "movie", ctx);
+  let omdbRatings = await _withTimeout(_loadOmdbRatings(details, ext, "movie", ctx), EXTERNAL_TIMEOUT_MS, "OMDb ratings");
   if (seerrData) {
     if (!omdbRatings) {
       omdbRatings = {
@@ -1977,14 +2003,14 @@ const _buildTvPanel = async (id, ctx) => {
       _tmdb(`tv/${id}/aggregate_credits`, ctx),
       _tmdb(`tv/${id}/images?include_image_language=${encodeURIComponent(tmdbLanguage)},en,null`, ctx),
       jellyfinUrl && jellyfinApiKey
-        ? _jellyfinSearch(details.name || details.original_name || "", ctx)
+        ? _withTimeout(_jellyfinSearch(details.name || details.original_name || "", ctx), EXTERNAL_TIMEOUT_MS, `Jellyfin search for "${details.name || details.original_name || ""}" at ${jellyfinUrl}`)
         : Promise.resolve(null),
       _tmdb(`tv/${id}/external_ids`, ctx),
       seerrUrl && seerrApiKey
-        ? _seerrLookup("tv", id, ctx)
+        ? _withTimeout(_seerrLookup("tv", id, ctx), EXTERNAL_TIMEOUT_MS, `Seerr lookup for tv/${id} at ${seerrUrl}`)
         : Promise.resolve(null),
     ]);
-  let omdbRatings = await _loadOmdbRatings(details, ext, "tv", ctx);
+  let omdbRatings = await _withTimeout(_loadOmdbRatings(details, ext, "tv", ctx), EXTERNAL_TIMEOUT_MS, "OMDb ratings");
   if (seerrData) {
     if (!omdbRatings) {
       omdbRatings = {
