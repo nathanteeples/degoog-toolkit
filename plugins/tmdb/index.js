@@ -1990,7 +1990,7 @@ const _buildMoviePanel = async (id, ctx) => {
   ]);
   const jellyfinItem = null;
   const seerrData = null;
-  const omdbRatings = null;
+  let omdbRatings = null;
   if (seerrData) {
     if (!omdbRatings) {
       omdbRatings = {
@@ -2044,7 +2044,7 @@ const _buildTvPanel = async (id, ctx) => {
   ]);
   const jellyfinItem = null;
   const seerrData = null;
-  const omdbRatings = null;
+  let omdbRatings = null;
   if (seerrData) {
     if (!omdbRatings) {
       omdbRatings = {
