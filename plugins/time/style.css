@@ -1,45 +1,9 @@
 .time-card {
-    container-type: inline-size;
-    width: 100%;
     box-sizing: border-box;
     padding: 0;
-    margin: 0 0 12px;
+    margin: 0;
     color: var(--text-primary);
     font-family: var(--font-sans, Arial, Helvetica, sans-serif);
-}
-
-.results-slot-panel:has(> .results-slot-panel-body > .time-card.slot-full-width) {
-    max-width: none;
-    overflow: visible;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-}
-
-.results-slot-panel:has(> .results-slot-panel-body > .time-card.slot-full-width)
-    > .results-slot-panel-body {
-    padding: 0;
-    max-width: none;
-    width: 100%;
-}
-
-#results-page.degoog-fullwidth-slot-shell
-    .results-slot-panel:has(.time-card.slot-full-width) {
-    max-width: none;
-    overflow: visible;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-}
-
-#results-page.degoog-fullwidth-slot-shell
-    .results-slot-panel:has(.time-card.slot-full-width)
-    > .results-slot-panel-body {
-    padding: 0;
-    max-width: none;
-    width: 100%;
 }
 
 .time-card__clock {
