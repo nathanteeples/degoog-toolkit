@@ -2430,7 +2430,7 @@ export const routes = [
 
 // ── Slot Export ───────────────────────────────────────────────────────────────
 export const slot = {
-  id: "tmdb-trankil",
+  id: "tmdb",
   name: "TMDB",
   description:
     "Shows rich info panels for movies, TV shows, and actors. Activates on natural-language queries (e.g. titles or actor names) and when film-site or database URLs appear in search results.",
