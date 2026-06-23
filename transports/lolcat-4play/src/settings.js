@@ -51,6 +51,7 @@ export const normaliseSettings = (settings = {}) => ({
 
 export const containerConfigKey = (settings) =>
   JSON.stringify({
+    useContainer: settings.useContainer,
     proxyType: settings.proxyType,
     proxyHost: settings.proxyHost,
     proxyPort: settings.proxyPort,
