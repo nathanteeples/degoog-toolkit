@@ -339,15 +339,15 @@ export default class FourPlayTransport {
   }
 
   _warmupState(origin, containerId) {
-    return this._originWarmups.get(warmupKeyFor(origin, containerId));
+    return this._originWarmups.get(warmupKeyFor(origin, this._containerConfigKey || "default"));
   }
 
   _headerSession(origin, containerId) {
-    return this._browserHeaderSessions.get(warmupKeyFor(origin, containerId));
+    return this._browserHeaderSessions.get(warmupKeyFor(origin, this._containerConfigKey || "default"));
   }
 
-  _persistCookieJar(origin, containerId, cookieJarText) {
-    const key = cookieJarKeyFor(origin, containerId);
+  _persistCookieJar(origin, containerId, cookieJarText, headers = null) {
+    const key = cookieJarKeyFor(origin, this._containerConfigKey || "default");
     this._cookieJarTextSessions.set(key, cookieJarText);
     this._cookieCache
       ?.set(key, cookieJarText, this._warmupTtlMs)
@@ -356,10 +356,19 @@ export default class FourPlayTransport {
           `[lolcat-4play] failed to persist cookie jar for ${origin}: ${error?.message || error}`,
         );
       });
+    if (headers && this._cookieCache) {
+      this._cookieCache
+        .set(key + ":headers", JSON.stringify(headers), this._warmupTtlMs)
+        .catch((error) => {
+          console.warn(
+            `[lolcat-4play] failed to persist headers for ${origin}: ${error?.message || error}`,
+          );
+        });
+    }
   }
 
   async _loadCookieJar(origin, containerId) {
-    const key = cookieJarKeyFor(origin, containerId);
+    const key = cookieJarKeyFor(origin, this._containerConfigKey || "default");
     if (this._cookieCache) {
       try {
         const cached = await this._cookieCache.get(key);
@@ -371,6 +380,39 @@ export default class FourPlayTransport {
       }
     }
     return this._cookieJarTextSessions.get(key) || null;
+  }
+
+  async _loadSessionFromCache(origin, containerId) {
+    const key = cookieJarKeyFor(origin, this._containerConfigKey || "default");
+    const warmupKey = warmupKeyFor(origin, this._containerConfigKey || "default");
+    if (this._browserHeaderSessions.has(warmupKey)) {
+      return;
+    }
+
+    if (this._cookieCache) {
+      try {
+        const cachedCookies = await this._cookieCache.get(key);
+        const cachedHeadersJson = await this._cookieCache.get(key + ":headers");
+        if (cachedCookies && cachedHeadersJson) {
+          const headers = JSON.parse(cachedHeadersJson);
+          const session = {
+            headers,
+            url: origin,
+            cookieJarText: cachedCookies,
+            capturedAt: Date.now(),
+          };
+          this._browserHeaderSessions.set(warmupKey, session);
+          this._setWarmupState(origin, containerId, { warmedAt: Date.now() });
+          console.warn(
+            `[lolcat-4play] restored warmed session for ${origin} from Valkey cache (skipped browser warmup)`,
+          );
+        }
+      } catch (error) {
+        console.warn(
+          `[lolcat-4play] failed to restore warmed session from cache for ${origin}: ${error?.message || error}`,
+        );
+      }
+    }
   }
 
   _rememberBrowserHeaders(data = {}) {
@@ -394,11 +436,8 @@ export default class FourPlayTransport {
       cookieJarText,
       capturedAt: Date.now(),
     };
-    this._browserHeaderSessions.set(warmupKeyFor(origin, containerId), session);
-    if (!containerId || containerId === "firefox-default") {
-      this._browserHeaderSessions.set(warmupKeyFor(origin, null), session);
-    }
-    this._persistCookieJar(origin, containerId, cookieJarText);
+    this._browserHeaderSessions.set(warmupKeyFor(origin, this._containerConfigKey || "default"), session);
+    this._persistCookieJar(origin, containerId, cookieJarText, data.headers);
     console.warn(
       `[lolcat-4play] captured cookie-bearing ${origin} session for curl reuse (container=${containerId || "default"}, url=${data.url})`,
     );
@@ -433,7 +472,7 @@ export default class FourPlayTransport {
   }
 
   _setWarmupState(origin, containerId, state) {
-    this._originWarmups.set(warmupKeyFor(origin, containerId), state);
+    this._originWarmups.set(warmupKeyFor(origin, this._containerConfigKey || "default"), state);
   }
 
   _markOriginBlocked(origin, containerId, reason = "blocked") {
@@ -507,6 +546,8 @@ export default class FourPlayTransport {
 
     this._assertOriginUsable(origin, containerId);
 
+    await this._loadSessionFromCache(origin, containerId);
+
     const state = this._warmupState(origin, containerId);
     if (state?.warmedAt && Date.now() - state.warmedAt < this._warmupTtlMs) {
       return origin;
@@ -524,7 +565,7 @@ export default class FourPlayTransport {
       if (session) {
         this._setWarmupState(origin, containerId, { warmedAt: Date.now() });
       } else {
-        this._originWarmups.delete(warmupKeyFor(origin, containerId));
+        this._originWarmups.delete(warmupKeyFor(origin, this._containerConfigKey || "default"));
         console.warn(
           `[lolcat-4play] origin warmup for ${origin} did not capture a reusable main-frame browser session`,
         );
@@ -532,7 +573,7 @@ export default class FourPlayTransport {
       return origin;
     } catch (error) {
       if (error instanceof OriginBlockedError) throw error;
-      this._originWarmups.delete(warmupKeyFor(origin, containerId));
+      this._originWarmups.delete(warmupKeyFor(origin, this._containerConfigKey || "default"));
       console.warn(
         `[lolcat-4play] origin warmup failed for ${origin}: ${error?.message || error}`,
       );
