@@ -314,23 +314,101 @@ var {
     box-shadow: var(--lg-search-shadow);
 }
 
-/* Dark / default: no separate bar shadow while AC is open (dropdown carries depth). */
+/* Dark / default: merged bar + dropdown — bar carries elevation, pane stays flush (no top shadow). */
+[data-theme="dark"]
+    .results-search-bar:is(
+        :has(> .ac-dropdown:not([style*="display: none"])),
+        :has(> .bang-ac-dropdown:not([style*="display: none"])),
+        :has(> .ac-dropdown[style*="display: block"]),
+        :has(> .bang-ac-dropdown[style*="display: block"]),
+        :has(> .ac-dropdown[style*="display: flex"]),
+        :has(> .bang-ac-dropdown[style*="display: flex"]),
+        :has(> .ac-dropdown[style*="display:flex"]),
+        :has(> .bang-ac-dropdown[style*="display:flex"]),
+        :has(> .ac-dropdown[style*="display: grid"]),
+        :has(> .bang-ac-dropdown[style*="display: grid"]),
+        :has(> .ac-dropdown[style*="display:grid"]),
+        :has(> .bang-ac-dropdown[style*="display:grid"])
+    ),
+[data-theme="dark"]
+    .search-bar:is(
+        :has(> .ac-dropdown:not([style*="display: none"])),
+        :has(> .bang-ac-dropdown:not([style*="display: none"])),
+        :has(> .ac-dropdown[style*="display: block"]),
+        :has(> .bang-ac-dropdown[style*="display: block"]),
+        :has(> .ac-dropdown[style*="display: flex"]),
+        :has(> .bang-ac-dropdown[style*="display: flex"]),
+        :has(> .ac-dropdown[style*="display:flex"]),
+        :has(> .bang-ac-dropdown[style*="display:flex"]),
+        :has(> .ac-dropdown[style*="display: grid"]),
+        :has(> .bang-ac-dropdown[style*="display: grid"]),
+        :has(> .ac-dropdown[style*="display:grid"]),
+        :has(> .bang-ac-dropdown[style*="display:grid"])
+    ) {
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+    box-shadow: var(--lg-search-shadow);
+}
+
 [data-theme="dark"] .results-search-bar.ac-open,
 [data-theme="dark"] .search-bar.ac-open {
-    box-shadow: none !important;
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+    box-shadow: var(--lg-search-shadow);
 }
 
 @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"])
+        .results-search-bar:is(
+            :has(> .ac-dropdown:not([style*="display: none"])),
+            :has(> .bang-ac-dropdown:not([style*="display: none"])),
+            :has(> .ac-dropdown[style*="display: block"]),
+            :has(> .bang-ac-dropdown[style*="display: block"]),
+            :has(> .ac-dropdown[style*="display: flex"]),
+            :has(> .bang-ac-dropdown[style*="display: flex"]),
+            :has(> .ac-dropdown[style*="display:flex"]),
+            :has(> .bang-ac-dropdown[style*="display:flex"]),
+            :has(> .ac-dropdown[style*="display: grid"]),
+            :has(> .bang-ac-dropdown[style*="display: grid"]),
+            :has(> .ac-dropdown[style*="display:grid"]),
+            :has(> .bang-ac-dropdown[style*="display:grid"])
+        ),
+    :root:not([data-theme="light"])
+        .search-bar:is(
+            :has(> .ac-dropdown:not([style*="display: none"])),
+            :has(> .bang-ac-dropdown:not([style*="display: none"])),
+            :has(> .ac-dropdown[style*="display: block"]),
+            :has(> .bang-ac-dropdown[style*="display: block"]),
+            :has(> .ac-dropdown[style*="display: flex"]),
+            :has(> .bang-ac-dropdown[style*="display: flex"]),
+            :has(> .ac-dropdown[style*="display:flex"]),
+            :has(> .bang-ac-dropdown[style*="display:flex"]),
+            :has(> .ac-dropdown[style*="display: grid"]),
+            :has(> .bang-ac-dropdown[style*="display: grid"]),
+            :has(> .ac-dropdown[style*="display:grid"]),
+            :has(> .bang-ac-dropdown[style*="display:grid"])
+        ) {
+        border-end-start-radius: 0;
+        border-end-end-radius: 0;
+        box-shadow: var(--lg-search-shadow);
+    }
+
     :root:not([data-theme="light"]) .results-search-bar.ac-open,
     :root:not([data-theme="light"]) .search-bar.ac-open {
-        box-shadow: none !important;
+        border-end-start-radius: 0;
+        border-end-end-radius: 0;
+        box-shadow: var(--lg-search-shadow);
     }
 }
 
 .ac-dropdown,
 .bang-ac-dropdown {
     background: var(--search-bar-focused);
-    box-shadow: var(--lg-search-shadow);
+    /* Bottom + sides only — negative spread trims upward blur at the bar seam. */
+    box-shadow:
+        4px 8px 8px -6px rgba(0, 0, 0, 0.24),
+        -4px 8px 8px -6px rgba(0, 0, 0, 0.24),
+        0 8px 12px -6px rgba(0, 0, 0, 0.24);
 }
 
 /*
@@ -379,6 +457,8 @@ var {
     inset-inline-end: -1px;
     width: auto;
     box-sizing: border-box;
+    /* Merged with the bar — parent carries elevation when open. */
+    box-shadow: none !important;
 }
 
 /* If `.ac-open` lingers while both panes are hidden/absent, restore rounded bar. */
@@ -465,11 +545,40 @@ var {
     box-shadow: none !important;
 }
 
+/* Dark: same merged shape — no top border/shadow seam against the bar. */
+[data-theme="dark"] .results-search-bar > .ac-dropdown,
+[data-theme="dark"] .results-search-bar > .bang-ac-dropdown,
+[data-theme="dark"] .search-bar > .ac-dropdown,
+[data-theme="dark"] .search-bar > .bang-ac-dropdown {
+    border: 1px solid var(--border);
+    border-top: none;
+    border-start-start-radius: 0;
+    border-start-end-radius: 0;
+    border-end-start-radius: var(--theme-radius-search);
+    border-end-end-radius: var(--theme-radius-search);
+    box-shadow: none !important;
+}
+
 @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) .ac-dropdown,
     :root:not([data-theme="dark"]) .bang-ac-dropdown,
     :root:not([data-theme="dark"]) #apps-pocket-panel {
         background: var(--search-bar-focused);
+        border: 1px solid var(--border);
+        border-top: none;
+        border-start-start-radius: 0;
+        border-start-end-radius: 0;
+        border-end-start-radius: var(--theme-radius-search);
+        border-end-end-radius: var(--theme-radius-search);
+        box-shadow: none !important;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .results-search-bar > .ac-dropdown,
+    :root:not([data-theme="light"]) .results-search-bar > .bang-ac-dropdown,
+    :root:not([data-theme="light"]) .search-bar > .ac-dropdown,
+    :root:not([data-theme="light"]) .search-bar > .bang-ac-dropdown {
         border: 1px solid var(--border);
         border-top: none;
         border-start-start-radius: 0;
