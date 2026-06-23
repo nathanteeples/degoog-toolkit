@@ -196,7 +196,7 @@
       "path": "plugins/4play-captcha-helper",
       "name": "4play CAPTCHA Helper",
       "description": "Displays top-left notifications on the search page when the 4play (lolcat) transport hits a CAPTCHA. Solve the CAPTCHA in Firefox and it will automatically update transport cookies.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "type": "command"
     }
   ],

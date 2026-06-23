@@ -7,7 +7,7 @@
       dismissCaptchaAlert();
       const source = new OriginalEventSource(url, ...args);
       if (typeof url === "string" && url.includes("/api/search/stream")) {
-        source.addEventListener("message", (e) => {
+        const handleEvent = (e) => {
           try {
             const data = JSON.parse(e.data);
             if (data.timing) {
@@ -19,7 +19,9 @@
           } catch (err) {
             // ignore
           }
-        });
+        };
+        source.addEventListener("engine-result", handleEvent);
+        source.addEventListener("engine-retry", handleEvent);
       }
       return source;
     };
