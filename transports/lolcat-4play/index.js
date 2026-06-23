@@ -137,7 +137,6 @@ export default class FourPlayTransport {
 
     onClose: () => {
       this._stopHeartbeat();
-      this._session = null;
       this._containers.clear();
       this._originWarmups.clear();
       this._browserHeaderSessions.clear();
