@@ -205,16 +205,21 @@ function parsePlaceFromQuery(query) {
   let value = String(query || "").trim();
   if (!value) return "";
 
-  value = value.replace(BANG_PREFIX_RX, "").trim();
   const lower = value.toLowerCase();
+  if (["time", "!time", "tz", "!tz", "clock", "!clock"].includes(lower)) {
+    return "";
+  }
+
+  value = value.replace(BANG_PREFIX_RX, "").trim();
+  const lowerVal = value.toLowerCase();
 
   const phrases = [...NATURAL_LANGUAGE_PHRASES].sort((left, right) => right.length - left.length);
   for (const phrase of phrases) {
-    if (lower === phrase) {
+    if (lowerVal === phrase) {
       value = "";
       break;
     }
-    if (lower.startsWith(`${phrase} `)) {
+    if (lowerVal.startsWith(`${phrase} `)) {
       value = value.slice(phrase.length).trim();
       break;
     }
@@ -306,8 +311,8 @@ function renderTimeCard(resolved, context) {
   return { title: "", html };
 }
 
-async function renderTimeQuery(rawInput, context, { allowDefault = false } = {}) {
-  const place = parsePlaceFromQuery(rawInput) || (allowDefault ? settings.defaultPlace : "");
+async function renderTimeQuery(rawInput, context) {
+  const place = parsePlaceFromQuery(rawInput) || settings.defaultPlace;
   if (!place) return renderUsageCard();
 
   const resolved = await resolveTimeZone(place, context);
@@ -404,8 +409,7 @@ const slot = {
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
     if (!isTimeQuery(query)) return { title: "", html: "" };
-    const isBang = BANG_PREFIX_RX.test(String(query || "").trim());
-    return renderTimeQuery(query, context, { allowDefault: isBang });
+    return renderTimeQuery(query, context);
   },
 };
 
