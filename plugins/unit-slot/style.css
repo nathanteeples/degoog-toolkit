@@ -8,6 +8,14 @@
     max-width: none;
 }
 
+.results-slot-panel:has(.uxs-wrap) {
+    overflow: hidden;
+}
+
+.results-slot-panel:has(.uxs-wrap) > .results-slot-panel-body {
+    padding: 0;
+}
+
 /* Card (inner frame; outer results-slot-panel provides chrome in full-width themes) */
 .uxs-main {
     position: relative;

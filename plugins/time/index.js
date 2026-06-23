@@ -550,7 +550,7 @@ const slot = {
   id: "time",
   name: "Time",
   description:
-    "Google-style world clock for cities and countries. Supports !time, natural phrases like \"time in France\", and trailing queries like \"Tokyo time\".",
+    "Google-style world clock for cities and countries. Supports natural phrases like \"time in France\" and trailing queries like \"Tokyo time\".",
   isClientExposed: false,
   position: "above-results",
   slotPositions: ["above-results", "knowledge-panel", "at-a-glance"],
