@@ -25,7 +25,7 @@ import {
   DEFAULT_CONTAINER_TTL_H,
 } from "./src/settings.js";
 
-const WEB_RESPONSE_TYPES = ["main_frame", "xmlhttprequest"];
+
 
 function normalizeUrl(url) {
   if (typeof url !== "string") return url;
@@ -95,9 +95,6 @@ export default class FourPlayTransport {
 
     onOpen: () => {
       console.warn("[lolcat-4play] WebSocket connection opened");
-      this._cmd("web_response_whitelist", { list: WEB_RESPONSE_TYPES }).catch(
-        (err) => console.warn("[lolcat-4play] failed to send whitelist:", err),
-      );
       this._startHeartbeat();
     },
 
