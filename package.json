@@ -21,7 +21,7 @@
       "path": "plugins/weather-slot",
       "name": "Weather",
       "description": "Current weather with interactive charts (temperature, precipitation, wind, humidity), a 7-day forecast and configurable units (imperial by default — Fahrenheit, mph, mmHg, inch). Supports !weather <city>, leading phrases like 'weather in rome', and trailing-keyword queries like 'rome weather' or 'london forecast today'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.8.9",
+      "version": "1.8.10",
       "type": "slot"
     },
     {
@@ -35,7 +35,7 @@
       "path": "plugins/unit-slot",
       "name": "Unit Converter",
       "description": "Unit converter for length, mass, volume, temperature, area, and speed. Supports fuzzy natural queries like '25.4oz toml'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.3.5",
+      "version": "1.3.6",
       "type": "slot"
     },
     {
@@ -119,7 +119,7 @@
       "path": "plugins/time",
       "name": "Time",
       "description": "Google-style world clock for cities and countries. Supports natural phrases like \"time in France\" and trailing queries like \"Tokyo time\".\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "type": "slot"
     },
     {
