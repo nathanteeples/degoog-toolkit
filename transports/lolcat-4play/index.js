@@ -545,13 +545,21 @@ export default class FourPlayTransport {
 
   async _warmOriginNow(origin, containerId) {
     let tabId = null;
+    let keepTabOpen = false;
     try {
       tabId = await this._openWarmupTab(origin, containerId);
       await this._inspectWarmupPage(origin, containerId, tabId);
       await this._tryFormWarmup(origin, containerId, tabId);
+    } catch (error) {
+      if (error instanceof OriginBlockedError) {
+        keepTabOpen = true;
+      }
+      throw error;
     } finally {
-      await this._closeTabQuietly(tabId);
-      this._ownedTabIds.delete(tabId);
+      if (!keepTabOpen) {
+        await this._closeTabQuietly(tabId);
+        this._ownedTabIds.delete(tabId);
+      }
     }
   }
 
@@ -612,11 +620,10 @@ export default class FourPlayTransport {
 
   async _browserFetch(url, origin, containerId) {
     console.warn(
-      `[lolcat-4play] direct browser tab fetch for ${url} (container=${containerId || "default"}): no warmed curl session for this origin, returning the pre-JS network body (some origins serve a JS/consent interstitial here)`,
+      `[lolcat-4play] direct browser tab fetch for ${url} (container=${containerId || "default"}): no warmed curl session for this origin, fetching DOM outerHTML via tab injection`,
     );
     let tabId = null;
     let keepTabOpen = false;
-    const pending = this._registerPending(url);
 
     try {
       const tabResp = await this._cmd("tab_open", tabSpell(url, containerId));
@@ -626,12 +633,17 @@ export default class FourPlayTransport {
       }
 
       this._ownedTabIds.add(tabId);
-      this._upgradePending(pending.entry, tabId);
 
-      const { body } = await pending.promise;
-      const text = Buffer.from(body, "base64").toString("utf-8");
+      await this._awaitDom(tabId, this._timeoutMs).catch(() => null);
+      await sleep(1000);
+
+      const html = await this._inject(tabId, "document.documentElement.outerHTML");
+      if (!html) {
+        throw new Error("lolcat-4play: failed to retrieve page HTML content from browser tab");
+      }
+
       try {
-        return this._wrapFetchedText(text, origin, containerId);
+        return this._wrapFetchedText(html, origin, containerId);
       } catch (error) {
         if (error instanceof OriginBlockedError) {
           keepTabOpen = true;
@@ -639,11 +651,6 @@ export default class FourPlayTransport {
         throw error;
       }
     } finally {
-      this._settlePending(
-        pending.entry,
-        pending.entry.reject,
-        new Error("lolcat-4play: request ended before web_response arrived"),
-      );
       if (!keepTabOpen) {
         await this._closeTabQuietly(tabId);
         this._ownedTabIds.delete(tabId);
