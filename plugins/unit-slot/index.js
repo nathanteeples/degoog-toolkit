@@ -74,88 +74,6 @@ for (const measure of SUPPORTED_MEASURES) {
   }
 }
 
-const TRANSLATED_ALIASES = {
-  // Length
-  "metro": "m", "metros": "m", "mètre": "m", "mètres": "m",
-  "kilómetro": "km", "kilómetros": "km", "kilometro": "km", "kilometros": "km", "kilomètre": "km", "kilomètres": "km",
-  "centímetro": "cm", "centímetros": "cm", "centimetro": "cm", "centimetros": "cm", "centimètre": "cm", "centimètres": "cm",
-  "milímetro": "mm", "milímetros": "mm", "milimetro": "mm", "milimetros": "mm", "millimètre": "mm", "millimètres": "mm",
-  "pulgada": "in", "pulgadas": "in", "pouce": "in", "pouces": "in", "zoll": "in",
-  "pie": "ft", "pies": "ft", "pied": "ft", "pieds": "ft", "fuß": "ft",
-  "yarda": "yd", "yardas": "yd", "verge": "yd", "verges": "yd",
-  "milla": "mi", "millas": "mi", "milos": "mi", "milas": "mi", "mille": "mi", "milles": "mi", "meile": "mi", "meilen": "mi",
-  
-  // Mass
-  "gramo": "g", "gramos": "g", "gramme": "g", "grammes": "g",
-  "kilogramo": "kg", "kilogramos": "kg", "kilogramme": "kg", "kilogrammes": "kg",
-  "miligramo": "mg", "miligramos": "mg", "milligramme": "mg", "milligrammes": "mg",
-  "libra": "lb", "libras": "lb", "livre": "lb", "livres": "lb", "pfund": "lb",
-  "onza": "oz", "onzas": "oz", "once": "oz", "onces": "oz", "unze": "oz", "unzen": "oz",
-  "tonelada": "t", "toneladas": "t", "tonne": "t", "tonnes": "t",
-  
-  // Volume
-  "litro": "l", "litros": "l", "litre": "l", "litres": "l",
-  "mililitro": "ml", "mililitros": "ml", "millilitre": "ml", "millilitres": "ml",
-  "galón": "gal", "galones": "gal", "galon": "gal", "galons": "gal",
-  "pinta": "pnt", "pintas": "pnt", "pinte": "pnt", "pintes": "pnt",
-  "taza": "cup", "tazas": "cup", "tasse": "cup", "tasses": "cup",
-  "onza líquida": "fl-oz", "onzas líquidas": "fl-oz", "once liquide": "fl-oz", "onces liquides": "fl-oz",
-  
-  // Temperature
-  "celsius": "C", "centígrados": "C", "centigrados": "C", "fahrenheit": "F", "kelvin": "K",
-  
-  // Area
-  "metro cuadrado": "m2", "metros cuadrados": "m2", "mètre carré": "m2", "mètres carrés": "m2",
-  "hectárea": "ha", "hectáreas": "ha", "hectare": "ha", "hectares": "ha",
-  "acre": "ac", "acres": "ac",
-  
-  // Speed
-  "kilómetros por hora": "km/h", "kilometros por hora": "km/h", "kilomètres par heure": "km/h",
-  "millas por hora": "m/h", "milles par heure": "m/h",
-  
-  // Time
-  "segundo": "s", "segundos": "s", "seconde": "s", "secondes": "s", "sekunde": "s", "sekunden": "s",
-  "minuto": "min", "minutos": "min", "minute": "min", "minutes": "min", "minuten": "min",
-  "hora": "h", "horas": "h", "heure": "h", "heures": "h", "stunde": "h", "stunden": "h",
-  "día": "d", "días": "d", "dia": "d", "dias": "d", "jour": "d", "jours": "d", "tag": "d", "tage": "d",
-  "semana": "week", "semanas": "week", "semaine": "week", "semaines": "week", "woche": "week", "wochen": "week",
-  "mes": "month", "meses": "month", "mois": "month", "monat": "month", "monate": "month",
-  "año": "year", "años": "year", "an": "year", "ans": "year", "année": "year", "années": "year", "jahr": "year", "jahre": "year",
-  "ano": "year", "anos": "year",
-
-  // Italian additions
-  "chilometro": "km", "chilometri": "km",
-  "metri": "m",
-  "miglio": "mi", "miglia": "mi",
-  "libra": "lb", "libras": "lb", "libbra": "lb", "libbre": "lb",
-  "oncia": "oz",
-  "grammo": "g", "grammi": "g",
-  "chilogrammo": "kg", "chilogrammi": "kg",
-  "litri": "l",
-  "ora": "h", "ore": "h",
-  "minuti": "min",
-  "secondi": "s",
-  "giorno": "d", "giorni": "d",
-  "settimane": "week",
-  "mesi": "month",
-  "anni": "year",
-
-  // German additions
-  "gramm": "g",
-  "kilogramm": "kg",
-  "sekunden": "s",
-  "minuten": "min",
-  "stunden": "h",
-  "tage": "d",
-  "wochen": "week",
-  "monate": "month",
-  "jahre": "year"
-};
-
-for (const [key, val] of Object.entries(TRANSLATED_ALIASES)) {
-  addAlias(key, val);
-}
-
 // Sort by length descending to match longest first (e.g. "fluid ounces" before "fluid")
 const _aliasKeys = Object.keys(ALIASES).sort((a, b) => b.length - a.length);
 const UNIT_REGEX = new RegExp(
@@ -177,7 +95,7 @@ for (const [alias, abbr] of Object.entries(ALIASES)) {
 }
 
 // ── Query parser ──────────────────────────────────────────────
-function parseQuery(query, isExplicitCommand = false) {
+function parseQuery(query) {
   if (query.trim().startsWith("#")) return null;
   if (isInformationalQuestion(query)) return null;
 
@@ -187,28 +105,21 @@ function parseQuery(query, isExplicitCommand = false) {
     .toLowerCase()
     .replace(/(\d)([a-z]+)/gi, "$1 $2");
 
-  const explicitCommand = isExplicitCommand || COMMAND_PREFIX_RE.test(q);
+  const explicitCommand = COMMAND_PREFIX_RE.test(q);
   if (
     CONVERTER_LAUNCHER_RE.test(q) ||
-    /^!(?:unit|convert|conv)\s*[?!.,;:]*$/i.test(q) ||
-    (isExplicitCommand && q === "")
+    /^!(?:unit|convert|conv)\s*[?!.,;:]*$/i.test(q)
   ) {
     return { amount: 1, from: "m", to: "ft", measure: "length" };
   }
   const hasConversionIntent = explicitCommand || hasNaturalConversionIntent(q);
   if (!explicitCommand && isCountdownDateQuery(q)) return null;
 
-  let clean = q.replace(/^!(unit|convert|conv)\s*/i, "");
-  if (explicitCommand) {
-    clean = clean
-      .replace(/\b(to|into|=|a|à|para|em|en|in|nach|zu|do|na|w)\b/g, " TO ")
-      .trim();
-  } else {
-    clean = clean
-      .replace(/\b(to|into|=)\b/g, " TO ")
-      .replace(/\bin\b/g, replaceInConnector)
-      .trim();
-  }
+  const clean = q
+    .replace(/^!(unit|convert|conv)\s*/i, "")
+    .replace(/\b(to|into|=)\b/g, " TO ")
+    .replace(/\bin\b/g, replaceInConnector)
+    .trim();
 
   const amountMatch = clean.match(/(-?\d[\d\s,']*(?:\.\d+)?)/);
   const amount = amountMatch
@@ -589,7 +500,7 @@ export const slot = {
   async execute(query, context) {
     if (context?.tab && context.tab !== "all") return { html: "" };
 
-    const parsed = parseQuery(query, context?.isExplicitCommand);
+    const parsed = parseQuery(query);
     if (!parsed) return { html: "" };
 
     const { amount, from, to, measure } = parsed;
@@ -635,25 +546,7 @@ export const slot = {
 };
 
 export const slotPlugin = slot;
-
-export const command = {
-  name: "Unit Converter",
-  description: "Unit converter for length, mass, volume, temperature, and more.",
-  trigger: "unit",
-  aliases: ["convert", "conv"],
-  naturalLanguagePhrases: [
-    "convert",
-    "unit converter",
-    "convert units",
-    "unit conversion"
-  ],
-  isClientExposed: false,
-  async execute(args, context) {
-    return slot.execute(args, { ...context, isExplicitCommand: true });
-  }
-};
-
-export default command;
+export default slot;
 
 function _fmt(n, decimals) {
   return Number(n).toLocaleString("en-US", {

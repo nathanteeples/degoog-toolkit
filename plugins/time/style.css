@@ -3,7 +3,6 @@
     padding: 0;
     margin: 0;
     color: var(--text-primary);
-    font-family: var(--font-sans, Arial, Helvetica, sans-serif);
 }
 
 .time-card__clock {

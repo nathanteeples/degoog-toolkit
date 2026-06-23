@@ -8,17 +8,12 @@
     max-width: none;
 }
 
-.results-slot-panel:has(.uxs-wrap.slot-full-width) {
-    overflow: visible;
-    max-width: none;
-}
-
 /* Card (inner frame; outer results-slot-panel provides chrome in full-width themes) */
 .uxs-main {
     position: relative;
-    background: var(--slot-inset-bg, var(--bg-light, var(--bg, Canvas)));
-    border: 1px solid var(--slot-inset-border, var(--border-light, var(--border, color-mix(in srgb, currentColor 20%, transparent))));
-    border-radius: 12px;
+    background: var(--slot-inset-bg, transparent);
+    border: 1px solid var(--slot-inset-border, transparent);
+    border-radius: var(--theme-radius-lg, 12px);
     overflow: hidden;
 }
 
@@ -32,15 +27,9 @@
 .uxs-category-select {
     width: 100%;
     padding: 12px 36px 12px 18px;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background-color: transparent;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2380868b' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    background-size: 10px 6px;
-    border: none;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
     color: var(--text-primary, inherit);
     font-size: 0.88rem;
     font-weight: 500;
@@ -55,7 +44,7 @@
 }
 
 .uxs-category-select:focus-visible {
-    box-shadow: inset 0 0 0 2px var(--primary, #4285f4);
+    box-shadow: inset 0 0 0 2px var(--primary, #4285f4) !important;
 }
 
 .uxs-category-select option,
@@ -102,14 +91,16 @@
 
 /* ── Number input ──────────────────────────────────────────────── */
 
-.uxs-amount {
+.degoog-input.uxs-amount {
     width: 100%;
     font-size: clamp(1.8rem, 5cqi, 2.1rem);
     font-weight: 400;
     color: var(--text-primary, inherit);
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
     outline: none;
     letter-spacing: 0;
     padding: 0 0 4px;
@@ -118,16 +109,16 @@
     cursor: text;
 }
 
-.uxs-amount:hover {
+.degoog-input.uxs-amount:hover {
     border-bottom-color: color-mix(
         in srgb,
         var(--primary, #4285f4) 45%,
         transparent
-    );
+    ) !important;
 }
 
-.uxs-amount:focus {
-    border-bottom-color: var(--primary, #4285f4);
+.degoog-input.uxs-amount:focus {
+    border-bottom-color: var(--primary, #4285f4) !important;
 }
 
 .uxs-amount::-webkit-inner-spin-button,
@@ -239,21 +230,14 @@
 
 .uxs-unit-select {
     width: 100%;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
     color: var(--text-primary, inherit);
     font-size: 0.88rem;
     font-weight: 500;
     padding: 10px 36px 10px 14px;
     border-radius: 999px;
     border: 1px solid
-        var(--border, color-mix(in srgb, currentColor 30%, transparent));
-    background-color: transparent;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2380868b' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    background-size: 10px 6px;
+        var(--border, color-mix(in srgb, currentColor 30%, transparent)) !important;
+    background-color: var(--bg-light, var(--bg, transparent)) !important;
     outline: none;
     cursor: pointer;
     transition:

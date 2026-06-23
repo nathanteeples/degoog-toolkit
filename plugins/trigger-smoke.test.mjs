@@ -109,9 +109,4 @@ test("command plugins expose their expected triggers", async () => {
     speedtestCommand.settingsSchema.map((field) => field.key),
     ["debugMode"],
   );
-
-  const unitSlot = await loadPlugin("unit-slot");
-  const unitCommand = unitSlot.command || unitSlot.default;
-  assert.equal(unitCommand.trigger, "unit");
-  assert.ok(unitCommand.aliases.includes("convert"));
 });
