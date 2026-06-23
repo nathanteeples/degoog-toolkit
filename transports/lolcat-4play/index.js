@@ -94,13 +94,15 @@ export default class FourPlayTransport {
     onUpgrade: (passwordPath) => passwordPath === `/${this._password}`,
 
     onOpen: () => {
+      console.warn("[lolcat-4play] WebSocket connection opened");
       this._cmd("web_response_whitelist", { list: WEB_RESPONSE_TYPES }).catch(
-        () => {},
+        (err) => console.warn("[lolcat-4play] failed to send whitelist:", err),
       );
       this._startHeartbeat();
     },
 
     onMessage: (_ws, raw) => {
+      console.warn("[lolcat-4play] WebSocket raw message received:", raw.slice(0, 300));
       let msg;
       try {
         msg = JSON.parse(raw);
@@ -185,6 +187,7 @@ export default class FourPlayTransport {
   }
 
   _cmd(action, params = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+    console.warn("[lolcat-4play] Sending command:", action, JSON.stringify(params).slice(0, 200));
     if (!this._session) {
       return Promise.reject(
         new Error("lolcat-4play: transport session not initialized"),
