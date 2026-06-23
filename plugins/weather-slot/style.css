@@ -1,31 +1,72 @@
-/* ── Weather Slot — Minimal Theme ───────────────────── */
-
-/* Built-in slot chrome can clip or cap width; full-width plugin roots need room to grow. */
-.results-slot-panel:has(> .results-slot-panel-body > .wxs-wrap.slot-full-width) {
-    overflow: visible;
-    max-width: none;
+@keyframes weather-spin {
+    100% { transform: rotate(360deg); }
+}
+@keyframes weather-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+@keyframes weather-rain {
+    0% { transform: translateY(-10px); opacity: 0; }
+    30% { opacity: 1; }
+    80%, 100% { transform: translateY(18px); opacity: 0; }
+}
+@keyframes weather-snow {
+    0% { transform: translateY(-8px) translateX(0); opacity: 0; }
+    30% { opacity: 1; }
+    50% { transform: translateY(8px) translateX(4px); }
+    100% { transform: translateY(22px) translateX(-2px); opacity: 0; }
+}
+@keyframes weather-flash {
+    0%, 90%, 100% { opacity: 0.1; }
+    92%, 95% { opacity: 1; }
 }
 
-.wxs-wrap {
-    container-type: inline-size;
-    --wxs-accent: #4285f4;
-    --wxs-sun: #f59e0b;
-    --wxs-rain: #60a5fa;
-    --wxs-snow: #bfdbfe;
+.weather-ani-sun {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.weather-ani-float {
+    animation: weather-float 4.5s ease-in-out infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.weather-drop {
+    position: absolute;
+    width: 2px;
+    background: #60a5fa;
+    border-radius: 1px;
+    animation: weather-rain 1.1s linear infinite;
+    opacity: 0;
+}
+.weather-flake {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #bfdbfe;
+    border-radius: 50%;
+    animation: weather-snow 2.2s linear infinite;
+    opacity: 0;
+}
+.weather-bolt {
+    animation: weather-flash 3.5s ease-in-out infinite;
+}
 
+.weather-result {
+    container-type: inline-size;
     margin-bottom: 12px;
     font-family: var(--font-sans, sans-serif);
     color: var(--text-primary);
     position: relative;
+    box-sizing: border-box;
 }
 
-/* ── Eyebrow / header ─────────────────────────── */
-
-.wxs-header {
+.weather-header {
     margin-bottom: 10px;
 }
 
-.wxs-eyebrow {
+.weather-eyebrow {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -35,26 +76,12 @@
     line-height: 1.4;
 }
 
-.wxs-eyebrow-label {
-    color: var(--text-secondary);
-}
-
-.wxs-eyebrow-location {
+.weather-location {
     color: var(--text-primary);
     font-weight: 600;
 }
 
-.wxs-eyebrow-sep {
-    opacity: 0.55;
-}
-
-.wxs-eyebrow-date {
-    color: var(--text-secondary);
-}
-
-/* ── Hero ──────────────────────────────────────── */
-
-.wxs-hero {
+.weather-hero {
     display: grid;
     grid-template-columns: 1.3fr 1fr;
     gap: 24px;
@@ -63,59 +90,28 @@
     margin-bottom: 12px;
     border: 1px solid var(--slot-inset-border, var(--border-light));
     border-radius: 16px;
-    background:
-        linear-gradient(
-            180deg,
-            color-mix(in srgb, var(--text-primary) 4%, transparent),
-            transparent 55%
-        ),
-        var(--slot-inset-bg, var(--bg-light, transparent));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--text-primary) 4%, transparent), transparent 55%), var(--slot-inset-bg, var(--bg-light, transparent));
     box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
-/* Warm tint by day, cool tint by night — echoes the sun/moon card. */
-.wxs-wrap[data-wxs-is-day="1"] .wxs-hero {
-    background:
-        radial-gradient(
-            130% 135% at 6% -25%,
-            color-mix(in srgb, var(--wxs-sun) 14%, transparent),
-            transparent 56%
-        ),
-        linear-gradient(
-            180deg,
-            color-mix(in srgb, var(--text-primary) 4%, transparent),
-            transparent 55%
-        ),
-        var(--slot-inset-bg, var(--bg-light, transparent));
+.weather-result[data-weather-is-day="1"] .weather-hero {
+    background: radial-gradient(130% 135% at 6% -25%, color-mix(in srgb, #f59e0b 14%, transparent), transparent 56%), linear-gradient(180deg, color-mix(in srgb, var(--text-primary) 4%, transparent), transparent 55%), var(--slot-inset-bg, var(--bg-light, transparent));
 }
 
-.wxs-wrap[data-wxs-is-day="0"] .wxs-hero {
-    background:
-        radial-gradient(
-            130% 135% at 6% -25%,
-            color-mix(in srgb, var(--wxs-accent) 16%, transparent),
-            transparent 56%
-        ),
-        linear-gradient(
-            180deg,
-            color-mix(in srgb, var(--text-primary) 5%, transparent),
-            transparent 55%
-        ),
-        var(--slot-inset-bg, var(--bg-light, transparent));
+.weather-result[data-weather-is-day="0"] .weather-hero {
+    background: radial-gradient(130% 135% at 6% -25%, color-mix(in srgb, #4285f4 16%, transparent), transparent 56%), linear-gradient(180deg, color-mix(in srgb, var(--text-primary) 5%, transparent), transparent 55%), var(--slot-inset-bg, var(--bg-light, transparent));
 }
 
-.wxs-hero-left {
+.weather-hero-left {
     display: grid;
     grid-template-columns: auto auto 1fr;
-    grid-template-areas:
-        "icon temp meta"
-        "icon temp meta";
+    grid-template-areas: "icon temp meta" "icon temp meta";
     align-items: center;
     gap: 8px 14px;
     min-width: 0;
 }
 
-.wxs-hero-icon {
+.weather-hero-icon {
     grid-area: icon;
     width: 68px;
     height: 68px;
@@ -125,1009 +121,555 @@
     flex-shrink: 0;
 }
 
-.wxs-hero-temp {
+.weather-temp-wrap {
     grid-area: temp;
     display: flex;
     align-items: flex-start;
-    line-height: 0.95;
-    white-space: nowrap;
+    line-height: 0.9;
 }
 
-.wxs-num {
-    font-size: clamp(2.6rem, 6vw, 3.6rem);
+.weather-temp {
+    font-size: clamp(3.2rem, 8.5cqi, 4rem);
     font-weight: 300;
-    color: var(--text-primary);
-    letter-spacing: -0.04em;
-    font-variant-numeric: tabular-nums;
-    transition: opacity 200ms ease;
-}
-
-.wxs-deg {
-    font-size: clamp(1.1rem, 2.8vw, 1.5rem);
-    font-weight: 300;
-    color: var(--text-secondary);
-    margin-top: 0.35em;
-    margin-left: 0.1em;
-    letter-spacing: -0.02em;
-}
-
-.wxs-hero-meta {
-    grid-area: meta;
-    display: grid;
-    gap: 4px;
-    min-width: 0;
-}
-
-.wxs-meta-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 0.88rem;
-    line-height: 1.45;
-    color: var(--text-secondary);
-}
-
-.wxs-meta-label {
-    color: var(--text-secondary);
-}
-
-.wxs-meta-value {
-    color: var(--text-primary);
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-}
-
-.wxs-hero-right {
-    display: grid;
-    gap: 6px;
-    text-align: right;
-    min-width: 0;
-}
-
-.wxs-hero-eyebrow {
-    font-size: 0.74rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-}
-
-.wxs-hero-date {
-    font-size: 1rem;
-    color: var(--text-primary);
-    font-weight: 500;
-}
-
-.wxs-hero-desc {
-    font-size: 1rem;
-    color: var(--text-secondary);
-    line-height: 1.4;
-}
-
-.wxs-hero-hilo {
-    margin-top: 4px;
-    font-size: 0.95rem;
-    color: var(--text-secondary);
-    display: flex;
-    justify-content: flex-end;
-    gap: 6px;
+    letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
 }
 
-.wxs-hilo-hi strong,
-.wxs-hilo-lo strong {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-.wxs-hilo-sep {
-    opacity: 0.55;
-}
-
-/* ── Tabs ─────────────────────────────────────── */
-
-.wxs-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 5px;
-    margin-bottom: 12px;
-    border: 1px solid var(--border-light);
-    border-radius: 100px;
-    background: var(--bg-light, transparent);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 5%, transparent);
-}
-
-.wxs-tab {
-    flex: 1 1 0;
-    padding: 8px 16px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    background: transparent;
-    border: none;
-    border-radius: 100px;
-    cursor: pointer;
-    font-family: inherit;
-    white-space: nowrap;
-    text-align: center;
-    transition:
-        color 160ms ease,
-        background-color 160ms ease,
-        box-shadow 160ms ease;
-}
-
-.wxs-tab:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover, rgba(255, 255, 255, 0.05));
-}
-
-.wxs-tab-active,
-.wxs-tab-active:hover {
-    color: #fff;
-    background: var(--wxs-accent);
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--wxs-accent) 38%, transparent);
-}
-
-/* ── Chart ────────────────────────────────────── */
-
-.wxs-chart-wrap {
-    border: 1px solid var(--slot-inset-border, var(--border-light));
-    border-radius: 16px;
-    padding: 12px 14px 10px;
-    margin-bottom: 12px;
-    background:
-        linear-gradient(
-            180deg,
-            color-mix(in srgb, var(--text-primary) 4%, transparent),
-            transparent 55%
-        ),
-        var(--slot-inset-bg, var(--bg-light, transparent));
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
-}
-
-.wxs-chart-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 6px;
-}
-
-.wxs-chart-title {
-    font-size: 0.74rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-}
-
-.wxs-chart-sub {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-}
-
-.wxs-chart {
-    position: relative;
-    width: 100%;
-    height: 140px;
-}
-
-.wxs-chart-scroll {
-    width: 100%;
-    height: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-}
-
-.wxs-chart svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-}
-
-.wxs-chart-grid line {
-    stroke: var(--border-light);
-    stroke-dasharray: 2 4;
-    opacity: 0.6;
-}
-
-.wxs-chart-axis text {
-    fill: var(--text-secondary);
-    font-size: 12px;
-    font-family: inherit;
-}
-
-.wxs-chart-label {
-    fill: var(--text-primary);
-    font-size: 12px;
-    font-weight: 600;
-    text-anchor: middle;
-    font-family: inherit;
-}
-
-.wxs-chart-area {
-    opacity: 0.18;
-}
-
-.wxs-chart-line {
-    fill: none;
-    stroke-width: 2.2;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-}
-
-.wxs-chart-bar {
-    transition: opacity 160ms ease;
-}
-
-.wxs-chart-point {
-    fill: var(--bg, #111);
-    stroke-width: 2;
-    pointer-events: none;
-}
-
-.wxs-chart-marker {
-    cursor: crosshair;
-    pointer-events: all;
-}
-
-.wxs-chart-label {
-    pointer-events: none;
-}
-
-.wxs-chart-line,
-.wxs-chart-area {
-    pointer-events: none;
-}
-
-.wxs-chart-tooltip {
-    position: absolute;
-    pointer-events: none;
-    background: var(--bg, #1a1a1a);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 8px 12px;
-    font-size: 0.88rem;
-    color: var(--text-primary);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    white-space: nowrap;
-    transform: translate(-50%, calc(-100% - 10px));
-    opacity: 0;
-    transition:
-        opacity 120ms ease,
-        left 80ms ease;
-    z-index: 2;
-    min-width: 112px;
-}
-
-.wxs-chart-tooltip::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: -5px;
-    width: 8px;
-    height: 8px;
-    background: var(--bg, #1a1a1a);
-    border-right: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    transform: translateX(-50%) rotate(45deg);
-}
-
-.wxs-chart-tooltip.wxs-tt-visible {
-    opacity: 1;
-}
-
-.wxs-chart-tooltip strong {
-    color: var(--text-primary);
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-}
-
-.wxs-chart-tooltip .wxs-tt-label {
-    display: block;
-    color: var(--text-secondary);
-    font-size: 0.74rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid var(--border-light);
-}
-
-.wxs-chart-tooltip .wxs-tt-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 14px;
-    line-height: 1.35;
-}
-
-.wxs-chart-tooltip .wxs-tt-row + .wxs-tt-row {
-    margin-top: 3px;
-}
-
-.wxs-chart-tooltip .wxs-tt-key {
-    color: var(--text-secondary);
-    font-size: 0.82rem;
-}
-
-.wxs-chart-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    margin-top: 6px;
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-}
-
-.wxs-chart-legend span {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.wxs-chart-legend i {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    display: inline-block;
-    font-style: normal;
-}
-
-/* ── Days ─────────────────────────────────────── */
-
-.wxs-days-label {
-    font-size: 0.74rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    margin-bottom: 10px;
-}
-
-.wxs-days-hint {
-    font-size: 0.74rem;
+.weather-deg {
+    font-size: clamp(1.2rem, 3.2cqi, 1.6rem);
     font-weight: 400;
-    letter-spacing: 0;
-    text-transform: none;
-    color: var(--text-secondary);
+    margin-top: 5px;
+    margin-left: 2px;
+    opacity: 0.85;
 }
 
-.wxs-days {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 6px;
-    margin-bottom: 12px;
-}
-
-.wxs-day {
-    position: relative;
-    border: 1px solid var(--border-light);
-    border-radius: 14px;
-    padding: 10px 4px;
-    text-align: center;
-    cursor: pointer;
-    user-select: none;
-    background:
-        linear-gradient(
-            180deg,
-            color-mix(in srgb, var(--text-primary) 3%, transparent),
-            transparent 60%
-        ),
-        var(--slot-inset-bg, var(--bg-light, transparent));
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 5%, transparent);
-    transition:
-        border-color 160ms ease,
-        background-color 160ms ease,
-        transform 160ms ease,
-        box-shadow 160ms ease;
-}
-
-.wxs-day:hover {
-    transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--wxs-accent) 42%, var(--border-light));
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
-}
-
-.wxs-day-active,
-.wxs-day-active:hover {
-    transform: none;
-    border-color: var(--wxs-accent);
-    background: color-mix(in srgb, var(--wxs-accent) 14%, transparent);
-    box-shadow: 0 4px 14px color-mix(in srgb, var(--wxs-accent) 22%, transparent);
-}
-
-.wxs-day-name {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-}
-
-.wxs-day-icon {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 28px;
-    margin-bottom: 4px;
-}
-
-.wxs-day-hi {
-    font-size: 0.96rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    font-variant-numeric: tabular-nums;
-}
-
-.wxs-day-lo {
-    font-size: 0.86rem;
-    color: var(--text-secondary);
-    margin-top: 2px;
-    font-variant-numeric: tabular-nums;
-}
-
-.wxs-day-precip {
-    margin-top: 6px;
-    font-size: 0.76rem;
-    color: var(--wxs-rain);
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-}
-
-.wxs-day-precip svg {
-    display: block;
-}
-
-.wxs-day-precip.wxs-day-precip-zero {
-    color: var(--text-secondary);
-    opacity: 0.55;
-}
-
-/* ── Details grid ────────────────────────────── */
-
-.wxs-details-label {
-    font-size: 0.74rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    margin-bottom: 6px;
-}
-
-.wxs-details {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
-.wxs-detail {
+.weather-hero-meta {
+    grid-area: meta;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 11px 13px;
-    border: 1px solid var(--border-light);
-    border-radius: 12px;
-    background:
-        linear-gradient(
-            180deg,
-            color-mix(in srgb, var(--text-primary) 3%, transparent),
-            transparent 60%
-        ),
-        var(--slot-inset-bg, var(--bg-light, transparent));
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 5%, transparent);
-    transition: border-color 160ms ease;
-}
-
-.wxs-detail:hover {
-    border-color: color-mix(in srgb, var(--wxs-accent) 32%, var(--border-light));
-}
-
-.wxs-detail-label {
-    font-size: 0.74rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-}
-
-.wxs-detail-value {
-    font-size: 1rem;
-    color: var(--text-primary);
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-}
-
-.wxs-detail-sub {
+    gap: 3px;
     font-size: 0.82rem;
     color: var(--text-secondary);
-    font-weight: 400;
-    margin-left: 4px;
-}
-
-/* ── Astronomy (combined sun + moon card) ────── */
-
-.wxs-astro {
-    margin-bottom: 10px;
-    padding: 5px;
-    border: 1px solid var(--slot-inset-border, var(--border-light));
-    border-radius: 16px;
-    background:
-        linear-gradient(
-            180deg,
-            color-mix(in srgb, var(--text-primary) 4%, transparent),
-            transparent 55%
-        ),
-        var(--slot-inset-bg, var(--bg-light, transparent));
-    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
-}
-
-.wxs-astro-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px;
-}
-
-.wxs-astro-col {
-    position: relative;
-    display: grid;
-    gap: 12px;
-    align-content: start;
-    padding: 14px 16px;
-    border-radius: 12px;
     min-width: 0;
 }
 
-.wxs-astro-col-sun {
-    background: radial-gradient(
-        130% 90% at 50% -25%,
-        color-mix(in srgb, var(--wxs-sun) 12%, transparent),
-        transparent 68%
-    );
+.weather-meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px dashed color-mix(in srgb, var(--text-secondary) 15%, transparent);
+    padding-bottom: 2px;
 }
 
-.wxs-astro-col-moon {
-    background: radial-gradient(
-        130% 90% at 50% -25%,
-        color-mix(in srgb, var(--wxs-accent) 13%, transparent),
-        transparent 68%
-    );
+.weather-meta-row strong {
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* Vertical hairline divider between the two columns (wide layout). */
-.wxs-astro-col-moon::before {
-    content: "";
-    position: absolute;
-    left: -3px;
-    top: 12px;
-    bottom: 12px;
-    width: 1px;
-    background: var(--border-light);
+.weather-hero-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    min-width: 0;
 }
 
-.wxs-astro-col-head {
+.weather-hero-eyebrow {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.weather-hero-date {
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+}
+
+.weather-desc {
+    font-size: clamp(1.05rem, 2.8cqi, 1.25rem);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.weather-hero-hilo {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+.weather-hero-hilo strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.weather-hero-hilo .weather-hilo-sep {
+    margin: 0 4px;
+    opacity: 0.5;
+}
+
+.weather-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.weather-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.weather-tab {
+    padding: 7px 15px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border-radius: 20px;
+    border: 1px solid var(--border-light, color-mix(in srgb, currentColor 18%, transparent));
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.weather-tab:hover {
+    background: var(--bg-hover, rgba(128,128,128,0.08));
+    color: var(--text-primary);
+}
+
+.weather-tab-active {
+    background: var(--primary, #4285f4) !important;
+    border-color: var(--primary, #4285f4) !important;
+    color: #fff !important;
+}
+
+.weather-chart-wrap {
+    padding: 12px 14px;
+    border: 1px solid var(--border-light, color-mix(in srgb, currentColor 14%, transparent));
+    border-radius: 14px;
+    background: var(--bg-light, transparent);
+    margin-bottom: 16px;
+    position: relative;
+}
+
+.weather-chart-head {
+    margin-bottom: 8px;
+}
+
+.weather-chart-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.weather-chart-sub {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+}
+
+.weather-chart {
+    height: 140px;
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+.weather-chart::-webkit-scrollbar {
+    display: none;
+}
+
+.weather-chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+}
+
+.weather-legend-item {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 6px;
+}
+
+.weather-legend-line {
+    display: inline-block;
+    width: 14px;
+    height: 3px;
+    border-radius: 1px;
+}
+
+.weather-legend-dashed {
+    border-top: 2.5px dotted var(--text-secondary);
+    background: transparent !important;
+}
+
+.weather-chart-tooltip {
+    position: absolute;
+    display: none;
+    background: var(--bg-light, var(--bg, Canvas));
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.weather-week-heading {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.weather-week-hint {
+    font-size: 0.74rem;
+    font-weight: 400;
+    opacity: 0.75;
+}
+
+.weather-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-bottom: 18px;
+}
+
+.weather-day-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 4px;
+    background: var(--bg-light, transparent);
+    border: 1px solid var(--border-light, color-mix(in srgb, currentColor 14%, transparent));
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.18s ease;
     min-width: 0;
 }
 
-.wxs-astro-ico {
-    display: inline-grid;
-    place-items: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    line-height: 1;
+.weather-day-card:hover {
+    background: var(--bg-hover, rgba(128,128,128,0.08));
+    border-color: var(--text-secondary);
 }
 
-.wxs-astro-ico-sun {
-    color: var(--wxs-sun);
-    background: color-mix(in srgb, var(--wxs-sun) 16%, transparent);
+.weather-day-card-active {
+    background: var(--slot-inset-bg, var(--bg-light, transparent)) !important;
+    border-color: var(--primary, #4285f4) !important;
+    box-shadow: 0 0 0 1px var(--primary, #4285f4);
 }
 
-.wxs-astro-ico-sun svg {
-    display: block;
+.weather-day-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.weather-day-card-active .weather-day-name {
+    color: var(--primary, #4285f4);
+}
+
+.weather-day-ico {
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.weather-day-temps {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.weather-day-hi {
+    color: var(--text-primary);
+}
+
+.weather-day-lo {
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+}
+
+.weather-details-label {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.weather-now-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.weather-now-item {
+    background: var(--bg-light, transparent);
+    border: 1px solid var(--border-light, color-mix(in srgb, currentColor 12%, transparent));
+    border-radius: 10px;
+    padding: 8px 10px;
+    min-width: 0;
+}
+
+.weather-now-label {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.weather-value {
+    font-size: 0.94rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.weather-detail-sub {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-left: 2px;
+}
+
+.weather-astro {
+    margin-bottom: 16px;
+}
+
+.weather-astro-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.weather-astro-col {
+    background: var(--bg-light, transparent);
+    border: 1px solid var(--border-light, color-mix(in srgb, currentColor 14%, transparent));
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.weather-astro-col-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.weather-astro-ico {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 18px;
     height: 18px;
 }
 
-.wxs-astro-ico-moon {
-    color: #dbeafe;
-    font-size: 1.05rem;
-    background: color-mix(in srgb, var(--wxs-accent) 16%, transparent);
-    box-shadow: inset -4px 0 0 color-mix(in srgb, var(--bg) 45%, transparent);
+.weather-astro-ico-sun {
+    color: #f59e0b;
 }
 
-.wxs-astro-col-name {
-    font-size: 0.74rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
+.weather-astro-ico-moon {
+    color: #e5e7eb;
 }
 
-.wxs-astro-phase {
+.weather-astro-phase {
     margin-left: auto;
-    display: grid;
-    justify-items: end;
-    gap: 1px;
-    min-width: 0;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-secondary);
     text-align: right;
 }
 
-.wxs-astro-phase-name {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    font-weight: 650;
-    line-height: 1.2;
+.weather-astro-phase-illum {
+    opacity: 0.75;
+    margin-left: 2px;
 }
 
-.wxs-astro-phase-illum {
-    color: var(--text-secondary);
-    font-size: 0.74rem;
-    font-variant-numeric: tabular-nums;
-}
-
-.wxs-astro-body {
-    display: grid;
-    grid-template-columns: minmax(64px, auto) minmax(0, 1fr) minmax(64px, auto);
+.weather-astro-body {
+    display: flex;
     align-items: center;
-    gap: 14px;
-}
-
-.wxs-astro-endpoint {
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-}
-
-.wxs-astro-endpoint-right {
-    justify-items: end;
-    text-align: right;
-}
-
-.wxs-astro-ep-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-}
-
-.wxs-astro-ep-time {
-    color: var(--text-primary);
-    font-size: 1.05rem;
-    font-weight: 650;
-    line-height: 1.15;
-    font-variant-numeric: tabular-nums;
-}
-
-.wxs-astro-relative {
-    color: var(--text-secondary);
-    font-size: 0.76rem;
-    font-weight: 500;
-    line-height: 1.2;
-    font-variant-numeric: tabular-nums;
-}
-
-.wxs-astro-track {
+    justify-content: space-between;
+    gap: 10px;
     position: relative;
-    align-self: center;
-    height: 56px;
-    min-width: 0;
+    padding-bottom: 2px;
 }
 
-.wxs-astro-arc {
-    display: block;
+.weather-astro-endpoint {
+    display: flex;
+    flex-direction: column;
+    min-width: 48px;
+}
+
+.weather-astro-endpoint-right {
+    text-align: right;
+    align-items: flex-end;
+}
+
+.weather-astro-ep-label {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+}
+
+.weather-astro-ep-time {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.weather-astro-relative {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+.weather-astro-track {
+    flex: 1;
+    height: 40px;
+    position: relative;
+    margin: 0 2px;
+}
+
+.weather-astro-arc {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
     height: 100%;
     overflow: visible;
 }
 
-.wxs-astro-arc-bg {
-    stroke: color-mix(in srgb, var(--border) 78%, var(--text-secondary));
-    opacity: 0.5;
-    stroke-linecap: round;
+.weather-astro-arc-bg {
+    stroke: color-mix(in srgb, var(--text-secondary) 15%, transparent);
+    stroke-dasharray: 2 2;
 }
 
-.wxs-astro-arc-fill {
-    opacity: 0.9;
-    stroke-linecap: round;
+.weather-astro-arc-fill {
+    stroke-dasharray: 200;
+    stroke-dashoffset: 200;
+    animation: weather-spin 1.5s ease-out forwards;
 }
 
-.wxs-sun-arc-fill {
-    stroke: var(--wxs-sun);
-    filter: drop-shadow(0 1px 4px color-mix(in srgb, var(--wxs-sun) 28%, transparent));
+.weather-sun-arc-fill {
+    stroke: color-mix(in srgb, #f59e0b 50%, transparent);
+    stroke-dashoffset: calc(200 - (200 * var(--weather-sun-pct, 0%)) / 100);
 }
 
-.wxs-moon-arc-fill {
-    stroke: color-mix(in srgb, var(--wxs-accent) 60%, #dbeafe);
-    filter: drop-shadow(0 1px 4px color-mix(in srgb, var(--wxs-accent) 20%, transparent));
+.weather-moon-arc-fill {
+    stroke: color-mix(in srgb, var(--text-primary) 35%, transparent);
+    stroke-dashoffset: 0;
 }
 
-.wxs-sun-dot,
-.wxs-moon-dot {
+.weather-sun-dot,
+.weather-moon-dot {
     position: absolute;
-    top: 0;
-    width: 13px;
-    height: 13px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    background: var(--wxs-sun);
-    border: 2px solid var(--bg-light, var(--bg));
-    box-shadow:
-        0 0 0 2px color-mix(in srgb, var(--wxs-sun) 24%, transparent),
-        0 3px 12px color-mix(in srgb, var(--wxs-sun) 56%, transparent);
-    transform: translate(-50%, -50%);
-    transition:
-        left 0.6s ease,
-        top 0.6s ease;
-    pointer-events: none;
+    bottom: -3px;
+    transform: translateX(-50%);
+    box-shadow: 0 0 6px currentColor;
+    z-index: 2;
 }
 
-.wxs-moon-dot {
-    width: 12px;
-    height: 12px;
-    background: #dbeafe;
-    box-shadow:
-        0 0 0 2px color-mix(in srgb, #dbeafe 22%, transparent),
-        0 3px 12px color-mix(in srgb, var(--wxs-accent) 32%, transparent);
+.weather-sun-dot {
+    background: #f59e0b;
+    color: #f59e0b;
+    bottom: calc(40px * sin(acos((var(--weather-sun-pct, 0%) - 50) / 50)) - 3px);
 }
 
-.wxs-moon-dot--down {
-    opacity: 0.38;
-    background: color-mix(in srgb, #dbeafe 55%, var(--text-secondary));
-    box-shadow:
-        0 0 0 2px color-mix(in srgb, var(--text-secondary) 16%, transparent),
-        0 2px 6px color-mix(in srgb, var(--text-secondary) 20%, transparent);
+.weather-moon-dot {
+    background: #e5e7eb;
+    color: #e5e7eb;
 }
 
-.wxs-astro-apex {
+.weather-astro-apex {
     position: absolute;
     left: 50%;
-    bottom: -6px;
     transform: translateX(-50%);
-    display: inline-flex;
-    align-items: baseline;
-    gap: 5px;
-    white-space: nowrap;
-    color: var(--text-primary);
-    font-size: 0.78rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-}
-
-.wxs-astro-apex-label {
-    font-size: 0.64rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-}
-
-/* ── Footer ──────────────────────────────────── */
-
-.wxs-footer {
+    bottom: 2px;
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    font-size: 0.82rem;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.68rem;
     color: var(--text-secondary);
-    padding-top: 12px;
-    border-top: 1px solid var(--border-light);
+    opacity: 0.85;
 }
 
-.wxs-footer a {
-    color: var(--text-link, var(--wxs-accent));
+.weather-astro-apex span {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.weather-footer {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    border-top: 1px dashed color-mix(in srgb, var(--text-secondary) 15%, transparent);
+    padding-top: 10px;
+    margin-top: 12px;
+}
+
+.weather-footer a {
+    color: var(--primary, #4285f4);
     text-decoration: none;
 }
 
-.wxs-footer a:hover {
+.weather-footer a:hover {
     text-decoration: underline;
 }
 
-.wxs-footer-sep {
-    opacity: 0.55;
+.weather-footer-sep {
+    opacity: 0.6;
 }
 
-/* ── Animated hero icons ─────────────────────── */
-
-.wxs-ani-float {
-    animation: wxs-float 4s ease-in-out infinite;
-}
-.wxs-ani-sun {
-    animation: wxs-float 4s ease-in-out infinite;
-}
-
-@keyframes wxs-float {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-5px);
-    }
-}
-
-@keyframes wxs-spin {
-    from {
-        transform: rotate(0);
-    }
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-@keyframes wxs-fadein {
-    from {
-        opacity: 0;
-        transform: translateY(4px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.wxs-drop {
-    position: absolute;
-    width: 2px;
-    border-radius: 2px;
-    background: var(--wxs-rain);
-    opacity: 0.85;
-    animation: wxs-rain 1.1s linear infinite;
-}
-
-@keyframes wxs-rain {
-    0% {
-        transform: translateY(-2px);
-        opacity: 0;
-    }
-    50% {
-        opacity: 0.85;
-    }
-    100% {
-        transform: translateY(18px);
-        opacity: 0;
-    }
-}
-
-.wxs-flake {
-    position: absolute;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--wxs-snow);
-    animation: wxs-snow 1.4s linear infinite;
-}
-
-@keyframes wxs-snow {
-    0% {
-        transform: translateY(-2px);
-        opacity: 0;
-    }
-    50% {
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(14px);
-        opacity: 0;
-    }
-}
-
-.wxs-bolt {
-    animation: wxs-flash 2s ease-in-out infinite;
-}
-
-@keyframes wxs-flash {
-    0%,
-    100% {
-        opacity: 0.45;
-    }
-    50% {
-        opacity: 1;
-    }
-}
-
-.wxs-hero-icon > div {
-    animation: wxs-fadein 0.35s ease;
-}
-
-/* ── Responsive ──────────────────────────────── */
-
-@container (max-width: 720px) {
-    .wxs-hero {
+@container (max-width: 580px) {
+    .weather-hero {
         grid-template-columns: 1fr;
         gap: 16px;
     }
-
-    .wxs-hero-right {
+    .weather-hero-right {
         text-align: left;
+        align-items: flex-start;
     }
-
-    .wxs-hero-hilo {
-        justify-content: flex-start;
+    .weather-days {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
     }
-
-    .wxs-details {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .weather-day-card:nth-child(n+5) {
+        display: none;
     }
-}
-
-@container (max-width: 560px) {
-    .wxs-hero-left {
-        grid-template-columns: auto 1fr;
-        grid-template-areas:
-            "icon temp"
-            "meta meta";
+    .weather-now-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
-
-    .wxs-hero-icon {
-        width: 72px;
-        height: 72px;
-    }
-
-    .wxs-days {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-
-    .wxs-astro-grid {
+    .weather-astro-grid {
         grid-template-columns: 1fr;
-        gap: 0;
-    }
-
-    /* Divider becomes a horizontal rule between the stacked columns. */
-    .wxs-astro-col-moon::before {
-        left: 14px;
-        right: 14px;
-        top: -1px;
-        bottom: auto;
-        width: auto;
-        height: 1px;
-    }
-}
-
-@container (max-width: 420px) {
-    .wxs-days {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .wxs-details {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .wxs-astro-body {
-        grid-template-columns: 1fr 1fr;
-        grid-template-areas:
-            "rise set"
-            "track track";
-        gap: 12px;
-    }
-
-    .wxs-astro-endpoint {
-        grid-area: rise;
-    }
-
-    .wxs-astro-endpoint-right {
-        grid-area: set;
-    }
-
-    .wxs-astro-track {
-        grid-area: track;
-        margin-top: 2px;
     }
 }

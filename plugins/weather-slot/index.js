@@ -24,9 +24,6 @@ async function cacheSet(cache, key, value, ttlMs) {
 }
 
 const settings = {
-  // Default to imperial units for brand-new installs. Existing saved
-  // preferences still win because `configure(s)` below only falls back to
-  // these defaults when the stored value is undefined/empty/invalid.
   units: "fahrenheit",
   windUnit: "mph",
   pressureUnit: "mmHg",
@@ -116,10 +113,6 @@ const PRECIP_LABEL = {
   inch: "in",
 };
 
-// Leading natural-language phrases that should route to this plugin.
-// Same list previously declared via the command's `naturalLanguagePhrases`;
-// now the slot's own trigger() checks them manually because degoog's
-// client-side natural-language matcher only runs for commands.
 const NATURAL_LANGUAGE_PHRASES = [
   "weather in",
   "weather for",
@@ -176,14 +169,8 @@ const NATURAL_LANGUAGE_PHRASES = [
   "sunset for",
 ];
 
-// Bang prefixes the slot should accept (mirrors the old command's trigger +
-// aliases). Also used by execute() to strip the prefix off the query before
-// parsing the city out.
 const BANG_PREFIX_RX = /^!(weather|forecast|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|previsioni|tiempo|clima|pronóstico|pronostico|погода|прогноз|метео|wetter|vorhersage|tempo|previsão|alba|tramonto)\b\s*/i;
 
-// Regex used for trailing-keyword matching ("rome weather", "london forecast
-// today"). Kept loose; the slot's trigger() does further checks to make sure
-// there's an actual location token in the query.
 const WEATHER_KEYWORD_RX =
   /\b(weather|forecast|temperature|sunrise|sunset|météo|meteo|prévision|prevision|prévisions|previsions|previsioni|tiempo|clima|pronóstico|pronostico|погода|прогноз|метео|wetter|vorhersage|temperatur|sonnenaufgang|sonnenuntergang|tempo|previsão|temperatura|alba|tramonto)\b/i;
 
@@ -208,7 +195,7 @@ const slotDef = {
   id: "weather",
   name: "Weather",
   description:
-    "Shows current weather, interactive charts, and a 7-day forecast with animated icons. Usage: !weather <city>, or natural queries like 'weather in rome' and 'rome weather'.",
+    "Shows weather forecast.",
   isClientExposed: false,
   position: "above-results",
 
@@ -217,8 +204,6 @@ const slotDef = {
       key: "units",
       label: "Temperature units",
       type: "select",
-      // Imperial first so the selector's first option matches the
-      // module-level default (`units: "fahrenheit"`).
       options: ["fahrenheit", "celsius"],
       description: "Unit for temperature display.",
     },
@@ -226,7 +211,6 @@ const slotDef = {
       key: "windUnit",
       label: "Wind speed units",
       type: "select",
-      // Imperial first to match the default (`windUnit: "mph"`).
       options: ["mph", "kmh", "ms", "kn"],
       description:
         "Unit for wind speed. mph = miles/hour, kmh = km/h, ms = m/s, kn = knots.",
@@ -235,8 +219,6 @@ const slotDef = {
       key: "pressureUnit",
       label: "Pressure units",
       type: "select",
-      // Default first (`pressureUnit: "mmHg"`), then the other imperial
-      // option (inHg), then metric.
       options: ["mmHg", "inHg", "hPa", "kPa"],
       description: "Unit for atmospheric pressure.",
     },
@@ -244,7 +226,6 @@ const slotDef = {
       key: "precipUnit",
       label: "Precipitation units",
       type: "select",
-      // Imperial first to match the default (`precipUnit: "inch"`).
       options: ["inch", "mm"],
       description: "Unit for precipitation amounts.",
     },
@@ -304,19 +285,8 @@ const slotDef = {
       return Boolean(settings.defaultCity);
     }
 
-    // Always accept our bang prefixes — this is the "bang is an addition
-    // to the slot" behavior the user wants. Works even if degoog's core
-    // has no matching command registered for these triggers.
     if (BANG_PREFIX_RX.test(q)) return true;
 
-    // Slot-only plugin: natural-language triggering IS the plugin
-    // (there's no companion command export). A user-facing "Natural
-    // language" toggle would only ever mean "disable the plugin
-    // entirely", which duplicates degoog's own plugin-enable toggle —
-    // so no gating is applied here. Bangs are handled above; the rest
-    // of this function is unconditional NL matching.
-
-    // Leading phrase match ("weather in rome", "forecast for paris", etc.)
     for (const phrase of NATURAL_LANGUAGE_PHRASES) {
       const p = phrase.toLowerCase();
       if (lower === p) return false;
@@ -325,8 +295,6 @@ const slotDef = {
       }
     }
 
-    // First-word trigger/alias fallback ("weather rome", "forecast paris",
-    // Russian/Ukrainian equivalents).
     const firstWord = lower.split(/\s+/)[0];
     if (
       firstWord === "weather" ||
@@ -342,14 +310,9 @@ const slotDef = {
       firstWord === "погода" ||
       firstWord === "метео"
     ) {
-      // Require at least one more word so bare "weather" doesn't trigger.
       if (lower.includes(" ")) return hasLikelyLocationToken(q);
     }
 
-    // Trailing-keyword / anywhere-in-query match ("rome weather",
-    // "london forecast today", "paris temperature tomorrow"). Needs at
-    // least one non-keyword token left after stripping the weather words
-    // and fillers, so "weather today" alone doesn't trigger.
     if (WEATHER_KEYWORD_RX.test(q)) {
       if (hasLikelyLocationToken(q)) return true;
     }
@@ -371,12 +334,8 @@ const slotDef = {
   },
 
   async execute(args, context) {
-    // Only render on the "all" tab
     if (context?.tab && context.tab !== "all") return { html: "" };
 
-    // Slot receives the full user query (bang and all); strip the bang
-    // prefix up front so the rest of the parser doesn't have to know
-    // about it.
     const city = String(args || "")
       .replace(BANG_PREFIX_RX, "")
       .replace(
@@ -388,12 +347,6 @@ const slotDef = {
         "",
       )
       .replace(/^(in|for|at|в|у|для|à|dans|pour|en|para|für|bei|a|per|em)(?![\p{L}\p{N}_])\s+/iu, "")
-      // Also strip trailing weather keywords so "romania weather",
-      // "london forecast today", "paris temperature tomorrow", and the
-      // Russian/Ukrainian variants all reduce to just the location. This
-      // lets the companion slot (which catches trailing-keyword queries
-      // that degoog's prefix-only natural-language matcher skips) reuse
-      // this same execute path without a separate parser.
       .replace(
         /\s+(weather|forecast|temperature|sunrise|sunset|погода|прогноз|метео|wetter|vorhersage|tempo|previsão|previsioni|alba|tramonto|meteo|météo|tiempo|clima|pronóstico|pronostico|temperatura|température)(?![\p{L}\p{N}_])(\s+(today|tomorrow)(?![\p{L}\p{N}_]))?\s*$/iu,
         "",
@@ -413,7 +366,7 @@ const slotDef = {
     try {
       const doFetch =
         typeof context?.fetch === "function"
-          ? (...args) => context.fetch(...args)
+          ? context.fetch
           : externalFetch;
       const geoCacheKey = `geo:${(context?.lang || "en").toLowerCase()}:${targetCity.toLowerCase()}`;
       let geoData = await cacheGet(weatherCache, geoCacheKey);
@@ -462,8 +415,6 @@ const slotDef = {
         targetCity;
       const regionName = addr.state || addr.region || "";
       const countryName = addr.country || "";
-      // Case-insensitive dedupe so we don't render "kerala, Kerala, India"
-      // when the matched OSM feature is itself a state/region/country.
       const _seenLocParts = new Set();
       const displayName = [cityName, regionName, countryName]
         .map((s) => (s == null ? "" : String(s)).trim())
@@ -590,7 +541,6 @@ const slotDef = {
         daily.precipitation_probability_max?.[todayIdx] ?? 0,
       );
 
-      // Sunrise/sunset for today
       const now = new Date();
       const sunrise = _safeApiDate(daily.sunrise?.[0], utcOffsetSeconds);
       const sunset = _safeApiDate(daily.sunset?.[0], utcOffsetSeconds);
@@ -611,7 +561,6 @@ const slotDef = {
         );
       }
 
-      // Closest hourly index to "now"
       let nowIdx = 0;
       if (Array.isArray(hourly.time)) {
         let smallest = Infinity;
@@ -628,12 +577,9 @@ const slotDef = {
         ? _fmtVisibility(hourly.visibility[nowIdx], settings.units)
         : "—";
 
-      // Day names
-      // Build per-day data, including full hourly arrays for charts
       const daysData = (daily.time || []).map((tCode, i) => {
         const d = _safeApiDate(`${tCode}T12:00:00`, utcOffsetSeconds) || new Date();
         const weekday = _weekdayAt(d, utcOffsetSeconds);
-        const lang = context?.lang || "en-US";
         const name = i === 0 ? "{{ t:plugin-weather-slot.today }}" : `{{ t:plugin-weather-slot.weekday_short_${weekday} }}`;
         const longName = i === 0 ? "{{ t:plugin-weather-slot.today }}" : `{{ t:plugin-weather-slot.weekday_long_${weekday} }}`;
         const dayDateLabel = _dateFmtAt(d, utcOffsetSeconds, context);
@@ -656,7 +602,6 @@ const slotDef = {
           : "—";
         const daylight = _fmtDuration(daily.daylight_duration?.[i]);
 
-        // Per-day sun info
         const sr = _safeApiDate(daily.sunrise?.[i], utcOffsetSeconds);
         const ss = _safeApiDate(daily.sunset?.[i], utcOffsetSeconds);
         const nextSr = _safeApiDate(
@@ -665,8 +610,8 @@ const slotDef = {
         );
         const srStr = sr ? _timeFmtAt(sr, utcOffsetSeconds) : "—";
         const ssStr = ss ? _timeFmtAt(ss, utcOffsetSeconds) : "—";
-        const srRelative = _fmtRelativeEvent(sr, now, context);
-        const ssRelative = _fmtRelativeEvent(ss, now, context);
+        const srRelative = sr ? _fmtRelativeEvent(sr, now, context) : "—";
+        const ssRelative = ss ? _fmtRelativeEvent(ss, now, context) : "—";
 
         let pct = 50;
         if (sr && ss) {
@@ -689,7 +634,6 @@ const slotDef = {
           context,
         });
 
-        // Hourly slice for this day (24 entries, padded if missing)
         const start = i * 24;
         const end = start + 24;
         const hourly24 = {
@@ -854,22 +798,9 @@ const slotDef = {
   },
 };
 
-// Single-capability plugin: this file exports only a slot. The slot's
-// own `trigger(query)` recognises the `!weather` / `!forecast` / etc.
-// bang prefixes, so the bang behaviour is an addition to the slot rather
-// than a separate command capability. This keeps Settings → Plugins to a
-// single row for Weather (see AGENTS.md › "Collapsing to one capability
-// per folder"). Supported activations:
-//   • `!weather <city>` (and `!forecast`, `!погода`, `!метео`, `!прогноз`)
-//   • Leading natural-language phrases (`weather in rome`, `forecast for paris`)
-//   • First-word trigger (`weather rome`, `forecast paris`)
-//   • Trailing / anywhere-in-query keyword (`rome weather`,
-//     `london forecast today`, `paris temperature tomorrow`)
 export const slot = slotDef;
 export const slotPlugin = slotDef;
 export default slotDef;
-
-// ───────── helpers ─────────
 
 function _pick(value, allowed, fallback) {
   return allowed.includes(value) ? value : fallback;
@@ -902,7 +833,6 @@ function _convertPressure(hpa, unit) {
 function _fmtVisibility(meters, units) {
   if (!Number.isFinite(meters)) return "—";
   if (units === "fahrenheit") {
-    // Imperial -> miles
     const mi = meters / 1609.344;
     if (mi >= 10) return `${Math.round(mi)} mi`;
     return `${mi.toFixed(1)} mi`;
@@ -928,7 +858,7 @@ function _fmtRelativeEvent(date, now = new Date(), context = null) {
   const hours = Math.floor(absMinutes / 60);
   const minutes = absMinutes % 60;
   const label = `${hours}h ${String(minutes).padStart(2, "0")}m`;
-  
+
   const lang = (context?.lang || "en-US").split('-')[0].toLowerCase();
   if (lang === "fr") {
     return diffMs >= 0 ? `dans ${label}` : `il y a ${label}`;
@@ -1041,7 +971,6 @@ function _uvLevel(uv) {
   return "{{ t:plugin-weather-slot.uvExtreme }}";
 }
 
-// Compact SunCalc-style astronomy formulas for no-key moon data.
 const ASTRO_RAD = Math.PI / 180;
 const ASTRO_DAY_MS = 86400000;
 const ASTRO_J1970 = 2440588;
@@ -1329,7 +1258,6 @@ function _moonTrackNow(now, rise, set, lat, lon) {
     else if (nowT >= setT) nowPct = 100;
     else nowPct = Math.round(((nowT - riseT) / (setT - riseT)) * 100);
   } else if (nowT > setT && nowT < riseT) {
-    // Below horizon between morning set and evening rise.
     nowPct = 0;
   } else if (nowT >= riseT) {
     const end = setT + ASTRO_DAY_MS;

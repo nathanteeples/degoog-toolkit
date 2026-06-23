@@ -1,16 +1,12 @@
 (function () {
   "use strict";
 
-  // ────────────────────────────────────────────────
-  // Icons — hero (big animated) and small (days/tabs)
-  // ────────────────────────────────────────────────
-
   const ICONS_HERO = {
     sun() {
       return (
-        '<div class="wxs-ani-sun"><svg width="80" height="80" viewBox="0 0 56 56" fill="none">' +
+        '<div class="weather-ani-sun"><svg width="80" height="80" viewBox="0 0 56 56" fill="none">' +
         '<circle cx="28" cy="28" r="11" fill="#f59e0b" opacity=".9"/>' +
-        '<g style="animation:wxs-spin 14s linear infinite;transform-origin:28px 28px">' +
+        '<g style="animation:weather-spin 14s linear infinite;transform-origin:28px 28px">' +
         '<line x1="28" y1="5" x2="28" y2="11" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>' +
         '<line x1="28" y1="45" x2="28" y2="51" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>' +
         '<line x1="5" y1="28" x2="11" y2="28" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>' +
@@ -24,7 +20,7 @@
     },
     moon() {
       return (
-        '<div class="wxs-ani-sun"><svg width="80" height="80" viewBox="0 0 56 56" fill="none">' +
+        '<div class="weather-ani-sun"><svg width="80" height="80" viewBox="0 0 56 56" fill="none">' +
         '<path d="M38 32c-8 0-14-6-14-14 0-2 .4-4 1-5.8C16.5 13.5 10 20.6 10 29c0 9.4 7.6 17 17 17 7 0 13-4.3 15.6-10.4-1.5.3-3 .4-4.6.4z" fill="#e5e7eb" opacity=".9"/>' +
         '<circle cx="15" cy="14" r="1.4" fill="#e5e7eb" opacity=".7"/>' +
         '<circle cx="46" cy="18" r="1" fill="#e5e7eb" opacity=".6"/>' +
@@ -34,7 +30,7 @@
     },
     partly() {
       return (
-        '<div class="wxs-ani-float"><div style="position:relative;width:86px;height:72px">' +
+        '<div class="weather-ani-float"><div style="position:relative;width:86px;height:72px">' +
         '<div style="position:absolute;top:4px;left:6px;width:30px;height:30px;border-radius:50%;background:#f59e0b;opacity:.85"></div>' +
         '<div style="position:absolute;bottom:6px;left:14px;right:2px;height:30px;background:var(--text-secondary);opacity:.55;border-radius:16px"></div>' +
         '<div style="position:absolute;width:28px;height:28px;background:var(--text-secondary);opacity:.55;border-radius:50%;bottom:18px;left:16px"></div>' +
@@ -44,7 +40,7 @@
     },
     cloud() {
       return (
-        '<div class="wxs-ani-float"><div style="position:relative;width:88px;height:60px">' +
+        '<div class="weather-ani-float"><div style="position:relative;width:88px;height:60px">' +
         '<div style="position:absolute;bottom:2px;left:0;right:0;height:30px;background:var(--text-secondary);opacity:.55;border-radius:16px"></div>' +
         '<div style="position:absolute;width:30px;height:30px;background:var(--text-secondary);opacity:.55;border-radius:50%;bottom:14px;left:10px"></div>' +
         '<div style="position:absolute;width:24px;height:24px;background:var(--text-secondary);opacity:.55;border-radius:50%;bottom:16px;left:34px"></div>' +
@@ -53,7 +49,7 @@
     },
     fog() {
       return (
-        '<div class="wxs-ani-float"><div style="position:relative;width:88px;height:70px">' +
+        '<div class="weather-ani-float"><div style="position:relative;width:88px;height:70px">' +
         '<div style="position:absolute;top:4px;left:0;right:0;height:28px;background:var(--text-secondary);opacity:.5;border-radius:14px"></div>' +
         '<div style="position:absolute;width:26px;height:26px;background:var(--text-secondary);opacity:.5;border-radius:50%;top:2px;left:12px"></div>' +
         '<div style="position:absolute;width:22px;height:22px;background:var(--text-secondary);opacity:.5;border-radius:50%;top:4px;left:36px"></div>' +
@@ -65,41 +61,41 @@
     },
     rain() {
       return (
-        '<div class="wxs-ani-float"><div style="position:relative;width:88px;height:78px">' +
+        '<div class="weather-ani-float"><div style="position:relative;width:88px;height:78px">' +
         '<div style="position:absolute;top:4px;left:0;right:0;height:28px;background:var(--text-secondary);opacity:.55;border-radius:14px"></div>' +
         '<div style="position:absolute;width:28px;height:28px;background:var(--text-secondary);opacity:.55;border-radius:50%;top:-6px;left:12px"></div>' +
         '<div style="position:absolute;width:22px;height:22px;background:var(--text-secondary);opacity:.55;border-radius:50%;top:-2px;left:36px"></div>' +
         '<div style="position:absolute;bottom:4px;left:6px;right:6px;height:26px">' +
-        '<div class="wxs-drop" style="left:8px;height:11px;animation-delay:0s"></div>' +
-        '<div class="wxs-drop" style="left:22px;height:14px;animation-delay:.25s"></div>' +
-        '<div class="wxs-drop" style="left:38px;height:10px;animation-delay:.1s"></div>' +
-        '<div class="wxs-drop" style="left:54px;height:12px;animation-delay:.45s"></div>' +
-        '<div class="wxs-drop" style="left:70px;height:11px;animation-delay:.2s"></div>' +
+        '<div class="weather-drop" style="left:8px;height:11px;animation-delay:0s"></div>' +
+        '<div class="weather-drop" style="left:22px;height:14px;animation-delay:.25s"></div>' +
+        '<div class="weather-drop" style="left:38px;height:10px;animation-delay:.1s"></div>' +
+        '<div class="weather-drop" style="left:54px;height:12px;animation-delay:.45s"></div>' +
+        '<div class="weather-drop" style="left:70px;height:11px;animation-delay:.2s"></div>' +
         "</div></div></div>"
       );
     },
     snow() {
       return (
-        '<div class="wxs-ani-float"><div style="position:relative;width:88px;height:78px">' +
+        '<div class="weather-ani-float"><div style="position:relative;width:88px;height:78px">' +
         '<div style="position:absolute;top:4px;left:0;right:0;height:28px;background:var(--text-secondary);opacity:.5;border-radius:14px"></div>' +
         '<div style="position:absolute;width:28px;height:28px;background:var(--text-secondary);opacity:.5;border-radius:50%;top:-6px;left:12px"></div>' +
         '<div style="position:absolute;width:22px;height:22px;background:var(--text-secondary);opacity:.5;border-radius:50%;top:-2px;left:36px"></div>' +
         '<div style="position:absolute;bottom:6px;left:6px;right:6px;height:22px">' +
-        '<div class="wxs-flake" style="left:10px;animation-delay:0s"></div>' +
-        '<div class="wxs-flake" style="left:28px;animation-delay:.4s"></div>' +
-        '<div class="wxs-flake" style="left:46px;animation-delay:.2s"></div>' +
-        '<div class="wxs-flake" style="left:64px;animation-delay:.6s"></div>' +
+        '<div class="weather-flake" style="left:10px;animation-delay:0s"></div>' +
+        '<div class="weather-flake" style="left:28px;animation-delay:.4s"></div>' +
+        '<div class="weather-flake" style="left:46px;animation-delay:.2s"></div>' +
+        '<div class="weather-flake" style="left:64px;animation-delay:.6s"></div>' +
         "</div></div></div>"
       );
     },
     storm() {
       return (
-        '<div class="wxs-ani-float"><div style="position:relative;width:88px;height:82px">' +
+        '<div class="weather-ani-float"><div style="position:relative;width:88px;height:82px">' +
         '<div style="position:absolute;top:4px;left:0;right:0;height:28px;background:var(--text-secondary);opacity:.6;border-radius:14px"></div>' +
         '<div style="position:absolute;width:28px;height:28px;background:var(--text-secondary);opacity:.6;border-radius:50%;top:-6px;left:12px"></div>' +
         '<div style="position:absolute;width:22px;height:22px;background:var(--text-secondary);opacity:.6;border-radius:50%;top:-2px;left:36px"></div>' +
         '<div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%)">' +
-        '<svg class="wxs-bolt" width="22" height="32" viewBox="0 0 18 26" fill="none"><path d="M11 2L3 14h7l-3 10 10-14h-7z" fill="#f59e0b" stroke="#f59e0b" stroke-width="1" stroke-linejoin="round"/></svg>' +
+        '<svg class="weather-bolt" width="22" height="32" viewBox="0 0 18 26" fill="none"><path d="M11 2L3 14h7l-3 10 10-14h-7z" fill="#f59e0b" stroke="#f59e0b" stroke-width="1" stroke-linejoin="round"/></svg>' +
         "</div></div></div>"
       );
     },
@@ -110,11 +106,7 @@
     const sec = "var(--text-secondary)";
     if (type === "sun") {
       return (
-        '<svg width="' +
-        s +
-        '" height="' +
-        s +
-        '" viewBox="0 0 20 20" fill="none">' +
+        '<svg width="' + s + '" height="' + s + '" viewBox="0 0 20 20" fill="none">' +
         '<circle cx="10" cy="10" r="4.5" fill="#f59e0b" opacity=".9"/>' +
         '<g stroke="#f59e0b" stroke-width="1.4" stroke-linecap="round">' +
         '<line x1="10" y1="1.5" x2="10" y2="3.5"/>' +
@@ -130,83 +122,43 @@
     }
     if (type === "moon") {
       return (
-        '<svg width="' +
-        s +
-        '" height="' +
-        s +
-        '" viewBox="0 0 20 20" fill="none">' +
+        '<svg width="' + s + '" height="' + s + '" viewBox="0 0 20 20" fill="none">' +
         '<path d="M14 11.5c-3 0-5.5-2.5-5.5-5.5 0-.8.2-1.5.5-2.2A6.5 6.5 0 1016.2 14c-.7.3-1.5.5-2.2.5z" fill="#e5e7eb" opacity=".9"/>' +
         "</svg>"
       );
     }
     if (type === "partly") {
       return (
-        '<svg width="' +
-        s +
-        '" height="' +
-        s +
-        '" viewBox="0 0 20 20" fill="none">' +
+        '<svg width="' + s + '" height="' + s + '" viewBox="0 0 20 20" fill="none">' +
         '<circle cx="7" cy="7.5" r="3.6" fill="#f59e0b" opacity=".8"/>' +
-        '<ellipse cx="11.5" cy="12.5" rx="6" ry="3.8" fill="' +
-        sec +
-        '" opacity=".6"/>' +
-        '<ellipse cx="7" cy="11.5" rx="4.8" ry="3.2" fill="' +
-        sec +
-        '" opacity=".5"/>' +
+        '<ellipse cx="11.5" cy="12.5" rx="6" ry="3.8" fill="' + sec + '" opacity=".6"/>' +
+        '<ellipse cx="7" cy="11.5" rx="4.8" ry="3.2" fill="' + sec + '" opacity=".5"/>' +
         "</svg>"
       );
     }
     if (type === "cloud") {
       return (
-        '<svg width="' +
-        s +
-        '" height="' +
-        s +
-        '" viewBox="0 0 20 20" fill="none">' +
-        '<ellipse cx="7" cy="10.5" rx="4.8" ry="3.2" fill="' +
-        sec +
-        '" opacity=".55"/>' +
-        '<ellipse cx="12" cy="9.5" rx="5.6" ry="3.8" fill="' +
-        sec +
-        '" opacity=".7"/>' +
+        '<svg width="' + s + '" height="' + s + '" viewBox="0 0 20 20" fill="none">' +
+        '<ellipse cx="7" cy="10.5" rx="4.8" ry="3.2" fill="' + sec + '" opacity=".55"/>' +
+        '<ellipse cx="12" cy="9.5" rx="5.6" ry="3.8" fill="' + sec + '" opacity=".7"/>' +
         "</svg>"
       );
     }
     if (type === "fog") {
       return (
-        '<svg width="' +
-        s +
-        '" height="' +
-        s +
-        '" viewBox="0 0 20 20" fill="none">' +
-        '<ellipse cx="10" cy="7.5" rx="6" ry="3.2" fill="' +
-        sec +
-        '" opacity=".55"/>' +
-        '<line x1="3" y1="12" x2="17" y2="12" stroke="' +
-        sec +
-        '" stroke-width="1.3" stroke-linecap="round" opacity=".7"/>' +
-        '<line x1="5" y1="15" x2="15" y2="15" stroke="' +
-        sec +
-        '" stroke-width="1.3" stroke-linecap="round" opacity=".5"/>' +
-        '<line x1="4" y1="18" x2="13" y2="18" stroke="' +
-        sec +
-        '" stroke-width="1.3" stroke-linecap="round" opacity=".4"/>' +
+        '<svg width="' + s + '" height="' + s + '" viewBox="0 0 20 20" fill="none">' +
+        '<ellipse cx="10" cy="7.5" rx="6" ry="3.2" fill="' + sec + '" opacity=".55"/>' +
+        '<line x1="3" y1="12" x2="17" y2="12" stroke="' + sec + '" stroke-width="1.3" stroke-linecap="round" opacity=".7"/>' +
+        '<line x1="5" y1="15" x2="15" y2="15" stroke="' + sec + '" stroke-width="1.3" stroke-linecap="round" opacity=".5"/>' +
+        '<line x1="4" y1="18" x2="13" y2="18" stroke="' + sec + '" stroke-width="1.3" stroke-linecap="round" opacity=".4"/>' +
         "</svg>"
       );
     }
     if (type === "rain") {
       return (
-        '<svg width="' +
-        s +
-        '" height="' +
-        s +
-        '" viewBox="0 0 20 20" fill="none">' +
-        '<ellipse cx="7" cy="8.5" rx="4.5" ry="3" fill="' +
-        sec +
-        '" opacity=".55"/>' +
-        '<ellipse cx="12" cy="7.5" rx="5.5" ry="3.5" fill="' +
-        sec +
-        '" opacity=".7"/>' +
+        '<svg width="' + s + '" height="' + s + '" viewBox="0 0 20 20" fill="none">' +
+        '<ellipse cx="7" cy="8.5" rx="4.5" ry="3" fill="' + sec + '" opacity=".55"/>' +
+        '<ellipse cx="12" cy="7.5" rx="5.5" ry="3.5" fill="' + sec + '" opacity=".7"/>' +
         '<line x1="7" y1="13" x2="5.5" y2="17" stroke="#60a5fa" stroke-width="1.6" stroke-linecap="round"/>' +
         '<line x1="11" y1="13" x2="9.5" y2="17" stroke="#60a5fa" stroke-width="1.6" stroke-linecap="round"/>' +
         '<line x1="15" y1="13" x2="13.5" y2="17" stroke="#60a5fa" stroke-width="1.6" stroke-linecap="round"/>' +
@@ -215,17 +167,9 @@
     }
     if (type === "snow") {
       return (
-        '<svg width="' +
-        s +
-        '" height="' +
-        s +
-        '" viewBox="0 0 20 20" fill="none">' +
-        '<ellipse cx="7" cy="8.5" rx="4.5" ry="3" fill="' +
-        sec +
-        '" opacity=".55"/>' +
-        '<ellipse cx="12" cy="7.5" rx="5.5" ry="3.5" fill="' +
-        sec +
-        '" opacity=".7"/>' +
+        '<svg width="' + s + '" height="' + s + '" viewBox="0 0 20 20" fill="none">' +
+        '<ellipse cx="7" cy="8.5" rx="4.5" ry="3" fill="' + sec + '" opacity=".55"/>' +
+        '<ellipse cx="12" cy="7.5" rx="5.5" ry="3.5" fill="' + sec + '" opacity=".7"/>' +
         '<circle cx="6.5" cy="15" r="1.3" fill="#bfdbfe"/>' +
         '<circle cx="10.5" cy="17" r="1.3" fill="#bfdbfe"/>' +
         '<circle cx="14" cy="15" r="1.3" fill="#bfdbfe"/>' +
@@ -234,27 +178,15 @@
     }
     if (type === "storm") {
       return (
-        '<svg width="' +
-        s +
-        '" height="' +
-        s +
-        '" viewBox="0 0 20 20" fill="none">' +
-        '<ellipse cx="7" cy="7.5" rx="4.5" ry="3" fill="' +
-        sec +
-        '" opacity=".6"/>' +
-        '<ellipse cx="12" cy="6.5" rx="5.5" ry="3.5" fill="' +
-        sec +
-        '" opacity=".75"/>' +
+        '<svg width="' + s + '" height="' + s + '" viewBox="0 0 20 20" fill="none">' +
+        '<ellipse cx="7" cy="7.5" rx="4.5" ry="3" fill="' + sec + '" opacity=".6"/>' +
+        '<ellipse cx="12" cy="6.5" rx="5.5" ry="3.5" fill="' + sec + '" opacity=".75"/>' +
         '<path d="M11 10.5l-3 5h3l-2 4 5-6h-3z" fill="#f59e0b"/>' +
         "</svg>"
       );
     }
     return "";
   }
-
-  // ────────────────────────────────────────────────
-  // Chart rendering
-  // ────────────────────────────────────────────────
 
   const WEATHER_LANG_DICT = {
     en: {
@@ -274,7 +206,7 @@
 
   function wc(key) {
     var attrName = "data-t-" + key.replace(/([A-Z])/g, "-$1").toLowerCase();
-    var el = document.querySelector("[data-wxs-payload]");
+    var el = document.querySelector("[data-weather-payload]");
     return (el && el.getAttribute(attrName)) || WEATHER_LANG_DICT["en"][key] || key;
   }
 
@@ -371,7 +303,6 @@
     const primary = hourly[meta.key] || [];
     const alt = meta.altKey ? hourly[meta.altKey] || [] : null;
 
-    // Clear
     chartEl.innerHTML = "";
     legendEl.innerHTML = "";
 
@@ -387,775 +318,425 @@
     const padT = 14;
     const padB = 26;
 
-    // On narrow viewports we want fewer hours visible at once and let the
-    // user swipe horizontally for the rest. We do that by giving the SVG
-    // an explicit pixel width that can exceed its scrollable parent.
     const viewportW =
       typeof window !== "undefined" && window.innerWidth
         ? window.innerWidth
         : 1024;
     const isNarrow = viewportW <= 560;
-    // ~6 hours visible on a phone (container is ~ viewport - some padding).
     const visibleHoursOnMobile = 6;
     const pxPerHourMobile = Math.max(
-      48,
-      Math.floor((viewportW - 80) / visibleHoursOnMobile),
+      45,
+      Math.floor((viewportW - 32) / visibleHoursOnMobile)
     );
-    const svgPxWidth = isNarrow
-      ? Math.max(viewportW, primary.length * pxPerHourMobile)
-      : null;
-
-    // Always match the SVG viewBox width to the container's actual rendered
-    // pixel width so that 1 SVG unit == 1 CSS pixel.  Without this, a fixed
-    // 640-unit viewBox is stretched with preserveAspectRatio:none over a wide
-    // container (e.g. 900 px) causing all text labels to scale up ~1.4×.
-    // For mobile we already compute an explicit pixel width (svgPxWidth) that
-    // allows horizontal scrolling; for desktop we measure the container.
-    const containerPxW = !isNarrow
-      ? chartEl.offsetWidth > 0
-        ? chartEl.offsetWidth
-        : Math.round(chartEl.getBoundingClientRect().width) || W
-      : 0;
-    const vbW = svgPxWidth ? svgPxWidth : containerPxW || W;
-    const xStepScale = svgPxWidth ? svgPxWidth / W : 1;
+    const renderW = isNarrow ? pxPerHourMobile * 24 + padL + padR : W;
 
     const svg = svgEl("svg", {
-      viewBox: "0 0 " + vbW + " " + H,
-      preserveAspectRatio: "xMidYMid meet",
+      width: "100%",
+      height: "100%",
+      viewBox: "0 0 " + renderW + " " + H,
+      preserveAspectRatio: "none",
     });
-    if (svgPxWidth) {
-      svg.style.width = svgPxWidth + "px";
-      svg.style.height = H + "px";
-      svg.style.display = "block";
+
+    const activeW = renderW - padL - padR;
+    const activeH = H - padT - padB;
+    const stepX = activeW / 23;
+
+    let minVal = Math.min(...primary);
+    let maxVal = Math.max(...primary);
+    if (alt) {
+      minVal = Math.min(minVal, ...alt);
+      maxVal = Math.max(maxVal, ...alt);
     }
 
-    // Determine Y range
-    const series = [primary];
-    if (alt && alt.length && meta.showAlt) series.push(alt);
-    let min = Infinity;
-    let max = -Infinity;
-    series.forEach((s) =>
-      s.forEach((v) => {
-        if (v < min) min = v;
-        if (v > max) max = v;
-      }),
-    );
+    const limits =
+      meta.yMax !== undefined
+        ? { min: meta.yMin ?? 0, max: meta.yMax }
+        : niceRange(minVal, maxVal);
+    const rangeY = limits.max - limits.min || 1;
 
-    let yMin, yMax;
-    if (typeof meta.yMin === "number" && typeof meta.yMax === "number") {
-      yMin = meta.yMin;
-      yMax = meta.yMax;
-    } else {
-      const r = niceRange(min, max);
-      yMin = r.min;
-      yMax = r.max;
-    }
-    if (yMax === yMin) yMax = yMin + 1;
+    const scaleY = (v) =>
+      padT + activeH - ((v - limits.min) / rangeY) * activeH;
 
-    // All geometry is computed in viewBox units. On mobile the viewBox is
-    // wider than W, so we scale horizontal padding + step to match.
-    const padLv = padL * xStepScale;
-    const padRv = padR * xStepScale;
-    const xStep = (vbW - padLv - padRv) / Math.max(1, primary.length - 1);
-    const yScale = (v) =>
-      padT + (H - padT - padB) * (1 - (v - yMin) / (yMax - yMin));
-
-    // Grid lines (3 horizontal)
-    const gridGroup = svgEl("g", { class: "wxs-chart-grid" });
-    for (let i = 0; i <= 3; i++) {
-      const y = padT + ((H - padT - padB) * i) / 3;
-      const line = svgEl("line", {
-        x1: padLv,
-        x2: vbW - padRv,
-        y1: y,
-        y2: y,
-      });
-      gridGroup.appendChild(line);
-    }
-    svg.appendChild(gridGroup);
-
-    // Bars or lines
-    const suffix = meta.suffix || unitsInfo.defaultSuffix(tab);
+    const mainPoints = primary.map((v, i) => ({
+      x: padL + i * stepX,
+      y: scaleY(v),
+      val: v,
+    }));
+    const altPoints = alt
+      ? alt.map((v, i) => ({ x: padL + i * stepX, y: scaleY(v), val: v }))
+      : null;
 
     if (meta.kind === "bar") {
-      const barGroup = svgEl("g");
-      const hitGroup = svgEl("g");
-      const availW = vbW - padLv - padRv;
-      const barW = Math.max(2, (availW / primary.length) * 0.7);
-      const hitW = Math.max(barW, availW / primary.length);
-      for (let i = 0; i < primary.length; i++) {
-        const v = primary[i];
-        const x = padLv + i * xStep;
-        const y = yScale(Math.max(yMin, v));
-        const h = Math.max(0, H - padB - y);
-        const rect = svgEl("rect", {
-          class: "wxs-chart-bar",
-          x: (x - barW / 2).toFixed(2),
-          y: y.toFixed(2),
-          width: barW.toFixed(2),
-          height: h.toFixed(2),
-          rx: 2,
-          fill: meta.color,
-          opacity: v > 0 ? 0.78 : 0.2,
-        });
-        barGroup.appendChild(rect);
-
-        // Invisible full-height hit zone so zero/low bars still respond to hover
-        const hit = svgEl("rect", {
-          class: "wxs-chart-marker",
-          x: (x - hitW / 2).toFixed(2),
-          y: padT,
-          width: hitW.toFixed(2),
-          height: (H - padT - padB).toFixed(2),
-          fill: "transparent",
-          "pointer-events": "all",
-          "data-i": i,
-        });
-        hitGroup.appendChild(hit);
-      }
-      svg.appendChild(barGroup);
-      svg.appendChild(hitGroup);
-    } else {
-      // Area + line for primary
-      const primaryPts = primary.map((v, i) => ({
-        x: padLv + i * xStep,
-        y: yScale(v),
-      }));
-      const linePath = buildPath(primaryPts);
-      const areaPath =
-        linePath +
-        " L " +
-        primaryPts[primaryPts.length - 1].x.toFixed(2) +
-        " " +
-        (H - padB) +
-        " L " +
-        primaryPts[0].x.toFixed(2) +
-        " " +
-        (H - padB) +
-        " Z";
-
-      svg.appendChild(
-        svgEl("path", {
-          class: "wxs-chart-area",
-          d: areaPath,
-          fill: meta.color,
-          stroke: "none",
-        }),
-      );
-      svg.appendChild(
-        svgEl("path", {
-          class: "wxs-chart-line",
-          d: linePath,
-          stroke: meta.color,
-        }),
-      );
-
-      if (alt && alt.length && meta.showAlt) {
-        const altPts = alt.map((v, i) => ({
-          x: padLv + i * xStep,
-          y: yScale(v),
-        }));
-        const altPath = buildPath(altPts);
-        svg.appendChild(
-          svgEl("path", {
-            class: "wxs-chart-line",
-            d: altPath,
-            stroke: meta.color,
-            "stroke-opacity": 0.45,
-            "stroke-dasharray": "4 4",
-          }),
-        );
-      }
-
-      // Markers (smaller, fewer to avoid clutter — every other point)
-      const markerGroup = svgEl("g");
-      const step = primary.length > 18 ? 3 : 2;
-      for (let i = 0; i < primary.length; i++) {
-        const showLabel = i === 0 || i === primary.length - 1 || i % step === 0;
-        const x = padLv + i * xStep;
-        const y = yScale(primary[i]);
-        if (showLabel) {
-          const txt = svgEl("text", {
-            class: "wxs-chart-label",
-            x: x,
-            y: y - 6,
+      const barW = Math.max(4, Math.min(18, stepX * 0.45));
+      mainPoints.forEach((p) => {
+        const barH = padT + activeH - p.y;
+        if (barH > 1) {
+          const rect = svgEl("rect", {
+            x: p.x - barW / 2,
+            y: p.y,
+            width: barW,
+            height: barH,
+            fill: meta.color,
+            rx: 2,
+            opacity: 0.75,
           });
-          txt.textContent = Math.round(primary[i]) + "";
-          markerGroup.appendChild(txt);
+          svg.appendChild(rect);
         }
-        // Invisible hit circle for tooltip — full-height so vertical hovering works too
-        const hit = svgEl("rect", {
-          class: "wxs-chart-marker",
-          x: (x - xStep / 2).toFixed(2),
-          y: padT,
-          width: xStep.toFixed(2),
-          height: (H - padT - padB).toFixed(2),
-          fill: "transparent",
-          "pointer-events": "all",
-          "data-i": i,
-        });
-        markerGroup.appendChild(hit);
-        // Visible dot
-        const dot = svgEl("circle", {
-          class: "wxs-chart-point",
-          cx: x,
-          cy: y,
-          r: 2.5,
-          stroke: meta.color,
-          "data-i": i,
-        });
-        markerGroup.appendChild(dot);
-      }
-      svg.appendChild(markerGroup);
-    }
-
-    // X axis labels (every ~3 hours)
-    const axisGroup = svgEl("g", { class: "wxs-chart-axis" });
-    const labelStep = labels.length > 12 ? 3 : 2;
-    for (let i = 0; i < labels.length; i++) {
-      if (i % labelStep !== 0 && i !== labels.length - 1) continue;
-      const x = padLv + i * xStep;
-      const t = svgEl("text", {
-        x: x,
-        y: H - 8,
-        "text-anchor": "middle",
       });
-      t.textContent = labels[i];
-      axisGroup.appendChild(t);
-    }
-    svg.appendChild(axisGroup);
-
-    // Put the SVG inside a horizontally-scrollable wrapper so mobile can
-    // swipe through the hours instead of squishing them all onto one line.
-    const scrollWrap = document.createElement("div");
-    scrollWrap.className = "wxs-chart-scroll";
-    scrollWrap.appendChild(svg);
-    chartEl.appendChild(scrollWrap);
-    // Re-attach the tooltip so it survives innerHTML clears between renders
-    chartEl.appendChild(tooltipEl);
-    tooltipEl.classList.remove("wxs-tt-visible");
-
-    // Legend
-    const legendItems = [];
-    legendItems.push(
-      '<span><i style="background:' +
-        meta.color +
-        '"></i>' +
-        meta.label +
-        "</span>",
-    );
-    if (alt && alt.length && meta.showAlt) {
-      legendItems.push(
-        '<span><i style="background:' +
-          meta.color +
-          ';opacity:.45"></i>' +
-          meta.altLabel +
-          "</span>",
-      );
-    }
-    legendEl.innerHTML = legendItems.join("");
-
-    // Tooltip interactions
-    const hits = chartEl.querySelectorAll(".wxs-chart-marker[data-i]");
-    let highlightEl = null;
-
-    function clearHighlight() {
-      if (highlightEl && highlightEl.parentNode) {
-        highlightEl.parentNode.removeChild(highlightEl);
+    } else {
+      if (altPoints && meta.showAlt) {
+        const altPath = svgEl("path", {
+          d: buildPath(altPoints),
+          fill: "none",
+          stroke: "var(--text-secondary)",
+          "stroke-width": 1.5,
+          "stroke-dasharray": "3,3",
+          opacity: 0.65,
+        });
+        svg.appendChild(altPath);
       }
-      highlightEl = null;
+
+      const mainPath = svgEl("path", {
+        d: buildPath(mainPoints),
+        fill: "none",
+        stroke: meta.color,
+        "stroke-width": 2.5,
+      });
+      svg.appendChild(mainPath);
+
+      mainPoints.forEach((p, idx) => {
+        if (idx % 2 === 0) {
+          const dot = svgEl("circle", {
+            cx: p.x,
+            cy: p.y,
+            r: 3,
+            fill: meta.color,
+            stroke: "var(--bg, Canvas)",
+            "stroke-width": 1,
+          });
+          svg.appendChild(dot);
+        }
+      });
     }
 
-    function drawHighlight(i) {
-      clearHighlight();
-      const x = padLv + i * xStep;
-      if (meta.kind === "bar") {
-        // Outline the bar being hovered
-        highlightEl = svgEl("line", {
-          x1: x,
-          x2: x,
-          y1: padT,
-          y2: H - padB,
-          stroke: meta.color,
-          "stroke-opacity": 0.3,
-          "stroke-width": 1,
-          "stroke-dasharray": "2 3",
-          "pointer-events": "none",
+    labels.forEach((lbl, i) => {
+      if (i % 2 === 0) {
+        const x = padL + i * stepX;
+        const text = svgEl("text", {
+          x: x,
+          y: H - 8,
+          "font-size": 10,
+          "text-anchor": "middle",
+          fill: "var(--text-secondary)",
         });
-      } else {
-        const y = yScale(primary[i]);
-        highlightEl = svgEl("g", { "pointer-events": "none" });
-        const guide = svgEl("line", {
-          x1: x,
-          x2: x,
-          y1: padT,
-          y2: H - padB,
-          stroke: meta.color,
-          "stroke-opacity": 0.25,
-          "stroke-width": 1,
-          "stroke-dasharray": "2 3",
-        });
-        const ring = svgEl("circle", {
-          cx: x,
-          cy: y,
-          r: 5,
-          fill: meta.color,
-          stroke: "var(--bg, #111)",
-          "stroke-width": 2,
-        });
-        highlightEl.appendChild(guide);
-        highlightEl.appendChild(ring);
+        text.textContent = lbl;
+        svg.appendChild(text);
       }
-      svg.appendChild(highlightEl);
-    }
-
-    function show(i) {
-      const v = primary[i];
-      const tLabel = labels[i] || "";
-      const primaryLabel = meta.kind === "bar" ? meta.label : meta.label;
-      const altLine =
-        alt && alt.length && meta.showAlt
-          ? '<div class="wxs-tt-row"><span class="wxs-tt-key">' +
-            meta.altLabel +
-            "</span><strong>" +
-            fmtVal(alt[i], tab, unitsInfo) +
-            "</strong></div>"
-          : "";
-      tooltipEl.innerHTML =
-        '<span class="wxs-tt-label">' +
-        tLabel +
-        "</span>" +
-        '<div class="wxs-tt-row"><span class="wxs-tt-key">' +
-        primaryLabel +
-        "</span><strong>" +
-        fmtVal(v, tab, unitsInfo) +
-        "</strong></div>" +
-        altLine;
-
-      // Position the tooltip relative to the chart container. When the
-      // SVG is wider than the container and scrolled, we need to subtract
-      // the scroll offset so the tooltip points at the right bar.
-      const containerW = chartEl.clientWidth || 1;
-      const svgRenderedW =
-        (svgPxWidth && svgPxWidth) ||
-        svg.getBoundingClientRect().width ||
-        containerW;
-      const dataPx = ((padLv + i * xStep) / vbW) * svgRenderedW;
-      const scrollLeft = scrollWrap ? scrollWrap.scrollLeft : 0;
-      const visiblePx = dataPx - scrollLeft;
-      const clampedPx = Math.max(20, Math.min(containerW - 20, visiblePx));
-      tooltipEl.style.left = clampedPx + "px";
-      tooltipEl.style.top = "0px";
-      tooltipEl.classList.add("wxs-tt-visible");
-
-      drawHighlight(i);
-    }
-
-    function hide() {
-      tooltipEl.classList.remove("wxs-tt-visible");
-      clearHighlight();
-    }
-
-    hits.forEach((el) => {
-      el.addEventListener("mouseenter", () => {
-        const i = parseInt(el.getAttribute("data-i"), 10);
-        if (!isNaN(i)) show(i);
-      });
-      el.addEventListener("mousemove", () => {
-        const i = parseInt(el.getAttribute("data-i"), 10);
-        if (!isNaN(i)) show(i);
-      });
     });
-    chartEl.addEventListener("mouseleave", hide);
-    // When the user scrolls the chart horizontally (mobile swipe), the
-    // tooltip's container-relative position would no longer line up with
-    // the data point, so just hide it.
-    if (scrollWrap) {
-      scrollWrap.addEventListener("scroll", hide, { passive: true });
+
+    const triggerOverlay = svgEl("rect", {
+      x: 0,
+      y: 0,
+      width: renderW,
+      height: H,
+      fill: "transparent",
+      style: "cursor:crosshair",
+    });
+    svg.appendChild(triggerOverlay);
+    chartEl.appendChild(svg);
+
+    function showTooltip(xPos) {
+      const rect = chartEl.getBoundingClientRect();
+      const scrollL = chartEl.scrollLeft;
+      const xInSvg = xPos - rect.left + scrollL;
+      const i = Math.max(
+        0,
+        Math.min(23, Math.round((xInSvg - padL) / stepX))
+      );
+      const p = mainPoints[i];
+      if (!p) return;
+
+      const lbl = labels[i] || "";
+      const suf = meta.suffix || unitsInfo.tempUnit || "";
+      let html =
+        '<div style="font-weight:600;font-size:0.75rem;margin-bottom:2px;color:var(--text-secondary)">' +
+        lbl +
+        "</div>";
+      html +=
+        '<div style="font-size:0.8rem;color:var(--text-primary)">' +
+        meta.label +
+        ": <strong>" +
+        Math.round(p.val) +
+        suf +
+        "</strong></div>";
+
+      if (altPoints && altPoints[i] && meta.showAlt) {
+        html +=
+          '<div style="font-size:0.8rem;color:var(--text-secondary)">' +
+          meta.altLabel +
+          ": <strong>" +
+          Math.round(altPoints[i].val) +
+          suf +
+          "</strong></div>";
+      }
+
+      tooltipEl.innerHTML = html;
+      tooltipEl.style.display = "block";
+
+      const tWidth = tooltipEl.offsetWidth;
+      const tHeight = tooltipEl.offsetHeight;
+      const wrapRect = chartEl.parentNode.getBoundingClientRect();
+      const leftPx = p.x - scrollL - tWidth / 2 + padL;
+      const topPx = p.y - tHeight - 8;
+
+      tooltipEl.style.left =
+        Math.max(4, Math.min(wrapRect.width - tWidth - 4, leftPx)) + "px";
+      tooltipEl.style.top = Math.max(4, topPx) + "px";
+    }
+
+    triggerOverlay.addEventListener("mousemove", (e) => showTooltip(e.clientX));
+    triggerOverlay.addEventListener("touchstart", (e) => {
+      if (e.touches && e.touches[0]) showTooltip(e.touches[0].clientX);
+    });
+
+    chartEl.addEventListener("mouseleave", () => {
+      tooltipEl.style.display = "none";
+    });
+
+    const l1 = document.createElement("div");
+    l1.className = "weather-legend-item";
+    l1.innerHTML =
+      '<span class="weather-legend-line" style="background:' +
+      meta.color +
+      '"></span>' +
+      meta.label;
+    legendEl.appendChild(l1);
+
+    if (altPoints && meta.showAlt) {
+      const l2 = document.createElement("div");
+      l2.className = "weather-legend-item";
+      l2.innerHTML =
+        '<span class="weather-legend-line weather-legend-dashed" style="border-color:var(--text-secondary)"></span>' +
+        meta.altLabel;
+      legendEl.appendChild(l2);
     }
   }
 
-  function fmtVal(v, tab, unitsInfo) {
-    if (v == null || isNaN(v)) return "—";
-    if (tab === "temp") return Math.round(v) + unitsInfo.tempUnit;
-    if (tab === "precip") return Math.round(v) + "%";
-    if (tab === "wind") return fmtSmall(v) + " " + unitsInfo.windUnit;
-    if (tab === "humidity") return Math.round(v) + "%";
-    return String(v);
-  }
+  function initWeatherSlot(card) {
+    if (card._wxsInit) return;
 
-  function fmtSmall(n) {
-    if (!isFinite(n)) return "0";
-    if (Math.abs(n) >= 100) return String(Math.round(n));
-    if (Math.abs(n) >= 10) return n.toFixed(0);
-    return n.toFixed(1);
-  }
-
-  // ────────────────────────────────────────────────
-  // Hero icon helper
-  // ────────────────────────────────────────────────
-
-  function setHeroIcon(slotEl, type, isDay) {
-    let icon = type;
-    if (!ICONS_HERO[icon]) icon = "cloud";
-    // If clear sky at night, swap to moon
-    if (type === "sun" && isDay === false) icon = "moon";
-    slotEl.innerHTML = ICONS_HERO[icon]();
-  }
-
-  // ────────────────────────────────────────────────
-  // Init per wrap
-  // ────────────────────────────────────────────────
-
-  function initWrap(wrap) {
-    if (wrap.dataset.wxsInit) return;
-    wrap.dataset.wxsInit = "1";
+    const payloadRaw = card.dataset.weatherPayload;
+    if (!payloadRaw) return;
 
     let payload;
     try {
-      payload = JSON.parse(wrap.dataset.wxsPayload || "{}");
+      payload = JSON.parse(payloadRaw);
     } catch (e) {
-      console.warn("[weather-slot] bad payload", e);
       return;
     }
 
-    const days = payload.days || [];
-    if (!days.length) return;
+    let activeDayIndex = 0;
+    let activeTab = "temp";
 
-    // Localize tab button labels dynamically
-    wrap.querySelectorAll(".wxs-tab").forEach(btn => {
-      const tab = btn.getAttribute("data-tab");
-      if (tab === "temp") btn.textContent = wc("temp");
-      else if (tab === "precip") btn.textContent = wc("precip");
-      else if (tab === "wind") btn.textContent = wc("wind");
-      else if (tab === "humidity") btn.textContent = wc("humidity");
-    });
+    const heroIconSlot = card.querySelector("[data-weather-icon-slot]");
+    const heroTemp = card.querySelector("[data-weather-temp]");
+    const heroFeels = card.querySelector("[data-weather-feels]");
+    const heroPrecipProb = card.querySelector("[data-weather-precip-prob]");
+    const heroHumidity = card.querySelector("[data-weather-humidity]");
+    const heroWind = card.querySelector("[data-weather-wind]");
+    const heroDayLabel = card.querySelector("[data-weather-day-label]");
+    const heroDesc = card.querySelector("[data-weather-desc]");
+    const heroHi = card.querySelector("[data-weather-hi]");
+    const heroLo = card.querySelector("[data-weather-lo]");
+
+    const gustsVal = card.querySelector("[data-weather-gusts]");
+    const pressureVal = card.querySelector("[data-weather-pressure]");
+    const uvVal = card.querySelector("[data-weather-uv]");
+    const uvLevelVal = card.querySelector("[data-weather-uv-level]");
+    const visibilityVal = card.querySelector("[data-weather-visibility]");
+    const dewVal = card.querySelector("[data-weather-dew]");
+    const cloudsVal = card.querySelector("[data-weather-clouds]");
+    const precipNowVal = card.querySelector("[data-weather-precip-now]");
+    const humDetailVal = card.querySelector("[data-weather-humidity-detail]");
+
+    const sunriseVal = card.querySelector("[data-weather-sunrise]");
+    const sunriseRel = card.querySelector("[data-weather-sunrise-relative]");
+    const sunsetVal = card.querySelector("[data-weather-sunset]");
+    const sunsetRel = card.querySelector("[data-weather-sunset-relative]");
+    const sunArc = card.querySelector("[data-weather-sun-arc]");
+    const sunDot = card.querySelector("[data-weather-sun-dot]");
+
+    const moonRow = card.querySelector("[data-weather-moon-row]");
+    const moonPhase = card.querySelector("[data-weather-moon-phase]");
+    const moonIllum = card.querySelector("[data-weather-moon-illum]");
+    const moonriseVal = card.querySelector("[data-weather-moonrise]");
+    const moonriseRel = card.querySelector("[data-weather-moon-relative]");
+    const moonsetVal = card.querySelector("[data-weather-moonset]");
+    const moonsetRel = card.querySelector("[data-weather-moonset-relative]");
+    const moonApexVal = card.querySelector("[data-weather-moon-apex]");
+    const moonDot = card.querySelector("[data-weather-moon-dot]");
+
+    const daysTrack = card.querySelector("[data-weather-days]");
+    const tabsRow = card.querySelector("[data-weather-tabs]");
+    const chartEl = card.querySelector("[data-weather-chart]");
+    const legendEl = card.querySelector("[data-weather-chart-legend]");
+
+    const tooltipEl = document.createElement("div");
+    tooltipEl.className = "weather-chart-tooltip";
+    chartEl.parentNode.appendChild(tooltipEl);
 
     const unitsInfo = {
-      tempUnit: payload.tempUnit || "°C",
-      windUnit: payload.windUnit || "km/h",
-      pressureUnit: payload.pressureUnit || "hPa",
-      precipUnit: payload.precipUnit || "mm",
-      defaultSuffix(tab) {
-        if (tab === "temp") return this.tempUnit;
-        if (tab === "wind") return " " + this.windUnit;
-        return "";
-      },
+      tempUnit: payload.tempUnit,
+      windUnit: payload.windUnit,
+      pressureUnit: payload.pressureUnit,
+      precipUnit: payload.precipUnit,
     };
 
-    const heroIconSlot = wrap.querySelector("[data-wxs-icon-slot]");
-    const tempEl = wrap.querySelector("[data-wxs-temp]");
-    const tempUnitEl = wrap.querySelector("[data-wxs-temp-unit]");
-    const descEl = wrap.querySelector("[data-wxs-desc]");
-    const feelsEl = wrap.querySelector("[data-wxs-feels]");
-    const precipProbEl = wrap.querySelector("[data-wxs-precip-prob]");
-    const humidityEl = wrap.querySelector("[data-wxs-humidity]");
-    const humidityDetailEl = wrap.querySelector("[data-wxs-humidity-detail]");
-    const windEl = wrap.querySelector("[data-wxs-wind]");
-    const gustsEl = wrap.querySelector("[data-wxs-gusts]");
-    const pressureEl = wrap.querySelector("[data-wxs-pressure]");
-    const uvEl = wrap.querySelector("[data-wxs-uv]");
-    const uvLevelEl = wrap.querySelector("[data-wxs-uv-level]");
-    const visibilityEl = wrap.querySelector("[data-wxs-visibility]");
-    const dewEl = wrap.querySelector("[data-wxs-dew]");
-    const cloudsEl = wrap.querySelector("[data-wxs-clouds]");
-    const precipNowEl = wrap.querySelector("[data-wxs-precip-now]");
-    const sunriseEl = wrap.querySelector("[data-wxs-sunrise]");
-    const sunsetEl = wrap.querySelector("[data-wxs-sunset]");
-    const sunriseRelativeEl = wrap.querySelector("[data-wxs-sunrise-relative]");
-    const sunsetRelativeEl = wrap.querySelector("[data-wxs-sunset-relative]");
-    const sunDotEl = wrap.querySelector("[data-wxs-sun-dot]");
-    const moonPhaseEl = wrap.querySelector("[data-wxs-moon-phase]");
-    const moonIllumEl = wrap.querySelector("[data-wxs-moon-illum]");
-    const moonriseEl = wrap.querySelector("[data-wxs-moonrise]");
-    const moonsetEl = wrap.querySelector("[data-wxs-moonset]");
-    const moonriseRelativeEl = wrap.querySelector("[data-wxs-moonrise-relative]");
-    const moonsetRelativeEl = wrap.querySelector("[data-wxs-moonset-relative]");
-    const moonApexEl = wrap.querySelector("[data-wxs-moon-apex]");
-    const moonDotEl = wrap.querySelector("[data-wxs-moon-dot]");
-    const hiEl = wrap.querySelector("[data-wxs-hi]");
-    const loEl = wrap.querySelector("[data-wxs-lo]");
-    const dayLabelEl = wrap.querySelector("[data-wxs-day-label]");
-    const daysEl = wrap.querySelector("[data-wxs-days]");
-    const chartEl = wrap.querySelector("[data-wxs-chart]");
-    const chartTitleEl = wrap.querySelector("[data-wxs-chart-title]");
-    const chartSubEl = wrap.querySelector("[data-wxs-chart-sub]");
-    const chartLegendEl = wrap.querySelector("[data-wxs-chart-legend]");
-    const tabsEl = wrap.querySelector("[data-wxs-tabs]");
+    function updateHero(day) {
+      const icon = day.icon || "cloud";
+      if (heroIconSlot) {
+        const renderHero = ICONS_HERO[icon] || ICONS_HERO.cloud;
+        heroIconSlot.innerHTML = renderHero();
+      }
 
-    if (!chartEl || !daysEl) return;
+      if (heroTemp) heroTemp.textContent = activeDayIndex === 0 ? payload.current.temp : day.hi;
+      if (heroFeels) heroFeels.textContent = (activeDayIndex === 0 ? payload.current.feels : day.feelsHi) + unitsInfo.tempUnit;
+      if (heroPrecipProb) heroPrecipProb.textContent = (activeDayIndex === 0 ? payload.current.precipProb : day.precipProb) + "%";
+      if (heroHumidity) heroHumidity.textContent = (activeDayIndex === 0 ? payload.current.humidity : day.hourly.humidity[12]) + "%";
+      if (heroWind) heroWind.textContent = (activeDayIndex === 0 ? payload.current.wind : day.windMax) + " " + unitsInfo.windUnit + " " + (activeDayIndex === 0 ? payload.current.windDir : day.windDirDom);
 
-    // Tooltip
-    const tooltipEl = document.createElement("div");
-    tooltipEl.className = "wxs-chart-tooltip";
-    chartEl.style.position = "relative";
-    chartEl.appendChild(tooltipEl);
+      if (heroDayLabel) heroDayLabel.textContent = day.longName;
+      if (heroDesc) heroDesc.textContent = day.desc;
+      if (heroHi) heroHi.textContent = day.hi + "°";
+      if (heroLo) heroLo.textContent = day.lo + "°";
 
-    let activeTab = "temp";
-    let activeDay = 0;
-    const isDayNow = wrap.dataset.wxsIsDay === "1";
+      if (gustsVal) gustsVal.textContent = (activeDayIndex === 0 ? payload.current.gusts : day.gustsMax) + " " + unitsInfo.windUnit;
+      if (pressureVal) pressureVal.textContent = (activeDayIndex === 0 ? payload.current.pressure : day.hourly.temp[12] ? payload.current.pressure : "—") + " " + unitsInfo.pressureUnit;
+      if (uvVal) uvVal.textContent = activeDayIndex === 0 ? payload.current.uv : day.uvMax;
+      if (uvLevelVal) uvLevelVal.textContent = activeDayIndex === 0 ? payload.current.uvLevel : "";
 
-    // Initial hero icon
-    if (heroIconSlot) {
-      setHeroIcon(heroIconSlot, wrap.dataset.wxsIcon || "cloud", isDayNow);
+      if (visibilityVal) visibilityVal.textContent = activeDayIndex === 0 ? payload.current.visibility : "—";
+      if (dewVal) dewVal.textContent = (activeDayIndex === 0 ? payload.current.dewPoint : day.lo) + unitsInfo.tempUnit;
+      if (cloudsVal) cloudsVal.textContent = (activeDayIndex === 0 ? payload.current.clouds : day.hourly.clouds[12]) + "%";
+      if (precipNowVal) precipNowVal.textContent = (activeDayIndex === 0 ? payload.current.precipNow : day.precipSum) + " " + unitsInfo.precipUnit;
+      if (humDetailVal) humDetailVal.textContent = (activeDayIndex === 0 ? payload.current.humidity : day.hourly.humidity[12]) + "%";
+
+      if (sunriseVal) sunriseVal.textContent = day.srStr;
+      if (sunriseRel) sunriseRel.textContent = activeDayIndex === 0 ? day.srRelative : "";
+      if (sunsetVal) sunsetVal.textContent = day.ssStr;
+      if (sunsetRel) sunsetRel.textContent = activeDayIndex === 0 ? day.ssRelative : "";
+
+      if (sunArc && sunDot) {
+        if (activeDayIndex === 0) {
+          const pct = Math.min(100, Math.max(0, payload.sun.pct));
+          sunDot.style.left = pct + "%";
+          sunDot.style.display = "block";
+          sunArc.style.setProperty("--weather-sun-pct", pct + "%");
+        } else {
+          sunDot.style.display = "none";
+          sunArc.style.setProperty("--weather-sun-pct", "0%");
+        }
+      }
+
+      if (moonRow && day.moon && day.moon.show) {
+        moonRow.style.display = "block";
+        if (moonPhase) moonPhase.textContent = day.moon.phaseLabel;
+        if (moonIllum) moonIllum.textContent = day.moon.illuminationLabel;
+        if (moonriseVal) moonriseVal.textContent = day.moon.riseStr;
+        if (moonriseRel) moonriseRel.textContent = activeDayIndex === 0 ? day.moon.riseRelative : "";
+        if (moonsetVal) moonsetVal.textContent = day.moon.setStr;
+        if (moonsetRel) moonsetRel.textContent = activeDayIndex === 0 ? day.moon.setRelative : "";
+        if (moonApexVal) moonApexVal.textContent = day.moon.apexStr;
+
+        if (moonDot) {
+          if (activeDayIndex === 0 && day.moon.isUp) {
+            moonDot.style.left = day.moon.nowPct + "%";
+            moonDot.style.display = "block";
+          } else {
+            moonDot.style.display = "none";
+          }
+        }
+      } else if (moonRow) {
+        moonRow.style.display = "none";
+      }
+
+      renderChart(chartEl, tooltipEl, legendEl, day, activeTab, unitsInfo);
     }
 
-    // Build day tiles
-    function buildDays() {
-      daysEl.innerHTML = days
-        .map((d, i) => {
-          const precipClass =
-            d.precipProb > 0
-              ? "wxs-day-precip"
-              : "wxs-day-precip wxs-day-precip-zero";
-          const precipHtml =
-            '<div class="' +
-            precipClass +
-            '">' +
-            '<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><path d="M5 0.5c1.7 2.5 3 4.4 3 6a3 3 0 1 1-6 0c0-1.6 1.3-3.5 3-6z"/></svg>' +
-            "<span>" +
-            d.precipProb +
-            "%</span>" +
-            "</div>";
+    if (daysTrack && Array.isArray(payload.days)) {
+      daysTrack.innerHTML = payload.days
+        .map((day, idx) => {
+          const activeClass = idx === 0 ? "weather-day-card-active" : "";
+          const icon = day.icon || "cloud";
           return (
-            '<div class="wxs-day' +
-            (i === 0 ? " wxs-day-active" : "") +
-            '" data-i="' +
-            i +
-            '" title="' +
-            d.longName +
-            " · " +
-            d.desc +
-            '">' +
-            '<div class="wxs-day-name">' +
-            d.name +
-            "</div>" +
-            '<div class="wxs-day-icon">' +
-            smallIconSvg(d.icon, 28) +
-            "</div>" +
-            '<div class="wxs-day-hi">' +
-            d.hi +
-            "°</div>" +
-            '<div class="wxs-day-lo">' +
-            d.lo +
-            "°</div>" +
-            precipHtml +
-            "</div>"
+            '<button class="weather-day-card ' + activeClass + '" type="button" data-day="' + idx + '">' +
+            '<span class="weather-day-name">' + day.name + "</span>" +
+            '<span class="weather-day-ico">' + smallIconSvg(icon, 20) + "</span>" +
+            '<span class="weather-day-temps">' +
+            '<span class="weather-day-hi">' + day.hi + "°</span>" +
+            '<span class="weather-day-lo">' + day.lo + "°</span>" +
+            "</span>" +
+            "</button>"
           );
         })
         .join("");
 
-      daysEl.querySelectorAll(".wxs-day").forEach((el) => {
-        el.addEventListener("click", () => {
-          const i = parseInt(el.getAttribute("data-i"), 10);
-          selectDay(i);
-        });
-      });
-    }
-
-    function updateHero(i) {
-      const d = days[i];
-      const isToday = i === 0;
-      const cur = payload.current || {};
-
-      if (tempEl) tempEl.textContent = isToday ? cur.temp : d.hi;
-      if (tempUnitEl) tempUnitEl.textContent = unitsInfo.tempUnit;
-      if (descEl) descEl.textContent = d.desc;
-      if (dayLabelEl) {
-        if (isToday) {
-          dayLabelEl.textContent = cur.nowLabel;
-        } else {
-          dayLabelEl.textContent = d.dateLabel || d.longName;
-        }
-      }
-
-      if (feelsEl)
-        feelsEl.textContent =
-          (isToday ? cur.feels : d.feelsHi) + unitsInfo.tempUnit;
-
-      if (hiEl) hiEl.textContent = d.hi + "°";
-      if (loEl) loEl.textContent = d.lo + "°";
-
-      if (precipProbEl) precipProbEl.textContent = d.precipProb + "%";
-
-      // Humidity / Wind: for today show current, otherwise average
-      const hum = d.hourly && avgArr(d.hourly.humidity);
-      const wnd = d.hourly && avgArr(d.hourly.wind);
-
-      if (humidityEl)
-        humidityEl.textContent =
-          (isToday ? cur.humidity : Math.round(hum)) + "%";
-      if (humidityDetailEl)
-        humidityDetailEl.textContent =
-          (isToday ? cur.humidity : Math.round(hum)) + "%";
-
-      if (windEl)
-        windEl.textContent =
-          (isToday ? cur.wind : fmtSmall(wnd)) +
-          " " +
-          unitsInfo.windUnit +
-          (isToday && cur.windDir ? " " + cur.windDir : "");
-
-      if (gustsEl)
-        gustsEl.textContent =
-          (isToday ? cur.gusts : d.gustsMax) + " " + unitsInfo.windUnit;
-
-      if (pressureEl && isToday)
-        pressureEl.textContent = cur.pressure + " " + unitsInfo.pressureUnit;
-
-      if (uvEl) uvEl.textContent = isToday ? cur.uv : d.uvMax;
-      if (uvLevelEl && isToday) uvLevelEl.textContent = cur.uvLevel || "";
-
-      if (visibilityEl && isToday)
-        visibilityEl.textContent = cur.visibility || "—";
-      if (dewEl && isToday)
-        dewEl.textContent = cur.dewPoint + unitsInfo.tempUnit;
-      if (cloudsEl && isToday) cloudsEl.textContent = cur.clouds + "%";
-      if (precipNowEl)
-        precipNowEl.textContent = isToday
-          ? cur.precipNow + " " + unitsInfo.precipUnit
-          : d.precipSum + " " + unitsInfo.precipUnit;
-
-      // Sunrise/sunset
-      if (sunriseEl) sunriseEl.textContent = d.srStr;
-      if (sunsetEl) sunsetEl.textContent = d.ssStr;
-      if (sunriseRelativeEl) sunriseRelativeEl.textContent = d.srRelative || "—";
-      if (sunsetRelativeEl) sunsetRelativeEl.textContent = d.ssRelative || "—";
-      if (sunDotEl) {
-        const pct = d.sunPct;
-        sunDotEl.style.left = pct + "%";
-        const topPct = sunArcTop(pct);
-        sunDotEl.style.top = topPct + "%";
-      }
-
-      updateMoon(d);
-
-      // Hero icon: for today use current iconType, otherwise day's icon
-      if (heroIconSlot) {
-        const iconType = isToday ? wrap.dataset.wxsIcon || d.icon : d.icon;
-        setHeroIcon(heroIconSlot, iconType, isToday ? isDayNow : true);
-      }
-
-      // Animate fade
-      if (tempEl) {
-        tempEl.style.animation = "none";
-        void tempEl.offsetWidth;
-        tempEl.style.animation = "wxs-fadein 0.3s ease";
-      }
-    }
-
-    function sunArcTop(pct) {
-      // Match template path: M 0 48 Q 100 8 200 48 in a 200x56 viewBox.
-      const t = pct / 100;
-      const y = (1 - t) * (1 - t) * 48 + 2 * (1 - t) * t * 8 + t * t * 48;
-      return Math.max(0, Math.min(100, (y / 56) * 100));
-    }
-
-    function moonArcTop(pct) {
-      // Match template path: M 0 48 Q 100 8 200 48 in a 200x56 viewBox.
-      const t = pct / 100;
-      const y = (1 - t) * (1 - t) * 48 + 2 * (1 - t) * t * 8 + t * t * 48;
-      return Math.max(0, Math.min(100, (y / 56) * 100));
-    }
-
-    function updateMoon(day) {
-      const moon = day.moon || payload.moon || {};
-      if (moonPhaseEl) moonPhaseEl.textContent = moon.phaseLabel || "Moon";
-      if (moonIllumEl)
-        moonIllumEl.textContent = moon.illuminationLabel || "—";
-      if (moonriseEl) moonriseEl.textContent = moon.riseStr || "—";
-      if (moonsetEl) moonsetEl.textContent = moon.setStr || "—";
-      if (moonriseRelativeEl)
-        moonriseRelativeEl.textContent = moon.riseRelative || "—";
-      if (moonsetRelativeEl)
-        moonsetRelativeEl.textContent = moon.setRelative || "—";
-      if (moonApexEl) moonApexEl.textContent = moon.apexStr || "—";
-      if (moonDotEl) {
-        const pct = isFinite(moon.nowPct) ? moon.nowPct : 0;
-        moonDotEl.style.left = pct + "%";
-        moonDotEl.style.top = moonArcTop(pct) + "%";
-        moonDotEl.classList.toggle("wxs-moon-dot--down", moon.isUp === false);
-      }
-    }
-
-    function avgArr(arr) {
-      if (!arr || !arr.length) return 0;
-      let sum = 0;
-      let n = 0;
-      for (const v of arr) {
-        if (isFinite(v)) {
-          sum += v;
-          n++;
-        }
-      }
-      return n ? sum / n : 0;
-    }
-
-    function selectDay(i) {
-      if (i < 0 || i >= days.length) return;
-      activeDay = i;
-      daysEl.querySelectorAll(".wxs-day").forEach((el) => {
-        const idx = parseInt(el.getAttribute("data-i"), 10);
-        el.classList.toggle("wxs-day-active", idx === i);
-      });
-      updateHero(i);
-      renderActiveChart();
-    }
-
-    function renderActiveChart() {
-      const day = days[activeDay];
-      if (!day) return;
-      const meta = CHART_META[activeTab];
-      if (chartTitleEl)
-        chartTitleEl.textContent = meta.label + " · " + day.longName;
-      if (chartSubEl) chartSubEl.textContent = meta.sub;
-      renderChart(chartEl, tooltipEl, chartLegendEl, day, activeTab, unitsInfo);
-    }
-
-    // Tabs
-    if (tabsEl) {
-      tabsEl.querySelectorAll(".wxs-tab").forEach((btn) => {
+      daysTrack.querySelectorAll("[data-day]").forEach((btn) => {
         btn.addEventListener("click", () => {
-          const tab = btn.getAttribute("data-tab");
-          if (!CHART_META[tab]) return;
-          activeTab = tab;
-          tabsEl.querySelectorAll(".wxs-tab").forEach((b) => {
-            b.classList.toggle("wxs-tab-active", b === btn);
-          });
-          renderActiveChart();
+          daysTrack
+            .querySelectorAll(".weather-day-card")
+            .forEach((b) => b.classList.remove("weather-day-card-active"));
+          btn.classList.add("weather-day-card-active");
+          activeDayIndex = parseInt(btn.dataset.day, 10);
+          const dayData = payload.days[activeDayIndex];
+          if (dayData) updateHero(dayData);
         });
       });
     }
 
-    // Re-render the chart whenever the container is resized (e.g. browser
-    // window resize) so the viewBox width stays in sync with the container.
-    if (typeof ResizeObserver !== "undefined" && chartEl) {
-      var _chartResizeTimer = null;
-      new ResizeObserver(function () {
-        clearTimeout(_chartResizeTimer);
-        _chartResizeTimer = setTimeout(renderActiveChart, 80);
-      }).observe(chartEl);
+    if (tabsRow) {
+      tabsRow.querySelectorAll("[data-tab]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          tabsRow
+            .querySelectorAll(".weather-tab")
+            .forEach((b) => b.classList.remove("weather-tab-active"));
+          btn.classList.add("weather-tab-active");
+          activeTab = btn.dataset.tab;
+          const dayData = payload.days[activeDayIndex];
+          if (dayData) {
+            renderChart(chartEl, tooltipEl, legendEl, dayData, activeTab, unitsInfo);
+          }
+        });
+      });
     }
 
-    buildDays();
-    updateHero(0);
-    renderActiveChart();
+    const firstDay = payload.days[0];
+    if (firstDay) updateHero(firstDay);
+
+    card._wxsInit = true;
   }
 
   function scan() {
-    document
-      .querySelectorAll(".wxs-wrap:not([data-wxs-init])")
-      .forEach(initWrap);
+    document.querySelectorAll(".weather-result").forEach(initWeatherSlot);
   }
 
+  scan();
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scan);
-  } else {
-    scan();
+    document.addEventListener("DOMContentLoaded", scan, { once: true });
   }
 
-  new MutationObserver(scan).observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
+  function observeWeatherSlots() {
+    new MutationObserver(scan).observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  if (document.body) {
+    observeWeatherSlots();
+  } else {
+    document.addEventListener("DOMContentLoaded", observeWeatherSlots, {
+      once: true,
+    });
+  }
 })();
