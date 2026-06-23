@@ -607,7 +607,13 @@ export default class FourPlayTransport {
       const text = await response.text();
       return this._wrapFetchedText(text, origin, containerId);
     } catch (error) {
-      if (error instanceof OriginBlockedError) throw error;
+      if (error instanceof OriginBlockedError) {
+        console.warn(
+          `[lolcat-4play] curl fetch got blocked for ${origin}. Opening browser tab at ${url} to let user solve CAPTCHA.`,
+        );
+        this._cmd("tab_open", tabSpell(url, containerId)).catch(() => {});
+        throw error;
+      }
       console.warn(
         `[lolcat-4play] warmed curl fetch failed for ${origin}: ${error?.message || error}; falling back to browser tab`,
       );
