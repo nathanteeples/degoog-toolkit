@@ -26,7 +26,7 @@ export const WEATHER_QUERY_RE =
 
 /** Leading topic word before "in …" that signals a non-place query. */
 export const NON_PLACE_IN_LEAD_RE =
-  /^(?:time|timezone|time\s*zone|clock|weather|forecast|météo|meteo|prévisions?|previsions?|previsioni|temps|température|temperature|tiempo|clima|pronóstico|pronostico|погода|прогноз|метео|wetter|vorhersage|tempo|previsão|translate|translation|convert|converter|currency|currencies|exchange|stock|stocks|bitcoin|crypto|define|definition|meaning|synonym|antonym|pronunciation|etymology|speed\s*tests?|speedtest|stopwatch|countdown|until|news|wiki|wikipedia|lyrics|recipe|recipes|calculator|calc|calculate|graph|plot|math|tip|tips|gratuity|unit|units|chart|charts|price|prices|history|sports|score|scores|sunrise|sunset|moon|uv|humidity|wind|rain|snow|video|videos|youtube|movie|movies|show|shows|book|books|pdf|download|install|error|fix|tutorial|course|benchmark|review|vs|password|qr|jellyfin|meilisearch|reddit|tmdb|color|colour|hex|rgb|hsl)\b/i;
+  /^(?:time|timezone|time\s*zone|clock|weather|forecast|météo|meteo|prévisions?|previsions?|previsioni|temps|température|temperature|tiempo|clima|pronóstico|pronostico|погода|прогноз|метео|wetter|vorhersage|tempo|previsão|translate|translation|convert|converter|currency|currencies|exchange|stock|stocks|bitcoin|crypto|define|definition|meaning|synonym|antonym|pronunciation|etymology|speed\s*tests?|speedtest|stopwatch|countdown|until|news|wiki|wikipedia|lyrics|recipe|recipes|calculator|calc|calculate|graph|plot|math|tip|tips|gratuity|unit|units|chart|charts|price|prices|history|sports|score|scores|sunrise|sunset|moon|uv|humidity|wind|rain|snow|video|videos|youtube|movie|movies|show|shows|book|books|pdf|download|install|error|fix|tutorial|course|benchmark|review|vs|password|qr|jellyfin|meilisearch|tmdb|color|colour|hex|rgb|hsl)\b/i;
 
 /** Category or explicit place-seeking wording before a geographic "in …" phrase. */
 const CATEGORY_IN_LOCATION_RE =
@@ -42,7 +42,7 @@ const UTILITY_SINGLE_WORDS = new Set([
   "until", "currency", "convert", "converter", "calculator", "calc",
   "calculate", "define", "definition", "translate", "translation", "unit", "units",
   "stocks", "stock", "coinflip", "yesno", "dice", "history", "sports", "tmdb",
-  "reddit", "minesweeper", "snake", "tictactoe", "graph", "plot", "math", "tip",
+  "minesweeper", "snake", "tictactoe", "graph", "plot", "math", "tip",
   "tips", "gratuity", "color", "colour", "undecided", "time", "timezone", "clock",
   "youtube", "video", "lyrics", "recipe", "wiki", "wikipedia", "news", "bitcoin",
   "crypto", "password", "qr", "jellyfin", "meilisearch", "settings", "images",
@@ -325,7 +325,7 @@ export const COMMON_NON_PLACE_WORDS = new Set([
   "system", "table", "sequence", "pain", "weather", "forecast", "meteo", "météo",
   "until", "currency", "convert", "converter", "calculator", "calc", "calculate",
   "define", "definition", "translate", "translation", "unit", "units", "stocks",
-  "stock", "coinflip", "yesno", "dice", "history", "sports", "tmdb", "reddit",
+  "stock", "coinflip", "yesno", "dice", "history", "sports", "tmdb",
   "minesweeper", "snake", "tictactoe", "graph", "plot", "math", "tip", "tips",
   "gratuity", "color", "colour", "undecided", "time", "timezone", "clock", "youtube",
   "video", "lyrics", "recipe", "wiki", "wikipedia", "news", "bitcoin", "crypto",

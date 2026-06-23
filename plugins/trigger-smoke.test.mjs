@@ -10,7 +10,6 @@ const positiveCases = [
   ["minesweeper", "play minesweeper"],
   ["osm-slot", "coffee near me"],
   ["periodic-table", "periodic table"],
-  ["reddit-slot", "best laptops reddit"],
   ["snake", "play snake"],
   ["sports-slot", "lakers score"],
   ["stocks", "msft stock"],

@@ -7,7 +7,7 @@ This repository is forked from and based on the work by [SiaoZeng](https://githu
 We are incredibly grateful to the original authors and contributors in the `degoog` community whose tools, plugins, themes, and examples laid the foundation for this repository, including:
 
 - **[Arkmind](https://github.com/Arkmind)** (creator of the Trankil plugin suite under the author name *arky*, including `calculator`, `stopwatch`, `tmdb`, etc.)
-- **[Georgvwt](https://github.com/Georgvwt)** (creator of various slots and plugins like `reddit-slot`, `osm-slot`, `define-slot`, etc.)
+- **[Georgvwt](https://github.com/Georgvwt)** (creator of various slots and plugins like `osm-slot`, `define-slot`, etc.)
 - **[TheAnnoying](https://github.com/TheAnnoying)** (creator of the original `LiterallyGoogle` theme)
 - **[Federico Dossena](https://github.com/adolfintel)** (creator of the underlying Speedtest)
 - **Ben Ng** (creator of the unit/convert-units code)
@@ -176,15 +176,6 @@ Google-style clock card with geocoded timezone lookup and a live-updating displa
 <summary><strong>Undecideds</strong> — Coin flip, dice, number pick, and yes/no tools</summary>
 
 ![Undecideds](plugins/undecideds/screenshots/1.png)
-
-</details>
-
-<details>
-<summary><strong>Reddit</strong> — Top post and comments above results</summary>
-
-![Reddit](plugins/reddit-slot/screenshots/1.png)
-
-![Reddit comments](plugins/reddit-slot/screenshots/2.png)
 
 </details>
 

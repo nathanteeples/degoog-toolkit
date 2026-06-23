@@ -635,7 +635,6 @@ export const slot = {
 };
 
 export const slotPlugin = slot;
-export default slot;
 
 export const command = {
   name: "Unit Converter",
@@ -653,6 +652,8 @@ export const command = {
     return slot.execute(args, { ...context, isExplicitCommand: true });
   }
 };
+
+export default command;
 
 function _fmt(n, decimals) {
   return Number(n).toLocaleString("en-US", {
