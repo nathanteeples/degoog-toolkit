@@ -191,13 +191,6 @@
       "description": "Shows live sports scores, schedules, and standings. Activates on natural queries like team names, 'premier league standings', or 'lakers vs warriors'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
       "version": "0.4.5",
       "type": "slot"
-    },
-    {
-      "path": "plugins/4play-captcha-helper",
-      "name": "4play CAPTCHA Helper",
-      "description": "Displays top-left notifications on the search page when the 4play (lolcat) transport hits a CAPTCHA. Solve the CAPTCHA in Firefox and it will automatically update transport cookies.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.4",
-      "type": "command"
     }
   ],
   "engines": [
@@ -238,7 +231,7 @@
       "name": "4play (lolcat)",
       "minDegoogVersion": "0.22.0",
       "description": "Fetches pages using a real Firefox session via the official lolcat 4play browser extension.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.3.14"
+      "version": "1.3.15"
     }
   ],
   "repo-image": "repo-toolbox.svg",

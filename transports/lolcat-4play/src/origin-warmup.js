@@ -17,7 +17,8 @@ const BLOCK_PATTERNS = [
 export class OriginBlockedError extends Error {
   constructor(origin, reason = "blocked") {
     super(`lolcat-4play: ${origin} session appears blocked (${reason})`);
-    this.name = "OriginBlockedError";
+    this.name = "SentinelBreach";
+    this.status = "captcha";
     this.origin = origin;
     this.reason = reason;
   }
