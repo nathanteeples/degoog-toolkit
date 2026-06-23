@@ -433,7 +433,7 @@ function formatDateLine(now, timeZone, context) {
 function renderUsageCard() {
   return {
     title: "",
-    html: `<div class="time-card"><p class="time-card__usage">{{ t:plugin-time.usageLine1 }}</p><p class="time-card__usage">{{ t:plugin-time.usageLine2 }}</p></div>`,
+    html: `<div class="time-result"><p class="time-card__usage">{{ t:plugin-time.usageLine1 }}</p><p class="time-card__usage">{{ t:plugin-time.usageLine2 }}</p></div>`,
   };
 }
 
@@ -463,7 +463,7 @@ async function renderTimeQuery(rawInput, context, { allowDefault = false } = {})
   if (!resolved) {
     return {
       title: "",
-      html: `<div class="time-card"><p class="time-card__usage">Could not find a timezone for <strong>${escapeHtml(place)}</strong>.</p></div>`,
+      html: `<div class="time-result"><p class="time-card__usage">Could not find a timezone for <strong>${escapeHtml(place)}</strong>.</p></div>`,
     };
   }
 

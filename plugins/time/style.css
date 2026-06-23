@@ -1,28 +1,33 @@
-.time-card {
+/* ── World Clock Slot Styling ────────────────────────── */
+
+.time-result {
     box-sizing: border-box;
     padding: 0;
     margin: 0;
     color: var(--text-primary);
 }
 
-.time-card__clock {
-    margin: 0 0 0.2rem;
-    font-size: clamp(2rem, 5vw, 2.5rem);
+.time-result .time-place {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.time-result .time-time {
+    margin: 0 0 0.2rem 0;
+    font-size: clamp(2.1rem, 5vw, 2.6rem);
     font-weight: 400;
     line-height: 1.15;
     letter-spacing: -0.02em;
+    color: var(--text-primary);
 }
 
-.time-card__date,
-.time-card__place {
+.time-result .time-date {
     margin: 0;
     color: var(--text-secondary);
     font-size: 0.875rem;
     line-height: 1.45;
-}
-
-.time-card__place {
-    margin-top: 0.2rem;
 }
 
 .time-card__usage {
