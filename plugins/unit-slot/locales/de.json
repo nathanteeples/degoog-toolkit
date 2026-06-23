@@ -1,0 +1,10 @@
+{
+  "plugin-unit-slot": {
+    "name": "Einheitenumrechner",
+    "description": "Interaktiver Einheitenumrechner für Länge, Fläche, Masse, Volumen, Temperatur, Zeit und Geschwindigkeit.",
+    "unitConverter": "Einheitenumrechner",
+    "amount": "Menge",
+    "result": "Ergebnis",
+    "copyResult": "Ergebnis kopieren"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "plugin-unit-slot": {
+    "name": "Conversore di Unità",
+    "description": "Conversore di unità interattivo che supporta lunghezza, area, massa, volume, temperatura, tempo e velocità.",
+    "unitConverter": "Conversore di Unità",
+    "amount": "Quantità",
+    "result": "Risultato",
+    "copyResult": "Copia risultato"
+  }
+}
