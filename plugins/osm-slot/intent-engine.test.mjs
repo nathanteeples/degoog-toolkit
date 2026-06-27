@@ -83,6 +83,7 @@ const positiveFixtures = [
   ["acme foods", { kind: "business", searchText: "acme foods" }],
   ["sample kitchen", { kind: "business", searchText: "sample kitchen" }],
   ["example coffee", { kind: "business", searchText: "example coffee" }],
+  ["hermes store", { kind: "business", searchText: "hermes store" }],
 ];
 
 for (const [query, expected] of positiveFixtures) {
@@ -183,6 +184,7 @@ for (const query of [
   "near perfect",
   "bridge the gap",
   "field of study",
+  "hermes desktop",
 ]) {
   test(`rejects ${query}`, () => {
     assert.equal(analyzePlaceIntent(query), null);
