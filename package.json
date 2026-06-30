@@ -125,9 +125,9 @@
     {
       "path": "plugins/official-extension-time",
       "name": "Official Extension Time",
-      "description": "Test copy of the official Time command with city and country geocoding.",
-      "version": "1.0.2",
-      "type": "command"
+      "description": "Test copy of the official Time slot with natural and trailing time queries.",
+      "version": "1.1.0",
+      "type": "slot"
     },
     {
       "path": "plugins/tip-calculator",

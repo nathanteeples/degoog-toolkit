@@ -1,6 +1,11 @@
 {
-  "plugin-official-extension-time": {
-    "name": "Ora official extension",
-    "description": "Copia di test del comando Time ufficiale con geocodifica di città e paesi."
+  "plugin-time": {
+    "name": "Ora",
+    "description": "Orologio mondiale in stile Google per città e paesi. Supporta !time, frasi naturali come \"time in France\" e query finali come \"Tokyo time\".",
+    "timeIn": "Ora a {place}",
+    "unknownPlace": "Impossibile trovare un fuso orario per \"{place}\".",
+    "usageTitle": "Ora",
+    "usageLine1": "Uso: <code>!time &lt;città o paese&gt;</code>",
+    "usageLine2": "Esempi: <code>time in France</code>, <code>!time Tokyo</code>, <code>Paris time</code>"
   }
 }
