@@ -156,9 +156,11 @@ export default {
   isClientExposed: false,
   name: "Official Extension Time",
   description: "Test copy of the official Time command with city and country geocoding.",
-  trigger: "official-time",
-  aliases: ["official-tz", "official-clock"],
+  trigger: "officialtime",
+  aliases: ["otime", "officialtz", "officialclock"],
   naturalLanguagePhrases: [
+    "official extension time in",
+    "official extension current time in",
     "official time in",
     "official current time in",
   ],
@@ -179,7 +181,7 @@ export default {
     if (!place) {
       return {
         title: "Official Extension Time",
-        html: `<div class="command-result"><p>Usage: <code>!official-time &lt;city, country, or timezone&gt;</code></p><p>Examples: <code>!official-time Tokyo</code>, <code>!official-time America/New_York</code>, or &quot;official time in France&quot;</p></div>`,
+        html: `<div class="command-result"><p>Usage: <code>!officialtime &lt;city, country, or timezone&gt;</code></p><p>Examples: <code>!officialtime Tokyo</code>, <code>!otime America/New_York</code>, or &quot;official extension time in France&quot;</p></div>`,
       };
     }
 
