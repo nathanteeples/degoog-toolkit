@@ -154,15 +154,16 @@ const _formatOffset = (date, timeZone) => {
 
 export default {
   isClientExposed: false,
-  name: "Official Extension Time",
-  description: "Test copy of the official Time command with city and country geocoding.",
-  trigger: "officialtime",
-  aliases: ["otime", "officialtz", "officialclock"],
+  name: "Time",
+  description: "Show current time for cities, countries, and timezones.",
+  trigger: "time",
+  aliases: ["tz", "clock"],
   naturalLanguagePhrases: [
-    "official extension time in",
-    "official extension current time in",
-    "official time in",
-    "official current time in",
+    "what time is it in",
+    "what's the time in",
+    "what is the time in",
+    "current time in",
+    "time in",
   ],
 
   settingsSchema: [],
@@ -180,15 +181,15 @@ export default {
     const place = _cleanPlace(args);
     if (!place) {
       return {
-        title: "Official Extension Time",
-        html: `<div class="command-result"><p>Usage: <code>!officialtime &lt;city, country, or timezone&gt;</code></p><p>Examples: <code>!officialtime Tokyo</code>, <code>!otime America/New_York</code>, or &quot;official extension time in France&quot;</p></div>`,
+        title: "Time",
+        html: `<div class="command-result"><p>Usage: <code>!time &lt;city, country, or timezone&gt;</code></p><p>Examples: <code>!time Tokyo</code>, <code>!time America/New_York</code>, or &quot;time in France&quot;</p></div>`,
       };
     }
 
     const resolved = await _resolveTimeZone(place, context);
     if (!resolved) {
       return {
-        title: "Official Extension Time",
+        title: "Time",
         html: `<div class="command-result"><p>Unknown timezone or city: <strong>${_esc(place)}</strong></p></div>`,
       };
     }
@@ -214,7 +215,7 @@ export default {
 
     return {
       title: `Time: ${resolved.label}`,
-      html: `<div class="command-result time-result" data-official-extension-time-card data-timezone="${_esc(resolved.timeZone)}" data-locale="${_esc(locale)}"><h3 class="time-place">Time in ${_esc(resolved.label)}</h3><p class="time-time" data-official-extension-time-clock>${_esc(timeStr)}</p><p class="time-date" data-official-extension-time-date>${_esc(detail)}</p><p class="time-zone">${_esc(resolved.timeZone)}</p></div>`,
+      html: `<div class="command-result time-result" data-plugin-time-card data-timezone="${_esc(resolved.timeZone)}" data-locale="${_esc(locale)}"><h3 class="time-place">Time in ${_esc(resolved.label)}</h3><p class="time-time" data-plugin-time-clock>${_esc(timeStr)}</p><p class="time-date" data-plugin-time-date>${_esc(detail)}</p><p class="time-zone">${_esc(resolved.timeZone)}</p></div>`,
     };
   },
 };

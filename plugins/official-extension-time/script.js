@@ -39,8 +39,8 @@
 
     const locale = card.dataset.locale || undefined;
     const now = new Date();
-    const clock = card.querySelector("[data-official-extension-time-clock]");
-    const date = card.querySelector("[data-official-extension-time-date]");
+    const clock = card.querySelector("[data-plugin-time-clock]");
+    const date = card.querySelector("[data-plugin-time-date]");
 
     if (clock) clock.textContent = formatClock(now, timeZone, locale);
     if (date) date.textContent = formatDate(now, timeZone, locale);
@@ -48,14 +48,14 @@
 
   function initCard(card) {
     tick(card);
-    if (card.dataset.officialExtensionTimeInterval) return;
+    if (card.dataset.pluginTimeInterval) return;
 
     const interval = window.setInterval(() => tick(card), 1000);
-    card.dataset.officialExtensionTimeInterval = String(interval);
+    card.dataset.pluginTimeInterval = String(interval);
   }
 
   function init() {
-    document.querySelectorAll("[data-official-extension-time-card]").forEach(initCard);
+    document.querySelectorAll("[data-plugin-time-card]").forEach(initCard);
   }
 
   if (document.readyState === "loading") {

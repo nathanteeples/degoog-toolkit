@@ -126,7 +126,7 @@
       "path": "plugins/official-extension-time",
       "name": "Official Extension Time",
       "description": "Test copy of the official Time command with city and country geocoding.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "type": "command"
     },
     {
