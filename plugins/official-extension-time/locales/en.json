@@ -1,0 +1,6 @@
+{
+  "plugin-official-extension-time": {
+    "name": "Official Extension Time",
+    "description": "Test copy of the official Time command with city and country geocoding."
+  }
+}
