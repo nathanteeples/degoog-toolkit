@@ -52,7 +52,7 @@ const gateHoldMeta = (hold) =>
 
 const sanitizeReturnTo = (req, candidate) => {
   const origin = originOf(req);
-  const fallback = "/settings";
+  const fallback = "/admin";
   if (!candidate) return fallback;
   try {
     const url = new URL(candidate, origin);
@@ -84,7 +84,7 @@ const bounceWithHold = (req, reason, detail = "") =>
     headers: (() => {
       const returnTo = sanitizeReturnTo(
         req,
-        decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || "/settings"),
+        decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || "/admin"),
       );
       const headers = new Headers({ location: `${originOf(req)}${returnTo}` });
       headers.append("set-cookie", bakeGateHold(req, reason, detail));
@@ -115,7 +115,7 @@ const onAuthCheck = (req) => {
   const url = new URL(req.url);
   const returnTo = sanitizeReturnTo(
     req,
-    url.searchParams.get("returnTo") || req.headers.get("referer") || "/settings",
+    url.searchParams.get("returnTo") || req.headers.get("referer") || "/admin",
   );
   const loginUrl = ctx
     ? ctx.routeUrl(`login?returnTo=${encodeURIComponent(returnTo)}`)

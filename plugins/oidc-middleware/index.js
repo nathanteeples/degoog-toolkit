@@ -7,7 +7,7 @@ export const middleware = {
   isClientExposed: false,
   name: "OIDC / SSO",
   description:
-    "Single sign-on gate for the settings area using any OpenID Connect provider. Adds a home-page avatar for the signed-in user.",
+    "Single sign-on gate for the admin area using any OpenID Connect provider. Adds a home-page avatar for the signed-in user.",
   settingsSchema,
   init(ctx) {
     setCtx(ctx);
@@ -27,9 +27,9 @@ export const command = {
   settingsSchema: [
     {
       key: "useAsSettingsGate",
-      label: "Use as settings gate",
+      label: "Use as admin gate",
       type: "toggle",
-      description: "Require OIDC sign-in before opening settings.",
+      description: "Require OIDC sign-in before opening /admin.",
     },
     ...settingsSchema,
   ],
@@ -42,7 +42,7 @@ export const command = {
   execute() {
     const ctx = getCtx();
     const config = getConfig();
-    const loginUrl = ctx ? ctx.routeUrl("login?returnTo=/settings") : "/api/settings/auth";
+    const loginUrl = ctx ? ctx.routeUrl("login?returnTo=/admin") : "/api/settings/auth";
     const configured = isConfigured(config);
     const gateEnabled = config?.useAsSettingsGate === true;
     const providerLabel = config?.providerLabel || "OIDC";
@@ -51,11 +51,11 @@ export const command = {
       ? `${config.appUrl}/api/settings/auth/callback`
       : "<derived from request>/api/settings/auth/callback";
     const status = gateEnabled
-      ? "OIDC is configured and enabled as the settings gate."
-      : 'OIDC is configured, but "Use as settings gate" is still off.';
+      ? "OIDC is configured and enabled as the admin gate."
+      : 'OIDC is configured, but "Use as admin gate" is still off.';
     const hint = gateEnabled
       ? `<p>Callback URL: <code>${callbackUrl}</code></p><p>Debug logging: <strong>${debugEnabled ? "on" : "off"}</strong>.</p>`
-      : "<p>Enable the gate toggle in Settings, save, then reopen /settings or /admin.</p>";
+      : "<p>Enable the gate toggle in Settings, save, then reopen /admin.</p>";
     return {
       title: middleware.name,
       html: configured

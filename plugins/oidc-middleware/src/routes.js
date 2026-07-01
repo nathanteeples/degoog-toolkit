@@ -46,7 +46,7 @@ const originOf = (req) => getConfig()?.appUrl || new URL(req.url).origin;
 
 const sanitizeReturnTo = (req, candidate) => {
   const origin = originOf(req);
-  const fallback = "/settings";
+  const fallback = "/admin";
   if (!candidate) return fallback;
   try {
     const url = new URL(candidate, origin);
@@ -117,7 +117,7 @@ const onClaim = (req) => {
   const profile = code ? claimHandoff(code) : null;
   const returnTo = sanitizeReturnTo(
     req,
-    decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || "/settings"),
+    decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || "/admin"),
   );
   const clear = [
     clearCookie(OIDC_GATE_HOLD),

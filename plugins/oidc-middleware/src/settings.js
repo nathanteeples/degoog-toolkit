@@ -97,7 +97,7 @@ export const settingsSchema = [
     type: "info",
     default: "<App URL>/api/settings/auth/callback",
     description:
-      "Register this exact callback URL at your OIDC provider. If App URL is blank, the plugin derives the base URL from the request used to open /settings or /admin.",
+      "Register this exact callback URL at your OIDC provider. If App URL is blank, the plugin derives the base URL from the request used to open /admin or start a test sign-in.",
   },
   {
     key: "issuer",
@@ -144,7 +144,7 @@ export const settingsSchema = [
     type: "toggle",
     default: true,
     description:
-      "When enabled, opening /settings or /admin immediately redirects to the OIDC provider instead of showing a local sign-in button.",
+      "When enabled, opening /admin immediately redirects to the OIDC provider instead of showing a local sign-in button.",
   },
   {
     key: "scopes",
@@ -159,7 +159,7 @@ export const settingsSchema = [
     type: "toggle",
     default: false,
     description:
-      "Disabled by default for safety. Turn this on only if you intentionally want every successful OIDC login to unlock admin/settings access.",
+      "Disabled by default for safety. Turn this on only if you intentionally want every successful OIDC login to unlock admin access.",
   },
   {
     key: "allowedEmails",
@@ -170,7 +170,7 @@ export const settingsSchema = [
       { key: "email", label: "Email", type: "text", placeholder: "admin@example.com" },
     ],
     description:
-      "Optional allowlist. When set, only these email addresses may unlock settings.",
+      "Optional allowlist. When set, only these email addresses may unlock /admin.",
   },
   {
     key: "allowedDomains",
