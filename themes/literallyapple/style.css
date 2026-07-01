@@ -1703,27 +1703,29 @@ body {
         padding-block: 0;
         padding-inline: 0.75rem;
     }
+
+    /* Keep spacing between the above-results slot and results-main consistent
+       with the spacing inside results-main (e.g. at-a-glance → results-list). */
+    #slot-above-results:not(:empty) {
+        margin-bottom: 1rem;
+    }
+
+    /* Stack above-results plugins vertically; desktop uses display:contents in the
+       grid block so panels join #results-layout (full-width row, then main+sidebar). */
+    #slot-above-results {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
 }
 
 #slot-above-results:empty {
     display: none;
 }
 
-/* Keep spacing between the above-results slot and results-main consistent
-   with the spacing inside results-main (e.g. at-a-glance → results-list). */
-#slot-above-results:not(:empty) {
-    margin-bottom: 1rem;
-}
-
 /* Each stacked full-width above-results plugin gets its own visible panel frame
    (e.g. Places + Stocks on the same query). Plugins that supply their own outer
    card flatten the degoog shell in plugin CSS (color-translator, until). */
-#slot-above-results {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
 #slot-above-results > .results-slot-panel,
 #slot-above-results
     > .results-slot-panel
