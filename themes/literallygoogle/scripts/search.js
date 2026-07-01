@@ -459,6 +459,53 @@ function getLgTranslation(key) {
     moveSpellCheck();
 })();
 
+/* ── 4b. Inline web filters (Time / Language) into #results-meta ──────── */
+(() => {
+    function isWebTabActive() {
+        const active = document.querySelector(
+            '#results-tabs .results-tab.active, #results-tabs .results-tab[aria-selected="true"]',
+        );
+        if (!active) return true;
+        const type = (active.getAttribute("data-type") || "web").toLowerCase();
+        return !type.includes("images") && !type.includes("videos");
+    }
+
+    function inlineToolsPanel() {
+        const meta = document.getElementById("results-meta");
+        const panel = document.getElementById("tools-panel");
+        const toolsBar = document.getElementById("tools-bar");
+        if (!meta || !panel) return;
+
+        const webTab = isWebTabActive();
+        if (webTab) {
+            if (panel.parentNode !== meta) {
+                meta.insertBefore(panel, meta.firstChild);
+            }
+            panel.classList.add("lg-tools-inline");
+            panel.hidden = false;
+            panel.style.removeProperty("display");
+        } else {
+            panel.classList.remove("lg-tools-inline");
+        }
+
+        if (toolsBar) {
+            toolsBar.hidden = webTab;
+        }
+    }
+
+    const target = document.getElementById("results-page") || document.documentElement;
+    new MutationObserver(() => {
+        inlineToolsPanel();
+    }).observe(target, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["class", "aria-selected", "style", "hidden"],
+    });
+
+    inlineToolsPanel();
+})();
+
 /* ── 5. Media-preview (mp2) bar enhancements ────────────────────────────── */
 (() => {
     let toastTimer = null;
