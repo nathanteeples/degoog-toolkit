@@ -129,7 +129,7 @@ Click a plugin name to expand screenshots and previews.
 </details>
 
 <details>
-<summary><strong>OIDC Settings Gate</strong> — Secure admin/settings login via OpenID Connect</summary>
+<summary><strong>OIDC</strong> — Secure admin/settings login via OpenID Connect</summary>
 
 ![OIDC Settings Gate](plugins/oidc-settings-gate/screenshots/1.svg)
 

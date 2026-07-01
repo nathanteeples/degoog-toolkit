@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import command, { __test, middleware, plugin } from "./index.js";
+import command, { __test, middleware } from "./index.js";
 
 function base64UrlJson(value) {
   return Buffer.from(JSON.stringify(value), "utf8")
@@ -15,7 +15,7 @@ test("runtime config requires an explicit admin authorization rule", () => {
   assert.throws(
     () =>
       __test.buildRuntimeConfig({
-        publicBaseUrl: "https://search.example.com",
+        appUrl: "https://search.example.com",
         issuer: "https://auth.example.com/application/o/degoog/",
         clientId: "degoog-admin",
         clientSecret: "secret",
@@ -25,16 +25,18 @@ test("runtime config requires an explicit admin authorization rule", () => {
   );
 });
 
-test("command surface exposes the settings gate toggle and shared plugin metadata", () => {
-  assert.equal(plugin.id, "oidc-settings-gate");
+test("command surface exposes gate toggle and full OIDC settings", () => {
   assert.equal(middleware.id, "oidc-settings-gate");
-  assert.equal(command.trigger, "oidcgate");
+  assert.equal(command.name, "OIDC");
+  assert.equal(command.trigger, "oidc");
   assert.equal(command.settingsSchema?.[0]?.key, "useAsSettingsGate");
+  assert.equal(command.settingsSchema?.[1]?.key, "appUrl");
+  assert.equal(middleware.settingsSchema?.[0]?.key, "appUrl");
 });
 
 test("runtime config accepts required claims as the sole admin rule", () => {
   const config = __test.buildRuntimeConfig({
-    publicBaseUrl: "https://search.example.com",
+    appUrl: "https://search.example.com",
     issuer: "https://auth.example.com/application/o/degoog/",
     clientId: "degoog-admin",
     clientSecret: "secret",
@@ -44,6 +46,21 @@ test("runtime config accepts required claims as the sole admin rule", () => {
 
   assert.equal(config.requiredClaims.length, 1);
   assert.equal(config.publicBaseUrl, "https://search.example.com");
+});
+
+test("runtime config derives app URL from the request when unset", () => {
+  const config = __test.buildRuntimeConfig(
+    {
+      issuer: "https://auth.example.com/application/o/degoog/",
+      clientId: "degoog-admin",
+      clientSecret: "secret",
+      tokenEndpointAuthMethod: "client_secret_basic",
+      allowedEmails: JSON.stringify([{ email: "admin@example.com" }]),
+    },
+    new Request("https://dg.joshpatra.me/api/plugin/oidc-settings-gate/login"),
+  );
+
+  assert.equal(config.publicBaseUrl, "https://dg.joshpatra.me");
 });
 
 test("returnTo sanitization rejects external origins", () => {
@@ -64,7 +81,7 @@ test("returnTo sanitization keeps same-origin admin paths", () => {
 
 test("authorization requires verified email for email allow rules by default", () => {
   const config = __test.buildRuntimeConfig({
-    publicBaseUrl: "https://search.example.com",
+    appUrl: "https://search.example.com",
     issuer: "https://auth.example.com/application/o/degoog/",
     clientId: "degoog-admin",
     clientSecret: "secret",
@@ -87,14 +104,16 @@ test("authorization requires verified email for email allow rules by default", (
 
 test("authorization supports domain, group, and required nested claim checks", () => {
   const config = __test.buildRuntimeConfig({
-    publicBaseUrl: "https://search.example.com",
+    appUrl: "https://search.example.com",
     issuer: "https://auth.example.com/application/o/degoog/",
     clientId: "degoog-admin",
     clientSecret: "secret",
     tokenEndpointAuthMethod: "client_secret_basic",
-    allowedDomains: "example.com",
-    allowedGroups: "degoog-admins",
+    allowedDomains: JSON.stringify([{ domain: "example.com" }]),
+    allowedGroups: JSON.stringify([{ group: "degoog-admins" }]),
+    allowedRoles: JSON.stringify([{ role: "platform-admin" }]),
     groupsClaim: "realm_access.roles",
+    rolesClaim: "resource_access.degoog.roles",
     requiredClaims: JSON.stringify([{ claim: "tenant.id", value: "prod" }]),
   });
 
@@ -102,6 +121,7 @@ test("authorization supports domain, group, and required nested claim checks", (
     email: "admin@example.com",
     email_verified: true,
     realm_access: { roles: ["viewer", "degoog-admins"] },
+    resource_access: { degoog: { roles: ["platform-admin"] } },
     tenant: { id: "prod" },
   });
   const denied = __test.authorizeClaims(config, {
@@ -117,7 +137,7 @@ test("authorization supports domain, group, and required nested claim checks", (
 
 test("authorization URL always includes PKCE, state, nonce, and callback", () => {
   const config = __test.buildRuntimeConfig({
-    publicBaseUrl: "https://search.example.com",
+    appUrl: "https://search.example.com",
     issuer: "https://auth.example.com/application/o/degoog/",
     clientId: "degoog-admin",
     clientSecret: "secret",
@@ -153,7 +173,7 @@ test("authorization URL always includes PKCE, state, nonce, and callback", () =>
 
 test("JWT verification accepts a correctly signed RS256 token and validates nonce", async () => {
   const config = __test.buildRuntimeConfig({
-    publicBaseUrl: "https://search.example.com",
+    appUrl: "https://search.example.com",
     issuer: "https://auth.example.com/application/o/degoog/",
     clientId: "degoog-admin",
     clientSecret: "secret",

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-const PLUGIN_NAME = "OIDC Settings Gate";
+const PLUGIN_NAME = "OIDC";
 const PLUGIN_DESCRIPTION =
   "Secure OIDC login for degoog's settings and admin gate with PKCE, nonce/state checks, issuer discovery, JWKS verification, and explicit admin allow rules.";
 
@@ -34,13 +34,12 @@ const pluginId = "oidc-settings-gate";
 
 const oidcSettingsSchema = [
   {
-    key: "publicBaseUrl",
-    label: "Public base URL",
+    key: "appUrl",
+    label: "App URL",
     type: "url",
-    required: true,
     placeholder: "https://search.example.com",
     description:
-      "The externally visible base URL of this degoog instance. Used to build the exact OIDC callback URI.",
+      "Optional external base URL for this degoog instance. Leave blank to derive it from the request. Set it explicitly when you are behind a reverse proxy, on a subpath, or want a fixed callback origin.",
   },
   {
     key: "issuer",
@@ -128,18 +127,24 @@ const oidcSettingsSchema = [
   {
     key: "allowedEmails",
     label: "Allowed emails",
-    type: "textarea",
-    placeholder: "admin@example.com\nops@example.com",
+    type: "list",
+    addLabel: "+ Add email",
     description:
-      "Optional exact-email allowlist. One email per line or comma-separated.",
+      "Optional exact-email allowlist.",
+    itemSchema: [
+      { key: "email", label: "Email", type: "text", placeholder: "admin@example.com" },
+    ],
   },
   {
     key: "allowedDomains",
     label: "Allowed email domains",
-    type: "textarea",
-    placeholder: "example.com\ninternal.example",
+    type: "list",
+    addLabel: "+ Add domain",
     description:
-      "Optional domain allowlist. One domain per line or comma-separated.",
+      "Optional domain allowlist.",
+    itemSchema: [
+      { key: "domain", label: "Domain", type: "text", placeholder: "example.com" },
+    ],
   },
   {
     key: "requireVerifiedEmail",
@@ -161,10 +166,33 @@ const oidcSettingsSchema = [
   {
     key: "allowedGroups",
     label: "Allowed groups",
-    type: "textarea",
-    placeholder: "degoog-admins\nplatform-admins",
+    type: "list",
+    addLabel: "+ Add group",
     description:
-      "Optional exact group or role allowlist. One value per line or comma-separated.",
+      "Optional exact group allowlist using the claim path configured above.",
+    itemSchema: [
+      { key: "group", label: "Group", type: "text", placeholder: "degoog-admins" },
+    ],
+  },
+  {
+    key: "rolesClaim",
+    label: "Roles claim path",
+    type: "text",
+    default: "roles",
+    placeholder: "roles or realm_access.roles",
+    description:
+      "Dot-path to the role claim used for role-based admin allow rules.",
+  },
+  {
+    key: "allowedRoles",
+    label: "Allowed roles",
+    type: "list",
+    addLabel: "+ Add role",
+    description:
+      "Optional exact role allowlist using the claim path configured above.",
+    itemSchema: [
+      { key: "role", label: "Role", type: "text", placeholder: "admin" },
+    ],
   },
   {
     key: "requiredClaims",
@@ -326,6 +354,22 @@ function parseListSetting(value) {
   }
 }
 
+function parseStringList(value, objectKey, { lowercase = false } = {}) {
+  const listValue = parseListSetting(value);
+  if (listValue.length > 0) {
+    const values = listValue
+      .map((entry) => {
+        if (entry && typeof entry === "object" && objectKey) {
+          return asString(entry[objectKey]);
+        }
+        return asString(entry);
+      })
+      .filter(Boolean);
+    return lowercase ? values.map((entry) => entry.toLowerCase()) : values;
+  }
+  return splitLinesOrCommas(value, { lowercase });
+}
+
 function parseAuthorizeParams(value) {
   return parseListSetting(value)
     .map((row) => ({
@@ -392,15 +436,6 @@ function buildDefaultReturnTo(publicBaseUrl) {
   return `${path}/settings`;
 }
 
-function getBasePathPrefix(publicBaseUrl) {
-  const base = new URL(publicBaseUrl);
-  return base.pathname === "/" ? "" : base.pathname.replace(/\/+$/, "");
-}
-
-function buildAppPath(publicBaseUrl, path) {
-  return `${getBasePathPrefix(publicBaseUrl)}${path}`;
-}
-
 function sanitizeReturnTo(publicBaseUrl, candidate) {
   const fallback = buildDefaultReturnTo(publicBaseUrl);
   if (!candidate) return fallback;
@@ -437,16 +472,44 @@ function parseCacheControlMaxAge(headerValue) {
   return Number.isFinite(seconds) ? seconds * 1000 : null;
 }
 
-function buildRuntimeConfig(settings = rawSettings) {
+function derivePublicBaseUrlFromRequest(request) {
+  if (!request) {
+    throw new Error(
+      "App URL is required when settings are loaded outside an active request",
+    );
+  }
+
+  const requestUrl = new URL(request.url);
+  const forwardedProto = asString(request.headers.get("x-forwarded-proto"))
+    .split(",")[0]
+    .trim();
+  const forwardedHost = asString(request.headers.get("x-forwarded-host"))
+    .split(",")[0]
+    .trim();
+
+  const protocol = forwardedProto || requestUrl.protocol.replace(/:$/, "");
+  const host = forwardedHost || requestUrl.host;
+  if (!host) {
+    throw new Error("Could not derive App URL from the incoming request");
+  }
+
+  return normalizeAbsoluteUrl(`${protocol}://${host}`, "Derived App URL", {
+    allowLoopbackHttp: true,
+    stripTrailingSlash: true,
+  });
+}
+
+function buildRuntimeConfig(settings = rawSettings, request) {
   const issuer = asString(settings.issuer);
   const discoveryUrl = asString(settings.discoveryUrl);
-  const publicBaseUrl = asString(settings.publicBaseUrl);
+  const configuredAppUrl = asString(settings.appUrl || settings.publicBaseUrl);
   const clientId = asString(settings.clientId);
   const clientSecret = settings.clientSecret;
   const providerLabel = asString(settings.providerLabel) || "OIDC";
   const tokenEndpointAuthMethod = asString(settings.tokenEndpointAuthMethod) || "client_secret_basic";
   const scopes = asString(settings.scopes) || "openid profile email";
   const groupsClaim = asString(settings.groupsClaim) || "groups";
+  const rolesClaim = asString(settings.rolesClaim) || "roles";
   const allowAnyAuthenticatedUser = asBoolean(
     settings.allowAnyAuthenticatedUser,
     false,
@@ -454,15 +517,14 @@ function buildRuntimeConfig(settings = rawSettings) {
   const requireVerifiedEmail = asBoolean(settings.requireVerifiedEmail, true);
   const userInfoFallback = asBoolean(settings.userInfoFallback, true);
   const clockSkewSeconds = asPositiveInteger(settings.clockSkewSeconds, 60);
-  const allowedEmails = new Set(
-    splitLinesOrCommas(settings.allowedEmails, { lowercase: true }),
-  );
+  const allowedEmails = new Set(parseStringList(settings.allowedEmails, "email", { lowercase: true }));
   const allowedDomains = new Set(
-    splitLinesOrCommas(settings.allowedDomains, { lowercase: true }).map(
+    parseStringList(settings.allowedDomains, "domain", { lowercase: true }).map(
       (domain) => domain.replace(/^@+/, ""),
     ),
   );
-  const allowedGroups = new Set(splitLinesOrCommas(settings.allowedGroups));
+  const allowedGroups = new Set(parseStringList(settings.allowedGroups, "group"));
+  const allowedRoles = new Set(parseStringList(settings.allowedRoles, "role"));
   const requiredClaims = parseRequiredClaims(settings.requiredClaims);
   const extraAuthorizeParams = parseAuthorizeParams(
     settings.extraAuthorizeParams,
@@ -498,17 +560,25 @@ function buildRuntimeConfig(settings = rawSettings) {
     }
   }
 
-  try {
-    normalizedPublicBaseUrl = normalizeAbsoluteUrl(
-      publicBaseUrl,
-      "Public base URL",
-      {
-        allowLoopbackHttp: true,
-        stripTrailingSlash: true,
-      },
-    );
-  } catch (error) {
-    errors.push(error.message);
+  if (configuredAppUrl) {
+    try {
+      normalizedPublicBaseUrl = normalizeAbsoluteUrl(
+        configuredAppUrl,
+        "App URL",
+        {
+          allowLoopbackHttp: true,
+          stripTrailingSlash: true,
+        },
+      );
+    } catch (error) {
+      errors.push(error.message);
+    }
+  } else {
+    try {
+      normalizedPublicBaseUrl = derivePublicBaseUrlFromRequest(request);
+    } catch (error) {
+      errors.push(error.message);
+    }
   }
 
   if (!clientId) {
@@ -540,6 +610,7 @@ function buildRuntimeConfig(settings = rawSettings) {
     allowedEmails.size > 0 ||
     allowedDomains.size > 0 ||
     allowedGroups.size > 0 ||
+    allowedRoles.size > 0 ||
     requiredClaims.length > 0;
   if (!hasAuthorizationRule) {
     errors.push(
@@ -561,6 +632,7 @@ function buildRuntimeConfig(settings = rawSettings) {
     tokenEndpointAuthMethod,
     scopes,
     groupsClaim,
+    rolesClaim,
     allowAnyAuthenticatedUser,
     requireVerifiedEmail,
     userInfoFallback,
@@ -568,6 +640,7 @@ function buildRuntimeConfig(settings = rawSettings) {
     allowedEmails,
     allowedDomains,
     allowedGroups,
+    allowedRoles,
     requiredClaims,
     extraAuthorizeParams,
   };
@@ -947,6 +1020,13 @@ function authorizeClaims(config, claims) {
       ? groupsValue.some((entry) => config.allowedGroups.has(String(entry)))
       : config.allowedGroups.has(String(groupsValue)));
 
+  const rolesValue = readClaim(claims, config.rolesClaim);
+  const roleMatch =
+    config.allowedRoles.size > 0 &&
+    (Array.isArray(rolesValue)
+      ? rolesValue.some((entry) => config.allowedRoles.has(String(entry)))
+      : config.allowedRoles.has(String(rolesValue)));
+
   const requiredClaimsMatch = config.requiredClaims.every(({ claim, value }) =>
     claimMatchesExpected(readClaim(claims, claim), value),
   );
@@ -955,13 +1035,15 @@ function authorizeClaims(config, claims) {
     config.allowAnyAuthenticatedUser ||
     config.allowedEmails.size > 0 ||
     config.allowedDomains.size > 0 ||
-    config.allowedGroups.size > 0;
+    config.allowedGroups.size > 0 ||
+    config.allowedRoles.size > 0;
 
   const selectorMatch =
     config.allowAnyAuthenticatedUser ||
     exactEmailMatch ||
     domainMatch ||
     groupMatch ||
+    roleMatch ||
     (!selectorConfigured && config.requiredClaims.length > 0);
 
   return {
@@ -1088,31 +1170,31 @@ function needsUserInfo(config, claims) {
     return true;
   }
 
+  if (config.allowedRoles.size > 0 && readClaim(claims, config.rolesClaim) === undefined) {
+    return true;
+  }
+
   return config.requiredClaims.some(
     ({ claim }) => readClaim(claims, claim) === undefined,
   );
 }
 
 async function buildSettingsAuthResponse(request) {
-  const config = buildRuntimeConfig();
+  const config = buildRuntimeConfig(rawSettings, request);
   const referer = request.headers.get("referer");
   const returnTo = sanitizeReturnTo(config.publicBaseUrl, referer);
-  const loginUrl = new URL(
-    buildAppPath(config.publicBaseUrl, `${apiBase}/login`),
-    config.publicBaseUrl,
-  );
-  loginUrl.searchParams.set("returnTo", returnTo);
+  const loginUrl = `${apiBase}/login?returnTo=${encodeURIComponent(returnTo)}`;
 
   return jsonResponse({
     required: true,
     valid: false,
-    loginUrl: loginUrl.pathname + loginUrl.search,
+    loginUrl,
     providerLabel: config.providerLabel,
   });
 }
 
 async function beginLogin(request) {
-  const config = buildRuntimeConfig();
+  const config = buildRuntimeConfig(rawSettings, request);
   const discovery = await loadDiscovery(config);
   const requestUrl = new URL(request.url);
   const returnTo = sanitizeReturnTo(
@@ -1138,7 +1220,7 @@ async function beginLogin(request) {
 }
 
 async function finishLogin(request) {
-  const config = buildRuntimeConfig();
+  const config = buildRuntimeConfig(rawSettings, request);
   const discovery = await loadDiscovery(config);
   const url = new URL(request.url);
   const providerError = asString(url.searchParams.get("error"));
@@ -1230,21 +1312,14 @@ function configurePlugin(settings) {
   rawSettings = settings || {};
 }
 
-export const plugin = {
-  id: pluginId,
-  name: PLUGIN_NAME,
-  description: PLUGIN_DESCRIPTION,
-  settingsSchema: oidcSettingsSchema,
-};
-
 const command = {
   name: PLUGIN_NAME,
   description:
     "Configure and activate the OIDC middleware that protects degoog settings and admin routes.",
   isClientExposed: false,
-  trigger: "oidcgate",
-  aliases: ["oidcsettings", "oidc-admin"],
-  settingsSchema: [useAsSettingsGateSetting],
+  trigger: "oidc",
+  aliases: ["oidcgate", "oidcsettings", "oidc-admin"],
+  settingsSchema: [useAsSettingsGateSetting, ...oidcSettingsSchema],
   async init(ctx) {
     await initializePlugin(ctx);
   },
@@ -1268,6 +1343,7 @@ export const middleware = {
   name: PLUGIN_NAME,
   description: PLUGIN_DESCRIPTION,
   isClientExposed: false,
+  settingsSchema: oidcSettingsSchema,
   async init(ctx) {
     await initializePlugin(ctx);
   },
