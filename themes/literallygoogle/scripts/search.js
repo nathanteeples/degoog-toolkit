@@ -627,7 +627,93 @@ function getLgTranslation(key) {
     tryBind();
 })();
 
-/* ── 6. Sidebar accordion panels (theme settings) ──────────────────────── */
+/* ── 6. Immediate search-type state for theme layout ───────────────────── */
+(() => {
+    const TYPE_ATTR = "data-lg-search-type";
+    let observedTabs = null;
+
+    function getRoot() {
+        return document.getElementById("results-page");
+    }
+
+    function normalizeType(type) {
+        if (!type) return "web";
+        if (type.startsWith("tab:engine:")) return type.slice(11);
+        if (type.startsWith("engine:")) return type.slice(7);
+        if (type.startsWith("tab:")) return type.slice(4);
+        return type;
+    }
+
+    function getTypeFromTabs() {
+        const active = document.querySelector(
+            '#results-tabs .results-tab.active[data-type], #results-tabs .results-tab[aria-selected="true"][data-type]',
+        );
+        return active?.dataset.type || null;
+    }
+
+    function getTypeFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get("type") || "web";
+    }
+
+    function setSearchType(type) {
+        const root = getRoot();
+        if (!root) return;
+        root.setAttribute(TYPE_ATTR, normalizeType(type));
+    }
+
+    function syncSearchType() {
+        setSearchType(getTypeFromTabs() || getTypeFromUrl());
+    }
+
+    function bindTabsClick() {
+        const tabs = document.getElementById("results-tabs");
+        if (!tabs || tabs === observedTabs) return;
+        observedTabs = tabs;
+
+        tabs.addEventListener(
+            "click",
+            event => {
+                const target = event.target;
+                if (!target || typeof target.closest !== "function") return;
+                const tab = target.closest(".results-tab[data-type]");
+                if (!tab || !tabs.contains(tab)) return;
+                setSearchType(tab.dataset.type || "web");
+            },
+            true,
+        );
+
+        new MutationObserver(syncSearchType).observe(tabs, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class", "aria-selected"],
+        });
+    }
+
+    function init() {
+        bindTabsClick();
+        new MutationObserver(() => {
+            bindTabsClick();
+            syncSearchType();
+        }).observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+        });
+        window.addEventListener("popstate", () => {
+            window.requestAnimationFrame(syncSearchType);
+        });
+        syncSearchType();
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
+})();
+
+/* ── 7. Sidebar accordion panels (theme settings) ──────────────────────── */
 (() => {
     const ENGINE_MODE_MOBILE = "data-sidebar-panels-mobile";
     const ENGINE_MODE_DESKTOP = "data-sidebar-panels-desktop";
@@ -977,7 +1063,7 @@ function getLgTranslation(key) {
     }
 })();
 
-/* ── 7. Translate settings gear title ───────────────────────────────────── */
+/* ── 8. Translate settings gear title ───────────────────────────────────── */
 (() => {
     function translateSettingsGear() {
         const settingsEl = document.getElementById("nav-settings-results");

@@ -563,6 +563,7 @@
     const sunriseRel = card.querySelector("[data-weather-sunrise-relative]");
     const sunsetVal = card.querySelector("[data-weather-sunset]");
     const sunsetRel = card.querySelector("[data-weather-sunset-relative]");
+    const sunTrack = card.querySelector(".weather-sun-track");
     const sunArc = card.querySelector("[data-weather-sun-arc]");
     const sunDot = card.querySelector("[data-weather-sun-dot]");
 
@@ -574,6 +575,8 @@
     const moonsetVal = card.querySelector("[data-weather-moonset]");
     const moonsetRel = card.querySelector("[data-weather-moonset-relative]");
     const moonApexVal = card.querySelector("[data-weather-moon-apex]");
+    const moonTrack = card.querySelector(".weather-moon-track");
+    const moonArc = card.querySelector("[data-weather-moon-arc]");
     const moonDot = card.querySelector("[data-weather-moon-dot]");
 
     const daysTrack = card.querySelector("[data-weather-days]");
@@ -591,6 +594,27 @@
       pressureUnit: payload.pressureUnit,
       precipUnit: payload.precipUnit,
     };
+
+    function setAstroArcProgress(arcEl, pct) {
+      if (!arcEl) return;
+      const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
+      const dashOffset = 200 - (200 * clamped) / 100;
+      arcEl.style.setProperty("--weather-arc-target", String(dashOffset));
+    }
+
+    function setAstroDotPosition(trackEl, dotEl, pct) {
+      if (!trackEl || !dotEl) return;
+
+      const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
+      const t = clamped / 100;
+      const y = ((1 - t) * (1 - t) * 48) + (2 * (1 - t) * t * 8) + (t * t * 48);
+      const trackHeight = trackEl.clientHeight || 40;
+      const dotSize = dotEl.offsetHeight || 7;
+      const topPx = (y / 56) * trackHeight - dotSize / 2;
+
+      dotEl.style.left = clamped + "%";
+      dotEl.style.top = topPx + "px";
+    }
 
     function updateHero(day) {
       const icon = day.icon || "cloud";
@@ -629,12 +653,12 @@
       if (sunArc && sunDot) {
         if (activeDayIndex === 0) {
           const pct = Math.min(100, Math.max(0, payload.sun.pct));
-          sunDot.style.left = pct + "%";
+          setAstroArcProgress(sunArc, pct);
+          setAstroDotPosition(sunTrack, sunDot, pct);
           sunDot.style.display = "block";
-          sunArc.style.setProperty("--weather-sun-pct", pct + "%");
         } else {
           sunDot.style.display = "none";
-          sunArc.style.setProperty("--weather-sun-pct", "0%");
+          setAstroArcProgress(sunArc, 0);
         }
       }
 
@@ -648,9 +672,11 @@
         if (moonsetRel) moonsetRel.textContent = activeDayIndex === 0 ? day.moon.setRelative : "";
         if (moonApexVal) moonApexVal.textContent = day.moon.apexStr;
 
+        setAstroArcProgress(moonArc, 100);
+
         if (moonDot) {
           if (activeDayIndex === 0 && day.moon.isUp) {
-            moonDot.style.left = day.moon.nowPct + "%";
+            setAstroDotPosition(moonTrack, moonDot, day.moon.nowPct);
             moonDot.style.display = "block";
           } else {
             moonDot.style.display = "none";
@@ -658,6 +684,7 @@
         }
       } else if (moonRow) {
         moonRow.style.display = "none";
+        setAstroArcProgress(moonArc, 0);
       }
 
       renderChart(chartEl, tooltipEl, legendEl, day, activeTab, unitsInfo);

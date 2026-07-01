@@ -62,6 +62,12 @@
     box-sizing: border-box;
 }
 
+.weather-result.slot-full-width {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+
 .weather-header {
     margin-bottom: 10px;
 }
@@ -571,18 +577,16 @@
 
 .weather-astro-arc-fill {
     stroke-dasharray: 200;
-    stroke-dashoffset: 200;
-    animation: weather-spin 1.5s ease-out forwards;
+    stroke-dashoffset: var(--weather-arc-target, 200);
+    transition: stroke-dashoffset 0.5s ease-out;
 }
 
 .weather-sun-arc-fill {
     stroke: color-mix(in srgb, #f59e0b 50%, transparent);
-    stroke-dashoffset: calc(200 - (200 * var(--weather-sun-pct, 0%)) / 100);
 }
 
 .weather-moon-arc-fill {
     stroke: color-mix(in srgb, var(--text-primary) 35%, transparent);
-    stroke-dashoffset: 0;
 }
 
 .weather-sun-dot,
@@ -591,16 +595,19 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    bottom: -3px;
-    transform: translateX(-50%);
+    top: 0;
+    transform: translate(-50%, -50%);
     box-shadow: 0 0 6px currentColor;
+    transition:
+        left 0.5s ease-out,
+        top 0.5s ease-out,
+        opacity 0.2s ease-out;
     z-index: 2;
 }
 
 .weather-sun-dot {
     background: #f59e0b;
     color: #f59e0b;
-    bottom: calc(40px * sin(acos((var(--weather-sun-pct, 0%) - 50) / 50)) - 3px);
 }
 
 .weather-moon-dot {
