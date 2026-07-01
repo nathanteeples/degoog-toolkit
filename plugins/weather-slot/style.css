@@ -522,17 +522,18 @@ html[data-theme="dark"] .weather-astro-ico-moon {
 
 .weather-astro-body {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
     position: relative;
-    padding-bottom: 2px;
+    padding-bottom: 0;
 }
 
 .weather-astro-endpoint {
     display: flex;
     flex-direction: column;
     min-width: 48px;
+    padding-bottom: 1px;
 }
 
 .weather-astro-endpoint-right {
@@ -560,14 +561,13 @@ html[data-theme="dark"] .weather-astro-ico-moon {
 .weather-astro-track {
     flex: 1;
     min-width: 0;
-    height: 44px;
+    height: 40px;
     position: relative;
-    margin: 0 2px;
+    margin: 0 1px;
 }
 
 .weather-moon-track {
-    height: 52px;
-    margin-top: 2px;
+    height: 48px;
 }
 
 .weather-astro-arc {
@@ -576,7 +576,7 @@ html[data-theme="dark"] .weather-astro-ico-moon {
     right: 0;
     bottom: 0;
     width: 100%;
-    height: 44px;
+    height: 40px;
     overflow: visible;
     pointer-events: none;
 }
@@ -597,13 +597,17 @@ html[data-theme="dark"] .weather-astro-ico-moon {
     opacity: 0.95;
 }
 
+.weather-sun-track[data-sun-state="set"] .weather-sun-arc-fill {
+    opacity: 0.38;
+}
+
 .weather-moon-arc-fill {
-    stroke: #80868b;
+    stroke: #5f6368;
     opacity: 0.95;
 }
 
 html[data-theme="dark"] .weather-moon-arc-fill {
-    stroke: #bdc1c6;
+    stroke: #e8eaed;
 }
 
 .weather-sun-dot,
@@ -619,6 +623,11 @@ html[data-theme="dark"] .weather-moon-arc-fill {
         top 0.5s ease-out,
         opacity 0.2s ease-out;
     z-index: 2;
+}
+
+.weather-sun-dot[hidden],
+.weather-moon-dot[hidden] {
+    display: none !important;
 }
 
 .weather-sun-dot {
@@ -647,8 +656,8 @@ html[data-theme="dark"] .weather-moon-dot {
     justify-content: center;
     gap: 0.28em;
     white-space: nowrap;
-    font-size: 0.68rem;
-    line-height: 1.15;
+    font-size: 0.64rem;
+    line-height: 1.1;
     color: var(--text-secondary);
     pointer-events: none;
     z-index: 1;

@@ -621,8 +621,28 @@
       dotEl.style.top = domPt.y - trackRect.top + "px";
     }
 
+    function positionMoonApex(moonPath, apexPct) {
+      if (!moonApexWrap || moonApexWrap.hidden || !moonTrack || !moonPath?.getPointAtLength) {
+        return;
+      }
+      const len = moonPath.getTotalLength();
+      if (!len) return;
+
+      const pt = moonPath.getPointAtLength(
+        (Math.max(0, Math.min(100, Number(apexPct) || 50)) / 100) * len,
+      );
+      const ctm = moonPath.getScreenCTM();
+      const trackRect = moonTrack.getBoundingClientRect();
+      if (!ctm || trackRect.width <= 0) return;
+
+      const domPt = new DOMPoint(pt.x, pt.y).matrixTransform(ctm);
+      moonApexWrap.style.left =
+        ((domPt.x - trackRect.left) / trackRect.width) * 100 + "%";
+      moonApexWrap.style.top = Math.max(0, domPt.y - trackRect.top - 15) + "px";
+    }
+
     function syncAstroTracks() {
-      if (sunTrack && sunDot && sunArc && sunDot.style.display !== "none") {
+      if (sunTrack && sunDot && sunArc && !sunDot.hidden) {
         setAstroDotPosition(
           sunTrack,
           sunDot,
@@ -631,8 +651,11 @@
         );
       }
       const moonPath = moonTrack?.querySelector(".weather-astro-arc-bg");
-      if (moonTrack && moonDot && moonPath && moonDot.style.display !== "none") {
+      if (moonTrack && moonDot && moonPath && !moonDot.hidden) {
         setAstroDotPosition(moonTrack, moonDot, moonPath, moonDot.dataset.pct || 0);
+      }
+      if (moonTrack && moonPath && moonApexWrap && !moonApexWrap.hidden) {
+        positionMoonApex(moonPath, moonApexWrap.dataset.apexPct || 50);
       }
     }
 
@@ -676,9 +699,15 @@
           setAstroArcProgress(sunArc, pct);
           sunDot.dataset.pct = String(pct);
           setAstroDotPosition(sunTrack, sunDot, sunArc, pct);
-          sunDot.style.display = pct > 0 ? "block" : "none";
+          sunDot.hidden = !(pct > 0);
+          sunTrack.dataset.sunState = payload.sun.isUp
+            ? "up"
+            : pct >= 100
+              ? "set"
+              : "pre";
         } else {
-          sunDot.style.display = "none";
+          sunDot.hidden = true;
+          sunTrack.removeAttribute("data-sun-state");
           setAstroArcProgress(sunArc, 0);
         }
       }
@@ -694,7 +723,12 @@
         const apexStr = day.moon.apexStr;
         const showApex =
           activeDayIndex === 0 && apexStr && apexStr !== "—" && apexStr !== "-";
-        if (moonApexWrap) moonApexWrap.hidden = !showApex;
+        if (moonApexWrap) {
+          moonApexWrap.hidden = !showApex;
+          if (showApex) {
+            moonApexWrap.dataset.apexPct = String(day.moon.apexPct ?? 50);
+          }
+        }
         if (moonApexVal && showApex) moonApexVal.textContent = apexStr;
 
         if (moonDot && moonTrack) {
@@ -704,10 +738,13 @@
             setAstroArcProgress(moonArc, pct);
             moonDot.dataset.pct = String(pct);
             setAstroDotPosition(moonTrack, moonDot, moonPath, pct);
-            moonDot.style.display = "block";
+            moonDot.hidden = false;
           } else {
             if (moonArc) setAstroArcProgress(moonArc, 0);
-            moonDot.style.display = "none";
+            moonDot.hidden = true;
+          }
+          if (showApex && moonPath) {
+            positionMoonApex(moonPath, day.moon.apexPct);
           }
         }
       } else if (moonRow) {
