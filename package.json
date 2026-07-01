@@ -197,7 +197,7 @@
       "path": "plugins/oidc-settings-gate",
       "name": "OIDC",
       "description": "Protect degoog's admin and settings gate with secure OIDC login, PKCE, issuer discovery, JWKS verification, and explicit admin allow rules.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "type": "command"
     }
   ],

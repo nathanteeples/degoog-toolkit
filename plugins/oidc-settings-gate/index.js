@@ -42,6 +42,14 @@ const oidcSettingsSchema = [
       "Optional external base URL for this degoog instance. Leave blank to derive it from the request. Set it explicitly when you are behind a reverse proxy, on a subpath, or want a fixed callback origin.",
   },
   {
+    key: "callbackGuide",
+    label: "Provider redirect URI",
+    type: "info",
+    default: "<App URL>/api/settings/auth/callback",
+    description:
+      "Register this exact callback URL at your OIDC provider. If App URL is blank, the plugin derives the base URL from the incoming request, but setting App URL explicitly is safer behind proxies.",
+  },
+  {
     key: "issuer",
     label: "Issuer URL",
     type: "url",
