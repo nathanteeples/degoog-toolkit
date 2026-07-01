@@ -516,11 +516,36 @@ function getLgTranslation(key) {
         panel.style.setProperty("--lg-filters-left", `${toggleRect.left - pageRect.left}px`);
     }
 
+    function ensureFiltersClosed(panel, toggle) {
+        if (!panel || !toggle) return;
+        panel.style.display = "none";
+        toggle.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
+        panel.querySelectorAll(".tools-field-menu").forEach(menu => {
+            menu.style.display = "none";
+        });
+        panel.querySelectorAll('.tools-field-toggle[aria-expanded="true"]').forEach(btn => {
+            btn.setAttribute("aria-expanded", "false");
+        });
+        try {
+            localStorage.setItem("degoog-tools-open", "false");
+        } catch {
+            /* ignore */
+        }
+    }
+
+    function ensureFiltersClosedAfterCore(panel, toggle) {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => ensureFiltersClosed(panel, toggle));
+        });
+    }
+
     function wireFiltersHover(panel) {
         if (panel.dataset.lgFiltersHoverWired === "1") return;
         panel.dataset.lgFiltersHoverWired = "1";
 
         panel.addEventListener("mouseover", e => {
+            if (panel.style.display === "none") return;
             const field = e.target.closest(".tools-field");
             if (!field || !panel.contains(field)) return;
             const toggle = field.querySelector(".tools-field-toggle");
@@ -548,22 +573,24 @@ function getLgTranslation(key) {
         positionFiltersPanel(panel, toggle, page);
         wireFiltersHover(panel);
 
-        if (toggle.dataset.lgFiltersWired === "1") return;
-        toggle.dataset.lgFiltersWired = "1";
+        if (toggle.dataset.lgFiltersWired !== "1") {
+            ensureFiltersClosedAfterCore(panel, toggle);
+            toggle.dataset.lgFiltersWired = "1";
 
-        toggle.addEventListener("click", () => {
-            requestAnimationFrame(() => positionFiltersPanel(panel, toggle, page));
-        });
-        window.addEventListener("resize", () => positionFiltersPanel(panel, toggle, page));
-        window.addEventListener(
-            "scroll",
-            () => positionFiltersPanel(panel, toggle, page),
-            true,
-        );
-        new MutationObserver(() => positionFiltersPanel(panel, toggle, page)).observe(panel, {
-            attributes: true,
-            attributeFilter: ["style", "class"],
-        });
+            toggle.addEventListener("click", () => {
+                requestAnimationFrame(() => positionFiltersPanel(panel, toggle, page));
+            });
+            window.addEventListener("resize", () => positionFiltersPanel(panel, toggle, page));
+            window.addEventListener(
+                "scroll",
+                () => positionFiltersPanel(panel, toggle, page),
+                true,
+            );
+            new MutationObserver(() => positionFiltersPanel(panel, toggle, page)).observe(panel, {
+                attributes: true,
+                attributeFilter: ["style", "class"],
+            });
+        }
     }
 
     function scheduleFiltersDropdown() {
