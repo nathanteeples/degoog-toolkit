@@ -1265,7 +1265,7 @@ body {
         grid-row: auto;
         width: 100%;
         max-width: var(--literallyapple-results-main-col-max);
-        margin: 0;
+        margin: 0 0 12px;
         box-sizing: border-box;
     }
 
@@ -1279,15 +1279,15 @@ body {
     #sidebar-col {
         position: static;
         grid-column: 2;
-        grid-row: 1 / span 30;
+        grid-row: auto / span 30;
+        align-self: start;
         width: 100%;
         max-width: var(--literallyapple-results-sidebar-max);
         justify-self: stretch;
     }
 
-    #results-layout:has(.slot-full-width) #sidebar-col {
-        grid-row: 2 / span 30;
-    }
+    /* Sidebar row follows auto-placement: beside the first main-column row not
+       covered by a full-width span (e.g. row 2 when stocks spans row 1). */
 
     html[dir="rtl"] #slot-above-results > .results-slot-panel,
     html[dir="rtl"] #results-page #results-main {
@@ -1742,7 +1742,8 @@ body {
     border: 1px solid var(--border-light);
     border-radius: var(--theme-radius-xl);
     overflow: visible;
-    margin: 0;
+    margin-top: 0;
+    margin-inline: 0;
     padding: 0;
     box-shadow: none;
 }
@@ -1841,13 +1842,6 @@ body {
             calc(50px + 1.5rem)
         );
         align-self: start;
-        grid-row: 2;
-    }
-
-    html[data-sticky-sidebar="true"]
-        #results-layout:has(#slot-above-results:empty)
-        #sidebar-col {
-        grid-row: 1;
     }
 }
 
