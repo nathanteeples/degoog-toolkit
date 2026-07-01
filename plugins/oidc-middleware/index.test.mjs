@@ -9,6 +9,7 @@ import {
   toProfile,
 } from "./src/authz.js";
 import { userinfoNeeds } from "./src/gate.js";
+import { chooseReturnTo, sanitizeReturnTo } from "./src/return-to.js";
 import { parseSettings, isConfigured } from "./src/settings.js";
 import { validateClaims } from "./src/jwt.js";
 
@@ -142,6 +143,28 @@ test("profile pictures are sanitized to safe URL schemes", () => {
       picture: "/media/avatar.png",
     }).picture,
     "https://auth.example.com/media/avatar.png",
+  );
+});
+
+test("return target resolution keeps same-origin custom admin paths", () => {
+  assert.equal(
+    sanitizeReturnTo(
+      "https://search.example.com",
+      "https://search.example.com/my-secret-panel-abc123/plugins",
+      "/",
+    ),
+    "/my-secret-panel-abc123/plugins",
+  );
+  assert.equal(
+    chooseReturnTo(
+      "https://search.example.com",
+      [
+        "https://evil.example.com/admin",
+        "https://search.example.com/my-secret-panel-abc123",
+      ],
+      "/",
+    ),
+    "/my-secret-panel-abc123",
   );
 });
 

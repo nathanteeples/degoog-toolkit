@@ -17,6 +17,7 @@ import {
   OIDC_RETURN_TO,
 } from "./cookies.js";
 import { buildAuthUrl, makePkce, randomToken } from "./oidc.js";
+import { chooseReturnTo } from "./return-to.js";
 import {
   configMeta,
   ctxMeta,
@@ -44,19 +45,6 @@ const redirect = (location, cookies = []) => {
 
 const originOf = (req) => getConfig()?.appUrl || new URL(req.url).origin;
 
-const sanitizeReturnTo = (req, candidate) => {
-  const origin = originOf(req);
-  const fallback = "/admin";
-  if (!candidate) return fallback;
-  try {
-    const url = new URL(candidate, origin);
-    if (url.origin !== origin) return fallback;
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return fallback;
-  }
-};
-
 const tempCookie = (name, value, req) =>
   bakeCookie(name, value, {
     httpOnly: true,
@@ -76,7 +64,15 @@ const onLogin = async (req) => {
   }
   try {
     const requestUrl = new URL(req.url);
-    const returnTo = sanitizeReturnTo(req, requestUrl.searchParams.get("returnTo"));
+    const returnTo = chooseReturnTo(
+      originOf(req),
+      [
+        requestUrl.searchParams.get("returnTo") || "",
+        req.headers.get("referer") || "",
+        decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
+      ],
+      "/",
+    );
     const pkce = makePkce();
     const state = randomToken();
     const nonce = randomToken();
@@ -115,9 +111,13 @@ const onClaim = (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("c") || "";
   const profile = code ? claimHandoff(code) : null;
-  const returnTo = sanitizeReturnTo(
-    req,
-    decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || "/admin"),
+  const returnTo = chooseReturnTo(
+    originOf(req),
+    [
+      decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
+      req.headers.get("referer") || "",
+    ],
+    "/",
   );
   const clear = [
     clearCookie(OIDC_GATE_HOLD),

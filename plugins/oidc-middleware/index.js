@@ -7,7 +7,7 @@ export const middleware = {
   isClientExposed: false,
   name: "OIDC / SSO",
   description:
-    "Single sign-on gate for the admin area using any OpenID Connect provider. Adds a home-page avatar for the signed-in user.",
+    "Single sign-on gate for degoog's admin panel using any OpenID Connect provider. Adds a home-page avatar for the signed-in user.",
   settingsSchema,
   init(ctx) {
     setCtx(ctx);
@@ -29,7 +29,7 @@ export const command = {
       key: "useAsSettingsGate",
       label: "Use as admin gate",
       type: "toggle",
-      description: "Require OIDC sign-in before opening /admin.",
+      description: "Require OIDC sign-in before opening the configured admin panel path.",
     },
     ...settingsSchema,
   ],
@@ -42,7 +42,7 @@ export const command = {
   execute() {
     const ctx = getCtx();
     const config = getConfig();
-    const loginUrl = ctx ? ctx.routeUrl("login?returnTo=/admin") : "/api/settings/auth";
+    const loginUrl = ctx ? ctx.routeUrl("login") : "/api/settings/auth";
     const configured = isConfigured(config);
     const gateEnabled = config?.useAsSettingsGate === true;
     const providerLabel = config?.providerLabel || "OIDC";
@@ -54,8 +54,8 @@ export const command = {
       ? "OIDC is configured and enabled as the admin gate."
       : 'OIDC is configured, but "Use as admin gate" is still off.';
     const hint = gateEnabled
-      ? `<p>Callback URL: <code>${callbackUrl}</code></p><p>Debug logging: <strong>${debugEnabled ? "on" : "off"}</strong>.</p>`
-      : "<p>Enable the gate toggle in Settings, save, then reopen /admin.</p>";
+      ? `<p>Callback URL: <code>${callbackUrl}</code></p><p>Debug logging: <strong>${debugEnabled ? "on" : "off"}</strong>.</p><p>Use your configured admin panel path to test the actual gate.</p>`
+      : "<p>Enable the gate toggle in Settings, save, then reopen your configured admin panel path.</p>";
     return {
       title: middleware.name,
       html: configured

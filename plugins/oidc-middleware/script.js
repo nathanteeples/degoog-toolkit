@@ -92,6 +92,28 @@
           initials(me.name, me.email),
         )}</span>`;
 
+  const currentSettingsPath = () => {
+    const anchors = [
+      document.getElementById("nav-settings-results"),
+      document.getElementById("nav-settings-top"),
+      ...document.querySelectorAll("a.settings-gear, a#nav-settings-top, a#nav-settings-results"),
+    ];
+    for (const anchor of anchors) {
+      const href = anchor?.getAttribute?.("href");
+      if (!href) continue;
+      try {
+        const url = new URL(href, window.location.origin);
+        if (url.origin === window.location.origin) {
+          return `${url.pathname}${url.search}${url.hash}`;
+        }
+      } catch {}
+    }
+    if (document.getElementById("settings-auth-form")) {
+      return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    }
+    return "/";
+  };
+
   const findMount = () => {
     const resultsSettings = document.getElementById("nav-settings-results");
     if (resultsSettings && resultsSettings.parentElement) {
@@ -335,6 +357,7 @@
     const wrap = document.createElement("div");
     wrap.id = MOUNT_ID;
     wrap.className = "degoog-oidc-user";
+    const settingsPath = currentSettingsPath();
     wrap.innerHTML = `
       <button type="button" class="degoog-oidc-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Open account menu">
         ${avatarMarkup(me)}
@@ -348,7 +371,7 @@
           </div>
         </div>
         <div class="degoog-oidc-menu-rows">
-          <a class="degoog-oidc-row" href="/settings" role="menuitem">
+          <a class="degoog-oidc-row" href="${escapeHtml(settingsPath)}" role="menuitem">
             <span class="degoog-oidc-row-icon">${icon("settings")}</span>
             <span class="degoog-oidc-row-label">Settings</span>
           </a>

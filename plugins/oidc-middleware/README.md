@@ -1,6 +1,6 @@
 # OIDC / SSO
 
-Gates the Degoog admin area behind any OpenID Connect provider (Authentik, Keycloak, Authelia, Okta, Google, Azure, ...) and shows an avatar for the signed-in user on the home page.
+Gates Degoog's configured admin panel path behind any OpenID Connect provider (Authentik, Keycloak, Authelia, Okta, Google, Azure, ...) and shows an avatar for the signed-in user on the home page.
 
 This is a request middleware plus a small set of plugin routes. It does not modify the main Degoog app.
 
@@ -20,6 +20,7 @@ This is a request middleware plus a small set of plugin routes. It does not modi
 3. Fill in Issuer URL, Client ID, and Client Secret in the plugin settings.
 4. Set App URL when behind a reverse proxy or on a subpath. Leave blank to derive it from the request.
 5. In Settings -> Plugins, enable `Use as admin gate` for this plugin and save.
+6. Open your configured admin panel path to test the gate. This may be `/admin`, `/settings`, or a custom `DEGOOG_SETTINGS_PATH`.
 6. If you are debugging the flow, also enable `Debug logging` to emit redacted browser-console and server-log traces.
 
 ## Notes and limitations

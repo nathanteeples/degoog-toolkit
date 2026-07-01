@@ -21,6 +21,7 @@ import {
   fetchUserInfo,
   handoffCode,
 } from "./oidc.js";
+import { chooseReturnTo } from "./return-to.js";
 import { accessDenyDetail, evaluateAccess, readClaim, toProfile } from "./authz.js";
 import {
   claimsMeta,
@@ -50,19 +51,6 @@ const gateHoldMeta = (hold) =>
         at: typeof hold.at === "string" ? hold.at : "",
       };
 
-const sanitizeReturnTo = (req, candidate) => {
-  const origin = originOf(req);
-  const fallback = "/admin";
-  if (!candidate) return fallback;
-  try {
-    const url = new URL(candidate, origin);
-    if (url.origin !== origin) return fallback;
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return fallback;
-  }
-};
-
 const originOf = (req) =>
   getConfig()?.appUrl || new URL(req.url).origin;
 
@@ -82,9 +70,13 @@ const bounceWithHold = (req, reason, detail = "") =>
   new Response(null, {
     status: 302,
     headers: (() => {
-      const returnTo = sanitizeReturnTo(
-        req,
-        decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || "/admin"),
+      const returnTo = chooseReturnTo(
+        originOf(req),
+        [
+          decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
+          req.headers.get("referer") || "",
+        ],
+        "/",
       );
       const headers = new Headers({ location: `${originOf(req)}${returnTo}` });
       headers.append("set-cookie", bakeGateHold(req, reason, detail));
@@ -113,9 +105,14 @@ const onAuthCheck = (req) => {
   }
   const ctx = getCtx();
   const url = new URL(req.url);
-  const returnTo = sanitizeReturnTo(
-    req,
-    url.searchParams.get("returnTo") || req.headers.get("referer") || "/admin",
+  const returnTo = chooseReturnTo(
+    originOf(req),
+    [
+      url.searchParams.get("returnTo") || "",
+      req.headers.get("referer") || "",
+      decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
+    ],
+    "/",
   );
   const loginUrl = ctx
     ? ctx.routeUrl(`login?returnTo=${encodeURIComponent(returnTo)}`)
