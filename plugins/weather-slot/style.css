@@ -522,9 +522,9 @@ html[data-theme="dark"] .weather-astro-ico-moon {
 
 .weather-astro-body {
     display: grid;
-    grid-template-columns: minmax(3.25rem, auto) minmax(4.5rem, 1fr) minmax(3.25rem, auto);
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: end;
-    gap: 4px 6px;
+    gap: 4px 8px;
     position: relative;
     padding-bottom: 0;
 }
@@ -562,15 +562,14 @@ html[data-theme="dark"] .weather-astro-ico-moon {
     grid-column: 2;
     width: 100%;
     min-width: 0;
-    max-width: 8.5rem;
-    height: 3.5rem;
-    justify-self: center;
+    height: 3.75rem;
+    justify-self: stretch;
     position: relative;
     margin: 0;
 }
 
 .weather-moon-track {
-    height: 4rem;
+    height: 4.25rem;
 }
 
 .weather-astro-arc {
