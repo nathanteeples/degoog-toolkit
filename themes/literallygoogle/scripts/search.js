@@ -540,6 +540,25 @@ function getLgTranslation(key) {
         });
     }
 
+    function closeFiltersDropdown(panel, toggle) {
+        if (!panel || !toggle || panel.style.display === "none") return;
+        window.dispatchEvent(new Event("degoog-tools-close"));
+        ensureFiltersClosed(panel, toggle);
+    }
+
+    function wireFiltersDismiss(panel, toggle) {
+        if (panel.dataset.lgFiltersDismissWired === "1") return;
+        panel.dataset.lgFiltersDismissWired = "1";
+
+        document.addEventListener("click", event => {
+            if (panel.style.display === "none") return;
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+            if (panel.contains(target) || toggle.contains(target)) return;
+            closeFiltersDropdown(panel, toggle);
+        });
+    }
+
     function wireFiltersHover(panel) {
         if (panel.dataset.lgFiltersHoverWired === "1") return;
         panel.dataset.lgFiltersHoverWired = "1";
@@ -554,6 +573,53 @@ function getLgTranslation(key) {
             if (!toggle || !menu || menu.style.display === "block") return;
             toggle.click();
         });
+    }
+
+    function isWebTabActive() {
+        const active = document.querySelector(
+            '#results-tabs .results-tab.active, #results-tabs .results-tab[aria-selected="true"]',
+        );
+        if (!active) return true;
+        const type = (active.getAttribute("data-type") || "web").toLowerCase();
+        return type === "web";
+    }
+
+    function isBangCommandQuery(query) {
+        const trimmed = query.trim();
+        if (!trimmed) return false;
+        return trimmed.startsWith("!") || /\s!\S+$/.test(trimmed);
+    }
+
+    function isCommandMode() {
+        const input = document.getElementById("results-search-input");
+        const query = input?.value ?? "";
+        if (!isBangCommandQuery(query)) return false;
+
+        const meta = document.getElementById("results-meta");
+        const metaText = meta?.textContent?.trim() ?? "";
+        if (metaText === "Running command...") return true;
+        if (/^About \d+ results/i.test(metaText)) return false;
+
+        const list = document.getElementById("results-list");
+        if (!list) return true;
+        if (list.querySelector(".loading-dots")) return true;
+        if (list.querySelector(".command-result, .command-help-table")) return true;
+        if (list.querySelector(".result-item")) return false;
+        if (list.querySelector(".no-results, .command-result")) return true;
+
+        return true;
+    }
+
+    function syncFiltersVisibility(toolsBar, panel, toggle, page) {
+        if (!toolsBar) return;
+        const show = isWebTabActive() && !isCommandMode();
+        if (toolsBar.hidden !== !show) {
+            toolsBar.hidden = !show;
+        }
+        page?.classList.toggle("lg-hide-filters", !show);
+        if (!show) {
+            closeFiltersDropdown(panel, toggle);
+        }
     }
 
     function setupFiltersDropdown() {
@@ -572,9 +638,11 @@ function getLgTranslation(key) {
 
         positionFiltersPanel(panel, toggle, page);
         wireFiltersHover(panel);
+        syncFiltersVisibility(toolsBar, panel, toggle, page);
 
         if (toggle.dataset.lgFiltersWired !== "1") {
             ensureFiltersClosedAfterCore(panel, toggle);
+            wireFiltersDismiss(panel, toggle);
             toggle.dataset.lgFiltersWired = "1";
 
             toggle.addEventListener("click", () => {
@@ -601,13 +669,41 @@ function getLgTranslation(key) {
         });
     }
 
-    scheduleFiltersDropdown();
-    window.addEventListener("degoog-results-ready", scheduleFiltersDropdown);
+    function scheduleFiltersSync() {
+        scheduleFiltersDropdown();
+    }
+
+    scheduleFiltersSync();
+    window.addEventListener("degoog-results-ready", scheduleFiltersSync);
 
     const page = document.getElementById("results-page");
     if (page) {
         new MutationObserver(mutations => {
+            let needsSetup = false;
+            let needsVisibilitySync = false;
+
             for (const mutation of mutations) {
+                if (
+                    mutation.type === "attributes" &&
+                    mutation.target instanceof Element &&
+                    mutation.target.matches?.("#results-tabs .results-tab")
+                ) {
+                    needsVisibilitySync = true;
+                    continue;
+                }
+
+                if (mutation.type !== "childList") continue;
+
+                const target = mutation.target;
+                if (
+                    target instanceof Element &&
+                    (target.id === "results-list" ||
+                        target.id === "results-meta" ||
+                        target.closest?.("#results-list, #results-meta"))
+                ) {
+                    needsVisibilitySync = true;
+                }
+
                 for (const node of mutation.addedNodes) {
                     if (node.nodeType !== Node.ELEMENT_NODE) continue;
                     if (
@@ -616,12 +712,30 @@ function getLgTranslation(key) {
                         node.id === "lg-meta-row" ||
                         node.querySelector?.("#tools-panel, #tools-toggle, #lg-meta-row")
                     ) {
-                        scheduleFiltersDropdown();
-                        return;
+                        needsSetup = true;
+                        break;
                     }
                 }
             }
-        }).observe(page, { childList: true, subtree: true });
+
+            if (needsSetup) {
+                scheduleFiltersDropdown();
+            } else if (needsVisibilitySync) {
+                requestAnimationFrame(() => {
+                    syncFiltersVisibility(
+                        document.getElementById("tools-bar"),
+                        document.getElementById("tools-panel"),
+                        document.getElementById("tools-toggle"),
+                        page,
+                    );
+                });
+            }
+        }).observe(page, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class", "aria-selected"],
+        });
     }
 })();
 
@@ -930,6 +1044,8 @@ function getLgTranslation(key) {
 (() => {
     const ENGINE_MODE_MOBILE = "data-sidebar-panels-mobile";
     const ENGINE_MODE_DESKTOP = "data-sidebar-panels-desktop";
+    const ENGINE_MODE_IMAGES_MOBILE = "data-sidebar-panels-images-mobile";
+    const ENGINE_MODE_IMAGES_DESKTOP = "data-sidebar-panels-images-desktop";
     const RELATED_MODE_MOBILE = "data-related-searches-mobile";
     const RELATED_MODE_DESKTOP = "data-related-searches-desktop";
     const KNOWLEDGE_MODE_MOBILE = "data-knowledge-panel-mobile";
@@ -957,6 +1073,8 @@ function getLgTranslation(key) {
         return (
             root.hasAttribute(ENGINE_MODE_MOBILE) ||
             root.hasAttribute(ENGINE_MODE_DESKTOP) ||
+            root.hasAttribute(ENGINE_MODE_IMAGES_MOBILE) ||
+            root.hasAttribute(ENGINE_MODE_IMAGES_DESKTOP) ||
             root.hasAttribute(RELATED_MODE_MOBILE) ||
             root.hasAttribute(RELATED_MODE_DESKTOP) ||
             root.hasAttribute(KNOWLEDGE_MODE_MOBILE) ||
@@ -1020,9 +1138,19 @@ function getLgTranslation(key) {
         return "collapsed";
     }
 
-    function getEngineMode() {
+    function isImageEngineRoot(root) {
+        return root?.id === "image-engine-panel";
+    }
+
+    function getEngineMode(root) {
+        if (isImageEngineRoot(root)) {
+            const attr = isDesktop() ? ENGINE_MODE_IMAGES_DESKTOP : ENGINE_MODE_IMAGES_MOBILE;
+            return normalizeEngineMode(document.documentElement.getAttribute(attr) || "open");
+        }
         const attr = isDesktop() ? ENGINE_MODE_DESKTOP : ENGINE_MODE_MOBILE;
-        return normalizeEngineMode(document.documentElement.getAttribute(attr) || "collapsed");
+        return normalizeEngineMode(
+            document.documentElement.getAttribute(attr) || "collapse-on-complete",
+        );
     }
 
     function getRelatedMode() {
@@ -1080,9 +1208,9 @@ function getLgTranslation(key) {
         return false;
     }
 
-    function syncEngineAccordion(accordion) {
+    function syncEngineAccordion(accordion, root) {
         if (accordion.hasAttribute(USER_ATTR_ENGINE)) return;
-        const shouldBeOpen = shouldEngineBeOpen(getEngineMode(), isSearching());
+        const shouldBeOpen = shouldEngineBeOpen(getEngineMode(root), isSearching());
         if (accordion.classList.contains("open") !== shouldBeOpen) {
             accordion.classList.toggle("open", shouldBeOpen);
         }
@@ -1101,7 +1229,9 @@ function getLgTranslation(key) {
         const roots = sidebarRoots();
         if (roots.length === 0) return;
         roots.forEach(root => {
-            getEnginePerformancePanels(root).forEach(syncEngineAccordion);
+            getEnginePerformancePanels(root).forEach(accordion =>
+                syncEngineAccordion(accordion, root),
+            );
             getRelatedSearchesPanels(root).forEach(syncRelatedAccordion);
             getKnowledgePanels(root).forEach(syncKnowledgeAccordion);
         });

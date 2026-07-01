@@ -7,7 +7,7 @@
     {
       "key": "sidebarPanelsMobile",
       "label": "Engine Performance (mobile)",
-      "description": "Default open/closed state for the Engine Performance sidebar panel on narrow screens.",
+      "description": "Default open/closed state for the Engine Performance sidebar panel on the Web tab (narrow screens).",
       "type": "select",
       "options": ["collapsed", "open", "collapse-on-complete"],
       "optionLabels": [
@@ -15,12 +15,12 @@
         "Open always",
         "Open during search, then collapse when complete"
       ],
-      "default": "collapsed"
+      "default": "collapse-on-complete"
     },
     {
       "key": "sidebarPanelsDesktop",
       "label": "Engine Performance (desktop)",
-      "description": "Default open/closed state for the Engine Performance sidebar panel on laptop and desktop.",
+      "description": "Default open/closed state for the Engine Performance sidebar panel on the Web tab (laptop and desktop).",
       "type": "select",
       "options": ["collapsed", "open", "collapse-on-complete"],
       "optionLabels": [
@@ -28,7 +28,33 @@
         "Open always",
         "Open during search, then collapse when complete"
       ],
-      "default": "collapsed"
+      "default": "collapse-on-complete"
+    },
+    {
+      "key": "sidebarPanelsImagesMobile",
+      "label": "Engine Performance (images tab, mobile)",
+      "description": "Default open/closed state for Engine Performance in the image search filters rail on narrow screens.",
+      "type": "select",
+      "options": ["collapsed", "open", "collapse-on-complete"],
+      "optionLabels": [
+        "Collapsed always",
+        "Open always",
+        "Open during search, then collapse when complete"
+      ],
+      "default": "open"
+    },
+    {
+      "key": "sidebarPanelsImagesDesktop",
+      "label": "Engine Performance (images tab, desktop)",
+      "description": "Default open/closed state for Engine Performance in the image search filters rail on laptop and desktop.",
+      "type": "select",
+      "options": ["collapsed", "open", "collapse-on-complete"],
+      "optionLabels": [
+        "Collapsed always",
+        "Open always",
+        "Open during search, then collapse when complete"
+      ],
+      "default": "open"
     },
     {
       "key": "relatedSearchesMobile",
@@ -89,6 +115,8 @@
   "dataAttrsFromSettings": {
     "sidebarPanelsMobile": "sidebar-panels-mobile",
     "sidebarPanelsDesktop": "sidebar-panels-desktop",
+    "sidebarPanelsImagesMobile": "sidebar-panels-images-mobile",
+    "sidebarPanelsImagesDesktop": "sidebar-panels-images-desktop",
     "relatedSearchesMobile": "related-searches-mobile",
     "relatedSearchesDesktop": "related-searches-desktop",
     "stickySidebar": "sticky-sidebar",

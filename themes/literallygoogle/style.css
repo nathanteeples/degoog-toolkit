@@ -1843,6 +1843,37 @@ body {
         display: none;
     }
 
+    #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card)
+        )
+        #results-main
+        #at-a-glance:empty,
+    #results-page[data-lg-search-type="images"] #results-main #at-a-glance:empty,
+    #results-page:has(#results-list .skeleton-image-grid) #results-main #at-a-glance:empty {
+        display: none;
+        margin: 0;
+    }
+
+    #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card)
+        )
+        #results-list
+        .image-grid,
+    #results-page[data-lg-search-type="images"] #results-list .image-grid,
+    #results-page:has(#results-list .skeleton-image-grid) .skeleton-image-grid {
+        padding-top: 0;
+    }
+
     html[data-image-mode-desktop-layout="preview-left"]
         #results-page[data-lg-search-type="images"]
         #media-preview-panel {
@@ -1956,6 +1987,12 @@ body {
 
 #results-tabs .lg-filters-wrap {
     position: relative;
+}
+
+/* Author `.tools-wrap { display: flex }` beats UA `[hidden]`; honor hide during commands. */
+#results-tabs #tools-bar[hidden],
+#results-page.lg-hide-filters #tools-bar {
+    display: none !important;
 }
 
 #results-tabs .tools-toggle {
@@ -2205,13 +2242,22 @@ body {
     display: none;
 }
 
+#image-filters-bar #image-filter-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+#image-filters-bar .degoog-panel--stack-item {
+    margin-bottom: 0;
+}
+
 .degoog-img-filter-options {
     flex-direction: column;
     gap: 2px;
     padding: 0;
-    max-height: 14rem;
-    overflow-y: auto;
-    scrollbar-width: thin;
+    max-height: none;
+    overflow: visible;
     background: transparent;
 }
 
@@ -2278,14 +2324,32 @@ body {
     white-space: nowrap;
 }
 
+#image-filters-bar .degoog-img-sidebar-body {
+    overflow-y: auto;
+    max-height: none;
+}
+
+@media (min-width: 768px) {
+    #image-filters-bar .degoog-img-sidebar-body {
+        overflow: visible;
+    }
+}
+
 @media (min-width: 768px) {
     #image-filters-bar .degoog-img-sidebar {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        height: 100%;
         padding: 0;
     }
 
     #image-filters-bar .degoog-img-sidebar-body {
         gap: 0.5rem;
         padding: 0;
+        overflow: visible;
+        flex: 0 0 auto;
+        max-height: none;
     }
 
     #image-filters-bar .degoog-img-filter-group {
