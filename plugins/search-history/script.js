@@ -1,8 +1,13 @@
-const HISTORY_API = `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
-const HISTORY_LIST_URL = `${HISTORY_API}/list?limit=10`;
+const STORAGE_KEY = "search_history";
+const CONFIG_STORAGE_KEY = "search_history_max_entries";
+const DEFAULT_MAX_ENTRIES = 1000;
+const HISTORY_CONFIG_URL = `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}/config`;
+const HISTORY_DROPDOWN_LIMIT = 10;
 
-/** Last list from `/list`; replayed synchronously when the bar goes empty to avoid an AC→history flash. */
+let _maxEntries = DEFAULT_MAX_ENTRIES;
 let _historyListCache = null;
+let initialized = false;
+let searchBarEngaged = false;
 
 const CLOCK_ICON =
   "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' aria-hidden='true'><circle cx='12' cy='12' r='10'/><path d='M12 6v6l4 2'/></svg>";
@@ -21,138 +26,73 @@ const escapeHtml = (str) => {
 
 const escapeAttr = escapeHtml;
 
-function getSearchBarForInput(input) {
-  if (!input) return null;
-  return input.closest(".search-bar, .results-search-bar");
+function clampMaxEntries(value) {
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_MAX_ENTRIES;
+  return Math.min(100000, parsed);
 }
 
-function shouldShowHistory(input) {
-  if (!input) return false;
-  const dropdown = getDropdownForInput(input);
-  if (isHistoryDropdownOpen(dropdown)) return true;
-  if (input.value.trim() !== "") return false;
-  if (document.activeElement === input) return true;
-  const bar = getSearchBarForInput(input);
-  return (
-    bar instanceof HTMLElement &&
-    document.activeElement instanceof Node &&
-    bar.contains(document.activeElement)
-  );
+function setMaxEntries(value) {
+  _maxEntries = clampMaxEntries(value);
+  try {
+    localStorage.setItem(CONFIG_STORAGE_KEY, String(_maxEntries));
+  } catch {}
+  trimHistoryToMax();
 }
 
-function hideHistoryDropdown(dropdown) {
-  if (!dropdown) return;
-  dropdown.style.display = "none";
-  dropdown.parentElement?.classList.remove("ac-open");
-}
-
-function renderHistoryDropdown(entries, input, dropdown) {
-  if (!dropdown || !input) return;
-  if (!shouldShowHistory(input)) {
-    hideHistoryDropdown(dropdown);
-    return;
-  }
-  dropdown.innerHTML = entries
-    .map(
-      (item) =>
-        `<div class="ac-item ac-item--history" data-entry="${escapeAttr(item.entry)}" data-text="${escapeAttr(item.entry)}" data-id="${escapeAttr(String(item.id))}" role="button" tabindex="0">
-          <span class="ac-item-icon ac-item-icon--clock" aria-hidden="true">${CLOCK_ICON}</span>
-          <span class="ac-item-text degoog-ac-text">${escapeHtml(item.entry)}</span>
-          <button type="button" class="ac-item-delete" data-id="${escapeAttr(String(item.id))}" aria-label="Delete">${TRASH_ICON}</button>
-        </div>`,
-    )
-    .join("");
-  if (!entries.length) {
-    hideHistoryDropdown(dropdown);
-    return;
-  }
-  dropdown.style.display = "block";
-  dropdown.parentElement?.classList.add("ac-open");
-
-  dropdown.querySelectorAll(".ac-item--history").forEach((el) => {
-    const textEl = el.querySelector(".ac-item-text");
-    const deleteBtn = el.querySelector(".ac-item-delete");
-    const entry = el.dataset.entry;
-    const id = el.dataset.id;
-
-    if (textEl) {
-      textEl.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        input.value = entry;
-        hideHistoryDropdown(dropdown);
-        const form = input.closest("form");
-        if (form) {
-          form.requestSubmit
-            ? form.requestSubmit()
-            : form.dispatchEvent(new Event("submit", { cancelable: true }));
-          return;
-        }
-        const resultsBtn = document.getElementById("results-search-btn");
-        if (resultsBtn) resultsBtn.click();
-      });
+function loadStoredMaxEntries() {
+  try {
+    const stored = localStorage.getItem(CONFIG_STORAGE_KEY);
+    if (stored) {
+      _maxEntries = clampMaxEntries(stored);
     }
-
-    if (deleteBtn) {
-      deleteBtn.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        fetch(`${HISTORY_API}/delete?id=${encodeURIComponent(id)}`, {
-          method: "POST",
-        })
-          .then((response) => {
-            if (!response.ok) throw new Error("History deletion failed");
-          })
-          .then(() => fetch(HISTORY_LIST_URL))
-          .then((response) => {
-            if (!response.ok) throw new Error("History refresh failed");
-            return response.json();
-          })
-          .then((list) => {
-            const arr = Array.isArray(list) ? list : [];
-            _historyListCache = arr;
-            renderHistoryDropdown(arr, input, dropdown);
-          })
-          .catch(() => {});
-      });
-    }
-  });
+  } catch {}
 }
 
-function fetchAndShowHistory(input, dropdown) {
-  if (!input || !dropdown) return;
-  if (input.value.trim() !== "") return;
-  fetch(HISTORY_LIST_URL)
-    .then((r) => r.json())
-    .then((list) => {
-      const arr = Array.isArray(list) ? list : [];
-      _historyListCache = arr;
-      if (shouldShowHistory(input)) {
-        renderHistoryDropdown(arr, input, dropdown);
-      }
+function fetchConfiguredMaxEntries() {
+  fetch(HISTORY_CONFIG_URL)
+    .then((response) => {
+      if (!response.ok) throw new Error("History config request failed");
+      return response.json();
+    })
+    .then((payload) => {
+      setMaxEntries(payload?.maxEntries);
+      syncVisibleHistoryUi();
     })
     .catch(() => {});
 }
 
-/** Instant paint while waiting on network (and before core clears the AC pane). */
-function paintCachedHistoryIfAny(input, dropdown) {
-  if (!input || !dropdown) return;
-  if (input.value.trim() !== "") return;
-  if (_historyListCache && _historyListCache.length > 0) {
-    renderHistoryDropdown(_historyListCache, input, dropdown);
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const data = raw ? JSON.parse(raw) : [];
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
   }
 }
 
-function prefetchHistoryList() {
-  fetch(HISTORY_LIST_URL)
-    .then((r) => r.json())
-    .then((list) => {
-      _historyListCache = Array.isArray(list) ? list : [];
-    })
-    .catch(() => {});
+function saveHistory(entries) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  } catch (error) {
+    console.warn("search-history: localStorage not writable", error);
+  }
 }
 
-function appendHistory(entry) {
-  const q = (entry || "").trim();
+function trimHistoryToMax() {
+  const history = loadHistory();
+  if (history.length <= _maxEntries) return;
+  saveHistory(history.slice(-_maxEntries));
+  refreshHistoryCache();
+}
+
+function refreshHistoryCache() {
+  _historyListCache = listEntries(HISTORY_DROPDOWN_LIMIT);
+}
+
+function appendHistoryEntry(entry) {
+  const q = String(entry || "").trim();
   if (!q) return;
   const normalizedQuery = q.toLowerCase();
   if (
@@ -161,32 +101,132 @@ function appendHistory(entry) {
   ) {
     return;
   }
-  const payload = JSON.stringify({ entry: q });
 
-  // Prefer sendBeacon: survives the pagehide/navigation that follows
-  // form submits and button clicks on search (full-page navigations
-  // via navigateToSearch or form GET submit would otherwise abort a
-  // plain fetch before the POST is sent).
-  if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-    try {
-      const blob = new Blob([payload], {
-        type: "application/json;charset=UTF-8",
-      });
-      if (navigator.sendBeacon(`${HISTORY_API}/append`, blob)) return;
-    } catch {}
+  const history = loadHistory();
+  const existingIdx = history.findIndex(
+    (item) => String(item.entry || "").toLowerCase() === normalizedQuery,
+  );
+  const timestamp = new Date().toISOString();
+
+  if (existingIdx >= 0) {
+    const existing = history[existingIdx];
+    history.splice(existingIdx, 1);
+    history.push({ id: existing.id, entry: existing.entry, timestamp });
+  } else {
+    const id =
+      globalThis.crypto?.randomUUID?.() ??
+      `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    history.push({ id, entry: q, timestamp });
   }
 
-  // Fallback: keepalive fetch so the request isn't aborted on unload.
-  try {
-    fetch(`${HISTORY_API}/append`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: payload,
-      keepalive: true,
-    }).catch(() => {});
-  } catch {
-    // ignore
+  while (history.length > _maxEntries) {
+    history.shift();
   }
+
+  saveHistory(history);
+  refreshHistoryCache();
+}
+
+function deleteHistoryEntry(id) {
+  const history = loadHistory();
+  const idx = history.findIndex((item) => String(item.id) === String(id));
+  if (idx === -1) return false;
+  history.splice(idx, 1);
+  saveHistory(history);
+  refreshHistoryCache();
+  return true;
+}
+
+function listEntries(limit) {
+  const entries = loadHistory();
+  const newestFirst = [...entries].reverse();
+  return limit ? newestFirst.slice(0, limit) : newestFirst;
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return "";
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString(undefined, {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+function renderHistoryPage(root, page) {
+  if (!(root instanceof HTMLElement)) return;
+
+  const perPage = parseInt(root.dataset.perPage || "20", 10) || 20;
+  const entries = listEntries();
+  const totalPages = Math.max(1, Math.ceil(entries.length / perPage));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const start = (currentPage - 1) * perPage;
+  const slice = entries.slice(start, start + perPage);
+
+  if (!slice.length) {
+    root.innerHTML = '<div class="no-results">No history yet.</div>';
+    return;
+  }
+
+  const items = slice
+    .map((item) => {
+      const entry = String(item.entry ?? "");
+      const searchUrl = `/search?q=${encodeURIComponent(entry)}`;
+      return `<div class="result-item"><div class="result-body"><div class="result-url-row"><span class="result-favicon result-favicon--clock">${CLOCK_ICON}</span><cite class="result-cite">${escapeHtml(formatTimestamp(item.timestamp))}</cite><button type="button" class="history-delete-btn" data-id="${escapeAttr(String(item.id))}" aria-label="Delete history entry">${TRASH_ICON}</button></div><a class="result-title" href="${escapeAttr(searchUrl)}">${escapeHtml(entry)}</a></div></div>`;
+    })
+    .join("");
+
+  const pager =
+    totalPages > 1
+      ? `<div class="search-history-result__pager"><button type="button" class="search-history-result__pager-btn" data-history-page="${currentPage - 1}" ${currentPage <= 1 ? "disabled" : ""}>Previous</button><span class="search-history-result__pager-label">Page ${currentPage} of ${totalPages}</span><button type="button" class="search-history-result__pager-btn" data-history-page="${currentPage + 1}" ${currentPage >= totalPages ? "disabled" : ""}>Next</button></div>`
+      : "";
+
+  root.innerHTML = `${items}${pager}`;
+  root.dataset.page = String(currentPage);
+
+  root.querySelectorAll(".history-delete-btn").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      deleteHistoryEntry(button.dataset.id);
+      const remainingEntries = listEntries();
+      const nextTotalPages = Math.max(1, Math.ceil(remainingEntries.length / perPage));
+      renderHistoryPage(root, Math.min(currentPage, nextTotalPages));
+    });
+  });
+
+  root.querySelectorAll("[data-history-page]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      const nextPage = parseInt(button.dataset.historyPage || String(currentPage), 10);
+      renderHistoryPage(root, nextPage);
+    });
+  });
+}
+
+function initHistoryPage() {
+  const renderIfPresent = () => {
+    const root = document.getElementById("history-plugin-root");
+    if (!(root instanceof HTMLElement)) return false;
+    if (root.dataset.maxEntries) {
+      setMaxEntries(root.dataset.maxEntries);
+    }
+    renderHistoryPage(root, parseInt(root.dataset.page || "1", 10));
+    return true;
+  };
+
+  if (renderIfPresent()) return;
+
+  const observer = new MutationObserver(() => {
+    if (!renderIfPresent()) return;
+    observer.disconnect();
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+function getSearchBarForInput(input) {
+  if (!input) return null;
+  return input.closest(".search-bar, .results-search-bar");
 }
 
 function getHistoryInput(target) {
@@ -214,6 +254,108 @@ function isHistoryDropdownOpen(dropdown) {
     dropdown.style.display !== "none" &&
     dropdown.querySelector(".ac-item--history") !== null
   );
+}
+
+function shouldShowHistory(input) {
+  if (!input) return false;
+  const dropdown = getDropdownForInput(input);
+  if (isHistoryDropdownOpen(dropdown)) return true;
+  if (input.value.trim() !== "") return false;
+  if (document.activeElement === input) return true;
+  const bar = getSearchBarForInput(input);
+  return (
+    bar instanceof HTMLElement &&
+    document.activeElement instanceof Node &&
+    bar.contains(document.activeElement)
+  );
+}
+
+function hideHistoryDropdown(dropdown) {
+  if (!dropdown) return;
+  dropdown.style.display = "none";
+  dropdown.parentElement?.classList.remove("ac-open");
+}
+
+function submitHistoryInput(input, dropdown) {
+  hideHistoryDropdown(dropdown);
+  const form = input.closest("form");
+  if (form) {
+    form.requestSubmit
+      ? form.requestSubmit()
+      : form.dispatchEvent(new Event("submit", { cancelable: true }));
+    return;
+  }
+  const resultsBtn = document.getElementById("results-search-btn");
+  if (resultsBtn) resultsBtn.click();
+}
+
+function renderHistoryDropdown(entries, input, dropdown) {
+  if (!dropdown || !input) return;
+  if (!shouldShowHistory(input)) {
+    hideHistoryDropdown(dropdown);
+    return;
+  }
+
+  dropdown.innerHTML = entries
+    .map(
+      (item) =>
+        `<div class="ac-item ac-item--history" data-entry="${escapeAttr(item.entry)}" data-text="${escapeAttr(item.entry)}" data-id="${escapeAttr(String(item.id))}" role="button" tabindex="0">
+          <span class="ac-item-icon ac-item-icon--clock" aria-hidden="true">${CLOCK_ICON}</span>
+          <span class="ac-item-text degoog-ac-text">${escapeHtml(item.entry)}</span>
+          <button type="button" class="ac-item-delete" data-id="${escapeAttr(String(item.id))}" aria-label="Delete">${TRASH_ICON}</button>
+        </div>`,
+    )
+    .join("");
+
+  if (!entries.length) {
+    hideHistoryDropdown(dropdown);
+    return;
+  }
+
+  dropdown.style.display = "block";
+  dropdown.parentElement?.classList.add("ac-open");
+
+  dropdown.querySelectorAll(".ac-item--history").forEach((item) => {
+    const textEl = item.querySelector(".ac-item-text");
+    const deleteBtn = item.querySelector(".ac-item-delete");
+    const entry = item.dataset.entry;
+    const id = item.dataset.id;
+
+    if (textEl) {
+      textEl.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        input.value = entry;
+        submitHistoryInput(input, dropdown);
+      });
+    }
+
+    if (deleteBtn) {
+      deleteBtn.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        deleteHistoryEntry(id);
+        renderHistoryDropdown(listEntries(HISTORY_DROPDOWN_LIMIT), input, dropdown);
+      });
+    }
+  });
+}
+
+function fetchAndShowHistory(input, dropdown) {
+  if (!input || !dropdown) return;
+  if (input.value.trim() !== "") return;
+  const entries = listEntries(HISTORY_DROPDOWN_LIMIT);
+  _historyListCache = entries;
+  if (shouldShowHistory(input)) {
+    renderHistoryDropdown(entries, input, dropdown);
+  }
+}
+
+function paintCachedHistoryIfAny(input, dropdown) {
+  if (!input || !dropdown) return;
+  if (input.value.trim() !== "") return;
+  if (_historyListCache?.length) {
+    renderHistoryDropdown(_historyListCache, input, dropdown);
+  }
 }
 
 function getHighlightedHistoryItem(dropdown) {
@@ -268,7 +410,6 @@ function bindHistorySearchInput(input) {
   }
   input.dataset.historyKeyBound = "true";
 
-  // Arrow keys: degoog core autocomplete previews via data-text on .ac-item.
   input.addEventListener(
     "keydown",
     (event) => {
@@ -280,22 +421,6 @@ function bindHistorySearchInput(input) {
     true,
   );
 }
-
-function submitHistoryInput(input, dropdown) {
-  hideHistoryDropdown(dropdown);
-  const form = input.closest("form");
-  if (form) {
-    form.requestSubmit
-      ? form.requestSubmit()
-      : form.dispatchEvent(new Event("submit", { cancelable: true }));
-    return;
-  }
-  const resultsBtn = document.getElementById("results-search-btn");
-  if (resultsBtn) resultsBtn.click();
-}
-
-let initialized = false;
-let searchBarEngaged = false;
 
 function markSearchBarEngagedFromEvent(event) {
   const target = event.target;
@@ -310,24 +435,31 @@ function markSearchBarEngagedFromEvent(event) {
   }
 }
 
-const SH_LANG_DICT = {
-  en: {
-    confirmClear: "Are you sure you want to clear your search history?"
-  },
-  es: {
-    confirmClear: "¿Está seguro de que desea borrar su historial de búsqueda?"
-  },
-  fr: {
-    confirmClear: "Êtes-vous sûr de vouloir effacer votre historique de recherche ?"
+function syncVisibleHistoryUi() {
+  refreshHistoryCache();
+
+  const pageRoot = document.getElementById("history-plugin-root");
+  if (pageRoot instanceof HTMLElement) {
+    renderHistoryPage(pageRoot, parseInt(pageRoot.dataset.page || "1", 10));
   }
-};
-function getShTranslation(key) {
-  const lang = (document.documentElement.lang || navigator.language || "en").split("-")[0].toLowerCase();
-  return SH_LANG_DICT[lang]?.[key] || SH_LANG_DICT["en"][key] || key;
+
+  for (const id of ["search-input", "results-search-input"]) {
+    const input = document.getElementById(id);
+    const dropdown = getDropdownForInput(input);
+    if (!input || !dropdown) continue;
+    if (!isHistoryDropdownOpen(dropdown)) continue;
+    renderHistoryDropdown(_historyListCache || [], input, dropdown);
+  }
 }
+
 function initSearchHistory() {
   if (initialized) return;
   initialized = true;
+
+  loadStoredMaxEntries();
+  refreshHistoryCache();
+  initHistoryPage();
+  fetchConfiguredMaxEntries();
 
   for (const id of ["search-input", "results-search-input"]) {
     const input = document.getElementById(id);
@@ -336,6 +468,15 @@ function initSearchHistory() {
     }
   }
 
+  window.addEventListener("storage", (event) => {
+    if (event.key !== STORAGE_KEY && event.key !== CONFIG_STORAGE_KEY) return;
+    if (event.key === CONFIG_STORAGE_KEY) {
+      loadStoredMaxEntries();
+      trimHistoryToMax();
+    }
+    syncVisibleHistoryUi();
+  });
+
   document.addEventListener("mousedown", markSearchBarEngagedFromEvent, {
     passive: true,
   });
@@ -343,8 +484,8 @@ function initSearchHistory() {
     passive: true,
   });
 
-  document.addEventListener("focusin", (e) => {
-    const input = getHistoryInput(e.target);
+  document.addEventListener("focusin", (event) => {
+    const input = getHistoryInput(event.target);
     const dropdown = getDropdownForInput(input);
     if (!input || !dropdown) return;
     if (!searchBarEngaged) return;
@@ -352,28 +493,27 @@ function initSearchHistory() {
     fetchAndShowHistory(input, dropdown);
   });
 
-  // Dismiss immediately on outside click (core AC waits 300ms on blur).
   document.addEventListener(
     "mousedown",
-    (e) => {
-      if (!(e.target instanceof Node)) return;
+    (event) => {
+      if (!(event.target instanceof Node)) return;
       for (const id of ["search-input", "results-search-input"]) {
         const input = document.getElementById(id);
         const dropdown = getDropdownForInput(input);
         const bar = getSearchBarForInput(input);
         if (!input || !dropdown || !bar) continue;
         if (dropdown.style.display === "none") continue;
-        if (bar.contains(e.target)) continue;
+        if (bar.contains(event.target)) continue;
         hideHistoryDropdown(dropdown);
       }
     },
     true,
   );
 
-  document.addEventListener("focusout", (e) => {
+  document.addEventListener("focusout", (event) => {
     const bar =
-      e.target instanceof Element
-        ? e.target.closest(".search-bar, .results-search-bar")
+      event.target instanceof Element
+        ? event.target.closest(".search-bar, .results-search-bar")
         : null;
     if (!bar) return;
     requestAnimationFrame(() => {
@@ -393,9 +533,8 @@ function initSearchHistory() {
     }
   });
 
-  // When the field is cleared while focused (e.g. backspace), show history without blur/refocus.
-  document.addEventListener("input", (e) => {
-    const input = getHistoryInput(e.target);
+  document.addEventListener("input", (event) => {
+    const input = getHistoryInput(event.target);
     const dropdown = getDropdownForInput(input);
     if (!input || !dropdown) return;
     if (input.value.trim() !== "") return;
@@ -405,40 +544,38 @@ function initSearchHistory() {
 
   document.addEventListener(
     "submit",
-    (e) => {
-      const target = e.target;
+    (event) => {
+      const target = event.target;
       if (!(target instanceof HTMLElement) || target.id !== "search-form-home") return;
       const input = document.getElementById("search-input");
-      if (input) appendHistory(input.value);
+      if (input) appendHistoryEntry(input.value);
     },
     true,
   );
 
   document.addEventListener(
     "click",
-    (e) => {
-      const target = e.target;
+    (event) => {
+      const target = event.target;
       if (!(target instanceof HTMLElement) || !target.closest("#results-search-btn")) return;
       const input = document.getElementById("results-search-input");
-      if (input) appendHistory(input.value);
+      if (input) appendHistoryEntry(input.value);
     },
     true,
   );
 
   document.addEventListener(
     "keydown",
-    (e) => {
-      if (e.key !== "Enter") return;
-      const input = getHistoryInput(e.target);
+    (event) => {
+      if (event.key !== "Enter") return;
+      const input = getHistoryInput(event.target);
       if (!input) return;
       const dropdown = getDropdownForInput(input);
       if (isHistoryDropdownOpen(dropdown)) return;
-      if (input.id === "results-search-input") appendHistory(input.value);
+      if (input.id === "results-search-input") appendHistoryEntry(input.value);
     },
     true,
   );
-
-  prefetchHistoryList();
 }
 
 if (document.readyState === "loading") {

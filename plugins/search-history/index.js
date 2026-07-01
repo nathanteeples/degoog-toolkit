@@ -1,87 +1,46 @@
-import { randomUUID } from "node:crypto";
-import { readFile, writeFile, mkdir, rename } from "fs/promises";
-import { join } from "path";
-
-const CLOCK_ICON =
-  "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' aria-hidden='true'><circle cx='12' cy='12' r='10'/><path d='M12 6v6l4 2'/></svg>";
-const TRASH_ICON =
-  "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' aria-hidden='true'><path d='M3 6h18v2l-2 14H5L3 8V6z'/><path d='M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2'/><path d='M10 11v6'/><path d='M14 11v6'/></svg>";
-
-const DATA_DIR = join(process.cwd(), "data");
-const HISTORY_PATH = join(DATA_DIR, "history.json");
 const PER_PAGE = 20;
 let maxEntries = 1000;
-let pluginRouteBase = "";
-let writeQueue = Promise.resolve();
 
-function setPluginRouteBase(ctx) {
-  if (ctx?.apiBase) {
-    pluginRouteBase = ctx.apiBase;
-  } else if (typeof ctx?.routeUrl === "function") {
-    pluginRouteBase = ctx.routeUrl();
-  } else {
-    const dir = typeof ctx?.dir === "string" ? ctx.dir : "";
-    const folder = dir.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).pop();
-    const prefix = ["", "api", "plugin"].join("/");
-    pluginRouteBase = folder ? `${prefix}/${encodeURIComponent(folder)}` : `${prefix}/search-history`;
-  }
-}
+const command = {
+  name: "Search history",
+  description:
+    "Stores search history in this browser with timestamps; !history shows a deletable list.",
+  isClientExposed: false,
+  trigger: "history",
+  aliases: [],
 
-const _loadHistory = async () => {
-  try {
-    const raw = await readFile(HISTORY_PATH, "utf-8");
-    const data = JSON.parse(raw);
-    if (!Array.isArray(data)) {
-      const error = new TypeError("Search history data must be an array");
-      error.code = "INVALID_HISTORY";
-      throw error;
-    }
-    return data;
-  } catch (error) {
-    if (error?.code === "ENOENT") return [];
-    if (error instanceof SyntaxError || error?.code === "INVALID_HISTORY") {
-      const backupPath = `${HISTORY_PATH}.corrupt-${Date.now()}`;
-      await rename(HISTORY_PATH, backupPath).catch(() => {});
-      return [];
-    }
-    throw error;
-  }
+  settingsSchema: [
+    {
+      key: "maxEntries",
+      label: "Max entries",
+      type: "text",
+      placeholder: "1000",
+      description:
+        "Maximum number of history entries to keep per browser/device (oldest removed when exceeded).",
+    },
+  ],
+
+  configure(settings = {}) {
+    const n = parseInt(settings.maxEntries, 10);
+    maxEntries = Number.isFinite(n) && n > 0 ? Math.min(100000, n) : 1000;
+  },
+
+  async execute(args, context) {
+    const pageFromArgs = parseInt(String(args || "").trim(), 10);
+    const page = Math.max(
+      1,
+      context?.page ?? (Number.isFinite(pageFromArgs) ? pageFromArgs : 1),
+    );
+
+    return {
+      title: "Search history",
+      html: `<div id="history-plugin-root" class="search-history-result" data-page="${page}" data-per-page="${PER_PAGE}" data-max-entries="${maxEntries}"><div class="no-results">Loading...</div></div>`,
+      totalPages: 1,
+    };
+  },
 };
 
-const _saveHistory = async (entries) => {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(HISTORY_PATH, JSON.stringify(entries, null, 2), "utf-8");
-};
-
-const _withHistoryWrite = async (mutate) => {
-  const run = writeQueue.then(async () => {
-    const history = await _loadHistory();
-    const result = await mutate(history);
-    await _saveHistory(history);
-    return result;
-  });
-  writeQueue = run.catch(() => {});
-  return run;
-};
-
-const _esc = (s) => {
-  if (typeof s !== "string") return "";
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-};
-
-const _formatTimestamp = (ts) => {
-  if (!ts) return "";
-  const d = new Date(ts);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleString(undefined, {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-};
+export default command;
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -93,167 +52,10 @@ function jsonResponse(body, status = 200) {
   });
 }
 
-const command = {
-  name: "Search history",
-  description:
-    "Stores search history in data/history.json with timestamps; !history shows a paginated, deletable list.",
-  isClientExposed: false,
-  trigger: "history",
-  aliases: [],
-
-  init(ctx) {
-    setPluginRouteBase(ctx);
-  },
-
-  settingsSchema: [
-    {
-      key: "maxEntries",
-      label: "Max entries",
-      type: "text",
-      placeholder: "1000",
-      description:
-        "Maximum number of history entries to keep (oldest removed when exceeded).",
-    },
-  ],
-
-  configure(settings = {}) {
-    const n = parseInt(settings.maxEntries, 10);
-    maxEntries = Number.isFinite(n) && n > 0 ? Math.min(100000, n) : 1000;
-  },
-
-  async execute(args, context) {
-    const pageFromArgs = parseInt(String(args || "").trim(), 10);
-    const pageNum = Math.max(
-      1,
-      context?.page ?? (Number.isFinite(pageFromArgs) ? pageFromArgs : 1),
-    );
-    const entries = await _loadHistory();
-    const newestFirst = [...entries].reverse();
-    const totalPages = Math.max(1, Math.ceil(newestFirst.length / PER_PAGE));
-    const page = Math.min(pageNum, totalPages);
-    const start = (page - 1) * PER_PAGE;
-    const slice = newestFirst.slice(start, start + PER_PAGE);
-
-    const items = slice
-      .map((item) => {
-        const entry = _esc(String(item.entry ?? ""));
-        const ts = _formatTimestamp(item.timestamp);
-        const timeStr = _esc(ts);
-        const searchUrl = `/search?q=${encodeURIComponent(item.entry ?? "")}`;
-        const deleteUrl = `${pluginRouteBase}/delete?id=${encodeURIComponent(item.id)}&return=bang`;
-        return `<div class="result-item"><div class="result-body"><div class="result-url-row"><span class="result-favicon result-favicon--clock">${CLOCK_ICON}</span><cite class="result-cite">${timeStr}</cite><form class="history-delete-form" method="post" action="${_esc(deleteUrl)}"><button type="submit" class="history-delete-btn" aria-label="Delete history entry">${TRASH_ICON}</button></form></div><a class="result-title" href="${_esc(searchUrl)}">${entry}</a></div></div>`;
-      })
-      .join("");
-
-    const noResults =
-      slice.length === 0 ? '<div class="no-results">No history yet.</div>' : "";
-    const html = `<div class="search-history-result">${items || noResults}</div>`;
-    return { title: "Search history", html, totalPages };
-  },
-};
-
-export default command;
-
 export const routes = [
   {
     method: "get",
-    path: "list",
-    handler: async (req) => {
-      const url = new URL(req.url);
-      const limitParam = url.searchParams.get("limit");
-      const limit = limitParam
-        ? Math.min(100, Math.max(1, parseInt(limitParam, 10) || 10))
-        : null;
-      const entries = await _loadHistory();
-      const newestFirst = [...entries].reverse();
-      const out = limit ? newestFirst.slice(0, limit) : newestFirst;
-      return jsonResponse(out);
-    },
-  },
-  {
-    method: "post",
-    path: "append",
-    handler: async (req) => {
-      let body;
-      try {
-        const text = await req.text();
-        body = text ? JSON.parse(text) : {};
-      } catch {
-        return jsonResponse({ error: "Invalid JSON" }, 400);
-      }
-      const entry = typeof body.entry === "string" ? body.entry.trim() : "";
-      if (!entry) {
-        return jsonResponse({ error: "Missing or empty entry" }, 400);
-      }
-      const normalizedEntry = entry.toLowerCase();
-      if (
-        normalizedEntry === "!history" ||
-        normalizedEntry.startsWith("!history ")
-      ) {
-        return jsonResponse({ error: "Cannot store bang command" }, 400);
-      }
-      const { id, storedEntry, timestamp } = await _withHistoryWrite(
-        async (history) => {
-          const entryLower = entry.toLowerCase();
-          const existingIdx = history.findIndex(
-            (e) => String(e.entry || "").toLowerCase() === entryLower,
-          );
-          const timestamp = new Date().toISOString();
-          let id;
-          let storedEntry = entry;
-          if (existingIdx >= 0) {
-            const existing = history[existingIdx];
-            id = existing.id;
-            storedEntry = existing.entry;
-            history.splice(existingIdx, 1);
-            history.push({ id, entry: storedEntry, timestamp });
-          } else {
-            id = randomUUID();
-            history.push({ id, entry, timestamp });
-          }
-          while (history.length > maxEntries) {
-            history.shift();
-          }
-          return { id, storedEntry, timestamp };
-        },
-      );
-      return jsonResponse({ id, entry: storedEntry, timestamp });
-    },
-  },
-  {
-    method: "post",
-    path: "delete",
-    handler: async (req) => {
-      const url = new URL(req.url);
-      const id = url.searchParams.get("id");
-      const returnBang = url.searchParams.get("return") === "bang";
-      if (!id) {
-        return jsonResponse({ error: "Missing id" }, 400);
-      }
-      const deleted = await _withHistoryWrite(async (history) => {
-        const idx = history.findIndex((e) => String(e.id) === String(id));
-        if (idx === -1) return false;
-        history.splice(idx, 1);
-        return true;
-      });
-      if (!deleted) {
-        if (returnBang) {
-          const base = new URL(req.url);
-          return Response.redirect(
-            `${base.origin}/search?q=${encodeURIComponent("!history")}`,
-            302,
-          );
-        }
-        return jsonResponse({ error: "Not found" }, 404);
-      }
-      if (returnBang) {
-        const base = new URL(req.url);
-        return Response.redirect(
-          `${base.origin}/search?q=${encodeURIComponent("!history")}`,
-          302,
-        );
-      }
-      return jsonResponse({ ok: true });
-    },
+    path: "config",
+    handler: async () => jsonResponse({ maxEntries }),
   },
 ];
