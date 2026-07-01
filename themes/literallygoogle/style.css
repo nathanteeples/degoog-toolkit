@@ -2029,10 +2029,11 @@ body {
 
 #results-meta .spell-check-notice {
     order: 1;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-width: 0;
     margin: 0;
     line-height: inherit;
+    white-space: nowrap;
 }
 
 #results-meta .spell-check-notice br {

@@ -433,16 +433,32 @@ function getLgTranslation(key) {
         }
     }
 
+    function placeSpellCheckNotice(meta, notice) {
+        const tools = meta.querySelector(".tools-panel.lg-tools-inline");
+        const stats = meta.querySelector(".results-meta-stats");
+        if (tools) {
+            tools.insertAdjacentElement("afterend", notice);
+        } else if (stats) {
+            meta.insertBefore(notice, stats);
+        } else if (notice.parentNode !== meta) {
+            meta.appendChild(notice);
+        }
+    }
+
     function moveSpellCheck() {
         const notices = document.querySelectorAll(".spell-check-notice");
         const meta = document.getElementById("results-meta");
         wrapResultsStats(meta);
+        if (!meta) return;
+
         for (let i = 0; i < notices.length; i++) {
             const notice = notices[i];
             const panel = notice.closest(".results-slot-panel");
-            if (meta && notice.parentNode !== meta) {
-                meta.appendChild(notice);
+            if (notice.parentNode !== meta) {
+                placeSpellCheckNotice(meta, notice);
                 panel?.remove();
+            } else {
+                placeSpellCheckNotice(meta, notice);
             }
         }
     }
@@ -491,6 +507,13 @@ function getLgTranslation(key) {
         if (toolsBar) {
             toolsBar.hidden = webTab;
         }
+
+        document.querySelectorAll("#results-meta .spell-check-notice").forEach(notice => {
+            const tools = meta.querySelector(".tools-panel.lg-tools-inline");
+            if (tools && notice.previousElementSibling !== tools) {
+                tools.insertAdjacentElement("afterend", notice);
+            }
+        });
     }
 
     const target = document.getElementById("results-page") || document.documentElement;
