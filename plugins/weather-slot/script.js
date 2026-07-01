@@ -575,8 +575,8 @@
     const moonsetVal = card.querySelector("[data-weather-moonset]");
     const moonsetRel = card.querySelector("[data-weather-moonset-relative]");
     const moonApexVal = card.querySelector("[data-weather-moon-apex]");
+    const moonApexWrap = card.querySelector("[data-weather-moon-apex-wrap]");
     const moonTrack = card.querySelector(".weather-moon-track");
-    const moonArc = card.querySelector("[data-weather-moon-arc]");
     const moonDot = card.querySelector("[data-weather-moon-dot]");
 
     const daysTrack = card.querySelector("[data-weather-days]");
@@ -596,24 +596,43 @@
     };
 
     function setAstroArcProgress(arcEl, pct) {
-      if (!arcEl) return;
+      if (!arcEl?.getTotalLength) return;
+      const len = arcEl.getTotalLength();
       const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
-      const dashOffset = 200 - (200 * clamped) / 100;
-      arcEl.style.setProperty("--weather-arc-target", String(dashOffset));
+      arcEl.style.strokeDasharray = String(len);
+      arcEl.style.strokeDashoffset = String(len - (len * clamped) / 100);
     }
 
-    function setAstroDotPosition(trackEl, dotEl, pct) {
-      if (!trackEl || !dotEl) return;
+    function setAstroDotPosition(trackEl, dotEl, pathEl, pct) {
+      if (!trackEl || !dotEl || !pathEl?.getPointAtLength) return;
 
       const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
-      const t = clamped / 100;
-      const y = ((1 - t) * (1 - t) * 48) + (2 * (1 - t) * t * 8) + (t * t * 48);
-      const trackHeight = trackEl.clientHeight || 40;
-      const dotSize = dotEl.offsetHeight || 7;
-      const topPx = (y / 56) * trackHeight - dotSize / 2;
+      const len = pathEl.getTotalLength();
+      if (!len) return;
 
-      dotEl.style.left = clamped + "%";
-      dotEl.style.top = topPx + "px";
+      const pt = pathEl.getPointAtLength((clamped / 100) * len);
+      const ctm = pathEl.getScreenCTM();
+      const trackRect = trackEl.getBoundingClientRect();
+      if (!ctm || trackRect.width <= 0) return;
+
+      const domPt = new DOMPoint(pt.x, pt.y).matrixTransform(ctm);
+      dotEl.style.left = ((domPt.x - trackRect.left) / trackRect.width) * 100 + "%";
+      dotEl.style.top = domPt.y - trackRect.top + "px";
+    }
+
+    function syncAstroTracks() {
+      if (sunTrack && sunDot && sunArc && sunDot.style.display !== "none") {
+        setAstroDotPosition(
+          sunTrack,
+          sunDot,
+          sunArc,
+          sunDot.dataset.pct || payload.sun?.pct || 0,
+        );
+      }
+      const moonPath = moonTrack?.querySelector(".weather-astro-arc-bg");
+      if (moonTrack && moonDot && moonPath && moonDot.style.display !== "none") {
+        setAstroDotPosition(moonTrack, moonDot, moonPath, moonDot.dataset.pct || 0);
+      }
     }
 
     function updateHero(day) {
@@ -650,11 +669,12 @@
       if (sunsetVal) sunsetVal.textContent = day.ssStr;
       if (sunsetRel) sunsetRel.textContent = activeDayIndex === 0 ? day.ssRelative : "";
 
-      if (sunArc && sunDot) {
+      if (sunArc && sunDot && sunTrack) {
         if (activeDayIndex === 0) {
           const pct = Math.min(100, Math.max(0, payload.sun.pct));
           setAstroArcProgress(sunArc, pct);
-          setAstroDotPosition(sunTrack, sunDot, pct);
+          sunDot.dataset.pct = String(pct);
+          setAstroDotPosition(sunTrack, sunDot, sunArc, pct);
           sunDot.style.display = "block";
         } else {
           sunDot.style.display = "none";
@@ -670,13 +690,18 @@
         if (moonriseRel) moonriseRel.textContent = activeDayIndex === 0 ? day.moon.riseRelative : "";
         if (moonsetVal) moonsetVal.textContent = day.moon.setStr;
         if (moonsetRel) moonsetRel.textContent = activeDayIndex === 0 ? day.moon.setRelative : "";
-        if (moonApexVal) moonApexVal.textContent = day.moon.apexStr;
+        const apexStr = day.moon.apexStr;
+        const showApex =
+          activeDayIndex === 0 && apexStr && apexStr !== "—" && apexStr !== "-";
+        if (moonApexWrap) moonApexWrap.hidden = !showApex;
+        if (moonApexVal && showApex) moonApexVal.textContent = apexStr;
 
-        setAstroArcProgress(moonArc, 100);
-
-        if (moonDot) {
-          if (activeDayIndex === 0 && day.moon.isUp) {
-            setAstroDotPosition(moonTrack, moonDot, day.moon.nowPct);
+        if (moonDot && moonTrack) {
+          const moonPath = moonTrack.querySelector(".weather-astro-arc-bg");
+          if (activeDayIndex === 0 && day.moon.isUp && moonPath) {
+            const pct = Math.min(100, Math.max(0, day.moon.nowPct));
+            moonDot.dataset.pct = String(pct);
+            setAstroDotPosition(moonTrack, moonDot, moonPath, pct);
             moonDot.style.display = "block";
           } else {
             moonDot.style.display = "none";
@@ -684,8 +709,10 @@
         }
       } else if (moonRow) {
         moonRow.style.display = "none";
-        setAstroArcProgress(moonArc, 0);
+        if (moonApexWrap) moonApexWrap.hidden = true;
       }
+
+      requestAnimationFrame(syncAstroTracks);
 
       renderChart(chartEl, tooltipEl, legendEl, day, activeTab, unitsInfo);
     }
@@ -739,6 +766,12 @@
 
     const firstDay = payload.days[0];
     if (firstDay) updateHero(firstDay);
+
+    if (!card._wxsResizeBound) {
+      card._wxsResizeBound = true;
+      window.addEventListener("resize", syncAstroTracks, { passive: true });
+      requestAnimationFrame(syncAstroTracks);
+    }
 
     card._wxsInit = true;
   }

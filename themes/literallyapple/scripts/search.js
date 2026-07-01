@@ -352,7 +352,54 @@ function getLaTranslation(key) {
         true,
     );
 
+    function leadingFullWidthSlotRows() {
+        const slot = document.getElementById("slot-above-results");
+        if (!slot) return 1;
+
+        let row = 1;
+        for (const panel of slot.querySelectorAll(":scope > .results-slot-panel")) {
+            if (
+                panel.querySelector(
+                    ":scope > .results-slot-panel-body > .slot-full-width",
+                )
+            ) {
+                row += 1;
+            } else {
+                break;
+            }
+        }
+        return row;
+    }
+
+    function syncSidebarGridRow() {
+        const sidebar = document.getElementById("sidebar-col");
+        if (!sidebar) return;
+
+        if (window.matchMedia("(max-width: 767px)").matches) {
+            sidebar.style.removeProperty("grid-row");
+            return;
+        }
+
+        sidebar.style.gridRow = `${leadingFullWidthSlotRows()} / span 30`;
+    }
+
     function observeSlots() {
+        syncSidebarGridRow();
+
+        const slot = document.getElementById("slot-above-results");
+        if (slot && !slot._laSidebarRowObserver) {
+            slot._laSidebarRowObserver = true;
+            new MutationObserver(() => {
+                window.requestAnimationFrame(syncSidebarGridRow);
+            }).observe(slot, { childList: true });
+        }
+
+        if (!window._laSidebarRowResizeBound) {
+            window._laSidebarRowResizeBound = true;
+            window.addEventListener("resize", syncSidebarGridRow, { passive: true });
+            window.addEventListener("degoog-results-ready", syncSidebarGridRow);
+        }
+
         slotContainers().forEach(container => {
             dedupeFullWidthPanels(container);
             new MutationObserver(mutations => {
