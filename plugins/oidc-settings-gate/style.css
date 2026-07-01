@@ -1,43 +1,68 @@
-.oidc-settings-gate__actions {
-  display: grid;
-  gap: 12px;
-  margin-top: 12px;
+.degoog-oidc-user {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 50;
 }
 
-.oidc-settings-gate__button {
+.degoog-oidc-trigger {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 50%;
+}
+
+.degoog-oidc-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  width: 100%;
-  border: 1px solid var(--border, #d0d7de);
-  border-radius: 999px;
-  background: var(--primary, #1a73e8);
+  background: var(--primary);
   color: #fff;
-  padding: 12px 18px;
-  font: inherit;
   font-weight: 600;
-  cursor: pointer;
-  transition:
-    transform 120ms ease,
-    box-shadow 120ms ease,
-    opacity 120ms ease;
+  font-size: 15px;
 }
 
-.oidc-settings-gate__button:hover,
-.oidc-settings-gate__button:focus-visible {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--primary, #1a73e8) 24%, transparent);
+.degoog-oidc-menu {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  min-width: 200px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-light);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
 }
 
-.oidc-settings-gate__button:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--primary, #1a73e8) 60%, white);
-  outline-offset: 2px;
-}
-
-.oidc-settings-gate__hint {
+.degoog-oidc-name {
   margin: 0;
-  text-align: center;
-  color: var(--text-secondary, #5f6368);
-  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.degoog-oidc-email {
+  margin: 2px 0 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.degoog-oidc-logout {
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.degoog-oidc-logout:hover {
+  background: var(--primary);
+  color: #fff;
 }
