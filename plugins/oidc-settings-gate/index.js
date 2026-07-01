@@ -4,6 +4,7 @@ import { handle } from "./src/gate.js";
 import { routes as pluginRoutes } from "./src/routes.js";
 
 export const middleware = {
+  id: "oidc-settings-gate",
   isClientExposed: false,
   name: "OIDC / SSO",
   description:
