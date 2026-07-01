@@ -596,6 +596,18 @@
       precipUnit: payload.precipUnit,
     };
 
+    const ASTRO_VB = { w: 200, h: 60 };
+    const ASTRO_BEZIER = { x0: 4, y0: 52, x1: 100, y1: 6, x2: 196, y2: 52 };
+
+    function astroBezierPoint(pct) {
+      const t = Math.max(0, Math.min(100, Number(pct) || 0)) / 100;
+      const mt = 1 - t;
+      return {
+        x: mt * mt * ASTRO_BEZIER.x0 + 2 * mt * t * ASTRO_BEZIER.x1 + t * t * ASTRO_BEZIER.x2,
+        y: mt * mt * ASTRO_BEZIER.y0 + 2 * mt * t * ASTRO_BEZIER.y1 + t * t * ASTRO_BEZIER.y2,
+      };
+    }
+
     function setAstroArcProgress(arcEl, pct) {
       if (!arcEl?.getTotalLength) return;
       const len = arcEl.getTotalLength();
@@ -604,58 +616,21 @@
       arcEl.style.strokeDashoffset = String(len - (len * clamped) / 100);
     }
 
-    function setAstroDotPosition(trackEl, dotEl, pathEl, pct) {
-      if (!trackEl || !dotEl || !pathEl?.getPointAtLength) return;
+    function setAstroDotPosition(trackEl, dotEl, pct) {
+      if (!trackEl || !dotEl) return;
 
-      const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
-      const len = pathEl.getTotalLength();
-      if (!len) return;
-
-      const pt = pathEl.getPointAtLength((clamped / 100) * len);
-      const ctm = pathEl.getScreenCTM();
-      const trackRect = trackEl.getBoundingClientRect();
-      if (!ctm || trackRect.width <= 0) return;
-
-      const domPt = new DOMPoint(pt.x, pt.y).matrixTransform(ctm);
-      dotEl.style.left = ((domPt.x - trackRect.left) / trackRect.width) * 100 + "%";
-      dotEl.style.top = domPt.y - trackRect.top + "px";
-    }
-
-    function positionMoonApex(moonPath, apexPct) {
-      if (!moonApexWrap || moonApexWrap.hidden || !moonTrack || !moonPath?.getPointAtLength) {
-        return;
-      }
-      const len = moonPath.getTotalLength();
-      if (!len) return;
-
-      const pt = moonPath.getPointAtLength(
-        (Math.max(0, Math.min(100, Number(apexPct) || 50)) / 100) * len,
-      );
-      const ctm = moonPath.getScreenCTM();
-      const trackRect = moonTrack.getBoundingClientRect();
-      if (!ctm || trackRect.width <= 0) return;
-
-      const domPt = new DOMPoint(pt.x, pt.y).matrixTransform(ctm);
-      moonApexWrap.style.left =
-        ((domPt.x - trackRect.left) / trackRect.width) * 100 + "%";
-      moonApexWrap.style.top = Math.max(0, domPt.y - trackRect.top - 17) + "px";
+      const { x, y } = astroBezierPoint(pct);
+      const trackH = trackEl.clientHeight || 40;
+      dotEl.style.left = (x / ASTRO_VB.w) * 100 + "%";
+      dotEl.style.top = (y / ASTRO_VB.h) * trackH + "px";
     }
 
     function syncAstroTracks() {
-      if (sunTrack && sunDot && sunArc && !sunDot.hidden) {
-        setAstroDotPosition(
-          sunTrack,
-          sunDot,
-          sunArc,
-          sunDot.dataset.pct || payload.sun?.pct || 0,
-        );
+      if (sunTrack && sunDot && !sunDot.hidden) {
+        setAstroDotPosition(sunTrack, sunDot, sunDot.dataset.pct || payload.sun?.pct || 0);
       }
-      const moonPath = moonTrack?.querySelector(".weather-astro-arc-bg");
-      if (moonTrack && moonDot && moonPath && !moonDot.hidden) {
-        setAstroDotPosition(moonTrack, moonDot, moonPath, moonDot.dataset.pct || 0);
-      }
-      if (moonTrack && moonPath && moonApexWrap && !moonApexWrap.hidden) {
-        positionMoonApex(moonPath, moonApexWrap.dataset.apexPct || 50);
+      if (moonTrack && moonDot && !moonDot.hidden) {
+        setAstroDotPosition(moonTrack, moonDot, moonDot.dataset.pct || 0);
       }
     }
 
@@ -698,7 +673,7 @@
           const pct = Math.min(100, Math.max(0, payload.sun.pct));
           setAstroArcProgress(sunArc, pct);
           sunDot.dataset.pct = String(pct);
-          setAstroDotPosition(sunTrack, sunDot, sunArc, pct);
+          setAstroDotPosition(sunTrack, sunDot, pct);
           sunDot.hidden = !(pct > 0);
           sunTrack.dataset.sunState = payload.sun.isUp
             ? "up"
@@ -725,26 +700,19 @@
           activeDayIndex === 0 && apexStr && apexStr !== "—" && apexStr !== "-";
         if (moonApexWrap) {
           moonApexWrap.hidden = !showApex;
-          if (showApex) {
-            moonApexWrap.dataset.apexPct = String(day.moon.apexPct ?? 50);
-          }
         }
         if (moonApexVal && showApex) moonApexVal.textContent = apexStr;
 
         if (moonDot && moonTrack) {
-          const moonPath = moonTrack.querySelector(".weather-astro-arc-bg");
-          if (activeDayIndex === 0 && day.moon.isUp && moonPath && moonArc) {
+          if (activeDayIndex === 0 && day.moon.isUp && moonArc) {
             const pct = Math.min(100, Math.max(0, day.moon.nowPct));
             setAstroArcProgress(moonArc, pct);
             moonDot.dataset.pct = String(pct);
-            setAstroDotPosition(moonTrack, moonDot, moonPath, pct);
+            setAstroDotPosition(moonTrack, moonDot, pct);
             moonDot.hidden = false;
           } else {
             if (moonArc) setAstroArcProgress(moonArc, 0);
             moonDot.hidden = true;
-          }
-          if (showApex && moonPath) {
-            positionMoonApex(moonPath, day.moon.apexPct);
           }
         }
       } else if (moonRow) {

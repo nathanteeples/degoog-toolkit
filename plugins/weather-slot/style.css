@@ -53,9 +53,44 @@
     animation: weather-flash 3.5s ease-in-out infinite;
 }
 
+/* Flatten degoog slot shell — card is self-contained (no double frame / extra padding). */
+.results-slot-panel:has(> .results-slot-panel-body > .weather-result.slot-full-width) {
+    max-width: none;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+
+.results-slot-panel:has(> .results-slot-panel-body > .weather-result.slot-full-width)
+    > .results-slot-panel-body {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+}
+
+#results-page.degoog-fullwidth-slot-shell
+    .results-slot-panel:has(.weather-result.slot-full-width) {
+    max-width: none;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+
+#results-page.degoog-fullwidth-slot-shell
+    .results-slot-panel:has(.weather-result.slot-full-width)
+    > .results-slot-panel-body {
+    padding: 0;
+    max-width: none;
+    width: 100%;
+}
+
 .weather-result {
     container-type: inline-size;
-    margin-bottom: 12px;
+    margin-bottom: 0;
     font-family: var(--font-sans, sans-serif);
     color: var(--text-primary);
     position: relative;
@@ -459,7 +494,7 @@
 }
 
 .weather-astro {
-    margin-bottom: 4px;
+    margin-bottom: 0;
 }
 
 .weather-astro-grid {
@@ -563,17 +598,11 @@ html[data-theme="dark"] .weather-astro-ico-moon {
     grid-column: 2;
     width: 100%;
     min-width: 0;
-    aspect-ratio: 200 / 60;
-    height: auto;
-    max-height: 4.5rem;
+    height: 40px;
     justify-self: stretch;
     position: relative;
-    margin: 0;
+    margin: 0 2px;
     overflow: visible;
-}
-
-.weather-moon-track {
-    max-height: 5rem;
 }
 
 .weather-astro-arc {
@@ -665,17 +694,18 @@ html[data-theme="dark"] .weather-moon-dot {
 .weather-astro-apex {
     position: absolute;
     left: 50%;
-    top: 0;
+    bottom: 2px;
     transform: translateX(-50%);
     margin: 0;
     display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 0.25em;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
     white-space: nowrap;
-    font-size: 0.62rem;
-    line-height: 1;
+    font-size: 0.68rem;
+    line-height: 1.2;
     color: var(--text-secondary);
+    opacity: 0.85;
     pointer-events: none;
     z-index: 1;
 }
@@ -702,7 +732,9 @@ html[data-theme="dark"] .weather-moon-dot {
     color: var(--text-secondary);
     border-top: 1px dashed color-mix(in srgb, var(--text-secondary) 15%, transparent);
     padding-top: 6px;
+    padding-bottom: 0;
     margin-top: 6px;
+    margin-bottom: 0;
 }
 
 .weather-footer a {
