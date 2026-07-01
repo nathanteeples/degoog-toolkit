@@ -516,6 +516,21 @@ function getLgTranslation(key) {
         panel.style.setProperty("--lg-filters-left", `${toggleRect.left - pageRect.left}px`);
     }
 
+    function wireFiltersHover(panel) {
+        if (panel.dataset.lgFiltersHoverWired === "1") return;
+        panel.dataset.lgFiltersHoverWired = "1";
+
+        panel.addEventListener("mouseover", e => {
+            const field = e.target.closest(".tools-field");
+            if (!field || !panel.contains(field)) return;
+            const toggle = field.querySelector(".tools-field-toggle");
+            const menuId = toggle?.getAttribute("aria-controls");
+            const menu = menuId ? document.getElementById(menuId) : null;
+            if (!toggle || !menu || menu.style.display === "block") return;
+            toggle.click();
+        });
+    }
+
     function setupFiltersDropdown() {
         unwrapMetaRow();
 
@@ -531,6 +546,7 @@ function getLgTranslation(key) {
         toolsBar?.classList.add("lg-filters-wrap");
 
         positionFiltersPanel(panel, toggle, page);
+        wireFiltersHover(panel);
 
         if (toggle.dataset.lgFiltersWired === "1") return;
         toggle.dataset.lgFiltersWired = "1";
