@@ -56,6 +56,18 @@
       "default": false
     },
     {
+      "key": "imageModeDesktopLayout",
+      "label": "Image mode layout (desktop)",
+      "description": "Choose whether the filters and engine performance rail appears to the left or right of the preview panel on laptop and desktop image search.",
+      "type": "select",
+      "options": ["organizers-left", "preview-left"],
+      "optionLabels": [
+        "Filters / Engine Performance left, Preview right",
+        "Preview left, Filters / Engine Performance right"
+      ],
+      "default": "organizers-left"
+    },
+    {
       "key": "knowledgePanelMobile",
       "label": "Knowledge panel (mobile)",
       "description": "Default open or collapsed state for Wikipedia and knowledge plugin panels in the sidebar.",
@@ -80,6 +92,7 @@
     "relatedSearchesMobile": "related-searches-mobile",
     "relatedSearchesDesktop": "related-searches-desktop",
     "stickySidebar": "sticky-sidebar",
+    "imageModeDesktopLayout": "image-mode-desktop-layout",
     "knowledgePanelMobile": "knowledge-panel-mobile",
     "knowledgePanelDesktop": "knowledge-panel-desktop"
   },
