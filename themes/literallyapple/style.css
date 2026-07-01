@@ -1301,7 +1301,7 @@ body {
     /* Full-width above-results plugin: span the whole results grid only when
        the class is on the plugin's direct rendered root. Descendant utility
        classes must not make an unrelated third-party plugin opt in. */
-    #slot-above-results > .results-slot-panel:has(> .results-slot-panel-body > .slot-full-width) {
+    #slot-above-results > .results-slot-panel:has(.slot-full-width) {
         grid-column: 1 / -1;
         max-width: none;
     }
@@ -1309,9 +1309,7 @@ body {
     /* Only full-width panel shells fill the spanned column; sibling panels stay
        visually aligned to the normal main-column width. */
     #slot-above-results
-        > .results-slot-panel:has(
-            > .results-slot-panel-body > .slot-full-width
-        )
+        > .results-slot-panel:has(.slot-full-width)
         > .results-slot-panel-body {
         max-width: none;
         width: 100%;
@@ -1737,9 +1735,7 @@ body {
 }
 
 #slot-above-results
-    > .results-slot-panel:has(
-        > .results-slot-panel-body > .slot-full-width
-    ) {
+    > .results-slot-panel:has(.slot-full-width) {
     background: var(--la-card);
     border: 1px solid var(--border-light);
     border-radius: var(--theme-radius-xl);
@@ -1750,9 +1746,7 @@ body {
 }
 
 #slot-above-results
-    > .results-slot-panel:has(
-        > .results-slot-panel-body > .slot-full-width
-    )
+    > .results-slot-panel:has(.slot-full-width)
     > .results-slot-panel-body {
     padding: 16px;
     --slot-inset-bg: var(--bg);
@@ -3386,9 +3380,7 @@ button.mp2-item[hidden] {
 }
 
 #slot-above-results
-    > .results-slot-panel:has(
-        > .results-slot-panel-body > .slot-full-width
-    ) {
+    > .results-slot-panel:has(.slot-full-width) {
     border-radius: var(--theme-radius-xl);
     background: var(--la-card);
     border: 1px solid var(--border-light);
