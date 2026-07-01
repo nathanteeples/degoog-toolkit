@@ -638,7 +638,7 @@
       const domPt = new DOMPoint(pt.x, pt.y).matrixTransform(ctm);
       moonApexWrap.style.left =
         ((domPt.x - trackRect.left) / trackRect.width) * 100 + "%";
-      moonApexWrap.style.top = Math.max(0, domPt.y - trackRect.top - 15) + "px";
+      moonApexWrap.style.top = Math.max(0, domPt.y - trackRect.top - 17) + "px";
     }
 
     function syncAstroTracks() {

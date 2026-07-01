@@ -1246,67 +1246,50 @@ function _pickMoonEvent(events, type, start, end, preferAfter = null) {
   return candidates[0];
 }
 
-/** Pick the moonrise/moonset pair for the current (or upcoming) lunar transit. */
-function _pickMoonTransit(now, events, lat, lon) {
+/** Build rise→set transit windows from collected events. */
+function _moonTransits(events) {
   const rises = events
     .filter((e) => e.type === "rise")
     .sort((a, b) => a.time - b.time);
   const sets = events
     .filter((e) => e.type === "set")
     .sort((a, b) => a.time - b.time);
-
-  if (!rises.length && !sets.length) {
-    return { rise: null, set: null };
+  const transits = [];
+  for (const rise of rises) {
+    const set = sets.find((s) => s.time.getTime() > rise.time.getTime());
+    if (set) transits.push({ rise, set });
   }
-
-  const hc = 0.133 * ASTRO_RAD;
-  const isUp = _moonPosition(now, lat, lon).altitude > hc;
-  const nowT = now.getTime();
-
-  if (isUp) {
-    let rise = null;
-    for (let i = rises.length - 1; i >= 0; i--) {
-      if (rises[i].time.getTime() <= nowT) {
-        rise = rises[i];
-        break;
-      }
-    }
-    let set = null;
-    for (const candidate of sets) {
-      const setT = candidate.time.getTime();
-      if (setT > nowT && (!rise || setT > rise.time.getTime())) {
-        set = candidate;
-        break;
-      }
-    }
-    if (!set && rise) {
-      set = sets.find((s) => s.time.getTime() > rise.time.getTime()) || null;
-    }
-    return { rise, set };
-  }
-
-  const rise = rises.find((r) => r.time.getTime() >= nowT) || rises[rises.length - 1] || null;
-  let set = null;
-  if (rise) {
-    set = sets.find((s) => s.time.getTime() > rise.time.getTime()) || null;
-  } else {
-    set = sets.find((s) => s.time.getTime() >= nowT) || null;
-  }
-  return { rise, set };
+  return transits;
 }
 
-function _moonTrackNow(now, rise, set, lat, lon) {
-  const hc = 0.133 * ASTRO_RAD;
-  const alt = _moonPosition(now, lat, lon).altitude;
-  const isUp = alt > hc;
+/** Pick the moonrise/moonset pair bracketing now, or the next upcoming transit. */
+function _pickMoonTransit(now, events) {
+  const transits = _moonTransits(events);
+  if (!transits.length) return { rise: null, set: null };
 
+  const nowT = now.getTime();
+  const current = transits.find((t) => {
+    const riseT = t.rise.time.getTime();
+    const setT = t.set.time.getTime();
+    return nowT >= riseT && nowT < setT;
+  });
+  if (current) return current;
+
+  const upcoming = transits.find((t) => t.rise.time.getTime() > nowT);
+  if (upcoming) return upcoming;
+
+  return transits[transits.length - 1];
+}
+
+function _moonTrackNow(now, rise, set) {
   if (!rise?.time || !set?.time) {
-    return { nowPct: isUp ? 50 : 0, isUp };
+    return { nowPct: 0, isUp: false };
   }
 
   const riseT = rise.time.getTime();
   const setT = set.time.getTime();
   const nowT = now.getTime();
+  const inTransit = nowT >= riseT && nowT < setT;
   let nowPct = 0;
 
   if (setT > riseT) {
@@ -1325,7 +1308,7 @@ function _moonTrackNow(now, rise, set, lat, lon) {
 
   return {
     nowPct: Math.max(0, Math.min(100, nowPct)),
-    isUp,
+    isUp: inTransit,
   };
 }
 
@@ -1372,7 +1355,7 @@ function _moonDayData({
   let rise;
   let set;
   if (dayIndex === 0) {
-    ({ rise, set } = _pickMoonTransit(refNow, events, lat, lon));
+    ({ rise, set } = _pickMoonTransit(refNow, events));
   } else {
     const dayEnd = new Date(dayStart.getTime() + ASTRO_DAY_MS);
     rise = _pickMoonEvent(events, "rise", dayStart, dayEnd, dayStart);
@@ -1392,7 +1375,7 @@ function _moonDayData({
     new Date(dayStart.getTime() + 12 * ASTRO_HOUR_MS),
   );
   const apex = _moonApex(nightStart, nightEnd, lat, lon);
-  const track = _moonTrackNow(refNow, rise, set, lat, lon);
+  const track = _moonTrackNow(refNow, rise, set);
 
   let apexPct = 50;
   if (rise?.time && set?.time && apex?.time && set.time > rise.time) {
