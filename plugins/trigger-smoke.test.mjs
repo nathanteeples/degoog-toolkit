@@ -41,6 +41,7 @@ const negativeCases = [
   ["osm-slot", "temporary"],
   ["osm-slot", "typewriter"],
   ["osm-slot", "tacoria"],
+  ["osm-slot", "hermes agent"],
   ["stocks", "market shares"],
   ["stocks", "bitcoin price"],
   ["tip-calculator", "gardening tips"],

@@ -114,6 +114,7 @@ function looksLikeBusinessName(text, parsed, options = {}) {
     if (!allowSingleTokenNounFallback) return false;
     return parsed.topics.length > 0 || parsed.nouns.length > 0;
   }
+  if (hasBlockedCompoundHeadword(tokens, parsed)) return false;
   if (parsed.organizations.length > 0) return true;
   if (parsed.topics.length > 0 || parsed.nouns.length > 0) return true;
   return tokens.some((token) => token.length >= 4);
@@ -135,6 +136,21 @@ const BUSINESS_INDICATOR_WORDS = new Set([
   "guys", "shack", "king", "queen", "johns", "kreme", "barrel", "foods", "garden", "buy",
   "burger", "burgers", "pizza", "coffee", "taco", "tacos", "bagel", "bagels", "donut", "donuts"
 ]);
+
+const NON_PLACE_COMPOUND_HEADWORDS = new Set([
+  "agent", "agents", "assistant", "assistants", "app", "apps", "client", "clients",
+  "server", "servers", "desktop", "plugin", "plugins", "extension", "extensions",
+  "tool", "tools", "software", "package", "packages", "library", "libraries",
+  "sdk", "api", "bot", "bots", "model", "models",
+]);
+
+function hasBlockedCompoundHeadword(tokens, parsed) {
+  if (tokens.length < 2) return false;
+  if (parsed.organizations.length > 0) return false;
+
+  const tail = tokens[tokens.length - 1].toLowerCase();
+  return NON_PLACE_COMPOUND_HEADWORDS.has(tail);
+}
 
 function isLikelyPersonName(query, parsed) {
   if (parsed.organizations && parsed.organizations.length > 0) return false;
