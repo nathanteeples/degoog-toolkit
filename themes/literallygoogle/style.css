@@ -39,6 +39,7 @@ var {
     --literallygoogle-results-main-col-max: 48rem;
     --literallygoogle-results-sidebar-min: 19rem;
     --literallygoogle-results-sidebar-max: 24rem;
+    --literallygoogle-media-filter-width: 18rem;
     --theme-radius-xs: 4px;
     --theme-radius-sm: 8px;
     --theme-radius-md: 12px;
@@ -1618,6 +1619,124 @@ body {
                 #results-tabs
                     .results-tab[data-type="images"][aria-selected="true"]
             ),
+            :has(#results-list .image-card)
+        ) {
+        display: grid;
+        grid-template-columns:
+            minmax(0, 1fr)
+            minmax(17rem, var(--literallygoogle-media-filter-width));
+        column-gap: 1.25rem;
+        align-items: start;
+    }
+
+    #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card)
+        )
+        > :is(#results-header, #results-tabs, #results-meta) {
+        grid-column: 1 / -1;
+    }
+
+    #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card)
+        )
+        > #results-layout {
+        grid-column: 1;
+        min-width: 0;
+    }
+
+    #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card)
+        )
+        > #image-filters-bar {
+        grid-column: 2;
+        grid-row: 4;
+        align-self: start;
+        position: sticky;
+        top: var(
+            --literallygoogle-sticky-header-offset,
+            calc(50px + 1.5rem)
+        );
+        bottom: auto;
+        inset-inline-start: auto;
+        inset-inline-end: auto;
+        left: auto;
+        right: auto;
+        width: 100%;
+        min-width: 0;
+        max-height: calc(
+            100vh -
+                var(
+                    --literallygoogle-sticky-header-offset,
+                    calc(50px + 1.5rem)
+                )
+        );
+        margin: 0;
+        overflow-y: auto;
+        transform: none;
+        z-index: 1;
+    }
+
+    html[dir="rtl"]
+        #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card)
+        ) {
+        grid-template-columns:
+            minmax(17rem, var(--literallygoogle-media-filter-width))
+            minmax(0, 1fr);
+    }
+
+    html[dir="rtl"]
+        #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card)
+        )
+        > #image-filters-bar {
+        grid-column: 1;
+    }
+
+    html[dir="rtl"]
+        #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card)
+        )
+        > #results-layout {
+        grid-column: 2;
+    }
+
+    #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
             :has(#results-tabs .results-tab[data-type="videos"].active),
             :has(
                 #results-tabs
@@ -2818,16 +2937,13 @@ button.mp2-item[hidden] {
     justify-content: center;
     min-height: clamp(17rem, 46vh, 34rem);
     padding: clamp(0.8rem, 2vw, 1rem);
-    background:
-        radial-gradient(
-            circle at top,
-            color-mix(in srgb, var(--primary) 12%, transparent) 0%,
-            transparent 52%
-        ),
-        color-mix(in srgb, var(--bg-light) 86%, var(--bg) 14%);
-    border: 1px solid color-mix(in srgb, var(--border-light) 80%, transparent);
+    background: var(--bg-light);
+    border: 1px solid var(--border-light);
     border-radius: var(--theme-radius-xl);
     overflow: hidden;
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent),
+        0 1px 2px color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .media-preview-img {
