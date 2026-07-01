@@ -1950,18 +1950,12 @@ body {
 /* Google-style Filters dropdown in the tab row */
 #results-page {
     position: relative;
-    --lg-filters-active-bg: #1a73e8;
+    --lg-filters-active-bg: #72a1ee;
     --lg-filters-active-fg: #fff;
-}
-
-[data-theme="dark"] #results-page {
-    --lg-filters-active-bg: #8ab4f8;
-    --lg-filters-active-fg: #202124;
 }
 
 #results-tabs .lg-filters-wrap {
     position: relative;
-    margin-inline-start: auto;
 }
 
 #results-tabs .tools-toggle {
@@ -2022,9 +2016,7 @@ body {
     background: var(--bg-light);
     border: 1px solid var(--border-light);
     border-radius: var(--theme-radius-lg);
-    box-shadow:
-        0 4px 16px color-mix(in srgb, var(--text-primary) 16%, transparent),
-        0 1px 4px color-mix(in srgb, var(--text-primary) 10%, transparent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
 }
 
 #results-page > .tools-panel.lg-filters-dropdown .tools-field {
@@ -2086,9 +2078,7 @@ body {
     background: var(--bg-light);
     border: 1px solid var(--border-light);
     border-radius: var(--theme-radius-lg);
-    box-shadow:
-        0 4px 16px color-mix(in srgb, var(--text-primary) 16%, transparent),
-        0 1px 4px color-mix(in srgb, var(--text-primary) 10%, transparent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
 }
 
 #results-page > .tools-panel.lg-filters-dropdown .tools-option {
@@ -2173,11 +2163,12 @@ body {
 .degoog-img-filter-options {
     display: flex;
     flex-direction: column;
-    gap: 0;
-    padding: 0.35rem 0;
+    gap: 2px;
+    padding: 0;
     max-height: 14rem;
     overflow-y: auto;
     scrollbar-width: thin;
+    background: transparent;
 }
 
 .degoog-img-filter-option {
@@ -2186,16 +2177,30 @@ body {
     justify-content: space-between;
     gap: 0.75rem;
     width: 100%;
-    padding: 0.55rem 1rem;
+    padding: 14px;
     font-size: 0.875rem;
     line-height: 1.2;
     color: var(--text-primary);
-    background: transparent;
+    background: var(--bg-light);
     border: 0;
-    border-radius: 0;
+    border-radius: var(--theme-radius-xs);
     text-align: start;
     cursor: pointer;
     transition: background 120ms ease, color 120ms ease;
+}
+
+.degoog-img-filter-option:first-child {
+    border-start-start-radius: var(--theme-radius-xs);
+    border-start-end-radius: var(--theme-radius-xs);
+}
+
+.degoog-img-filter-option:last-child:not(:only-child) {
+    border-end-start-radius: var(--theme-radius-md);
+    border-end-end-radius: var(--theme-radius-md);
+}
+
+.degoog-img-filter-option:only-child {
+    border-radius: var(--theme-radius-xs);
 }
 
 .degoog-img-filter-option:hover:not(.is-active) {
@@ -2203,7 +2208,7 @@ body {
 }
 
 .degoog-img-filter-option.is-active {
-    background: var(--lg-filters-active-bg, #1a73e8);
+    background: var(--lg-filters-active-bg, #72a1ee);
     color: var(--lg-filters-active-fg, #fff);
     font-weight: 500;
 }
@@ -2270,15 +2275,16 @@ body {
     }
 
     #image-filters-bar .degoog-img-filter-options {
-        background: var(--bg-light);
-        border-end-start-radius: var(--theme-radius-lg);
-        border-end-end-radius: var(--theme-radius-lg);
-        padding: 0.35rem 0;
+        background: transparent;
+        border-end-start-radius: 0;
+        border-end-end-radius: 0;
+        padding: 0;
     }
 
     #image-filters-bar .degoog-img-filter-group.open > .degoog-img-filter-options {
         display: flex;
         flex-direction: column;
+        gap: 2px;
     }
 }
 
