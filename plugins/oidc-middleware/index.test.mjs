@@ -9,6 +9,7 @@ import {
   toProfile,
 } from "./src/authz.js";
 import { avatarCacheKey } from "./src/avatar.js";
+import { adminRoutePath, targetsAdminRoute } from "./src/admin-path.js";
 import { userinfoNeeds } from "./src/gate.js";
 import { chooseReturnTo, sanitizeReturnTo } from "./src/return-to.js";
 import { parseSettings, isConfigured } from "./src/settings.js";
@@ -216,6 +217,29 @@ test("avatar cache keys are stable for the same identity", () => {
     avatarCacheKey(identity),
     avatarCacheKey({ ...identity, picture: "https://auth.example.com/media/avatar-2.png" }),
   );
+});
+
+test("admin path helpers only gate the configured admin route", () => {
+  const oldPublic = process.env.DEGOOG_PUBLIC_INSTANCE;
+  const oldPath = process.env.DEGOOG_SETTINGS_PATH;
+  process.env.DEGOOG_PUBLIC_INSTANCE = "true";
+  process.env.DEGOOG_SETTINGS_PATH = "my-secret-panel-abc123";
+
+  try {
+    const adminPath = adminRoutePath({
+      url: "https://search.example.com/api/settings/auth",
+    });
+    assert.equal(adminPath, "/my-secret-panel-abc123");
+    assert.equal(targetsAdminRoute("/my-secret-panel-abc123", adminPath), true);
+    assert.equal(targetsAdminRoute("/my-secret-panel-abc123/plugins", adminPath), true);
+    assert.equal(targetsAdminRoute("/", adminPath), false);
+    assert.equal(targetsAdminRoute("/settings", adminPath), false);
+  } finally {
+    if (oldPublic == null) delete process.env.DEGOOG_PUBLIC_INSTANCE;
+    else process.env.DEGOOG_PUBLIC_INSTANCE = oldPublic;
+    if (oldPath == null) delete process.env.DEGOOG_SETTINGS_PATH;
+    else process.env.DEGOOG_SETTINGS_PATH = oldPath;
+  }
 });
 
 test("jwt claim validation rejects bad azp and future iat", () => {

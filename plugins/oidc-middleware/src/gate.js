@@ -44,6 +44,7 @@ import {
   secretMeta,
   summarizeUrl,
 } from "./debug.js";
+import { adminRoutePath, targetsAdminRoute } from "./admin-path.js";
 
 const HANDOFF_TTL_MS = 2 * 60 * 1000;
 
@@ -69,7 +70,9 @@ const bounce = (req) =>
   new Response(null, {
     status: 302,
     headers: (() => {
-      const headers = new Headers({ location: `${originOf(req)}/` });
+      const headers = new Headers({
+        location: `${originOf(req)}${adminRoutePath(req)}`,
+      });
       for (const name of [OIDC_STATE, OIDC_NONCE, OIDC_VERIFIER]) {
         headers.append("set-cookie", clearCookie(name));
       }
@@ -87,7 +90,7 @@ const bounceWithHold = (req, reason, detail = "") =>
           decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
           req.headers.get("referer") || "",
         ],
-        "/",
+        adminRoutePath(req),
       );
       const headers = new Headers({ location: `${originOf(req)}${returnTo}` });
       headers.append("set-cookie", bakeGateHold(req, reason, detail));
@@ -101,6 +104,7 @@ const bounceWithHold = (req, reason, detail = "") =>
 const onAuthCheck = (req) => {
   const config = getConfig();
   const hold = readGateHold(req);
+  const adminPath = adminRoutePath(req);
   if (!isConfigured(config)) {
     debugLog("settings-auth.misconfigured", {
       request: requestMeta(req),
@@ -123,8 +127,26 @@ const onAuthCheck = (req) => {
       req.headers.get("referer") || "",
       decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
     ],
-    "/",
+    adminPath,
   );
+  const shouldGate = targetsAdminRoute(returnTo, adminPath);
+  if (!shouldGate) {
+    const response = {
+      required: false,
+      valid: true,
+      debug: config.debug === true,
+      providerLabel: config.providerLabel || "OIDC",
+    };
+    debugLog("settings-auth.bypass", {
+      request: requestMeta(req),
+      config: configMeta(config),
+      ctx: ctxMeta(),
+      adminPath,
+      returnTo,
+      response,
+    });
+    return json(response);
+  }
   const loginUrl = ctx
     ? ctx.routeUrl(`login?returnTo=${encodeURIComponent(returnTo)}`)
     : "/api/settings/auth";
@@ -147,6 +169,7 @@ const onAuthCheck = (req) => {
     config: configMeta(config),
     ctx: ctxMeta(),
     hold: gateHoldMeta(hold),
+    adminPath,
     returnTo,
     loginUrl: summarizeUrl(loginUrl),
     response,

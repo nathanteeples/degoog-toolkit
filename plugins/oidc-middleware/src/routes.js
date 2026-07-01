@@ -34,6 +34,7 @@ import {
   secretMeta,
   summarizeUrl,
 } from "./debug.js";
+import { adminRoutePath } from "./admin-path.js";
 
 const TEMP_MAX_AGE_S = 600;
 const IDENTITY_TTL_MS = 12 * 60 * 60 * 1000;
@@ -79,6 +80,7 @@ const onLogin = async (req) => {
   }
   try {
     const requestUrl = new URL(req.url);
+    const adminPath = adminRoutePath(req);
     const returnTo = chooseReturnTo(
       originOf(req),
       [
@@ -86,7 +88,7 @@ const onLogin = async (req) => {
         req.headers.get("referer") || "",
         decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
       ],
-      "/",
+      adminPath,
     );
     const pkce = makePkce();
     const state = randomToken();
@@ -97,6 +99,7 @@ const onLogin = async (req) => {
       request: requestMeta(req),
       config: configMeta(config),
       ctx: ctxMeta(),
+      adminPath,
       returnTo,
       redirectUri,
       authUrl: summarizeUrl(authUrl),
@@ -126,13 +129,14 @@ const onClaim = (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("c") || "";
   const profile = code ? claimHandoff(code) : null;
+  const adminPath = adminRoutePath(req);
   const returnTo = chooseReturnTo(
     originOf(req),
     [
       decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
       req.headers.get("referer") || "",
     ],
-    "/",
+    adminPath,
   );
   const clear = [
     clearCookie(OIDC_GATE_HOLD),
@@ -145,6 +149,7 @@ const onClaim = (req) => {
     debugLog("route.claim.miss", {
       request: requestMeta(req),
       handoffCode: secretMeta(code),
+      adminPath,
       returnTo,
       hasReturnToCookie: Boolean(readCookie(req, OIDC_RETURN_TO)),
     });
@@ -159,6 +164,7 @@ const onClaim = (req) => {
   debugLog("route.claim.success", {
     request: requestMeta(req),
     handoffCode: secretMeta(code),
+    adminPath,
     returnTo,
     profile: profileMeta(profile),
     identityCookie: secretMeta(identity),
