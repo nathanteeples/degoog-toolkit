@@ -3,12 +3,14 @@ import { isConfigured } from "./settings.js";
 import {
   readCookie,
   bakeCookie,
+  readGateHold,
   clearCookie,
   isHttps,
   signIdentity,
   readIdentity,
   USER_COOKIE,
   SESSION_COOKIE,
+  OIDC_GATE_HOLD,
   OIDC_STATE,
   OIDC_NONCE,
   OIDC_VERIFIER,
@@ -28,7 +30,6 @@ import {
 
 const TEMP_MAX_AGE_S = 600;
 const IDENTITY_TTL_MS = 12 * 60 * 60 * 1000;
-
 const json = (obj, headers) =>
   new Response(JSON.stringify(obj), {
     status: 200,
@@ -94,6 +95,7 @@ const onLogin = async (req) => {
       challenge: secretMeta(pkce.challenge),
     });
     return redirect(authUrl, [
+      clearCookie(OIDC_GATE_HOLD),
       tempCookie(OIDC_STATE, state, req),
       tempCookie(OIDC_NONCE, nonce, req),
       tempCookie(OIDC_VERIFIER, pkce.verifier, req),
@@ -118,6 +120,7 @@ const onClaim = (req) => {
     decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || "/settings"),
   );
   const clear = [
+    clearCookie(OIDC_GATE_HOLD),
     clearCookie(OIDC_STATE),
     clearCookie(OIDC_NONCE),
     clearCookie(OIDC_VERIFIER),
@@ -158,6 +161,7 @@ const onMe = (req) => {
     ctx: ctxMeta(),
     userCookie: secretMeta(cookie),
     authenticated: Boolean(identity),
+    hold: readGateHold(req),
   });
   if (!identity) {
     return json({
@@ -186,6 +190,7 @@ const onLogout = (req) => {
   const headers = new Headers({ "content-type": "application/json" });
   headers.append("set-cookie", clearCookie(USER_COOKIE));
   headers.append("set-cookie", clearCookie(SESSION_COOKIE));
+  headers.append("set-cookie", clearCookie(OIDC_GATE_HOLD));
   return json({ ok: true }, headers);
 };
 

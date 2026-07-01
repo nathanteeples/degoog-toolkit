@@ -27,5 +27,6 @@ This is a request middleware plus a small set of plugin routes. It does not modi
 - The gate protects the settings and admin area. It does not put a login wall in front of search itself.
 - The avatar cookie is signed with a per-process secret by default, so avatars sign out on restart. Set a stable Avatar cookie secret to persist them or to run multiple instances.
 - Debug logs intentionally redact secrets, tokens, nonces, and cookie values while still showing hashes, lengths, and control-flow decisions.
+- Failed OIDC callbacks temporarily pause automatic settings/admin re-redirects so an access-denied user does not get stuck in a login loop.
 - Only RSA-signed `id_token`s are verified today. EC (ES256) support is a possible future upgrade.
 - Sign out clears the avatar cookie and the settings session cookie in the browser.

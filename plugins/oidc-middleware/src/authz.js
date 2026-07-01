@@ -84,6 +84,24 @@ export const evaluateAccess = (config, claims) => {
 
 export const isAllowed = (config, claims) => evaluateAccess(config, claims).allowed;
 
+export const accessDenyDetail = (access) => {
+  if (!access.selectorConfigured) return "no-allow-rule";
+  if (!access.emailUsable && access.email && access.emailVerified === false) {
+    return "email-not-verified";
+  }
+  if (!access.selectorMatch && access.exactEmailMatch === false && access.email) {
+    return "email-not-allowed";
+  }
+  if (!access.selectorMatch && access.groupMatch === false && access.groupsSeen.length > 0) {
+    return "group-not-allowed";
+  }
+  if (!access.selectorMatch && access.roleMatch === false && access.rolesSeen.length > 0) {
+    return "role-not-allowed";
+  }
+  if (!access.requiredClaimsMatch) return "required-claim-mismatch";
+  return "selector-not-matched";
+};
+
 export const toProfile = (claims) => {
   const email = typeof claims.email === "string" ? claims.email : "";
   const name =

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { evaluateAccess, isAllowed, readClaim } from "./src/authz.js";
+import { accessDenyDetail, evaluateAccess, isAllowed, readClaim } from "./src/authz.js";
 import { parseSettings, isConfigured } from "./src/settings.js";
 import { validateClaims } from "./src/jwt.js";
 
@@ -71,6 +71,7 @@ test("authorization supports verified email domains, group paths, role paths, an
   assert.equal(denied.emailVerified, false);
   assert.equal(denied.domainMatch, false);
   assert.equal(denied.selectorConfigured, true);
+  assert.equal(accessDenyDetail(denied), "email-not-verified");
 });
 
 test("claim path reader supports nested objects and arrays", () => {

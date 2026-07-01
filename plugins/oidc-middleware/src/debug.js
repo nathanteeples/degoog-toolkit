@@ -7,6 +7,8 @@ const MAX_ARRAY = 8;
 const MAX_KEYS = 24;
 const MAX_STRING = 160;
 const URL_BASE = "http://degoog.local";
+const SENSITIVE_KEY_RE =
+  /^(?:token|idtoken|accesstoken|refreshtoken|clientsecret|cookiesecret|password|nonce|state|verifier|signature|assertion|code|handoffcode|usercookie|identitycookie)$/i;
 
 const truncate = (value, max = MAX_STRING) => {
   const str = typeof value === "string" ? value : String(value ?? "");
@@ -34,9 +36,11 @@ const preview = (value, depth = 0) => {
     if (depth >= 2) return `[object:${Object.keys(value).length}]`;
     const out = {};
     for (const key of Object.keys(value).slice(0, MAX_KEYS)) {
-      const lower = key.toLowerCase();
       out[key] =
-        /secret|token|nonce|state|verifier|password|cookie|assertion|signature/.test(lower)
+        SENSITIVE_KEY_RE.test(key) &&
+        value[key] != null &&
+        typeof value[key] !== "boolean" &&
+        typeof value[key] !== "number"
           ? secretMeta(value[key])
           : preview(value[key], depth + 1);
     }

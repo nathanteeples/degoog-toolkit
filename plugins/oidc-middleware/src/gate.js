@@ -7,10 +7,13 @@ import {
 import { isConfigured } from "./settings.js";
 import {
   readCookie,
+  readGateHold,
+  bakeGateHold,
   clearCookie,
   OIDC_STATE,
   OIDC_NONCE,
   OIDC_VERIFIER,
+  OIDC_RETURN_TO,
 } from "./cookies.js";
 import {
   exchangeCode,
@@ -18,7 +21,7 @@ import {
   fetchUserInfo,
   handoffCode,
 } from "./oidc.js";
-import { evaluateAccess, readClaim, toProfile } from "./authz.js";
+import { accessDenyDetail, evaluateAccess, readClaim, toProfile } from "./authz.js";
 import {
   claimsMeta,
   configMeta,
@@ -37,6 +40,15 @@ const json = (obj, status = 200) =>
     status,
     headers: { "content-type": "application/json" },
   });
+
+const gateHoldMeta = (hold) =>
+  !hold
+    ? null
+    : {
+        reason: typeof hold.reason === "string" ? hold.reason : "",
+        detail: typeof hold.detail === "string" ? hold.detail : "",
+        at: typeof hold.at === "string" ? hold.at : "",
+      };
 
 const sanitizeReturnTo = (req, candidate) => {
   const origin = originOf(req);
@@ -66,8 +78,26 @@ const bounce = (req) =>
     })(),
   });
 
+const bounceWithHold = (req, reason, detail = "") =>
+  new Response(null, {
+    status: 302,
+    headers: (() => {
+      const returnTo = sanitizeReturnTo(
+        req,
+        decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || "/settings"),
+      );
+      const headers = new Headers({ location: `${originOf(req)}${returnTo}` });
+      headers.append("set-cookie", bakeGateHold(req, reason, detail));
+      headers.append("set-cookie", clearCookie(OIDC_STATE));
+      headers.append("set-cookie", clearCookie(OIDC_NONCE));
+      headers.append("set-cookie", clearCookie(OIDC_VERIFIER));
+      return headers;
+    })(),
+  });
+
 const onAuthCheck = (req) => {
   const config = getConfig();
+  const hold = readGateHold(req);
   if (!isConfigured(config)) {
     debugLog("settings-auth.misconfigured", {
       request: requestMeta(req),
@@ -93,15 +123,22 @@ const onAuthCheck = (req) => {
   const response = {
     required: true,
     valid: false,
-    loginUrl,
     providerLabel: config.providerLabel || "OIDC",
     autoRedirect: config.autoRedirect === true,
     debug: config.debug === true,
+    hold: gateHoldMeta(hold),
   };
+  if (!hold) {
+    response.loginUrl = loginUrl;
+  } else {
+    response.error = "auth-paused";
+    response.autoRedirect = false;
+  }
   debugLog("settings-auth.response", {
     request: requestMeta(req),
     config: configMeta(config),
     ctx: ctxMeta(),
+    hold: gateHoldMeta(hold),
     returnTo,
     loginUrl: summarizeUrl(loginUrl),
     response,
@@ -158,6 +195,7 @@ const onCallback = async (req) => {
     stateMatches: Boolean(state && savedState && state === savedState),
     verifier: secretMeta(verifier),
     nonce: secretMeta(nonce),
+    hold: gateHoldMeta(readGateHold(req)),
     callbackUrl: summarizeUrl(req.url),
   });
 
@@ -171,7 +209,7 @@ const onCallback = async (req) => {
       stateMatches: Boolean(state && savedState && state === savedState),
       hasVerifier: Boolean(verifier),
     });
-    return bounce(req);
+    return bounceWithHold(req, "callback-rejected", "state-or-verifier-mismatch");
   }
 
   try {
@@ -210,7 +248,13 @@ const onCallback = async (req) => {
       claims: claimsMeta(claims, config),
     });
     if (!access.allowed) {
-      return bounce(req);
+      const detail = accessDenyDetail(access);
+      debugLog("settings-auth-callback.hold", {
+        reason: "access-denied",
+        detail,
+        access,
+      });
+      return bounceWithHold(req, "access-denied", detail);
     }
 
     const code2 = handoffCode();
@@ -231,7 +275,7 @@ const onCallback = async (req) => {
       config: configMeta(config),
     });
     console.error("[oidc] callback failed:", err?.message || err);
-    return bounce(req);
+    return bounceWithHold(req, "callback-error", err?.message || "unknown");
   }
 };
 

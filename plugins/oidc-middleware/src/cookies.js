@@ -7,6 +7,8 @@ export const OIDC_STATE = "oidc_state";
 export const OIDC_NONCE = "oidc_nonce";
 export const OIDC_VERIFIER = "oidc_verifier";
 export const OIDC_RETURN_TO = "oidc_return_to";
+export const OIDC_GATE_HOLD = "oidc_gate_hold";
+const DEFAULT_GATE_HOLD_MAX_AGE_S = 10 * 60;
 
 export const parseCookies = (header) => {
   const out = {};
@@ -43,6 +45,38 @@ export const bakeCookie = (name, value, opts = {}) => {
 };
 
 export const clearCookie = (name) => bakeCookie(name, "", { maxAge: 0 });
+
+export const bakeGateHold = (req, reason, detail = "", maxAge = DEFAULT_GATE_HOLD_MAX_AGE_S) =>
+  bakeCookie(
+    OIDC_GATE_HOLD,
+    Buffer.from(
+      JSON.stringify({
+        reason,
+        detail,
+        at: new Date().toISOString(),
+        exp: Date.now() + maxAge * 1000,
+      }),
+    ).toString("base64url"),
+    {
+      httpOnly: true,
+      sameSite: "Lax",
+      maxAge,
+      secure: isHttps(req),
+    },
+  );
+
+export const readGateHold = (req) => {
+  const raw = readCookie(req, OIDC_GATE_HOLD);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+    if (!parsed || typeof parsed !== "object") return null;
+    if (typeof parsed.exp !== "number" || Date.now() > parsed.exp) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
 
 const sign = (body) =>
   createHmac("sha256", getSecret()).update(body).digest("base64url");
