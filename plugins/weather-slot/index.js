@@ -552,13 +552,19 @@ const slotDef = {
       const sunsetRelative = _fmtRelativeEvent(sunset, now, context);
 
       let sunPct = 0;
+      let sunIsUp = false;
       if (sunrise && sunset) {
-        const dayLen = sunset - sunrise;
-        const elapsed = Math.max(0, now - sunrise);
-        sunPct = Math.min(
-          100,
-          Math.max(0, Math.round((elapsed / dayLen) * 100)),
-        );
+        const nowT = now.getTime();
+        const riseT = sunrise.getTime();
+        const setT = sunset.getTime();
+        if (nowT < riseT) {
+          sunPct = 0;
+        } else if (nowT > setT) {
+          sunPct = 100;
+        } else {
+          sunPct = Math.round(((nowT - riseT) / (setT - riseT)) * 100);
+          sunIsUp = true;
+        }
       }
 
       let nowIdx = 0;
@@ -736,6 +742,7 @@ const slotDef = {
           sunriseRelative,
           sunsetRelative,
           pct: sunPct,
+          isUp: sunIsUp,
         },
         moon: moonToday,
         location: displayName,

@@ -577,6 +577,7 @@
     const moonApexVal = card.querySelector("[data-weather-moon-apex]");
     const moonApexWrap = card.querySelector("[data-weather-moon-apex-wrap]");
     const moonTrack = card.querySelector(".weather-moon-track");
+    const moonArc = card.querySelector("[data-weather-moon-arc]");
     const moonDot = card.querySelector("[data-weather-moon-dot]");
 
     const daysTrack = card.querySelector("[data-weather-days]");
@@ -675,7 +676,7 @@
           setAstroArcProgress(sunArc, pct);
           sunDot.dataset.pct = String(pct);
           setAstroDotPosition(sunTrack, sunDot, sunArc, pct);
-          sunDot.style.display = "block";
+          sunDot.style.display = pct > 0 ? "block" : "none";
         } else {
           sunDot.style.display = "none";
           setAstroArcProgress(sunArc, 0);
@@ -698,12 +699,14 @@
 
         if (moonDot && moonTrack) {
           const moonPath = moonTrack.querySelector(".weather-astro-arc-bg");
-          if (activeDayIndex === 0 && day.moon.isUp && moonPath) {
+          if (activeDayIndex === 0 && day.moon.isUp && moonPath && moonArc) {
             const pct = Math.min(100, Math.max(0, day.moon.nowPct));
+            setAstroArcProgress(moonArc, pct);
             moonDot.dataset.pct = String(pct);
             setAstroDotPosition(moonTrack, moonDot, moonPath, pct);
             moonDot.style.display = "block";
           } else {
+            if (moonArc) setAstroArcProgress(moonArc, 0);
             moonDot.style.display = "none";
           }
         }

@@ -459,7 +459,7 @@
 }
 
 .weather-astro {
-    margin-bottom: 16px;
+    margin-bottom: 8px;
 }
 
 .weather-astro-grid {
@@ -500,7 +500,11 @@
 }
 
 .weather-astro-ico-moon {
-    color: #e5e7eb;
+    color: #80868b;
+}
+
+html[data-theme="dark"] .weather-astro-ico-moon {
+    color: #bdc1c6;
 }
 
 .weather-astro-phase {
@@ -594,7 +598,12 @@
 }
 
 .weather-moon-arc-fill {
-    stroke: color-mix(in srgb, var(--text-secondary) 40%, transparent);
+    stroke: #80868b;
+    opacity: 0.95;
+}
+
+html[data-theme="dark"] .weather-moon-arc-fill {
+    stroke: #bdc1c6;
 }
 
 .weather-sun-dot,
@@ -618,8 +627,13 @@
 }
 
 .weather-moon-dot {
-    background: #c4c7c5;
-    color: #c4c7c5;
+    background: #80868b;
+    color: #80868b;
+}
+
+html[data-theme="dark"] .weather-moon-dot {
+    background: #e8eaed;
+    color: #e8eaed;
 }
 
 .weather-astro-apex {
@@ -661,8 +675,8 @@
     font-size: 0.72rem;
     color: var(--text-secondary);
     border-top: 1px dashed color-mix(in srgb, var(--text-secondary) 15%, transparent);
-    padding-top: 10px;
-    margin-top: 12px;
+    padding-top: 8px;
+    margin-top: 8px;
 }
 
 .weather-footer a {
