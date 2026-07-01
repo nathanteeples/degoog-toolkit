@@ -57,10 +57,10 @@ test("runtime config derives app URL from the request when unset", () => {
       tokenEndpointAuthMethod: "client_secret_basic",
       allowedEmails: JSON.stringify([{ email: "admin@example.com" }]),
     },
-    new Request("https://dg.joshpatra.me/api/plugin/oidc-settings-gate/login"),
+    new Request("https://search.example.com/api/plugin/oidc-settings-gate/login"),
   );
 
-  assert.equal(config.publicBaseUrl, "https://dg.joshpatra.me");
+  assert.equal(config.publicBaseUrl, "https://search.example.com");
 });
 
 test("returnTo sanitization rejects external origins", () => {

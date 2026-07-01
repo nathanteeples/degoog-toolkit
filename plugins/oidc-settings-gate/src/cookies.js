@@ -6,6 +6,7 @@ export const SESSION_COOKIE = "settings-token";
 export const OIDC_STATE = "oidc_state";
 export const OIDC_NONCE = "oidc_nonce";
 export const OIDC_VERIFIER = "oidc_verifier";
+export const OIDC_RETURN_TO = "oidc_return_to";
 
 export const parseCookies = (header) => {
   const out = {};

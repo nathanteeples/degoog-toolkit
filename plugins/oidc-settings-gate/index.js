@@ -1,5 +1,5 @@
-import { setCtx, setConfig } from "./src/state.js";
-import { parseSettings, settingsSchema } from "./src/settings.js";
+import { getConfig, getCtx, setCtx, setConfig } from "./src/state.js";
+import { parseSettings, settingsSchema, isConfigured } from "./src/settings.js";
 import { handle } from "./src/gate.js";
 import { routes as pluginRoutes } from "./src/routes.js";
 
@@ -23,6 +23,7 @@ export const command = {
   name: middleware.name,
   description: middleware.description,
   trigger: "oidc",
+  aliases: ["oidc-test", "oidc-login"],
   settingsSchema: [
     {
       key: "useAsSettingsGate",
@@ -32,13 +33,23 @@ export const command = {
     },
     ...settingsSchema,
   ],
+  init(ctx) {
+    setCtx(ctx);
+  },
   configure(settings) {
     setConfig(parseSettings(settings));
   },
   execute() {
+    const ctx = getCtx();
+    const config = getConfig();
+    const loginUrl = ctx ? ctx.routeUrl("login?returnTo=/settings") : "/api/settings/auth";
+    const configured = isConfigured(config);
+    const providerLabel = config?.providerLabel || "OIDC";
     return {
       title: middleware.name,
-      html: "<p>Configure OIDC / SSO from Settings.</p>",
+      html: configured
+        ? `<div class="command-result"><p>OIDC is configured for the settings gate.</p><p><a class="btn" href="${loginUrl}">Test sign in with ${providerLabel}</a></p></div>`
+        : '<div class="command-result"><p>OIDC is not fully configured yet. Add an issuer, client details, and at least one admin allow rule or enable "Allow any authenticated user".</p></div>',
     };
   },
 };

@@ -66,3 +66,38 @@
   background: var(--primary);
   color: #fff;
 }
+
+.oidc-settings-gate__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.oidc-settings-gate__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-light);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.oidc-settings-gate__button:hover,
+.oidc-settings-gate__button:focus-visible {
+  border-color: var(--primary);
+}
+
+.oidc-settings-gate__hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}

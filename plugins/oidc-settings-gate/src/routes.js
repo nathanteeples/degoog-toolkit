@@ -12,6 +12,7 @@ import {
   OIDC_STATE,
   OIDC_NONCE,
   OIDC_VERIFIER,
+  OIDC_RETURN_TO,
 } from "./cookies.js";
 import { buildAuthUrl, makePkce, randomToken } from "./oidc.js";
 
@@ -32,6 +33,19 @@ const redirect = (location, cookies = []) => {
 
 const originOf = (req) => getConfig()?.appUrl || new URL(req.url).origin;
 
+const sanitizeReturnTo = (req, candidate) => {
+  const origin = originOf(req);
+  const fallback = "/settings";
+  if (!candidate) return fallback;
+  try {
+    const url = new URL(candidate, origin);
+    if (url.origin !== origin) return fallback;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
+  }
+};
+
 const tempCookie = (name, value, req) =>
   bakeCookie(name, value, {
     httpOnly: true,
@@ -44,6 +58,8 @@ const onLogin = async (req) => {
   const config = getConfig();
   if (!isConfigured(config)) return redirect(`${originOf(req)}/`);
   try {
+    const requestUrl = new URL(req.url);
+    const returnTo = sanitizeReturnTo(req, requestUrl.searchParams.get("returnTo"));
     const pkce = makePkce();
     const state = randomToken();
     const nonce = randomToken();
@@ -53,6 +69,7 @@ const onLogin = async (req) => {
       tempCookie(OIDC_STATE, state, req),
       tempCookie(OIDC_NONCE, nonce, req),
       tempCookie(OIDC_VERIFIER, pkce.verifier, req),
+      tempCookie(OIDC_RETURN_TO, encodeURIComponent(returnTo), req),
     ]);
   } catch (err) {
     console.error("[oidc] login init failed:", err?.message || err);
@@ -64,19 +81,24 @@ const onClaim = (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("c") || "";
   const profile = code ? claimHandoff(code) : null;
+  const returnTo = sanitizeReturnTo(
+    req,
+    decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || "/settings"),
+  );
   const clear = [
     clearCookie(OIDC_STATE),
     clearCookie(OIDC_NONCE),
     clearCookie(OIDC_VERIFIER),
+    clearCookie(OIDC_RETURN_TO),
   ];
-  if (!profile) return redirect(`${originOf(req)}/`, clear);
+  if (!profile) return redirect(`${originOf(req)}${returnTo}`, clear);
   const identity = bakeCookie(USER_COOKIE, signIdentity(profile, IDENTITY_TTL_MS), {
     httpOnly: true,
     sameSite: "Lax",
     maxAge: IDENTITY_TTL_MS / 1000,
     secure: isHttps(req),
   });
-  return redirect(`${originOf(req)}/`, [identity, ...clear]);
+  return redirect(`${originOf(req)}${returnTo}`, [identity, ...clear]);
 };
 
 const onMe = (req) => {

@@ -19,6 +19,8 @@ export const setCtx = (ctx) => {
 
 export const getCtx = () => _ctx;
 
+export const pluginFetch = (...args) => (_ctx?.fetch || fetch)(...args);
+
 export const getSecret = () => _config?.cookieSecret || PROCESS_SECRET;
 
 export const stashHandoff = (code, profile, ttlMs) => {

@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { discover, fetchJwks } from "./discovery.js";
 import { decodeJwt, verifyJwt, validateClaims } from "./jwt.js";
+import { pluginFetch } from "./state.js";
 
 const b64url = (buf) => buf.toString("base64url");
 const sha256 = (str) => crypto.createHash("sha256").update(str).digest();
@@ -45,10 +46,11 @@ export const exchangeCode = async (config, redirectUri, code, verifier) => {
     client_id: config.clientId,
     code_verifier: verifier,
   });
+  const headers = { "content-type": "application/x-www-form-urlencoded" };
   if (config.clientSecret) body.set("client_secret", config.clientSecret);
-  const res = await fetch(doc.token_endpoint, {
+  const res = await pluginFetch(doc.token_endpoint, {
     method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
+    headers,
     body,
   });
   if (!res.ok) throw new Error(`token exchange ${res.status}`);
@@ -70,7 +72,7 @@ export const verifyIdToken = async (config, idToken, nonce) => {
 export const fetchUserInfo = async (config, accessToken) => {
   const doc = await discover(config.issuer);
   if (!doc.userinfo_endpoint || !accessToken) return {};
-  const res = await fetch(doc.userinfo_endpoint, {
+  const res = await pluginFetch(doc.userinfo_endpoint, {
     headers: { authorization: `Bearer ${accessToken}` },
   });
   if (!res.ok) return {};

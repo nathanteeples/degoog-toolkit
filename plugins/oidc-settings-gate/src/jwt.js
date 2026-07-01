@@ -37,11 +37,18 @@ export const validateClaims = (claims, { issuer, clientId, nonce }) => {
   if (claims.iss !== issuer) throw new Error("iss mismatch");
   const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
   if (!aud.includes(clientId)) throw new Error("aud mismatch");
+  if (aud.length > 1 && claims.azp !== clientId) throw new Error("azp mismatch");
   const now = Math.floor(Date.now() / 1000);
   if (typeof claims.exp === "number" && now > claims.exp + CLOCK_SKEW_S) {
     throw new Error("token expired");
   }
-  if (nonce && claims.nonce && claims.nonce !== nonce) {
+  if (typeof claims.nbf === "number" && now + CLOCK_SKEW_S < claims.nbf) {
+    throw new Error("token not yet valid");
+  }
+  if (typeof claims.iat === "number" && claims.iat > now + CLOCK_SKEW_S) {
+    throw new Error("token issued in the future");
+  }
+  if (nonce && claims.nonce !== nonce) {
     throw new Error("nonce mismatch");
   }
 };

@@ -1,6 +1,9 @@
 (function () {
   const API_BASE = `/api/plugin/${__PLUGIN_ID__}`;
   const MOUNT_ID = "degoog-oidc-user";
+  const BUTTON_CLASS = "oidc-settings-gate__button";
+  const WRAP_CLASS = "oidc-settings-gate__actions";
+  const HINT_CLASS = "oidc-settings-gate__hint";
 
   const escapeHtml = (s) =>
     String(s)
@@ -51,6 +54,65 @@
     });
   };
 
+  const enhanceSettingsGate = async () => {
+    const form = document.getElementById("settings-auth-form");
+    const gate = document.querySelector(".settings-auth-gate-inner");
+    const errorEl = document.getElementById("settings-auth-error");
+    if (!form || !gate || !errorEl) return;
+
+    try {
+      const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      const response = await fetch(`/api/settings/auth?returnTo=${encodeURIComponent(returnTo)}`, {
+        credentials: "same-origin",
+        headers: { accept: "application/json" },
+      });
+      const data = await response.json();
+      if (!data || typeof data.loginUrl !== "string" || !data.loginUrl) return;
+
+      const providerLabel =
+        typeof data.providerLabel === "string" && data.providerLabel.trim()
+          ? data.providerLabel.trim()
+          : "OIDC";
+
+      form.hidden = true;
+      form.setAttribute("aria-hidden", "true");
+
+      const wrapper = document.createElement("div");
+      wrapper.className = WRAP_CLASS;
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = BUTTON_CLASS;
+      const icon = document.createElement("i");
+      icon.className = "fa-solid fa-right-to-bracket";
+      icon.setAttribute("aria-hidden", "true");
+      const label = document.createElement("span");
+      label.textContent = `Sign in with ${providerLabel}`;
+      button.appendChild(icon);
+      button.appendChild(label);
+      button.addEventListener("click", function () {
+        window.location.assign(data.loginUrl);
+      });
+
+      const hint = document.createElement("p");
+      hint.className = HINT_CLASS;
+      hint.textContent =
+        data.autoRedirect === true
+          ? "Redirecting to your OpenID Connect provider."
+          : "This degoog admin panel is protected by OpenID Connect.";
+
+      wrapper.appendChild(button);
+      wrapper.appendChild(hint);
+      errorEl.insertAdjacentElement("beforebegin", wrapper);
+
+      if (data.autoRedirect === true) {
+        window.location.assign(data.loginUrl);
+      }
+    } catch (err) {
+      console.error("[oidc] settings gate check failed", err);
+    }
+  };
+
   const render = (me) => {
     if (document.getElementById(MOUNT_ID)) return;
     const wrap = document.createElement("div");
@@ -70,6 +132,7 @@
   };
 
   const boot = async () => {
+    await enhanceSettingsGate();
     try {
       const res = await fetch(`${API_BASE}/me`, { credentials: "same-origin" });
       if (!res.ok) return;

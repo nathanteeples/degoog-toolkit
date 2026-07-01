@@ -1,3 +1,5 @@
+import { pluginFetch } from "./state.js";
+
 const DISCOVERY_TTL_MS = 5 * 60 * 1000;
 
 const _docs = new Map();
@@ -19,7 +21,7 @@ const cached = (store, key, ttlMs, load) => async () => {
 export const discover = async (issuer) => {
   const url = wellKnown(issuer);
   return cached(_docs, url, DISCOVERY_TTL_MS, async () => {
-    const res = await fetch(url, { headers: { accept: "application/json" } });
+    const res = await pluginFetch(url, { headers: { accept: "application/json" } });
     if (!res.ok) throw new Error(`discovery ${res.status}`);
     return res.json();
   })();
@@ -27,7 +29,9 @@ export const discover = async (issuer) => {
 
 export const fetchJwks = async (jwksUri) =>
   cached(_jwks, jwksUri, DISCOVERY_TTL_MS, async () => {
-    const res = await fetch(jwksUri, { headers: { accept: "application/json" } });
+    const res = await pluginFetch(jwksUri, {
+      headers: { accept: "application/json" },
+    });
     if (!res.ok) throw new Error(`jwks ${res.status}`);
     return res.json();
   })();

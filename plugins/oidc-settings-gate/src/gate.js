@@ -18,7 +18,7 @@ import {
   fetchUserInfo,
   handoffCode,
 } from "./oidc.js";
-import { isAllowed, toProfile } from "./authz.js";
+import { isAllowed, readClaim, toProfile } from "./authz.js";
 
 const HANDOFF_TTL_MS = 2 * 60 * 1000;
 
@@ -27,6 +27,19 @@ const json = (obj, status = 200) =>
     status,
     headers: { "content-type": "application/json" },
   });
+
+const sanitizeReturnTo = (req, candidate) => {
+  const origin = originOf(req);
+  const fallback = "/settings";
+  if (!candidate) return fallback;
+  try {
+    const url = new URL(candidate, origin);
+    if (url.origin !== origin) return fallback;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
+  }
+};
 
 const originOf = (req) =>
   getConfig()?.appUrl || new URL(req.url).origin;
@@ -47,25 +60,42 @@ const debug = (...args) => {
   if (getConfig()?.debug) console.log("[oidc]", ...args);
 };
 
-const onAuthCheck = () => {
+const onAuthCheck = (req) => {
   const config = getConfig();
   if (!isConfigured(config)) {
     return json({ required: true, valid: false, error: "auth-misconfigured" });
   }
   const ctx = getCtx();
+  const url = new URL(req.url);
+  const returnTo = sanitizeReturnTo(
+    req,
+    url.searchParams.get("returnTo") || req.headers.get("referer") || "/settings",
+  );
   return json({
     required: true,
     valid: false,
-    loginUrl: ctx ? ctx.routeUrl("login") : "/api/settings/auth",
+    loginUrl: ctx
+      ? ctx.routeUrl(`login?returnTo=${encodeURIComponent(returnTo)}`)
+      : "/api/settings/auth",
+    providerLabel: config.providerLabel || "OIDC",
+    autoRedirect: config.autoRedirect === true,
   });
 };
 
 const needsUserinfo = (config, claims) => {
   const missingId =
     !claims.email && !claims.preferred_username && !claims.name;
-  const missingGroups = config.allowedGroups.length > 0 && !claims.groups;
-  const missingRoles = config.allowedRoles.length > 0 && !claims.roles;
-  return missingId || missingGroups || missingRoles;
+  const missingGroups =
+    config.allowedGroups.length > 0 && readClaim(claims, config.groupsClaim) == null;
+  const missingRoles =
+    config.allowedRoles.length > 0 && readClaim(claims, config.rolesClaim) == null;
+  const missingEmailRule =
+    (config.allowedEmails.length > 0 || config.allowedDomains.length > 0) &&
+    !claims.email;
+  const missingRequiredClaim = config.requiredClaims.some(
+    ({ claim }) => readClaim(claims, claim) == null,
+  );
+  return missingId || missingGroups || missingRoles || missingEmailRule || missingRequiredClaim;
 };
 
 const onCallback = async (req) => {
@@ -112,7 +142,7 @@ const onCallback = async (req) => {
 };
 
 export const handle = async (req, context = {}) => {
-  if (context.route === "settings-auth") return onAuthCheck();
+  if (context.route === "settings-auth") return onAuthCheck(req);
   if (context.route === "settings-auth-callback") return onCallback(req);
   return null;
 };
