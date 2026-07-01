@@ -1,7 +1,7 @@
 {
   "oidc-command": {
     "name": "OIDC / SSO",
-    "description": "Single sign-on gate for the settings area using any OpenID Connect provider. Adds a home-page avatar for the signed-in user.",
+    "description": "Single sign-on gate for degoog's admin panel using any OpenID Connect provider. Adds a home-page avatar for the signed-in user.",
     "settings": {
       "issuer": {
         "label": "Issuer URL",
@@ -25,6 +25,11 @@
         "label": "Scopes",
         "placeholder": "openid profile email",
         "description": "Space separated scopes."
+      },
+      "pictureClaim": {
+        "label": "Picture claim path",
+        "placeholder": "picture",
+        "description": "Dot-path to the avatar or profile image claim, such as picture or avatar_url."
       },
       "allowedEmails": {
         "label": "Allowed emails",
@@ -55,6 +60,6 @@
   },
   "oidc": {
     "name": "OIDC / SSO",
-    "description": "Single sign-on gate for the settings area using any OpenID Connect provider. Adds a home-page avatar for the signed-in user."
+    "description": "Single sign-on gate for degoog's admin panel using any OpenID Connect provider. Adds a home-page avatar for the signed-in user."
   }
 }

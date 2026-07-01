@@ -71,19 +71,11 @@
     return chars.toUpperCase();
   };
 
-  const icon = (kind) => {
-    if (kind === "settings") {
-      return `
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path d="M12 8.75a3.25 3.25 0 1 0 0 6.5a3.25 3.25 0 0 0 0-6.5Zm9 3.25c0-.45-.04-.88-.13-1.3l-2.2-.34a6.77 6.77 0 0 0-.68-1.63l1.32-1.8a9.36 9.36 0 0 0-1.84-1.84l-1.8 1.32a6.77 6.77 0 0 0-1.63-.68l-.34-2.2A9.6 9.6 0 0 0 12 3c-.45 0-.88.04-1.3.13l-.34 2.2c-.57.14-1.12.37-1.63.68l-1.8-1.32a9.36 9.36 0 0 0-1.84 1.84l1.32 1.8c-.31.51-.54 1.06-.68 1.63l-2.2.34A9.6 9.6 0 0 0 3 12c0 .45.04.88.13 1.3l2.2.34c.14.57.37 1.12.68 1.63l-1.32 1.8a9.36 9.36 0 0 0 1.84 1.84l1.8-1.32c.51.31 1.06.54 1.63.68l.34 2.2c.42.09.85.13 1.3.13c.45 0 .88-.04 1.3-.13l.34-2.2c.57-.14 1.12-.37 1.63-.68l1.8 1.32a9.36 9.36 0 0 0 1.84-1.84l-1.32-1.8c.31-.51.54-1.06.68-1.63l2.2-.34c.09-.42.13-.85.13-1.3Z" />
-        </svg>`;
-    }
-    return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M9 4.5a.75.75 0 0 0 0 1.5h7.19l-9.97 9.97a.75.75 0 1 0 1.06 1.06l9.97-9.97V14.25a.75.75 0 0 0 1.5 0V4.5H9Z" />
-        <path d="M5.25 7.5A2.25 2.25 0 0 0 3 9.75v8A2.25 2.25 0 0 0 5.25 20h8A2.25 2.25 0 0 0 15.5 17.75V14a.75.75 0 0 0-1.5 0v3.75a.75.75 0 0 1-.75.75h-8a.75.75 0 0 1-.75-.75v-8A.75.75 0 0 1 5.25 9H9a.75.75 0 0 0 0-1.5H5.25Z" />
-      </svg>`;
-  };
+  const icon = () => `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M10.75 4a.75.75 0 0 1 0 1.5H6.5A1.5 1.5 0 0 0 5 7v10a1.5 1.5 0 0 0 1.5 1.5h4.25a.75.75 0 0 1 0 1.5H6.5A3 3 0 0 1 3.5 17V7a3 3 0 0 1 3-3h4.25Z" />
+      <path d="M13.72 7.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 1 1-1.06-1.06l2.97-2.97H8.75a.75.75 0 0 1 0-1.5h7.94l-2.97-2.97a.75.75 0 0 1 0-1.06Z" />
+    </svg>`;
 
   const avatarMarkup = (me, className = "degoog-oidc-avatar") =>
     me.picture
@@ -91,28 +83,6 @@
       : `<span class="${escapeHtml(className)} degoog-oidc-avatar-initials">${escapeHtml(
           initials(me.name, me.email),
         )}</span>`;
-
-  const currentSettingsPath = () => {
-    const anchors = [
-      document.getElementById("nav-settings-results"),
-      document.getElementById("nav-settings-top"),
-      ...document.querySelectorAll("a.settings-gear, a#nav-settings-top, a#nav-settings-results"),
-    ];
-    for (const anchor of anchors) {
-      const href = anchor?.getAttribute?.("href");
-      if (!href) continue;
-      try {
-        const url = new URL(href, window.location.origin);
-        if (url.origin === window.location.origin) {
-          return `${url.pathname}${url.search}${url.hash}`;
-        }
-      } catch {}
-    }
-    if (document.getElementById("settings-auth-form")) {
-      return `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    }
-    return "/";
-  };
 
   const findMount = () => {
     const resultsSettings = document.getElementById("nav-settings-results");
@@ -357,7 +327,6 @@
     const wrap = document.createElement("div");
     wrap.id = MOUNT_ID;
     wrap.className = "degoog-oidc-user";
-    const settingsPath = currentSettingsPath();
     wrap.innerHTML = `
       <button type="button" class="degoog-oidc-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Open account menu">
         ${avatarMarkup(me)}
@@ -371,12 +340,8 @@
           </div>
         </div>
         <div class="degoog-oidc-menu-rows">
-          <a class="degoog-oidc-row" href="${escapeHtml(settingsPath)}" role="menuitem">
-            <span class="degoog-oidc-row-icon">${icon("settings")}</span>
-            <span class="degoog-oidc-row-label">Settings</span>
-          </a>
           <button type="button" class="degoog-oidc-row degoog-oidc-logout" role="menuitem">
-            <span class="degoog-oidc-row-icon">${icon("logout")}</span>
+            <span class="degoog-oidc-row-icon">${icon()}</span>
             <span class="degoog-oidc-row-label">Sign out</span>
           </button>
         </div>

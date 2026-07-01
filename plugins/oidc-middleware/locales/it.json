@@ -1,7 +1,7 @@
 {
   "oidc-command": {
     "name": "OIDC / SSO",
-    "description": "Accesso unico (SSO) per l'area impostazioni tramite qualsiasi provider OpenID Connect. Aggiunge un avatar dell'utente nella home.",
+    "description": "Accesso unico (SSO) per il pannello amministrativo di degoog tramite qualsiasi provider OpenID Connect. Aggiunge un avatar dell'utente nella home.",
     "settings": {
       "issuer": {
         "label": "URL Issuer",
@@ -25,6 +25,11 @@
         "label": "Scope",
         "placeholder": "openid profile email",
         "description": "Scope separati da spazi."
+      },
+      "pictureClaim": {
+        "label": "Percorso del claim immagine",
+        "placeholder": "picture",
+        "description": "Percorso dot al claim dell'avatar o dell'immagine profilo, ad esempio picture o avatar_url."
       },
       "allowedEmails": {
         "label": "Email consentite",
@@ -55,6 +60,6 @@
   },
   "oidc": {
     "name": "OIDC / SSO",
-    "description": "Gate single sign-on per l'area impostazioni tramite un provider OpenID Connect. Aggiunge un avatar nella home per l'utente connesso."
+    "description": "Gate single sign-on per il pannello amministrativo di degoog tramite un provider OpenID Connect. Aggiunge un avatar nella home per l'utente connesso."
   }
 }

@@ -4,6 +4,7 @@ const PROCESS_SECRET = randomBytes(32).toString("base64url");
 
 let _config = null;
 let _ctx = null;
+let _avatarCache = null;
 
 const _handoffs = new Map();
 
@@ -18,6 +19,12 @@ export const setCtx = (ctx) => {
 };
 
 export const getCtx = () => _ctx;
+
+export const setAvatarCache = (cache) => {
+  _avatarCache = cache;
+};
+
+export const getAvatarCache = () => _avatarCache;
 
 export const pluginFetch = (...args) => (_ctx?.fetch || fetch)(...args);
 

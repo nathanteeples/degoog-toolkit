@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { readClaim } from "./authz.js";
+import { readClaim, resolvePictureClaim } from "./authz.js";
 import { getConfig, getCtx } from "./state.js";
 
 const PREFIX = "[oidc][debug]";
@@ -103,6 +103,7 @@ export const configMeta = (config = getConfig()) => {
     groupsScope: truncate(config.groupsScope || ""),
     groupsClaim: truncate(config.groupsClaim || ""),
     rolesClaim: truncate(config.rolesClaim || ""),
+    pictureClaim: truncate(config.pictureClaim || ""),
     allowedEmails: preview(config.allowedEmails || []),
     allowedDomains: preview(config.allowedDomains || []),
     allowedGroups: preview(config.allowedGroups || []),
@@ -123,6 +124,7 @@ export const profileMeta = (profile) => ({
 });
 
 export const claimsMeta = (claims, config = getConfig()) => {
+  const picture = resolvePictureClaim(claims, config);
   const summary = {
     keys: Object.keys(claims || {}).sort().slice(0, MAX_KEYS),
     iss: truncate(claims?.iss || "", 120),
@@ -132,7 +134,8 @@ export const claimsMeta = (claims, config = getConfig()) => {
     email_verified: claims?.email_verified ?? null,
     preferred_username: truncate(claims?.preferred_username || "", 80),
     name: truncate(claims?.name || "", 80),
-    hasPicture: Boolean(claims?.picture),
+    hasPicture: Boolean(picture.picture),
+    pictureClaim: truncate(picture.path || "", 80),
     nonce: secretMeta(claims?.nonce || ""),
   };
   if (config) {

@@ -2,6 +2,7 @@ export const DEFAULT_SCOPES = "openid profile email";
 export const DEFAULT_GROUPS_SCOPE = "groups";
 export const DEFAULT_GROUPS_CLAIM = "groups";
 export const DEFAULT_ROLES_CLAIM = "roles";
+export const DEFAULT_PICTURE_CLAIM = "picture";
 
 const asStr = (v) => (typeof v === "string" ? v : v == null ? "" : String(v));
 const asBool = (v) => v === true || v === "true";
@@ -62,6 +63,7 @@ export const parseSettings = (raw = {}) => ({
   groupsScope: asStr(raw.groupsScope).trim() || DEFAULT_GROUPS_SCOPE,
   groupsClaim: asStr(raw.groupsClaim).trim() || DEFAULT_GROUPS_CLAIM,
   rolesClaim: asStr(raw.rolesClaim).trim() || DEFAULT_ROLES_CLAIM,
+  pictureClaim: asStr(raw.pictureClaim).trim() || DEFAULT_PICTURE_CLAIM,
   allowAnyAuthenticatedUser: asBool(raw.allowAnyAuthenticatedUser),
   requireVerifiedEmail: raw.requireVerifiedEmail !== false && raw.requireVerifiedEmail !== "false",
   allowedEmails: asList(raw.allowedEmails, "email").map((value) => value.toLowerCase()),
@@ -152,6 +154,14 @@ export const settingsSchema = [
     type: "text",
     placeholder: DEFAULT_SCOPES,
     description: "Space separated scopes. Defaults to `openid profile email`.",
+  },
+  {
+    key: "pictureClaim",
+    label: "Picture claim path",
+    type: "text",
+    placeholder: DEFAULT_PICTURE_CLAIM,
+    description:
+      "Dot-path to the avatar or profile image claim. Leave as `picture` for most providers, or change it to claims like `avatar_url`, `photo_url`, or `user.avatar` when needed.",
   },
   {
     key: "allowAnyAuthenticatedUser",

@@ -1,5 +1,11 @@
-import { getConfig, getCtx, claimHandoff } from "./state.js";
+import { getAvatarCache, getConfig, getCtx, claimHandoff } from "./state.js";
 import { isConfigured } from "./settings.js";
+import {
+  AVATAR_CACHE_TTL_MS,
+  avatarCacheKey,
+  cacheDelete,
+  ensureAvatarEntry,
+} from "./avatar.js";
 import {
   readCookie,
   bakeCookie,
@@ -35,6 +41,15 @@ const json = (obj, headers) =>
   new Response(JSON.stringify(obj), {
     status: 200,
     headers: headers || { "content-type": "application/json" },
+  });
+
+const jsonError = (status) =>
+  new Response(JSON.stringify({ ok: false }), {
+    status,
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
+    },
   });
 
 const redirect = (location, cookies = []) => {
@@ -175,14 +190,40 @@ const onMe = (req) => {
     authenticated: true,
     email: identity.email || "",
     name: identity.name || "",
-    picture: identity.picture || "",
+    picture: identity.picture && ctx ? ctx.routeUrl("avatar") : "",
     debug: config?.debug === true,
     pluginId: ctx?.pluginId || ctx?.id || "",
     providerLabel: config?.providerLabel || "OIDC",
   });
 };
 
-const onLogout = (req) => {
+const onAvatar = async (req) => {
+  const identity = readIdentity(readCookie(req, USER_COOKIE));
+  if (!identity?.picture) return jsonError(404);
+
+  const entry = await ensureAvatarEntry(
+    getAvatarCache(),
+    identity,
+    "",
+    AVATAR_CACHE_TTL_MS,
+  );
+  if (!entry) return jsonError(404);
+
+  return new Response(entry.bytes, {
+    status: 200,
+    headers: {
+      "content-type": entry.contentType,
+      "cache-control": "private, max-age=3600",
+      "x-content-type-options": "nosniff",
+    },
+  });
+};
+
+const onLogout = async (req) => {
+  const identity = readIdentity(readCookie(req, USER_COOKIE));
+  if (identity?.picture) {
+    await cacheDelete(getAvatarCache(), avatarCacheKey(identity));
+  }
   debugLog("route.logout", {
     request: requestMeta(req),
     config: configMeta(getConfig()),
@@ -198,5 +239,6 @@ export const routes = [
   { method: "get", path: "login", handler: onLogin },
   { method: "get", path: "claim", handler: onClaim },
   { method: "get", path: "me", handler: onMe },
+  { method: "get", path: "avatar", handler: onAvatar },
   { method: "post", path: "logout", handler: onLogout },
 ];

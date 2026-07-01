@@ -5,6 +5,24 @@ const asArray = (v) =>
       ? v.split(/[\s,]+/).filter(Boolean)
       : [];
 
+const DEFAULT_PICTURE_CLAIM_PATHS = [
+  "picture",
+  "avatar_url",
+  "avatarUrl",
+  "avatar",
+  "image",
+  "image.url",
+  "photo",
+  "photo_url",
+  "photoUrl",
+  "profile_image",
+  "profile_image_url",
+  "profile.picture",
+  "profile.avatar",
+  "user.picture",
+  "user.avatar",
+];
+
 const safePicture = (value, base) => {
   if (typeof value !== "string") return "";
   const picture = value.trim();
@@ -30,6 +48,29 @@ export const readClaim = (claims, path) =>
       if (typeof value !== "object") return undefined;
       return value[segment];
     }, claims);
+
+const pictureClaimPaths = (config) => {
+  const configured = typeof config?.pictureClaim === "string"
+    ? config.pictureClaim.trim()
+    : "";
+  return [...new Set([configured, ...DEFAULT_PICTURE_CLAIM_PATHS].filter(Boolean))];
+};
+
+export const resolvePictureClaim = (claims, config) => {
+  for (const path of pictureClaimPaths(config)) {
+    const picture = safePicture(readClaim(claims, path), claims?.iss);
+    if (picture) {
+      return {
+        path,
+        picture,
+      };
+    }
+  }
+  return {
+    path: pictureClaimPaths(config)[0] || "",
+    picture: "",
+  };
+};
 
 const matchesExpected = (actual, expected) => {
   if (Array.isArray(actual)) return actual.some((entry) => matchesExpected(entry, expected));
@@ -115,7 +156,7 @@ export const accessDenyDetail = (access) => {
   return "selector-not-matched";
 };
 
-export const toProfile = (claims) => {
+export const toProfile = (claims, config) => {
   const email = typeof claims.email === "string" ? claims.email : "";
   const name =
     claims.name ||
@@ -127,6 +168,6 @@ export const toProfile = (claims) => {
     sub: claims.sub || "",
     email,
     name: String(name),
-    picture: safePicture(claims.picture, claims.iss),
+    picture: resolvePictureClaim(claims, config).picture,
   };
 };

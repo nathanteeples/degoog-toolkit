@@ -1,0 +1,65 @@
+{
+  "oidc-command": {
+    "name": "OIDC / SSO",
+    "description": "Single-Sign-on-Schutz fuer das degoog-Admin-Panel mit jedem OpenID-Connect-Provider. Fuegt auf der Startseite einen Benutzer-Avatar hinzu.",
+    "settings": {
+      "issuer": {
+        "label": "Issuer-URL",
+        "placeholder": "https://auth.example.com/application/o/degoog/",
+        "description": "Dein OpenID-Connect-Issuer. Das Discovery-Dokument wird automatisch geladen."
+      },
+      "clientId": {
+        "label": "Client-ID",
+        "description": "Die beim Provider registrierte Client-ID."
+      },
+      "clientSecret": {
+        "label": "Client-Secret",
+        "description": "Vertrauliche Clients senden dies zusammen mit PKCE. Nur bei oeffentlichen Clients leer lassen."
+      },
+      "appUrl": {
+        "label": "App-URL",
+        "placeholder": "https://search.example.com",
+        "description": "Externe Basis-URL zum Erstellen der Redirect-URI. Leer lassen, um sie aus der Anfrage abzuleiten."
+      },
+      "scopes": {
+        "label": "Scopes",
+        "placeholder": "openid profile email",
+        "description": "Durch Leerzeichen getrennte Scopes."
+      },
+      "pictureClaim": {
+        "label": "Bild-Claim-Pfad",
+        "placeholder": "picture",
+        "description": "Dot-Pfad zum Avatar- oder Profilbild-Claim, zum Beispiel picture oder avatar_url."
+      },
+      "allowedEmails": {
+        "label": "Erlaubte E-Mails",
+        "description": "Optionale Zulassungsliste fuer E-Mail-Adressen."
+      },
+      "allowedGroups": {
+        "label": "Erlaubte Gruppen",
+        "description": "Optional. Erfordert einen groups-Claim."
+      },
+      "allowedRoles": {
+        "label": "Erlaubte Rollen",
+        "description": "Optional. Erfordert einen roles-Claim."
+      },
+      "groupsScope": {
+        "label": "Gruppen-Scope",
+        "placeholder": "groups",
+        "description": "Zusaetzlicher Scope, der angefordert wird, wenn eine Gruppen-Zulassungsliste gesetzt ist."
+      },
+      "cookieSecret": {
+        "label": "Avatar-Cookie-Secret",
+        "description": "Optional. Signiert die Avatar-Sitzung der Startseite, damit sie ueber Neustarts hinweg stabil bleibt."
+      },
+      "debug": {
+        "label": "Debug-Protokollierung",
+        "description": "Schreibt Details des OIDC-Ablaufs in die Server-Konsole."
+      }
+    }
+  },
+  "oidc": {
+    "name": "OIDC / SSO",
+    "description": "Single-Sign-on-Schutz fuer das degoog-Admin-Panel mit jedem OpenID-Connect-Provider. Fuegt auf der Startseite einen Benutzer-Avatar hinzu."
+  }
+}

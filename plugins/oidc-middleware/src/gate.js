@@ -16,13 +16,24 @@ import {
   OIDC_RETURN_TO,
 } from "./cookies.js";
 import {
+  AVATAR_CACHE_TTL_MS,
+  ensureAvatarEntry,
+} from "./avatar.js";
+import {
   exchangeCode,
   verifyIdToken,
   fetchUserInfo,
   handoffCode,
 } from "./oidc.js";
 import { chooseReturnTo } from "./return-to.js";
-import { accessDenyDetail, evaluateAccess, readClaim, toProfile } from "./authz.js";
+import {
+  accessDenyDetail,
+  evaluateAccess,
+  readClaim,
+  resolvePictureClaim,
+  toProfile,
+} from "./authz.js";
+import { getAvatarCache } from "./state.js";
 import {
   claimsMeta,
   configMeta,
@@ -146,7 +157,7 @@ const onAuthCheck = (req) => {
 export const userinfoNeeds = (config, claims) => {
   const missingIdentity =
     !claims.email && !claims.preferred_username && !claims.name;
-  const missingPicture = !claims.picture;
+  const missingPicture = !resolvePictureClaim(claims, config).picture;
   const missingGroups =
     config.allowedGroups.length > 0 && readClaim(claims, config.groupsClaim) == null;
   const missingRoles =
@@ -272,7 +283,8 @@ const onCallback = async (req) => {
     }
 
     const code2 = handoffCode();
-    const profile = toProfile(claims);
+    const profile = toProfile(claims, config);
+    await ensureAvatarEntry(getAvatarCache(), profile, token.access_token, AVATAR_CACHE_TTL_MS);
     sweepHandoffs();
     stashHandoff(code2, profile, HANDOFF_TTL_MS);
     const ctx = getCtx();

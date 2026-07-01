@@ -8,6 +8,7 @@ import {
   readClaim,
   toProfile,
 } from "./src/authz.js";
+import { avatarCacheKey } from "./src/avatar.js";
 import { userinfoNeeds } from "./src/gate.js";
 import { chooseReturnTo, sanitizeReturnTo } from "./src/return-to.js";
 import { parseSettings, isConfigured } from "./src/settings.js";
@@ -116,6 +117,15 @@ test("userinfo fetch is requested when only the profile picture is missing", () 
     }).needed,
     false,
   );
+  assert.equal(
+    userinfoNeeds(config, {
+      sub: "123",
+      email: "admin@example.com",
+      name: "Admin",
+      avatar_url: "https://auth.example.com/avatar-alt.png",
+    }).needed,
+    false,
+  );
 });
 
 test("profile pictures are sanitized to safe URL schemes", () => {
@@ -144,6 +154,33 @@ test("profile pictures are sanitized to safe URL schemes", () => {
     }).picture,
     "https://auth.example.com/media/avatar.png",
   );
+  assert.equal(
+    toProfile({
+      sub: "123",
+      email: "admin@example.com",
+      avatar_url: "https://auth.example.com/avatar-alt.png",
+    }).picture,
+    "https://auth.example.com/avatar-alt.png",
+  );
+  assert.equal(
+    toProfile(
+      {
+        sub: "123",
+        email: "admin@example.com",
+        profile: { avatar: "https://auth.example.com/avatar-nested.png" },
+      },
+      parseSettings({ pictureClaim: "profile.avatar" }),
+    ).picture,
+    "https://auth.example.com/avatar-nested.png",
+  );
+  assert.equal(
+    toProfile({
+      sub: "123",
+      email: "admin@example.com",
+      avatarUrl: "https://auth.example.com/avatar-camel.png",
+    }).picture,
+    "https://auth.example.com/avatar-camel.png",
+  );
 });
 
 test("return target resolution keeps same-origin custom admin paths", () => {
@@ -165,6 +202,19 @@ test("return target resolution keeps same-origin custom admin paths", () => {
       "/",
     ),
     "/my-secret-panel-abc123",
+  );
+});
+
+test("avatar cache keys are stable for the same identity", () => {
+  const identity = {
+    sub: "123",
+    email: "admin@example.com",
+    picture: "https://auth.example.com/media/avatar.png",
+  };
+  assert.equal(avatarCacheKey(identity), avatarCacheKey(identity));
+  assert.notEqual(
+    avatarCacheKey(identity),
+    avatarCacheKey({ ...identity, picture: "https://auth.example.com/media/avatar-2.png" }),
   );
 });
 

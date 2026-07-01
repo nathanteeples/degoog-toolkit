@@ -1,7 +1,13 @@
-import { getConfig, getCtx, setCtx, setConfig } from "./src/state.js";
+import { getConfig, getCtx, setAvatarCache, setCtx, setConfig } from "./src/state.js";
+import { AVATAR_CACHE_NAMESPACE, AVATAR_CACHE_TTL_MS, createExtensionCache } from "./src/avatar.js";
 import { parseSettings, settingsSchema, isConfigured } from "./src/settings.js";
 import { handle } from "./src/gate.js";
 import { routes as pluginRoutes } from "./src/routes.js";
+
+const initPlugin = (ctx) => {
+  setCtx(ctx);
+  setAvatarCache(createExtensionCache(ctx, AVATAR_CACHE_NAMESPACE, AVATAR_CACHE_TTL_MS));
+};
 
 export const middleware = {
   isClientExposed: false,
@@ -10,7 +16,7 @@ export const middleware = {
     "Single sign-on gate for degoog's admin panel using any OpenID Connect provider. Adds a home-page avatar for the signed-in user.",
   settingsSchema,
   init(ctx) {
-    setCtx(ctx);
+    initPlugin(ctx);
   },
   configure(settings) {
     setConfig(parseSettings(settings));
@@ -34,7 +40,7 @@ export const command = {
     ...settingsSchema,
   ],
   init(ctx) {
-    setCtx(ctx);
+    initPlugin(ctx);
   },
   configure(settings) {
     setConfig(parseSettings(settings));
