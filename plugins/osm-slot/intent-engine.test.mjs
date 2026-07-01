@@ -182,6 +182,7 @@ for (const query of [
   "near death",
   "near future",
   "near perfect",
+  "temporary",
   "bridge the gap",
   "field of study",
   "hermes desktop",

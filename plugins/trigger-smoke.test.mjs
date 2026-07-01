@@ -38,6 +38,7 @@ const negativeCases = [
   ["currency-slot", "translate hello to spanish"],
   ["osm-slot", "100 lb to kg"],
   ["osm-slot", "aapl stock"],
+  ["osm-slot", "temporary"],
   ["stocks", "market shares"],
   ["stocks", "bitcoin price"],
   ["tip-calculator", "gardening tips"],

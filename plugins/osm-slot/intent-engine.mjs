@@ -64,6 +64,7 @@ function compromiseEnglish(query) {
     organizations: unique(doc.organizations().out("array")),
     topics: unique(doc.topics().out("array")),
     nouns: unique(doc.nouns().out("array")),
+    adjectives: unique(doc.adjectives().out("array")),
     isQuestion: doc.questions().found,
     isImperative: doc.match("#Imperative").found,
   };
@@ -107,6 +108,14 @@ function looksLikeBusinessName(text, parsed) {
   const tokens = query.split(/\s+/).filter(Boolean);
   if (!query || tokens.length > 4 || GENERIC_ONLY_RE.test(query)) return false;
   if (!tokens.every((token) => /^[a-z0-9][a-z0-9'’&.-]*$/i.test(token))) return false;
+  if (
+    tokens.length === 1 &&
+    parsed.organizations.length === 0 &&
+    parsed.topics.length === 0 &&
+    parsed.nouns.length === 0
+  ) {
+    return false;
+  }
   if (parsed.organizations.length > 0) return true;
   if (parsed.topics.length > 0 || parsed.nouns.length > 0) return true;
   return tokens.some((token) => token.length >= 4);
