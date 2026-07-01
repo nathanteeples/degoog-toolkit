@@ -475,6 +475,7 @@
     padding: 10px 10px 8px;
     display: flex;
     flex-direction: column;
+    overflow: visible;
 }
 
 .weather-astro-col-head {
@@ -562,14 +563,17 @@ html[data-theme="dark"] .weather-astro-ico-moon {
     grid-column: 2;
     width: 100%;
     min-width: 0;
-    height: 3.75rem;
+    aspect-ratio: 200 / 60;
+    height: auto;
+    max-height: 4.5rem;
     justify-self: stretch;
     position: relative;
     margin: 0;
+    overflow: visible;
 }
 
 .weather-moon-track {
-    height: 4.25rem;
+    max-height: 5rem;
 }
 
 .weather-astro-arc {
@@ -584,10 +588,14 @@ html[data-theme="dark"] .weather-astro-ico-moon {
 }
 
 .weather-astro-arc-bg {
-    stroke: color-mix(in srgb, var(--text-secondary) 16%, transparent);
+    stroke: color-mix(in srgb, var(--text-secondary) 28%, transparent);
     stroke-linecap: round;
-    stroke-dasharray: 2.5 3.5;
-    opacity: 0.9;
+    opacity: 0.55;
+}
+
+html[data-theme="dark"] .weather-astro-arc-bg {
+    stroke: color-mix(in srgb, var(--text-secondary) 45%, transparent);
+    opacity: 0.7;
 }
 
 .weather-astro-arc-fill {
