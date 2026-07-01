@@ -646,8 +646,11 @@ function getLgTranslation(key) {
         return window.innerWidth >= DESKTOP_MIN;
     }
 
-    function sidebarRoot() {
-        return document.getElementById("results-sidebar");
+    function sidebarRoots() {
+        return [
+            document.getElementById("results-sidebar"),
+            document.getElementById("image-engine-panel"),
+        ].filter(Boolean);
     }
 
     function isThemeEnabled() {
@@ -796,18 +799,28 @@ function getLgTranslation(key) {
 
     function syncAll() {
         if (!isThemeEnabled()) return;
-        const root = sidebarRoot();
-        if (!root) return;
-        getEnginePerformancePanels(root).forEach(syncEngineAccordion);
-        getRelatedSearchesPanels(root).forEach(syncRelatedAccordion);
-        getKnowledgePanels(root).forEach(syncKnowledgeAccordion);
+        const roots = sidebarRoots();
+        if (roots.length === 0) return;
+        roots.forEach(root => {
+            getEnginePerformancePanels(root).forEach(syncEngineAccordion);
+            getRelatedSearchesPanels(root).forEach(syncRelatedAccordion);
+            getKnowledgePanels(root).forEach(syncKnowledgeAccordion);
+        });
+    }
+
+    function bindRoots() {
+        sidebarRoots().forEach(bindSidebar);
     }
 
     function scheduleSync() {
         window.requestAnimationFrame(() => {
+            bindRoots();
             window.requestAnimationFrame(syncAll);
         });
-        window.setTimeout(syncAll, 0);
+        window.setTimeout(() => {
+            bindRoots();
+            syncAll();
+        }, 0);
     }
 
     function markSearching() {
@@ -821,16 +834,16 @@ function getLgTranslation(key) {
     }
 
     function clearUserOverrides() {
-        const root = sidebarRoot();
-        if (!root) return;
-        getEnginePerformancePanels(root).forEach(accordion => {
-            accordion.removeAttribute(USER_ATTR_ENGINE);
-        });
-        getRelatedSearchesPanels(root).forEach(accordion => {
-            accordion.removeAttribute(USER_ATTR_RELATED);
-        });
-        getKnowledgePanels(root).forEach(accordion => {
-            accordion.removeAttribute(USER_ATTR_KNOWLEDGE);
+        sidebarRoots().forEach(root => {
+            getEnginePerformancePanels(root).forEach(accordion => {
+                accordion.removeAttribute(USER_ATTR_ENGINE);
+            });
+            getRelatedSearchesPanels(root).forEach(accordion => {
+                accordion.removeAttribute(USER_ATTR_RELATED);
+            });
+            getKnowledgePanels(root).forEach(accordion => {
+                accordion.removeAttribute(USER_ATTR_KNOWLEDGE);
+            });
         });
     }
 
@@ -928,8 +941,24 @@ function getLgTranslation(key) {
     function init() {
         if (!isThemeEnabled()) return;
         lastIsDesktop = isDesktop();
-        const root = sidebarRoot();
-        if (root) bindSidebar(root);
+        bindRoots();
+        new MutationObserver(mutations => {
+            const shouldRebind = mutations.some(mutation =>
+                [...mutation.addedNodes].some(
+                    node =>
+                        node.nodeType === 1 &&
+                        (node.id === "results-sidebar" ||
+                            node.id === "image-engine-panel" ||
+                            !!node.querySelector?.(
+                                "#results-sidebar, #image-engine-panel",
+                            )),
+                ),
+            );
+            if (shouldRebind) scheduleSync();
+        }).observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+        });
         observeSearchLifecycle();
         window.addEventListener("resize", () => {
             const nowDesktop = isDesktop();

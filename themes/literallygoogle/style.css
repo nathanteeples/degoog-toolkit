@@ -699,6 +699,22 @@ var {
 /* Image search filters (requires #image-filters-bar in search.html). */
 #image-filters-bar {
     display: none;
+    inset-inline-start: 0;
+    inset-inline-end: auto;
+    left: auto;
+    right: auto;
+    transform: translateX(-100%);
+}
+
+html[dir="rtl"] #image-filters-bar {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    transform: translateX(100%);
+}
+
+#image-filters-bar.open,
+html[dir="rtl"] #image-filters-bar.open {
+    transform: translateX(0);
 }
 
 .degoog-img-filter-bar {
@@ -803,33 +819,33 @@ var {
 /* Engine Performance panel only (theme setting via data-sidebar-panels-desktop). */
 @media (min-width: 768px) {
     html[data-sidebar-panels-desktop]
-        #results-sidebar
+        :is(#results-sidebar, #image-engine-panel)
         .sidebar-accordion.streaming-engine-panel
         .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
     html[data-sidebar-panels-desktop]
-        #results-sidebar
+        :is(#results-sidebar, #image-engine-panel)
         .sidebar-accordion:has(.engine-stat-row)
         .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
         display: flex;
     }
 
     html[data-sidebar-panels-desktop]
-        #results-sidebar
+        :is(#results-sidebar, #image-engine-panel)
         .sidebar-accordion.streaming-engine-panel:not(.open)
         .sidebar-accordion-body,
     html[data-sidebar-panels-desktop]
-        #results-sidebar
+        :is(#results-sidebar, #image-engine-panel)
         .sidebar-accordion:has(.engine-stat-row):not(.open)
         .sidebar-accordion-body {
         display: none;
     }
 
     html[data-sidebar-panels-desktop]
-        #results-sidebar
+        :is(#results-sidebar, #image-engine-panel)
         .sidebar-accordion.streaming-engine-panel.open
         .sidebar-accordion-body,
     html[data-sidebar-panels-desktop]
-        #results-sidebar
+        :is(#results-sidebar, #image-engine-panel)
         .sidebar-accordion:has(.engine-stat-row).open
         .sidebar-accordion-body {
         display: block;
@@ -917,7 +933,7 @@ var {
 }
 
 /* Results sidebar: strip core panel border/shadow; card rows match examples/LiterallyGoogle. */
-#results-sidebar .sidebar-panel {
+:is(#results-sidebar, #image-engine-panel) .sidebar-panel {
     border: none !important;
     box-shadow: none !important;
 }
@@ -926,10 +942,10 @@ var {
     gap: 0;
 }
 
-#results-sidebar .sidebar-accordion:has(.engine-stat-row),
+:is(#results-sidebar, #image-engine-panel) .sidebar-accordion:has(.engine-stat-row),
 #results-sidebar .sidebar-accordion:has(.related-search-link),
 #results-sidebar .sidebar-accordion.lg-sidebar-knowledge,
-#results-sidebar .sidebar-accordion.streaming-engine-panel {
+:is(#results-sidebar, #image-engine-panel) .sidebar-accordion.streaming-engine-panel {
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -940,13 +956,13 @@ var {
     overflow: visible;
 }
 
-#results-sidebar .sidebar-accordion:has(.engine-stat-row)
+:is(#results-sidebar, #image-engine-panel) .sidebar-accordion:has(.engine-stat-row)
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
 #results-sidebar .sidebar-accordion:has(.related-search-link)
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
 #results-sidebar .sidebar-accordion.lg-sidebar-knowledge
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
-#results-sidebar .sidebar-accordion.streaming-engine-panel
+:is(#results-sidebar, #image-engine-panel) .sidebar-accordion.streaming-engine-panel
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
     background: var(--bg-light);
     border-start-start-radius: var(--theme-radius-lg);
@@ -957,13 +973,13 @@ var {
     width: 100%;
 }
 
-#results-sidebar .sidebar-accordion:has(.engine-stat-row).open
+:is(#results-sidebar, #image-engine-panel) .sidebar-accordion:has(.engine-stat-row).open
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
 #results-sidebar .sidebar-accordion:has(.related-search-link).open
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
 #results-sidebar .sidebar-accordion.lg-sidebar-knowledge.open
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
-#results-sidebar .sidebar-accordion.streaming-engine-panel.open
+:is(#results-sidebar, #image-engine-panel) .sidebar-accordion.streaming-engine-panel.open
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
     border-end-start-radius: var(--theme-radius-xs);
     border-end-end-radius: var(--theme-radius-xs);
@@ -1122,6 +1138,26 @@ body {
         justify-self: stretch;
     }
 
+    html[dir="rtl"] #results-layout {
+        grid-template-columns:
+            minmax(
+                var(--literallygoogle-results-sidebar-min),
+                var(--literallygoogle-results-sidebar-max)
+            )
+            minmax(0, var(--literallygoogle-results-main-col-max));
+        margin-inline-start: auto;
+        margin-inline-end: 0;
+    }
+
+    html[dir="rtl"] #slot-above-results,
+    html[dir="rtl"] #results-page #results-main {
+        grid-column: 2;
+    }
+
+    html[dir="rtl"] #sidebar-col {
+        grid-column: 1;
+    }
+
     /* No above-results slot: single main row beside the sidebar. */
     #results-layout:has(#slot-above-results:empty) #results-main {
         grid-row: 1;
@@ -1168,6 +1204,28 @@ body {
         #sidebar-col {
         grid-column: 2;
         grid-row: 2;
+    }
+
+    html[dir="rtl"]
+        #results-layout:has(
+            #slot-above-results
+                > .results-slot-panel
+                > .results-slot-panel-body
+                > .slot-full-width
+        )
+        #results-main {
+        grid-column: 2;
+    }
+
+    html[dir="rtl"]
+        #results-layout:has(
+            #slot-above-results
+                > .results-slot-panel
+                > .results-slot-panel-body
+                > .slot-full-width
+        )
+        #sidebar-col {
+        grid-column: 1;
     }
 
     /* Only full-width panel shells fill the spanned column; sibling panels stay
@@ -1335,31 +1393,9 @@ body {
         min-width: 0;
     }
 
-    #results-page:is(
-            :has(#results-tabs .results-tab[data-type="videos"].active),
-            :has(
-                #results-tabs
-                    .results-tab[data-type="videos"][aria-selected="true"]
-            ),
-            :has(#results-list .video-card)
-        )
-        #media-preview-panel.open {
-        flex: 0 1 26.25rem;
-        min-width: 0;
-        width: auto;
-        max-width: 26.25rem;
-    }
-
-    /*
-     * Media loading / preview closed: span the full content width. The images
-     * flex row keeps #media-preview-panel in the flow; core gives it
-     * flex-shrink: 0 and a sticky column that can reserve ~26.25rem even at
-     * width: 0 when inner markup is present — skeleton shimmers stop short of
-     * the future preview column until the panel opens.
-     */
     #results-page:has(#results-layout.media-mode)
         #results-layout:not(:has(#media-preview-panel.open)) {
-        display: block;
+        display: flex;
         max-width: none;
         width: 100%;
     }
@@ -1369,18 +1405,6 @@ body {
         #results-main {
         width: 100%;
         max-width: none;
-    }
-
-    #results-page:has(#results-layout.media-mode)
-        #media-preview-panel:not(.open) {
-        display: none !important;
-        position: absolute !important;
-        width: 0 !important;
-        min-width: 0 !important;
-        max-width: 0 !important;
-        overflow: hidden !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
     }
 
     #results-page:has(#results-layout.media-mode) .skeleton-image-grid,
@@ -1587,6 +1611,45 @@ body {
         flex-wrap: wrap;
         max-width: none;
     }
+
+    #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-tabs .results-tab[data-type="videos"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="videos"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card),
+            :has(#results-list .video-card)
+        )
+        #image-filters-bar {
+        margin-inline-start: 0;
+        margin-inline-end: auto;
+    }
+
+    html[dir="rtl"]
+        #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-tabs .results-tab[data-type="videos"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="videos"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card),
+            :has(#results-list .video-card)
+        )
+        #image-filters-bar {
+        margin-inline-start: auto;
+        margin-inline-end: 0;
+    }
 }
 
 /* Mobile: single column, no custom offsets */
@@ -1721,6 +1784,10 @@ body {
 
 #sidebar-col > .sticky > div:empty {
     display: none;
+}
+
+.degoog-img-filter-option {
+    text-align: start;
 }
 
 /* Optional sticky sidebar (Settings → Themes → Configure → Sticky sidebar). */
@@ -2449,7 +2516,25 @@ body {
    sticky child behaviour in most browsers. We move scrolling to
    .mp2-body instead, keeping the bar as a plain flex-shrink-0 header. */
 #media-preview-panel {
+    --mp2-panel-width: 26.25rem;
+    --mp2-panel-bg: color-mix(in srgb, var(--bg) 92%, var(--bg-light) 8%);
+    --mp2-panel-border: color-mix(
+        in srgb,
+        var(--border-light) 82%,
+        var(--text-primary) 10%
+    );
+    --mp2-panel-shadow:
+        0 18px 42px color-mix(in srgb, var(--text-primary) 12%, transparent),
+        0 4px 14px color-mix(in srgb, var(--text-primary) 8%, transparent);
+    display: none;
+    flex-direction: column;
+    min-width: 0;
     overflow-y: hidden;
+    background: var(--mp2-panel-bg);
+    border: 1px solid var(--mp2-panel-border);
+    border-top: 1px solid var(--mp2-panel-border);
+    border-radius: var(--theme-radius-xl) var(--theme-radius-xl) 0 0;
+    box-shadow: var(--mp2-panel-shadow);
 }
 
 #media-preview-panel:not(.open) {
@@ -2460,15 +2545,44 @@ body {
     display: flex;
 }
 
+#results-page:has(#results-layout.media-mode) #media-preview-panel {
+    display: flex;
+    width: 100%;
+    max-height: min(78vh, 48rem);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(calc(100% + 1rem)) scale(0.985);
+    transform-origin: center bottom;
+    transition:
+        transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+        opacity 220ms ease,
+        visibility 0s linear 320ms,
+        box-shadow 220ms ease,
+        border-color 220ms ease,
+        background-color 220ms ease;
+}
+
+#results-page:has(#results-layout.media-mode) #media-preview-panel.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+    transition-delay: 0s;
+}
+
 /* Sticky preview sits below our sticky header (50px bar + 0.75rem pad × 2).
    Do not set `overflow-x: hidden` on `#results-layout` in video mode — it breaks
    sticky; clip the grid column on `#results-main` instead. */
 @media (min-width: 768px) {
-    #media-preview-panel {
+    #results-page:has(#results-layout.media-mode) #media-preview-panel {
         top: var(
             --literallygoogle-sticky-header-offset,
             calc(50px + 1.5rem)
         );
+        left: auto;
+        right: auto;
+        bottom: auto;
         height: calc(
             100vh -
                 var(
@@ -2483,30 +2597,78 @@ body {
                     calc(50px + 1.5rem)
                 )
         );
+        position: sticky;
+        flex: 0 0 0;
+        width: 0;
+        min-width: 0;
+        max-width: 0;
+        margin-inline: 0;
+        border-radius: var(--theme-radius-xl);
+        transform: translateX(1rem) scale(0.975);
+        transform-origin: right center;
+        box-shadow: none;
+        transition:
+            flex-basis 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            width 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            max-width 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            min-width 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            opacity 220ms ease,
+            visibility 0s linear 320ms,
+            box-shadow 220ms ease,
+            border-color 220ms ease,
+            background-color 220ms ease;
     }
 
-    #media-preview-panel.open {
-        border-top: 1px solid var(--border);
+    html[dir="rtl"] #results-page:has(#results-layout.media-mode) #media-preview-panel {
+        transform: translateX(-1rem) scale(0.975);
+        transform-origin: left center;
+    }
+
+    #results-page:has(#results-layout.media-mode) #media-preview-panel.open {
+        flex-basis: var(--mp2-panel-width);
+        width: var(--mp2-panel-width);
+        min-width: 0;
+        max-width: var(--mp2-panel-width);
+        border-top: 1px solid var(--mp2-panel-border);
+        box-shadow: var(--mp2-panel-shadow);
+    }
+
+    #results-page:has(#results-layout.media-mode)
+        #media-preview-panel:not(.open) {
+        border-color: transparent;
+        box-shadow: none;
     }
 }
 
 .mp2-bar {
     flex-shrink: 0;
     z-index: 10;
-    background: var(--bg);
+    background: color-mix(in srgb, var(--bg-light) 82%, var(--bg) 18%);
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 1rem 0.5rem 0.35rem 0.75rem;
-    border-bottom: 1px solid var(--border-light);
-    min-height: 2.75rem;
+    padding: 0.85rem 0.65rem 0.7rem 0.85rem;
+    border-bottom: 1px solid var(--mp2-panel-border);
+    min-height: 3.1rem;
 }
 
 .mp2-body {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.95rem;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    padding: 0.95rem;
+    background:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--bg-light) 52%, transparent) 0%,
+            transparent 28%
+        ),
+        var(--mp2-panel-bg);
 }
 
 .mp2-site {
@@ -2522,23 +2684,22 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
     flex-shrink: 0;
     overflow: hidden;
-    /* Dark mode default: white circle so favicon pops against dark bg */
-    background: var(--white);
+    background: color-mix(in srgb, var(--bg) 74%, var(--white) 26%);
+    border: 1px solid color-mix(in srgb, var(--border-light) 70%, transparent);
 }
 
-/* Light mode: grey circle for subtle definition against light bg */
 [data-theme="light"] .mp2-favicon-bg {
-    background: var(--bg-hover);
+    background: color-mix(in srgb, var(--bg-hover) 82%, white 18%);
 }
 
 @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) .mp2-favicon-bg {
-        background: var(--bg-hover);
+        background: color-mix(in srgb, var(--bg-hover) 82%, white 18%);
     }
 }
 
@@ -2550,8 +2711,10 @@ body {
 }
 
 .mp2-host {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
+    font-size: 0.84rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    letter-spacing: 0.01em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2569,10 +2732,10 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.9rem;
-    height: 1.9rem;
-    border: none;
-    border-radius: var(--theme-radius-sm);
+    width: 2.1rem;
+    height: 2.1rem;
+    border: 1px solid transparent;
+    border-radius: var(--theme-radius-pill);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
@@ -2580,12 +2743,16 @@ body {
     flex-shrink: 0;
     transition:
         background 120ms ease,
-        color 120ms ease;
+        color 120ms ease,
+        border-color 120ms ease,
+        transform 120ms ease;
 }
 
 .mp2-btn:hover {
-    background: var(--bg-hover);
+    background: color-mix(in srgb, var(--bg-hover) 80%, transparent);
+    border-color: color-mix(in srgb, var(--border-light) 75%, transparent);
     color: var(--text-primary);
+    transform: translateY(-1px);
 }
 
 .mp2-btn:disabled {
@@ -2603,11 +2770,11 @@ body {
     top: calc(100% + 6px);
     right: 0;
     min-width: 9.5rem;
-    background: var(--bg-light);
-    border: 1px solid var(--border);
-    border-radius: var(--theme-radius-sm);
+    background: color-mix(in srgb, var(--bg-light) 88%, var(--bg) 12%);
+    border: 1px solid var(--mp2-panel-border);
+    border-radius: var(--theme-radius-md);
     padding: 0.3rem;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 26px color-mix(in srgb, var(--text-primary) 14%, transparent);
     z-index: 30;
 }
 
@@ -2618,7 +2785,7 @@ body {
     width: 100%;
     padding: 0.5rem 0.7rem;
     border: none;
-    border-radius: var(--theme-radius-sm);
+    border-radius: var(--theme-radius-pill);
     background: transparent;
     color: var(--text-primary);
     font-size: 0.88rem;
@@ -2635,13 +2802,151 @@ button.mp2-item[hidden] {
 }
 
 .mp2-item:hover {
-    background: var(--bg-hover);
+    background: color-mix(in srgb, var(--bg-hover) 75%, transparent);
 }
 
 /* RTL: flip the prev/next chevrons so ‹ › become › ‹ */
 [dir="rtl"] #media-preview-prev svg,
 [dir="rtl"] #media-preview-next svg {
     transform: scaleX(-1);
+}
+
+.media-preview-img-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: clamp(17rem, 46vh, 34rem);
+    padding: clamp(0.8rem, 2vw, 1rem);
+    background:
+        radial-gradient(
+            circle at top,
+            color-mix(in srgb, var(--primary) 12%, transparent) 0%,
+            transparent 52%
+        ),
+        color-mix(in srgb, var(--bg-light) 86%, var(--bg) 14%);
+    border: 1px solid color-mix(in srgb, var(--border-light) 80%, transparent);
+    border-radius: var(--theme-radius-xl);
+    overflow: hidden;
+}
+
+.media-preview-img {
+    width: 100%;
+    max-height: clamp(40vh, 30vh + 15vw, 60vh);
+    object-fit: contain;
+    background: transparent;
+    padding: 0;
+    border-radius: calc(var(--theme-radius-lg) - 2px);
+}
+
+.media-preview-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 0.1rem 0 0.25rem;
+}
+
+.media-preview-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.media-preview-link {
+    margin: -0.25rem 0 0;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    display: block;
+}
+
+.media-preview-link:hover {
+    color: var(--text-link);
+    text-decoration: underline;
+}
+
+.media-preview-engines {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.media-preview-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    padding-top: 0.1rem;
+}
+
+.media-preview-visit,
+.media-preview-download {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.7rem;
+    padding: 0.72rem 1rem;
+    border-radius: var(--theme-radius-pill);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.media-preview-visit {
+    background: var(--primary);
+    border: 1px solid transparent;
+    color: var(--white);
+}
+
+.media-preview-visit:hover {
+    background: var(--primary-hover);
+    color: var(--white);
+}
+
+.media-preview-download {
+    background: color-mix(in srgb, var(--bg-light) 82%, var(--bg) 18%);
+    border: 1px solid color-mix(in srgb, var(--border-light) 75%, transparent);
+    color: var(--text-primary);
+}
+
+.media-preview-download:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+#results-page:has(#results-layout.media-mode) #media-preview-panel .mp2-bar,
+#results-page:has(#results-layout.media-mode) #media-preview-panel .mp2-body {
+    opacity: 0;
+    transform: translateY(0.7rem) scale(0.985);
+    transition:
+        opacity 200ms ease,
+        transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#results-page:has(#results-layout.media-mode) #media-preview-panel.open .mp2-bar,
+#results-page:has(#results-layout.media-mode) #media-preview-panel.open .mp2-body {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+#results-page:has(#results-layout.media-mode) #media-preview-panel.open .mp2-bar {
+    transition-delay: 50ms;
+}
+
+#results-page:has(#results-layout.media-mode) #media-preview-panel.open .mp2-body {
+    transition-delay: 90ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #results-page:has(#results-layout.media-mode) #media-preview-panel,
+    #results-page:has(#results-layout.media-mode) #media-preview-panel .mp2-bar,
+    #results-page:has(#results-layout.media-mode) #media-preview-panel .mp2-body,
+    .mp2-btn,
+    .mp2-item {
+        transition: none !important;
+        transform: none !important;
+    }
 }
 .mp2-toast {
     position: fixed;
