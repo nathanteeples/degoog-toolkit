@@ -1498,6 +1498,15 @@ body {
     padding-inline-end: var(--theme-media-inline-gutter);
 }
 
+#results-page:has(#results-list .skeleton-image-grid) {
+    --theme-media-inline-gutter: 0.75rem;
+}
+
+#results-page:has(#results-list .skeleton-image-grid) #results-layout {
+    padding-inline-start: var(--theme-media-inline-gutter);
+    padding-inline-end: var(--theme-media-inline-gutter);
+}
+
 #results-page:is(
         :has(#results-tabs .results-tab[data-type="images"].active),
         :has(
@@ -1716,6 +1725,84 @@ body {
         )
         #image-filters-bar {
         margin-inline: 0;
+    }
+
+    /* Keep the image-mode desktop rail pinned during loading skeletons after
+       filter changes, when core temporarily swaps out `.image-card`s. */
+    #results-page:has(#results-list .skeleton-image-grid) #results-layout {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        max-width: none;
+        margin-inline: 0;
+        margin-top: 0.5rem;
+        gap: var(--literallygoogle-media-row-gap);
+        min-width: 0;
+    }
+
+    #results-page:has(#results-list .skeleton-image-grid) #results-main {
+        order: var(--literallygoogle-image-results-order);
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+    }
+
+    #results-page:has(#results-list .skeleton-image-grid) #image-filters-bar {
+        order: var(--literallygoogle-image-organizers-order);
+        flex: 0 0 var(--literallygoogle-media-filter-width);
+        width: var(--literallygoogle-media-filter-width);
+        min-width: 0;
+        max-width: var(--literallygoogle-media-filter-width);
+        align-self: start;
+        box-sizing: border-box;
+        position: sticky;
+        top: var(
+            --literallygoogle-sticky-header-offset,
+            calc(50px + 1.5rem)
+        );
+        bottom: auto;
+        inset-inline-start: auto;
+        inset-inline-end: auto;
+        left: auto;
+        right: auto;
+        max-height: calc(
+            100vh -
+                var(
+                    --literallygoogle-sticky-header-offset,
+                    calc(50px + 1.5rem)
+                )
+        );
+        margin: 0;
+        margin-inline: 0;
+        overflow-y: auto;
+        padding-inline: 0;
+        padding-block-start: 0;
+        transform: none;
+        z-index: 1;
+    }
+
+    #results-page:has(#results-list .skeleton-image-grid) #media-preview-panel {
+        order: var(--literallygoogle-image-preview-order);
+    }
+
+    #results-page:has(#results-list .skeleton-image-grid)
+        #results-layout:not(:has(#media-preview-panel.open))
+        #results-main {
+        flex: 1 1 0;
+        width: auto;
+        max-width: none;
+    }
+
+    #results-page:has(#results-list .skeleton-image-grid) #sidebar-col {
+        display: none;
+    }
+
+    html[data-image-mode-desktop-layout="preview-left"]
+        #results-page:has(#results-list .skeleton-image-grid)
+        #media-preview-panel {
+        transform: translateX(-1rem) scale(0.975);
+        transform-origin: left center;
     }
 }
 
