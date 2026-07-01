@@ -53,39 +53,13 @@
     animation: weather-flash 3.5s ease-in-out infinite;
 }
 
-/* Flatten degoog slot shell — card is self-contained (no double frame / extra padding). */
-.results-slot-panel:has(> .results-slot-panel-body > .weather-result.slot-full-width) {
-    max-width: none;
-    overflow: visible;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-}
-
+/* Keep themed slot panel frame; only remove excess padding below attribution. */
 .results-slot-panel:has(> .results-slot-panel-body > .weather-result.slot-full-width)
-    > .results-slot-panel-body {
-    width: 100%;
-    max-width: none;
-    padding: 0;
-}
-
-#results-page.degoog-fullwidth-slot-shell
-    .results-slot-panel:has(.weather-result.slot-full-width) {
-    max-width: none;
-    overflow: visible;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-}
-
+    > .results-slot-panel-body,
 #results-page.degoog-fullwidth-slot-shell
     .results-slot-panel:has(.weather-result.slot-full-width)
     > .results-slot-panel-body {
-    padding: 0;
-    max-width: none;
-    width: 100%;
+    padding-bottom: 0;
 }
 
 .weather-result {
@@ -617,41 +591,28 @@ html[data-theme="dark"] .weather-astro-ico-moon {
 }
 
 .weather-astro-arc-bg {
-    stroke: color-mix(in srgb, var(--text-secondary) 28%, transparent);
+    stroke: color-mix(in srgb, var(--text-secondary) 15%, transparent);
+    stroke-dasharray: 2 2;
     stroke-linecap: round;
-    opacity: 0.55;
-}
-
-html[data-theme="dark"] .weather-astro-arc-bg {
-    stroke: color-mix(in srgb, var(--text-secondary) 45%, transparent);
-    opacity: 0.7;
 }
 
 .weather-astro-arc-fill {
+    stroke-dasharray: 200;
+    stroke-dashoffset: var(--weather-arc-target, 200);
     stroke-linecap: round;
-    transition: stroke-dashoffset 0.45s ease-out;
+    transition: stroke-dashoffset 0.5s ease-out;
 }
 
 .weather-sun-arc-fill {
-    stroke: #fbbc04;
-    opacity: 1;
+    stroke: color-mix(in srgb, #f59e0b 50%, transparent);
 }
 
 .weather-sun-track[data-sun-state="set"] .weather-sun-arc-fill {
     opacity: 0.42;
 }
 
-.weather-sun-track[data-sun-state="pre"] .weather-sun-arc-fill {
-    opacity: 0;
-}
-
 .weather-moon-arc-fill {
-    stroke: #70757a;
-    opacity: 1;
-}
-
-html[data-theme="dark"] .weather-moon-arc-fill {
-    stroke: #f1f3f4;
+    stroke: color-mix(in srgb, var(--text-primary) 35%, transparent);
 }
 
 .weather-sun-dot,
@@ -660,13 +621,12 @@ html[data-theme="dark"] .weather-moon-arc-fill {
     width: 7px;
     height: 7px;
     border-radius: 50%;
+    top: 0;
     transform: translate(-50%, -50%);
-    box-shadow:
-        0 0 0 2px color-mix(in srgb, var(--bg-light) 92%, transparent),
-        0 1px 2px color-mix(in srgb, var(--text-primary) 18%, transparent);
+    box-shadow: 0 0 6px currentColor;
     transition:
-        left 0.45s ease-out,
-        top 0.45s ease-out,
+        left 0.5s ease-out,
+        top 0.5s ease-out,
         opacity 0.2s ease-out;
     z-index: 2;
 }
@@ -677,18 +637,13 @@ html[data-theme="dark"] .weather-moon-arc-fill {
 }
 
 .weather-sun-dot {
-    background: #fbbc04;
-    color: #fbbc04;
+    background: #f59e0b;
+    color: #f59e0b;
 }
 
 .weather-moon-dot {
-    background: #70757a;
-    color: #70757a;
-}
-
-html[data-theme="dark"] .weather-moon-dot {
-    background: #f1f3f4;
-    color: #f1f3f4;
+    background: #e5e7eb;
+    color: #e5e7eb;
 }
 
 .weather-astro-apex {

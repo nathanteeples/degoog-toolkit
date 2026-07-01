@@ -596,33 +596,25 @@
       precipUnit: payload.precipUnit,
     };
 
-    const ASTRO_VB = { w: 200, h: 60 };
-    const ASTRO_BEZIER = { x0: 4, y0: 52, x1: 100, y1: 6, x2: 196, y2: 52 };
-
-    function astroBezierPoint(pct) {
-      const t = Math.max(0, Math.min(100, Number(pct) || 0)) / 100;
-      const mt = 1 - t;
-      return {
-        x: mt * mt * ASTRO_BEZIER.x0 + 2 * mt * t * ASTRO_BEZIER.x1 + t * t * ASTRO_BEZIER.x2,
-        y: mt * mt * ASTRO_BEZIER.y0 + 2 * mt * t * ASTRO_BEZIER.y1 + t * t * ASTRO_BEZIER.y2,
-      };
-    }
-
     function setAstroArcProgress(arcEl, pct) {
-      if (!arcEl?.getTotalLength) return;
-      const len = arcEl.getTotalLength();
+      if (!arcEl) return;
       const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
-      arcEl.style.strokeDasharray = String(len);
-      arcEl.style.strokeDashoffset = String(len - (len * clamped) / 100);
+      const dashOffset = 200 - (200 * clamped) / 100;
+      arcEl.style.setProperty("--weather-arc-target", String(dashOffset));
     }
 
     function setAstroDotPosition(trackEl, dotEl, pct) {
       if (!trackEl || !dotEl) return;
 
-      const { x, y } = astroBezierPoint(pct);
-      const trackH = trackEl.clientHeight || 40;
-      dotEl.style.left = (x / ASTRO_VB.w) * 100 + "%";
-      dotEl.style.top = (y / ASTRO_VB.h) * trackH + "px";
+      const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
+      const t = clamped / 100;
+      const y = (1 - t) * (1 - t) * 48 + 2 * (1 - t) * t * 8 + t * t * 48;
+      const trackHeight = trackEl.clientHeight || 40;
+      const dotSize = dotEl.offsetHeight || 7;
+      const topPx = (y / 56) * trackHeight - dotSize / 2;
+
+      dotEl.style.left = clamped + "%";
+      dotEl.style.top = topPx + "px";
     }
 
     function syncAstroTracks() {
@@ -674,7 +666,7 @@
           setAstroArcProgress(sunArc, pct);
           sunDot.dataset.pct = String(pct);
           setAstroDotPosition(sunTrack, sunDot, pct);
-          sunDot.hidden = !(pct > 0);
+          sunDot.hidden = false;
           sunTrack.dataset.sunState = payload.sun.isUp
             ? "up"
             : pct >= 100
@@ -703,21 +695,22 @@
         }
         if (moonApexVal && showApex) moonApexVal.textContent = apexStr;
 
+        setAstroArcProgress(moonArc, 100);
+
         if (moonDot && moonTrack) {
-          if (activeDayIndex === 0 && day.moon.isUp && moonArc) {
+          if (activeDayIndex === 0 && day.moon.isUp) {
             const pct = Math.min(100, Math.max(0, day.moon.nowPct));
-            setAstroArcProgress(moonArc, pct);
             moonDot.dataset.pct = String(pct);
             setAstroDotPosition(moonTrack, moonDot, pct);
             moonDot.hidden = false;
           } else {
-            if (moonArc) setAstroArcProgress(moonArc, 0);
             moonDot.hidden = true;
           }
         }
       } else if (moonRow) {
         moonRow.style.display = "none";
         if (moonApexWrap) moonApexWrap.hidden = true;
+        setAstroArcProgress(moonArc, 0);
       }
 
       requestAnimationFrame(syncAstroTracks);
