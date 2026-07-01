@@ -8,6 +8,8 @@
   const DEBUG_BOOT = "degoog-oidc-debug-boot";
 
   let debugEnabled = false;
+  let mountObserver = null;
+  let mountQueued = false;
 
   const bootCount = (() => {
     try {
@@ -69,26 +71,160 @@
     return chars.toUpperCase();
   };
 
-  const avatarMarkup = (me) =>
+  const icon = (kind) => {
+    if (kind === "settings") {
+      return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 8.75a3.25 3.25 0 1 0 0 6.5a3.25 3.25 0 0 0 0-6.5Zm9 3.25c0-.45-.04-.88-.13-1.3l-2.2-.34a6.77 6.77 0 0 0-.68-1.63l1.32-1.8a9.36 9.36 0 0 0-1.84-1.84l-1.8 1.32a6.77 6.77 0 0 0-1.63-.68l-.34-2.2A9.6 9.6 0 0 0 12 3c-.45 0-.88.04-1.3.13l-.34 2.2c-.57.14-1.12.37-1.63.68l-1.8-1.32a9.36 9.36 0 0 0-1.84 1.84l1.32 1.8c-.31.51-.54 1.06-.68 1.63l-2.2.34A9.6 9.6 0 0 0 3 12c0 .45.04.88.13 1.3l2.2.34c.14.57.37 1.12.68 1.63l-1.32 1.8a9.36 9.36 0 0 0 1.84 1.84l1.8-1.32c.51.31 1.06.54 1.63.68l.34 2.2c.42.09.85.13 1.3.13c.45 0 .88-.04 1.3-.13l.34-2.2c.57-.14 1.12-.37 1.63-.68l1.8 1.32a9.36 9.36 0 0 0 1.84-1.84l-1.32-1.8c.31-.51.54-1.06.68-1.63l2.2-.34c.09-.42.13-.85.13-1.3Z" />
+        </svg>`;
+    }
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M9 4.5a.75.75 0 0 0 0 1.5h7.19l-9.97 9.97a.75.75 0 1 0 1.06 1.06l9.97-9.97V14.25a.75.75 0 0 0 1.5 0V4.5H9Z" />
+        <path d="M5.25 7.5A2.25 2.25 0 0 0 3 9.75v8A2.25 2.25 0 0 0 5.25 20h8A2.25 2.25 0 0 0 15.5 17.75V14a.75.75 0 0 0-1.5 0v3.75a.75.75 0 0 1-.75.75h-8a.75.75 0 0 1-.75-.75v-8A.75.75 0 0 1 5.25 9H9a.75.75 0 0 0 0-1.5H5.25Z" />
+      </svg>`;
+  };
+
+  const avatarMarkup = (me, className = "degoog-oidc-avatar") =>
     me.picture
-      ? `<img class="degoog-oidc-avatar" src="${escapeHtml(me.picture)}" alt="">`
-      : `<span class="degoog-oidc-avatar degoog-oidc-avatar-initials">${escapeHtml(
+      ? `<img class="${escapeHtml(className)}" src="${escapeHtml(me.picture)}" alt="" referrerpolicy="no-referrer" data-oidc-avatar-image="true">`
+      : `<span class="${escapeHtml(className)} degoog-oidc-avatar-initials">${escapeHtml(
           initials(me.name, me.email),
         )}</span>`;
+
+  const findMount = () => {
+    const resultsSettings = document.getElementById("nav-settings-results");
+    if (resultsSettings && resultsSettings.parentElement) {
+      return {
+        target: resultsSettings.parentElement,
+        before: resultsSettings.nextElementSibling,
+        mode: "cluster",
+      };
+    }
+
+    const homeSettings = document.getElementById("nav-settings-top");
+    if (homeSettings && homeSettings.parentElement) {
+      return {
+        target: homeSettings.parentElement,
+        before: homeSettings.nextElementSibling,
+        mode: "cluster",
+      };
+    }
+
+    const appsPocket = document.querySelector(".apps-pocket-wrapper");
+    if (appsPocket) {
+      return {
+        target: appsPocket,
+        before: appsPocket.querySelector("#apps-pocket-panel"),
+        mode: "cluster",
+      };
+    }
+
+    const headerRight = document.querySelector("#header .header-right");
+    if (headerRight) {
+      return { target: headerRight, before: null, mode: "inline" };
+    }
+
+    const resultsHeader = document.getElementById("results-header");
+    if (resultsHeader) {
+      return { target: resultsHeader, before: null, mode: "inline" };
+    }
+
+    const header = document.getElementById("header");
+    if (header) {
+      return { target: header, before: null, mode: "inline" };
+    }
+
+    return { target: document.body, before: null, mode: "floating" };
+  };
+
+  const mount = (wrap) => {
+    const { target, before, mode } = findMount();
+    if (!target) return;
+    const alreadyPlaced =
+      wrap.parentElement === target &&
+      (!before || wrap.nextElementSibling === before);
+    if (!alreadyPlaced) {
+      if (before && before.parentElement === target) {
+        target.insertBefore(wrap, before);
+      } else {
+        target.appendChild(wrap);
+      }
+    }
+    wrap.classList.toggle("degoog-oidc-user--floating", mode === "floating");
+    wrap.classList.toggle("degoog-oidc-user--inline", mode !== "floating");
+    wrap.dataset.mountMode = mode;
+    log("avatar.mount", {
+      mode,
+      targetId: target.id || "",
+      targetClass: target.className || "",
+      beforeId: before?.id || "",
+    });
+  };
+
+  const queueMount = (wrap) => {
+    if (!wrap || mountQueued) return;
+    mountQueued = true;
+    window.requestAnimationFrame(() => {
+      mountQueued = false;
+      mount(wrap);
+    });
+  };
+
+  const observeMount = (wrap) => {
+    if (mountObserver || !document.body) return;
+    mountObserver = new MutationObserver(() => {
+      queueMount(wrap);
+    });
+    mountObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+    window.addEventListener(
+      "pagehide",
+      () => {
+        mountObserver?.disconnect();
+        mountObserver = null;
+      },
+      { once: true },
+    );
+  };
+
+  const wireAvatarFallbacks = (wrap, me) => {
+    wrap.querySelectorAll("[data-oidc-avatar-image='true']").forEach((img) => {
+      img.addEventListener("error", () => {
+        const replacement = document.createElement("span");
+        replacement.className = `${img.className} degoog-oidc-avatar-initials`;
+        replacement.textContent = initials(me.name, me.email);
+        img.replaceWith(replacement);
+        log("avatar.image-error", {
+          src: img.getAttribute("src") || "",
+        });
+      });
+    });
+  };
 
   const wire = (wrap) => {
     const trigger = wrap.querySelector(".degoog-oidc-trigger");
     const menu = wrap.querySelector(".degoog-oidc-menu");
+    const close = () => {
+      menu.hidden = true;
+      trigger.setAttribute("aria-expanded", "false");
+    };
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
       const opening = menu.hidden;
       menu.hidden = !opening;
       trigger.setAttribute("aria-expanded", String(opening));
+      log("menu.toggle", { open: opening });
     });
     document.addEventListener("click", (e) => {
       if (wrap.contains(e.target)) return;
-      menu.hidden = true;
-      trigger.setAttribute("aria-expanded", "false");
+      close();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      close();
     });
     wrap.querySelector(".degoog-oidc-logout").addEventListener("click", async () => {
       log("logout.click", { apiBase: API_BASE });
@@ -186,7 +322,11 @@
   };
 
   const render = (me) => {
-    if (document.getElementById(MOUNT_ID)) return;
+    const existing = document.getElementById(MOUNT_ID);
+    if (existing) {
+      mount(existing);
+      return;
+    }
     log("avatar.render", {
       email: me.email || "",
       name: me.name || "",
@@ -196,15 +336,32 @@
     wrap.id = MOUNT_ID;
     wrap.className = "degoog-oidc-user";
     wrap.innerHTML = `
-      <button type="button" class="degoog-oidc-trigger" aria-haspopup="true" aria-expanded="false">
+      <button type="button" class="degoog-oidc-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Open account menu">
         ${avatarMarkup(me)}
       </button>
-      <div class="degoog-oidc-menu" hidden>
-        <p class="degoog-oidc-name">${escapeHtml(me.name || me.email)}</p>
-        ${me.email ? `<p class="degoog-oidc-email">${escapeHtml(me.email)}</p>` : ""}
-        <button type="button" class="degoog-oidc-logout">Sign out</button>
+      <div class="degoog-oidc-menu" hidden role="menu">
+        <div class="degoog-oidc-menu-profile">
+          ${avatarMarkup(me, "degoog-oidc-avatar degoog-oidc-avatar--menu")}
+          <div class="degoog-oidc-menu-copy">
+            <p class="degoog-oidc-name">${escapeHtml(me.name || me.email)}</p>
+            ${me.email ? `<p class="degoog-oidc-email">${escapeHtml(me.email)}</p>` : ""}
+          </div>
+        </div>
+        <div class="degoog-oidc-menu-rows">
+          <a class="degoog-oidc-row" href="/settings" role="menuitem">
+            <span class="degoog-oidc-row-icon">${icon("settings")}</span>
+            <span class="degoog-oidc-row-label">Settings</span>
+          </a>
+          <button type="button" class="degoog-oidc-row degoog-oidc-logout" role="menuitem">
+            <span class="degoog-oidc-row-icon">${icon("logout")}</span>
+            <span class="degoog-oidc-row-label">Sign out</span>
+          </button>
+        </div>
       </div>`;
     document.body.appendChild(wrap);
+    wireAvatarFallbacks(wrap, me);
+    mount(wrap);
+    observeMount(wrap);
     wire(wrap);
   };
 

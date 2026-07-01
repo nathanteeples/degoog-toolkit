@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { accessDenyDetail, evaluateAccess, isAllowed, readClaim } from "./src/authz.js";
+import {
+  accessDenyDetail,
+  evaluateAccess,
+  isAllowed,
+  readClaim,
+  toProfile,
+} from "./src/authz.js";
+import { userinfoNeeds } from "./src/gate.js";
 import { parseSettings, isConfigured } from "./src/settings.js";
 import { validateClaims } from "./src/jwt.js";
 
@@ -82,6 +89,60 @@ test("claim path reader supports nested objects and arrays", () => {
 
   assert.equal(readClaim(claims, "realm_access.roles.1"), "admin");
   assert.deepEqual(readClaim(claims, "resource_access.search.roles"), ["owner"]);
+});
+
+test("userinfo fetch is requested when only the profile picture is missing", () => {
+  const config = parseSettings({
+    issuer: "https://auth.example.com/application/o/degoog/",
+    clientId: "degoog-admin",
+    allowAnyAuthenticatedUser: true,
+  });
+
+  assert.equal(
+    userinfoNeeds(config, {
+      sub: "123",
+      email: "admin@example.com",
+      name: "Admin",
+    }).needed,
+    true,
+  );
+  assert.equal(
+    userinfoNeeds(config, {
+      sub: "123",
+      email: "admin@example.com",
+      name: "Admin",
+      picture: "https://auth.example.com/avatar.png",
+    }).needed,
+    false,
+  );
+});
+
+test("profile pictures are sanitized to safe URL schemes", () => {
+  assert.equal(
+    toProfile({
+      sub: "123",
+      email: "admin@example.com",
+      picture: "https://auth.example.com/avatar.png",
+    }).picture,
+    "https://auth.example.com/avatar.png",
+  );
+  assert.equal(
+    toProfile({
+      sub: "123",
+      email: "admin@example.com",
+      picture: "javascript:alert(1)",
+    }).picture,
+    "",
+  );
+  assert.equal(
+    toProfile({
+      sub: "123",
+      iss: "https://auth.example.com/application/o/degoog/",
+      email: "admin@example.com",
+      picture: "/media/avatar.png",
+    }).picture,
+    "https://auth.example.com/media/avatar.png",
+  );
 });
 
 test("jwt claim validation rejects bad azp and future iat", () => {

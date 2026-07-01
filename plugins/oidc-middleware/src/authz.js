@@ -5,6 +5,19 @@ const asArray = (v) =>
       ? v.split(/[\s,]+/).filter(Boolean)
       : [];
 
+const safePicture = (value, base) => {
+  if (typeof value !== "string") return "";
+  const picture = value.trim();
+  if (!picture) return "";
+  if (/^data:image\//i.test(picture)) return picture;
+  try {
+    const url = base ? new URL(picture, base) : new URL(picture);
+    return /^(https?):$/.test(url.protocol) ? url.toString() : "";
+  } catch {
+    return "";
+  }
+};
+
 export const readClaim = (claims, path) =>
   String(path || "")
     .split(".")
@@ -114,6 +127,6 @@ export const toProfile = (claims) => {
     sub: claims.sub || "",
     email,
     name: String(name),
-    picture: typeof claims.picture === "string" ? claims.picture : "",
+    picture: safePicture(claims.picture, claims.iss),
   };
 };

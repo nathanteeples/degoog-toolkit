@@ -146,9 +146,10 @@ const onAuthCheck = (req) => {
   return json(response);
 };
 
-const userinfoNeeds = (config, claims) => {
+export const userinfoNeeds = (config, claims) => {
   const missingIdentity =
     !claims.email && !claims.preferred_username && !claims.name;
+  const missingPicture = !claims.picture;
   const missingGroups =
     config.allowedGroups.length > 0 && readClaim(claims, config.groupsClaim) == null;
   const missingRoles =
@@ -162,11 +163,13 @@ const userinfoNeeds = (config, claims) => {
   return {
     needed:
       missingIdentity ||
+      missingPicture ||
       missingGroups ||
       missingRoles ||
       missingEmailRule ||
       missingRequiredClaim,
     missingIdentity,
+    missingPicture,
     missingGroups,
     missingRoles,
     missingEmailRule,
@@ -234,11 +237,25 @@ const onCallback = async (req) => {
     const needUserinfo = userinfoNeeds(config, claims);
     if (needUserinfo.needed) {
       debugLog("settings-auth-callback.userinfo-needed", needUserinfo);
-      const extra = await fetchUserInfo(config, token.access_token);
-      debugLog("settings-auth-callback.userinfo-response", {
-        claims: claimsMeta(extra, config),
-      });
-      claims = { ...extra, ...claims };
+      const pictureOnly =
+        needUserinfo.missingPicture &&
+        !needUserinfo.missingIdentity &&
+        !needUserinfo.missingGroups &&
+        !needUserinfo.missingRoles &&
+        !needUserinfo.missingEmailRule &&
+        !needUserinfo.missingRequiredClaim;
+      try {
+        const extra = await fetchUserInfo(config, token.access_token);
+        debugLog("settings-auth-callback.userinfo-response", {
+          claims: claimsMeta(extra, config),
+        });
+        claims = { ...extra, ...claims };
+      } catch (err) {
+        if (!pictureOnly) throw err;
+        debugError("settings-auth-callback.userinfo-picture-optional", err, {
+          needUserinfo,
+        });
+      }
     }
 
     const access = evaluateAccess(config, claims);
