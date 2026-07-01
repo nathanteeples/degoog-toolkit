@@ -627,8 +627,15 @@
     function setAstroArcProgress(arcEl, pct) {
       if (!arcEl) return;
       const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
-      const dashOffset = 200 - (200 * clamped) / 100;
-      arcEl.style.setProperty("--weather-arc-target", String(dashOffset));
+      let len = 0;
+      try {
+        len = arcEl.getTotalLength ? arcEl.getTotalLength() : 0;
+      } catch (e) {
+        len = 0;
+      }
+      if (!len) len = 200;
+      arcEl.style.strokeDasharray = String(len);
+      arcEl.style.strokeDashoffset = String(len - (len * clamped) / 100);
     }
 
     function setAstroDotPosition(trackEl, dotEl, pathEl, pct) {
