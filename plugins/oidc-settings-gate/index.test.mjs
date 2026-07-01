@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { __test } from "./index.js";
+import command, { __test, middleware, plugin } from "./index.js";
 
 function base64UrlJson(value) {
   return Buffer.from(JSON.stringify(value), "utf8")
@@ -23,6 +23,13 @@ test("runtime config requires an explicit admin authorization rule", () => {
       }),
     /admin allow rule/i,
   );
+});
+
+test("command surface exposes the settings gate toggle and shared plugin metadata", () => {
+  assert.equal(plugin.id, "oidc-settings-gate");
+  assert.equal(middleware.id, "oidc-settings-gate");
+  assert.equal(command.trigger, "oidcgate");
+  assert.equal(command.settingsSchema?.[0]?.key, "useAsSettingsGate");
 });
 
 test("runtime config accepts required claims as the sole admin rule", () => {

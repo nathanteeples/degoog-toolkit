@@ -30,6 +30,183 @@ let flowCache = createMemoryCache(FLOW_TTL_MS);
 let discoveryCache = createMemoryCache(DISCOVERY_TTL_MS);
 let jwksCache = createMemoryCache(JWKS_TTL_MS);
 let rawSettings = {};
+const pluginId = "oidc-settings-gate";
+
+const oidcSettingsSchema = [
+  {
+    key: "publicBaseUrl",
+    label: "Public base URL",
+    type: "url",
+    required: true,
+    placeholder: "https://search.example.com",
+    description:
+      "The externally visible base URL of this degoog instance. Used to build the exact OIDC callback URI.",
+  },
+  {
+    key: "issuer",
+    label: "Issuer URL",
+    type: "url",
+    required: true,
+    placeholder: "https://auth.example.com/application/o/degoog/",
+    description:
+      "Exact OIDC issuer URL from your provider metadata. Authentik, Authelia, Keycloak, Tinyauth, and similar providers should expose this.",
+  },
+  {
+    key: "discoveryUrl",
+    label: "Discovery URL override",
+    type: "url",
+    advanced: true,
+    placeholder:
+      "https://auth.example.com/application/o/degoog/.well-known/openid-configuration",
+    description:
+      "Optional override when the discovery document is not at issuer + /.well-known/openid-configuration.",
+  },
+  {
+    key: "clientId",
+    label: "Client ID",
+    type: "text",
+    required: true,
+    placeholder: "degoog-admin",
+  },
+  {
+    key: "providerLabel",
+    label: "Provider label",
+    type: "text",
+    default: "OIDC",
+    placeholder: "Authentik",
+    description:
+      "Shown on the gate page button as 'Sign in with X'.",
+  },
+  {
+    key: "tokenEndpointAuthMethod",
+    label: "Token endpoint auth method",
+    type: "select",
+    default: "client_secret_basic",
+    options: ["client_secret_basic", "client_secret_post", "none"],
+    description:
+      "Use confidential-client auth by default. 'none' is only for providers configured as PKCE-only public clients.",
+  },
+  {
+    key: "clientSecret",
+    label: "Client secret",
+    type: "password",
+    secret: true,
+    placeholder: "Only optional when auth method is none",
+    description:
+      "Required for client_secret_basic and client_secret_post. Leave blank only if your provider is explicitly configured as a PKCE-only public client.",
+  },
+  {
+    key: "scopes",
+    label: "Scopes",
+    type: "text",
+    default: "openid profile email",
+    placeholder: "openid profile email groups",
+    description:
+      "Space-separated OIDC scopes. Include any provider-specific scope needed for group or role claims.",
+  },
+  {
+    key: "extraAuthorizeParams",
+    label: "Extra authorize params",
+    type: "list",
+    advanced: true,
+    addLabel: "+ Add auth param",
+    description:
+      "Optional provider-specific authorization request parameters such as prompt, audience, or acr_values.",
+    itemSchema: [
+      { key: "key", label: "Param", type: "text" },
+      { key: "value", label: "Value", type: "text" },
+    ],
+  },
+  {
+    key: "allowAnyAuthenticatedUser",
+    label: "Allow any authenticated user",
+    type: "toggle",
+    default: false,
+    description:
+      "Disabled by default. Leave this off and use the allow rules below so authentication alone never grants admin access by accident.",
+  },
+  {
+    key: "allowedEmails",
+    label: "Allowed emails",
+    type: "textarea",
+    placeholder: "admin@example.com\nops@example.com",
+    description:
+      "Optional exact-email allowlist. One email per line or comma-separated.",
+  },
+  {
+    key: "allowedDomains",
+    label: "Allowed email domains",
+    type: "textarea",
+    placeholder: "example.com\ninternal.example",
+    description:
+      "Optional domain allowlist. One domain per line or comma-separated.",
+  },
+  {
+    key: "requireVerifiedEmail",
+    label: "Require verified email",
+    type: "toggle",
+    default: true,
+    description:
+      "Recommended. Email-based allow rules only pass if the provider marks the email as verified.",
+  },
+  {
+    key: "groupsClaim",
+    label: "Groups claim path",
+    type: "text",
+    default: "groups",
+    placeholder: "groups or realm_access.roles",
+    description:
+      "Dot-path to the group or role claim used for group-based admin allow rules.",
+  },
+  {
+    key: "allowedGroups",
+    label: "Allowed groups",
+    type: "textarea",
+    placeholder: "degoog-admins\nplatform-admins",
+    description:
+      "Optional exact group or role allowlist. One value per line or comma-separated.",
+  },
+  {
+    key: "requiredClaims",
+    label: "Required claims",
+    type: "list",
+    addLabel: "+ Add required claim",
+    description:
+      "Optional exact-match claim requirements. Every row must match for access to be granted.",
+    itemSchema: [
+      { key: "claim", label: "Claim path", type: "text" },
+      { key: "value", label: "Expected value", type: "text" },
+    ],
+  },
+  {
+    key: "userInfoFallback",
+    label: "Use userinfo when claims are missing",
+    type: "toggle",
+    default: true,
+    advanced: true,
+    description:
+      "When enabled, the plugin can fill missing profile or group claims from the provider's userinfo endpoint.",
+  },
+  {
+    key: "clockSkewSeconds",
+    label: "Clock skew seconds",
+    type: "text",
+    default: "60",
+    advanced: true,
+    placeholder: "60",
+    description:
+      "Allowed token timestamp skew. Keep this small unless you know your clocks drift.",
+  },
+];
+
+const useAsSettingsGateSetting = {
+  key: "useAsSettingsGate",
+  label: "Use as settings gate",
+  type: "toggle",
+  default: false,
+  description:
+    "Enable this plugin as the gate for /settings and /admin when you save these settings.",
+};
 
 function createMemoryCache(defaultTtlMs) {
   const store = new Map();
@@ -1035,191 +1212,67 @@ function logAuthError(stage, error) {
   console.error(`[oidc-settings-gate] ${stage}: ${message}`);
 }
 
+async function initializePlugin(ctx = {}) {
+  apiBase = ctx.apiBase || apiBase;
+  fetchImpl = ctx.fetch || fetchImpl;
+  flowCache = ctx.useCache
+    ? ctx.useCache("oidc-settings-gate:flows", FLOW_TTL_MS)
+    : flowCache;
+  discoveryCache = ctx.useCache
+    ? ctx.useCache("oidc-settings-gate:discovery", DISCOVERY_TTL_MS)
+    : discoveryCache;
+  jwksCache = ctx.useCache
+    ? ctx.useCache("oidc-settings-gate:jwks", JWKS_TTL_MS)
+    : jwksCache;
+}
+
+function configurePlugin(settings) {
+  rawSettings = settings || {};
+}
+
+export const plugin = {
+  id: pluginId,
+  name: PLUGIN_NAME,
+  description: PLUGIN_DESCRIPTION,
+  settingsSchema: oidcSettingsSchema,
+};
+
+const command = {
+  name: PLUGIN_NAME,
+  description:
+    "Configure and activate the OIDC middleware that protects degoog settings and admin routes.",
+  isClientExposed: false,
+  trigger: "oidcgate",
+  aliases: ["oidcsettings", "oidc-admin"],
+  settingsSchema: [useAsSettingsGateSetting],
+  async init(ctx) {
+    await initializePlugin(ctx);
+  },
+  configure(settings) {
+    configurePlugin(settings);
+  },
+  async execute() {
+    return {
+      title: PLUGIN_NAME,
+      html:
+        '<div class="command-result"><p>Configure this plugin in Settings -> Plugins, then enable "Use as settings gate" to protect /settings and /admin with OIDC.</p></div>',
+    };
+  },
+};
+
+export default command;
+export { command };
+
 export const middleware = {
+  id: pluginId,
   name: PLUGIN_NAME,
   description: PLUGIN_DESCRIPTION,
   isClientExposed: false,
-  settingsSchema: [
-    {
-      key: "publicBaseUrl",
-      label: "Public base URL",
-      type: "url",
-      required: true,
-      placeholder: "https://search.example.com",
-      description:
-        "The externally visible base URL of this degoog instance. Used to build the exact OIDC callback URI.",
-    },
-    {
-      key: "issuer",
-      label: "Issuer URL",
-      type: "url",
-      required: true,
-      placeholder: "https://auth.example.com/application/o/degoog/",
-      description:
-        "Exact OIDC issuer URL from your provider metadata. Authentik, Authelia, Keycloak, Tinyauth, and similar providers should expose this.",
-    },
-    {
-      key: "discoveryUrl",
-      label: "Discovery URL override",
-      type: "url",
-      advanced: true,
-      placeholder:
-        "https://auth.example.com/application/o/degoog/.well-known/openid-configuration",
-      description:
-        "Optional override when the discovery document is not at issuer + /.well-known/openid-configuration.",
-    },
-    {
-      key: "clientId",
-      label: "Client ID",
-      type: "text",
-      required: true,
-      placeholder: "degoog-admin",
-    },
-    {
-      key: "providerLabel",
-      label: "Provider label",
-      type: "text",
-      default: "OIDC",
-      placeholder: "Authentik",
-      description:
-        "Shown on the gate page button as 'Sign in with X'.",
-    },
-    {
-      key: "tokenEndpointAuthMethod",
-      label: "Token endpoint auth method",
-      type: "select",
-      default: "client_secret_basic",
-      options: ["client_secret_basic", "client_secret_post", "none"],
-      description:
-        "Use confidential-client auth by default. 'none' is only for providers configured as PKCE-only public clients.",
-    },
-    {
-      key: "clientSecret",
-      label: "Client secret",
-      type: "password",
-      secret: true,
-      placeholder: "Only optional when auth method is none",
-      description:
-        "Required for client_secret_basic and client_secret_post. Leave blank only if your provider is explicitly configured as a PKCE-only public client.",
-    },
-    {
-      key: "scopes",
-      label: "Scopes",
-      type: "text",
-      default: "openid profile email",
-      placeholder: "openid profile email groups",
-      description:
-        "Space-separated OIDC scopes. Include any provider-specific scope needed for group or role claims.",
-    },
-    {
-      key: "extraAuthorizeParams",
-      label: "Extra authorize params",
-      type: "list",
-      advanced: true,
-      addLabel: "+ Add auth param",
-      description:
-        "Optional provider-specific authorization request parameters such as prompt, audience, or acr_values.",
-      itemSchema: [
-        { key: "key", label: "Param", type: "text" },
-        { key: "value", label: "Value", type: "text" },
-      ],
-    },
-    {
-      key: "allowAnyAuthenticatedUser",
-      label: "Allow any authenticated user",
-      type: "toggle",
-      default: false,
-      description:
-        "Disabled by default. Leave this off and use the allow rules below so authentication alone never grants admin access by accident.",
-    },
-    {
-      key: "allowedEmails",
-      label: "Allowed emails",
-      type: "textarea",
-      placeholder: "admin@example.com\nops@example.com",
-      description:
-        "Optional exact-email allowlist. One email per line or comma-separated.",
-    },
-    {
-      key: "allowedDomains",
-      label: "Allowed email domains",
-      type: "textarea",
-      placeholder: "example.com\ninternal.example",
-      description:
-        "Optional domain allowlist. One domain per line or comma-separated.",
-    },
-    {
-      key: "requireVerifiedEmail",
-      label: "Require verified email",
-      type: "toggle",
-      default: true,
-      description:
-        "Recommended. Email-based allow rules only pass if the provider marks the email as verified.",
-    },
-    {
-      key: "groupsClaim",
-      label: "Groups claim path",
-      type: "text",
-      default: "groups",
-      placeholder: "groups or realm_access.roles",
-      description:
-        "Dot-path to the group or role claim used for group-based admin allow rules.",
-    },
-    {
-      key: "allowedGroups",
-      label: "Allowed groups",
-      type: "textarea",
-      placeholder: "degoog-admins\nplatform-admins",
-      description:
-        "Optional exact group or role allowlist. One value per line or comma-separated.",
-    },
-    {
-      key: "requiredClaims",
-      label: "Required claims",
-      type: "list",
-      addLabel: "+ Add required claim",
-      description:
-        "Optional exact-match claim requirements. Every row must match for access to be granted.",
-      itemSchema: [
-        { key: "claim", label: "Claim path", type: "text" },
-        { key: "value", label: "Expected value", type: "text" },
-      ],
-    },
-    {
-      key: "userInfoFallback",
-      label: "Use userinfo when claims are missing",
-      type: "toggle",
-      default: true,
-      advanced: true,
-      description:
-        "When enabled, the plugin can fill missing profile or group claims from the provider's userinfo endpoint.",
-    },
-    {
-      key: "clockSkewSeconds",
-      label: "Clock skew seconds",
-      type: "text",
-      default: "60",
-      advanced: true,
-      placeholder: "60",
-      description:
-        "Allowed token timestamp skew. Keep this small unless you know your clocks drift.",
-    },
-  ],
   async init(ctx) {
-    apiBase = ctx.apiBase;
-    fetchImpl = ctx.fetch || fetchImpl;
-    flowCache = ctx.useCache
-      ? ctx.useCache("oidc-settings-gate:flows", FLOW_TTL_MS)
-      : flowCache;
-    discoveryCache = ctx.useCache
-      ? ctx.useCache("oidc-settings-gate:discovery", DISCOVERY_TTL_MS)
-      : discoveryCache;
-    jwksCache = ctx.useCache
-      ? ctx.useCache("oidc-settings-gate:jwks", JWKS_TTL_MS)
-      : jwksCache;
+    await initializePlugin(ctx);
   },
   configure(settings) {
-    rawSettings = settings || {};
+    configurePlugin(settings);
   },
   async handle(request, context) {
     try {
