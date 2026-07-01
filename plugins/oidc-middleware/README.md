@@ -20,10 +20,12 @@ This is a request middleware plus a small set of plugin routes. It does not modi
 3. Fill in Issuer URL, Client ID, and Client Secret in the plugin settings.
 4. Set App URL when behind a reverse proxy or on a subpath. Leave blank to derive it from the request.
 5. In Settings -> Plugins, enable `Use as settings gate` for this plugin and save.
+6. If you are debugging the flow, also enable `Debug logging` to emit redacted browser-console and server-log traces.
 
 ## Notes and limitations
 
 - The gate protects the settings and admin area. It does not put a login wall in front of search itself.
 - The avatar cookie is signed with a per-process secret by default, so avatars sign out on restart. Set a stable Avatar cookie secret to persist them or to run multiple instances.
+- Debug logs intentionally redact secrets, tokens, nonces, and cookie values while still showing hashes, lengths, and control-flow decisions.
 - Only RSA-signed `id_token`s are verified today. EC (ES256) support is a possible future upgrade.
 - Sign out clears the avatar cookie and the settings session cookie in the browser.

@@ -46,11 +46,15 @@ export const command = {
     const configured = isConfigured(config);
     const gateEnabled = config?.useAsSettingsGate === true;
     const providerLabel = config?.providerLabel || "OIDC";
+    const debugEnabled = config?.debug === true;
+    const callbackUrl = config?.appUrl
+      ? `${config.appUrl}/api/settings/auth/callback`
+      : "<derived from request>/api/settings/auth/callback";
     const status = gateEnabled
       ? "OIDC is configured and enabled as the settings gate."
       : 'OIDC is configured, but "Use as settings gate" is still off.';
     const hint = gateEnabled
-      ? ""
+      ? `<p>Callback URL: <code>${callbackUrl}</code></p><p>Debug logging: <strong>${debugEnabled ? "on" : "off"}</strong>.</p>`
       : "<p>Enable the gate toggle in Settings, save, then reopen /settings or /admin.</p>";
     return {
       title: middleware.name,

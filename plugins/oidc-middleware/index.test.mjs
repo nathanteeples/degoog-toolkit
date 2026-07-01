@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { isAllowed, readClaim } from "./src/authz.js";
+import { evaluateAccess, isAllowed, readClaim } from "./src/authz.js";
 import { parseSettings, isConfigured } from "./src/settings.js";
 import { validateClaims } from "./src/jwt.js";
 
@@ -28,6 +28,7 @@ test("settings require an explicit admin rule unless any-user is enabled", () =>
     parseSettings({ useAsSettingsGate: "true" }).useAsSettingsGate,
     true,
   );
+  assert.equal(parseSettings({ debug: "true" }).debug, true);
 });
 
 test("authorization supports verified email domains, group paths, role paths, and required claims", () => {
@@ -62,6 +63,14 @@ test("authorization supports verified email domains, group paths, role paths, an
     }),
     false,
   );
+  const denied = evaluateAccess(domainOnlyConfig, {
+    email: "admin@example.com",
+    email_verified: false,
+  });
+  assert.equal(denied.allowed, false);
+  assert.equal(denied.emailVerified, false);
+  assert.equal(denied.domainMatch, false);
+  assert.equal(denied.selectorConfigured, true);
 });
 
 test("claim path reader supports nested objects and arrays", () => {

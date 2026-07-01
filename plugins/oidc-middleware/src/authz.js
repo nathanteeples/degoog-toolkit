@@ -24,7 +24,7 @@ const matchesExpected = (actual, expected) => {
   return String(actual) === expected;
 };
 
-export const isAllowed = (config, claims) => {
+export const evaluateAccess = (config, claims) => {
   const email = typeof claims.email === "string" ? claims.email.toLowerCase() : "";
   const emailVerified =
     claims.email_verified === true ||
@@ -36,15 +36,20 @@ export const isAllowed = (config, claims) => {
   const domainMatch =
     emailUsable &&
     config.allowedDomains.includes((email.split("@")[1] || "").toLowerCase());
-  const groupMatch = config.allowedGroups.some((group) =>
-    asArray(readClaim(claims, config.groupsClaim)).includes(group),
-  );
-  const roleMatch = config.allowedRoles.some((role) =>
-    asArray(readClaim(claims, config.rolesClaim)).includes(role),
-  );
-  const requiredClaimsMatch = config.requiredClaims.every(({ claim, value }) =>
-    matchesExpected(readClaim(claims, claim), value),
-  );
+  const groupsSeen = asArray(readClaim(claims, config.groupsClaim));
+  const rolesSeen = asArray(readClaim(claims, config.rolesClaim));
+  const groupMatch = config.allowedGroups.some((group) => groupsSeen.includes(group));
+  const roleMatch = config.allowedRoles.some((role) => rolesSeen.includes(role));
+  const requiredClaims = config.requiredClaims.map(({ claim, value }) => {
+    const actual = readClaim(claims, claim);
+    return {
+      claim,
+      expected: value,
+      matched: matchesExpected(actual, value),
+      actual,
+    };
+  });
+  const requiredClaimsMatch = requiredClaims.every((entry) => entry.matched);
 
   const selectorConfigured =
     config.allowAnyAuthenticatedUser ||
@@ -59,8 +64,25 @@ export const isAllowed = (config, claims) => {
     groupMatch ||
     roleMatch;
 
-  return selectorConfigured ? selectorMatch && requiredClaimsMatch : false;
+  return {
+    allowed: selectorConfigured ? selectorMatch && requiredClaimsMatch : false,
+    email,
+    emailVerified,
+    emailUsable: Boolean(emailUsable),
+    exactEmailMatch,
+    domainMatch,
+    groupMatch,
+    roleMatch,
+    groupsSeen,
+    rolesSeen,
+    requiredClaims,
+    requiredClaimsMatch,
+    selectorConfigured,
+    selectorMatch,
+  };
 };
+
+export const isAllowed = (config, claims) => evaluateAccess(config, claims).allowed;
 
 export const toProfile = (claims) => {
   const email = typeof claims.email === "string" ? claims.email : "";

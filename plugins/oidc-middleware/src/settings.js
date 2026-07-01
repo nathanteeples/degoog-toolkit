@@ -261,6 +261,6 @@ export const settingsSchema = [
     key: "debug",
     label: "Debug logging",
     type: "toggle",
-    description: "Log OIDC flow details to the server console.",
+    description: "Log redacted OIDC flow details to the degoog server logs and browser console.",
   },
 ];
