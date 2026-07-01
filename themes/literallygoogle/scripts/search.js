@@ -418,6 +418,8 @@ function getLgTranslation(key) {
 
 /* ── 4. Move spell-check notices into #results-meta ─────────────────────── */
 (() => {
+    let spellCheckFrame = 0;
+
     function wrapResultsStats(meta) {
         if (!meta || meta.querySelector(".results-meta-stats")) return;
         for (let i = 0; i < meta.childNodes.length; i++) {
@@ -437,10 +439,16 @@ function getLgTranslation(key) {
         const tools = meta.querySelector(".tools-panel.lg-tools-inline");
         const stats = meta.querySelector(".results-meta-stats");
         if (tools) {
+            if (notice.previousElementSibling === tools) return;
             tools.insertAdjacentElement("afterend", notice);
-        } else if (stats) {
+            return;
+        }
+        if (stats) {
+            if (notice.parentNode === meta && notice.nextElementSibling === stats) return;
             meta.insertBefore(notice, stats);
-        } else if (notice.parentNode !== meta) {
+            return;
+        }
+        if (notice.parentNode !== meta) {
             meta.appendChild(notice);
         }
     }
@@ -463,13 +471,45 @@ function getLgTranslation(key) {
         }
     }
 
+    function scheduleSpellCheck() {
+        if (spellCheckFrame) return;
+        spellCheckFrame = requestAnimationFrame(() => {
+            spellCheckFrame = 0;
+            moveSpellCheck();
+        });
+    }
+
+    function mutationNeedsSpellCheck(mutations) {
+        for (const mutation of mutations) {
+            if (mutation.target?.id === "results-meta" && mutation.type === "childList") {
+                return true;
+            }
+            if (
+                mutation.type === "characterData" &&
+                mutation.target.parentElement?.closest("#results-meta")
+            ) {
+                return true;
+            }
+            for (const node of mutation.addedNodes) {
+                if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                if (
+                    node.matches?.(".spell-check-notice, #results-meta, #tools-panel") ||
+                    node.querySelector?.(".spell-check-notice")
+                ) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     const target = document.getElementById("results-page") || document.documentElement;
     new MutationObserver(mutations => {
-        const shouldCheck = mutations.some(mutation => mutation.addedNodes.length > 0);
-        if (shouldCheck) moveSpellCheck();
+        if (mutationNeedsSpellCheck(mutations)) scheduleSpellCheck();
     }).observe(target, {
         childList: true,
         subtree: true,
+        characterData: true,
     });
 
     moveSpellCheck();
@@ -477,6 +517,8 @@ function getLgTranslation(key) {
 
 /* ── 4b. Inline web filters (Time / Language) into #results-meta ──────── */
 (() => {
+    let toolsInlineFrame = 0;
+
     function isWebTabActive() {
         const active = document.querySelector(
             '#results-tabs .results-tab.active, #results-tabs .results-tab[aria-selected="true"]',
@@ -497,34 +539,66 @@ function getLgTranslation(key) {
             if (panel.parentNode !== meta) {
                 meta.insertBefore(panel, meta.firstChild);
             }
-            panel.classList.add("lg-tools-inline");
-            panel.hidden = false;
-            panel.style.removeProperty("display");
-        } else {
+            if (!panel.classList.contains("lg-tools-inline")) {
+                panel.classList.add("lg-tools-inline");
+            }
+            if (panel.hidden) panel.hidden = false;
+            if (panel.style.display === "none") {
+                panel.style.removeProperty("display");
+            }
+        } else if (panel.classList.contains("lg-tools-inline")) {
             panel.classList.remove("lg-tools-inline");
         }
 
-        if (toolsBar) {
+        if (toolsBar && toolsBar.hidden !== webTab) {
             toolsBar.hidden = webTab;
         }
+    }
 
-        document.querySelectorAll("#results-meta .spell-check-notice").forEach(notice => {
-            const tools = meta.querySelector(".tools-panel.lg-tools-inline");
-            if (tools && notice.previousElementSibling !== tools) {
-                tools.insertAdjacentElement("afterend", notice);
-            }
+    function scheduleInlineTools() {
+        if (toolsInlineFrame) return;
+        toolsInlineFrame = requestAnimationFrame(() => {
+            toolsInlineFrame = 0;
+            inlineToolsPanel();
         });
     }
 
-    const target = document.getElementById("results-page") || document.documentElement;
-    new MutationObserver(() => {
-        inlineToolsPanel();
-    }).observe(target, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ["class", "aria-selected", "style", "hidden"],
-    });
+    function mutationNeedsToolsInline(mutations) {
+        for (const mutation of mutations) {
+            if (mutation.type === "attributes") {
+                if (mutation.target.closest?.("#results-tabs .results-tab")) return true;
+                continue;
+            }
+            for (const node of mutation.addedNodes) {
+                if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                if (
+                    node.id === "tools-panel" ||
+                    node.id === "results-meta" ||
+                    node.id === "results-tabs" ||
+                    node.querySelector?.("#tools-panel, #results-meta, #results-tabs")
+                ) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    const page = document.getElementById("results-page");
+    if (page) {
+        new MutationObserver(mutations => {
+            if (mutationNeedsToolsInline(mutations)) scheduleInlineTools();
+        }).observe(page, { childList: true, subtree: true });
+
+        const tabs = document.getElementById("results-tabs");
+        if (tabs) {
+            new MutationObserver(() => scheduleInlineTools()).observe(tabs, {
+                attributes: true,
+                attributeFilter: ["class", "aria-selected"],
+                subtree: true,
+            });
+        }
+    }
 
     inlineToolsPanel();
 })();
