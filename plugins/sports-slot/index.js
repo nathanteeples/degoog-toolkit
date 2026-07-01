@@ -18,7 +18,7 @@ const BALLDONTLIE_BASE = {
   mlb: "https://api.balldontlie.io/mlb/v1",
 };
 const PLUGIN_NAME = "Sports";
-const PLUGIN_VERSION = "0.3.51";
+const PLUGIN_VERSION = "0.3.52";
 const ESPN_LIVE_REFRESH_MS = 10_000;
 
 const FALLBACK_STRINGS = {
@@ -2319,8 +2319,16 @@ function renderFocusScoreboard(
   if (!game) return "";
 
   let statusText = game.status || "";
-  if (sport === "soccer" && game.state === "final" && statusText === "Final") {
+  if (
+    sport === "soccer" &&
+    game.state === "final" &&
+    statusText === "Final" &&
+    !game.penaltyShootout
+  ) {
     statusText = "Full-time";
+  }
+  if (game.penaltyShootout?.complete) {
+    statusText = "After pens";
   }
 
   const isToday =
@@ -2339,6 +2347,7 @@ function renderFocusScoreboard(
   const venueHtml = game.meta
     ? `<div class="sports-slot__scoreboard-meta">${escapeHtml(game.meta)}</div>`
     : "";
+  const penaltyHtml = sport === "soccer" ? renderPenaltyShootout(game.penaltyShootout, game) : "";
 
   return `
     <section class="sports-slot__scoreboard sports-slot__scoreboard--horizontal sports-slot__scoreboard--${escapeHtml(
@@ -2366,6 +2375,7 @@ function renderFocusScoreboard(
         </div>
       </div>
       ${subLabelHtml}
+      ${penaltyHtml}
       ${scorersHtml}
       ${venueHtml}
     </section>
@@ -2525,8 +2535,101 @@ function renderMatchFactsStrip(facts) {
   `;
 }
 
+function renderPenaltyShootout(shootout, game) {
+  if (!shootout) return "";
+
+  const regularLimit = 5;
+  const visibleShots = Math.max(
+    regularLimit,
+    shootout.homeShots.length,
+    shootout.awayShots.length,
+  );
+  const suddenDeathActive = visibleShots > regularLimit;
+  const statusLabel = shootout.complete
+    ? `Pens ${shootout.homeTotal}-${shootout.awayTotal}`
+    : shootout.active
+      ? shootout.phaseLabel || `Pens ${shootout.homeTotal}-${shootout.awayTotal}`
+      : `Penalty shootout ${shootout.homeTotal}-${shootout.awayTotal}`;
+
+  return `
+    <section class="sports-slot__penalties${
+      shootout.active ? " sports-slot__penalties--live" : ""
+    }" aria-label="Penalty shootout">
+      <div class="sports-slot__penalties-head">
+        <div>
+          <div class="sports-slot__penalties-kicker">Penalty shootout</div>
+          <div class="sports-slot__penalties-status">${escapeHtml(statusLabel)}</div>
+        </div>
+        ${
+          shootout.summaryText
+            ? `<div class="sports-slot__penalties-summary">${escapeHtml(shootout.summaryText)}</div>`
+            : ""
+        }
+      </div>
+      ${renderPenaltyShootoutRow("home", shootout, game, visibleShots)}
+      ${renderPenaltyShootoutRow("away", shootout, game, visibleShots)}
+      ${
+        suddenDeathActive
+          ? `<div class="sports-slot__penalties-note">SD markers appear after the first five kicks.</div>`
+          : ""
+      }
+    </section>
+  `;
+}
+
+function renderPenaltyShootoutRow(side, shootout, game, visibleShots) {
+  const shots = side === "home" ? shootout.homeShots : shootout.awayShots;
+  const total = side === "home" ? shootout.homeTotal : shootout.awayTotal;
+  const teamName = side === "home" ? game.homeTeam : game.awayTeam;
+  const teamAbbr = side === "home" ? game.homeAbbr : game.awayAbbr;
+  const brand = side === "home" ? game.homeBrand : game.awayBrand;
+  const shotCells = Array.from({ length: visibleShots }, (_, index) => {
+    const shot = shots[index];
+    const segmentClass =
+      index >= 5
+        ? ` sports-slot__penalty-shot--sudden-death${
+            index === 5 ? " sports-slot__penalty-shot--sudden-death-start" : ""
+          }`
+        : "";
+    const stateClass = shot
+      ? shot.didScore
+        ? " sports-slot__penalty-shot--scored"
+        : " sports-slot__penalty-shot--missed"
+      : " sports-slot__penalty-shot--pending";
+    const latestClass = shootout.latestShotId && shot?.id === shootout.latestShotId
+      ? " sports-slot__penalty-shot--latest"
+      : "";
+    const key = shot?.id || `${side}-pending-${index + 1}`;
+    const label = shot
+      ? `${shot.player || "Kick"} ${shot.didScore ? "scored" : "missed"}`
+      : `Kick ${index + 1} pending`;
+    return `<span class="sports-slot__penalty-shot${segmentClass}${stateClass}${latestClass}" data-penalty-shot-key="${escapeHtml(
+      `${side}:${key}`,
+    )}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">
+      <span class="sports-slot__penalty-shot-core"></span>
+    </span>`;
+  }).join("");
+
+  return `
+    <div class="sports-slot__penalty-row sports-slot__penalty-row--${side}">
+      <div class="sports-slot__penalty-team">
+        ${renderTeamMark(brand, teamName, teamAbbr)}
+        <div class="sports-slot__penalty-team-copy">
+          <strong>${escapeHtml(teamAbbr || teamName)}</strong>
+          <span>${escapeHtml(teamName)}</span>
+        </div>
+      </div>
+      <div class="sports-slot__penalty-shots">${shotCells}</div>
+      <div class="sports-slot__penalty-total">${escapeHtml(total)}</div>
+    </div>
+  `;
+}
+
 function timelineEventTone(event) {
   if (event.isPeriod) return "period";
+  if (event.shootout) {
+    return event.penaltyMiss ? "shootout-miss" : "shootout-goal";
+  }
   if (event.scoring) return "goal";
   if (event.redCard) return "red";
   if (event.yellowCard) return "yellow";
@@ -2537,6 +2640,9 @@ function timelineEventTone(event) {
 
 function timelineEventIcon(event) {
   if (event.isPeriod) return "◆";
+  if (event.shootout) {
+    return event.penaltyMiss ? "✕" : "◎";
+  }
   if (event.scoring) {
     if (event.sport === "nba") return "🏀";
     if (event.sport === "mlb") return "⚾";
@@ -2639,6 +2745,33 @@ function parseCommentaryAthleteTeam(text = "") {
   }
 
   return { athlete: "", team: "" };
+}
+
+function parsePenaltyAttemptAthleteTeam(text = "") {
+  const source = String(text || "").trim();
+  if (!source) return { athlete: "", team: "" };
+
+  const goalPenaltyMatch = source.match(
+    /^Goal!\s*(?:[^.]+\.\s*)?([^(]+)\(([^)]+)\)/i,
+  );
+  if (goalPenaltyMatch) {
+    return {
+      athlete: goalPenaltyMatch[1].trim(),
+      team: goalPenaltyMatch[2].trim(),
+    };
+  }
+
+  const penaltyMatch = source.match(
+    /^Penalty (?:saved|missed)!?\s*(?:Bad penalty by\s*)?([^(]+)\(([^)]+)\)/i,
+  );
+  if (penaltyMatch) {
+    return {
+      athlete: penaltyMatch[1].trim(),
+      team: penaltyMatch[2].trim(),
+    };
+  }
+
+  return parseCommentaryAthleteTeam(source);
 }
 
 const COMMENTARY_EVENT_KINDS =
@@ -2780,13 +2913,294 @@ function getTimelineTeamColor(side, focusGame) {
   return "var(--primary)";
 }
 
+function parseShootoutScoreText(text = "", focusGame = null) {
+  const scoreLine = String(text || "")
+    .replace(/^Goal!\s*/i, "")
+    .replace(/^Penalty Shootout (?:begins|ends),?\s*/i, "")
+    .replace(/^Match ends,?\s*/i, "")
+    .split(".")[0]
+    .trim();
+  if (!scoreLine.includes(",")) return null;
+
+  const match = scoreLine.match(
+    /^(.+?)\s+(\d+)(?:\((\d+)\))?,\s*(.+?)\s+(\d+)(?:\((\d+)\))?$/,
+  );
+  if (!match) return null;
+
+  const [, firstLabel, , firstPensRaw, secondLabel, , secondPensRaw] = match;
+  const firstPens = firstPensRaw == null ? 0 : Number(firstPensRaw);
+  const secondPens = secondPensRaw == null ? 0 : Number(secondPensRaw);
+  if (!Number.isFinite(firstPens) || !Number.isFinite(secondPens)) return null;
+
+  let firstSide = focusGame ? resolveTimelineTeamSide(firstLabel, focusGame) : "neutral";
+  let secondSide = focusGame ? resolveTimelineTeamSide(secondLabel, focusGame) : "neutral";
+
+  if (firstSide === "neutral" && secondSide === "neutral") {
+    firstSide = "home";
+    secondSide = "away";
+  } else if (firstSide === "neutral") {
+    firstSide = secondSide === "home" ? "away" : "home";
+  } else if (secondSide === "neutral") {
+    secondSide = firstSide === "home" ? "away" : "home";
+  }
+
+  const scores = { home: 0, away: 0 };
+  scores[firstSide] = firstPens;
+  scores[secondSide] = secondPens;
+  return scores;
+}
+
+function normalizeShootoutShotsEntry(entry) {
+  const teamId = String(entry?.id || "");
+  const team = String(entry?.team || "");
+  const shots = (entry?.shots || []).map((shot, index) => ({
+    id: String(shot?.id || `${teamId || team}-shot-${index + 1}`),
+    player: shot?.player || "",
+    playerId: shot?.playerId ? String(shot.playerId) : "",
+    shotNumber: Number(shot?.shotNumber || index + 1),
+    didScore: Boolean(shot?.didScore),
+  }));
+
+  return {
+    teamId,
+    team,
+    shots,
+  };
+}
+
+function buildShootoutFromCommentary(commentary, focusGame) {
+  const homeShots = [];
+  const awayShots = [];
+  let started = false;
+  let complete = false;
+
+  for (const entry of commentary || []) {
+    const text = String(entry?.text || "").trim();
+    if (!text) continue;
+
+    if (/^Penalty Shootout begins/i.test(text)) {
+      started = true;
+      continue;
+    }
+
+    if (!started) continue;
+
+    if (/^Penalty Shootout ends/i.test(text)) {
+      complete = true;
+      break;
+    }
+
+    const isScored = /^Goal!/i.test(text) && /converts the penalty/i.test(text);
+    const isMissed = /^Penalty (?:saved|missed)!?/i.test(text);
+    if (!isScored && !isMissed) continue;
+
+    const athleteMatch = parsePenaltyAttemptAthleteTeam(text);
+    const player =
+      athleteMatch.athlete ||
+      entry?.play?.participants?.[0]?.athlete?.displayName ||
+      "";
+    const team =
+      athleteMatch.team ||
+      entry?.play?.team?.displayName ||
+      parseCommentaryEventTeam(text);
+    const side = resolveTimelineTeamSide(team, focusGame, {
+      text,
+      detail: text,
+      team,
+      athlete: player,
+    });
+    if (side === "neutral") continue;
+
+    const bucket = side === "home" ? homeShots : awayShots;
+    bucket.push({
+      id: String(entry?.play?.id || `${side}-commentary-${entry?.sequence || bucket.length + 1}`),
+      player,
+      playerId: entry?.play?.participants?.[0]?.athlete?.id
+        ? String(entry.play.participants[0].athlete.id)
+        : "",
+      shotNumber: bucket.length + 1,
+      didScore: isScored,
+    });
+  }
+
+  if (!started || (!homeShots.length && !awayShots.length)) return null;
+
+  return {
+    homeShots,
+    awayShots,
+    complete,
+  };
+}
+
+function getShootoutPhaseLabel(homeShots, awayShots, complete) {
+  const regularLimit = 5;
+  const maxShots = Math.max(homeShots.length, awayShots.length);
+  const minShots = Math.min(homeShots.length, awayShots.length);
+  if (complete) {
+    return maxShots > regularLimit ? "Won in sudden death" : "Shootout complete";
+  }
+  if (maxShots < regularLimit) {
+    return `Round ${Math.max(1, maxShots)} of 5`;
+  }
+  if (maxShots === regularLimit && minShots < regularLimit) {
+    return "Round 5 of 5";
+  }
+  if (maxShots === regularLimit && homeShots.length === awayShots.length) {
+    return "Sudden death next";
+  }
+  return "Sudden death";
+}
+
+function getPenaltySummaryText(shootout, focusGame) {
+  if (!shootout) return "";
+  if (shootout.complete) {
+    if (shootout.homeTotal === shootout.awayTotal) {
+      return `Pens finished ${shootout.homeTotal}-${shootout.awayTotal}`;
+    }
+    const winner =
+      shootout.homeTotal > shootout.awayTotal
+        ? focusGame?.homeTeam || "Home"
+        : focusGame?.awayTeam || "Away";
+    return `${winner} win ${shootout.homeTotal}-${shootout.awayTotal}`;
+  }
+  return `Current: ${shootout.homeTotal}-${shootout.awayTotal}`;
+}
+
+function extractPenaltyShootout(summaryData, focusGame) {
+  if (!focusGame || focusGame.sport && focusGame.sport !== "soccer") return null;
+
+  const competition =
+    summaryData?.header?.competitions?.[0] ||
+    summaryData?.header ||
+    null;
+  const competitors = competition?.competitors || [];
+  const homeCompetitor = competitors.find(
+    (competitor) => String(competitor?.homeAway || "").toLowerCase() === "home",
+  );
+  const awayCompetitor = competitors.find(
+    (competitor) => String(competitor?.homeAway || "").toLowerCase() === "away",
+  );
+  const shootoutBlocks = (summaryData?.shootout || []).map(normalizeShootoutShotsEntry);
+
+  const findSideBlock = (side) => {
+    const teamId = side === "home" ? String(focusGame.homeTeamId || "") : String(focusGame.awayTeamId || "");
+    const teamName = side === "home" ? focusGame.homeTeam : focusGame.awayTeam;
+    const teamAbbr = side === "home" ? focusGame.homeAbbr : focusGame.awayAbbr;
+    return (
+      shootoutBlocks.find((block) => block.teamId && block.teamId === teamId) ||
+      shootoutBlocks.find((block) => normalizeText(block.team) === normalizeText(teamName)) ||
+      shootoutBlocks.find((block) => normalizeText(block.team) === normalizeText(teamAbbr))
+    );
+  };
+
+  const homeBlock = findSideBlock("home");
+  const awayBlock = findSideBlock("away");
+  const commentaryShootout = !homeBlock && !awayBlock
+    ? buildShootoutFromCommentary(summaryData?.commentary, focusGame)
+    : null;
+  const competitorHasShootout =
+    homeCompetitor?.shootoutScore != null ||
+    awayCompetitor?.shootoutScore != null ||
+    focusGame.homeShootoutScore != null ||
+    focusGame.awayShootoutScore != null;
+
+  const homeShots = homeBlock?.shots || commentaryShootout?.homeShots || [];
+  const awayShots = awayBlock?.shots || commentaryShootout?.awayShots || [];
+  const homeTotalFromCompetitor = Number(
+    homeCompetitor?.shootoutScore ??
+      focusGame.homeShootoutScore ??
+      (homeShots.filter((shot) => shot.didScore).length || 0),
+  );
+  const awayTotalFromCompetitor = Number(
+    awayCompetitor?.shootoutScore ??
+      focusGame.awayShootoutScore ??
+      (awayShots.filter((shot) => shot.didScore).length || 0),
+  );
+  const hasShootoutData =
+    homeShots.length > 0 ||
+    awayShots.length > 0 ||
+    competitorHasShootout;
+  if (!hasShootoutData) return null;
+
+  const statusState = String(competition?.status?.type?.state || "").toLowerCase();
+  const statusDetail = String(
+    competition?.status?.type?.detail ||
+      competition?.status?.type?.description ||
+      focusGame.statusDetail ||
+      focusGame.statusDescription ||
+      "",
+  );
+  const complete =
+    commentaryShootout?.complete ||
+    statusState === "post" ||
+    /pens|penalties/i.test(statusDetail);
+  const active =
+    !complete &&
+    (String(competition?.status?.type?.name || "").includes("PEN") ||
+      Number(competition?.status?.period || focusGame.period || 0) >= 5 ||
+      /shootout/i.test(statusDetail));
+  const latestHome = homeShots[homeShots.length - 1];
+  const latestAway = awayShots[awayShots.length - 1];
+  const latestShot =
+    !latestHome
+      ? latestAway
+      : !latestAway
+        ? latestHome
+        : latestHome.shotNumber >= latestAway.shotNumber
+          ? latestHome
+          : latestAway;
+
+  const shootout = {
+    active,
+    complete,
+    homeShots,
+    awayShots,
+    homeTotal: Number.isFinite(homeTotalFromCompetitor)
+      ? homeTotalFromCompetitor
+      : homeShots.filter((shot) => shot.didScore).length,
+    awayTotal: Number.isFinite(awayTotalFromCompetitor)
+      ? awayTotalFromCompetitor
+      : awayShots.filter((shot) => shot.didScore).length,
+    latestShotId: latestShot?.id || "",
+  };
+  shootout.phaseLabel = getShootoutPhaseLabel(homeShots, awayShots, complete);
+  shootout.summaryText = getPenaltySummaryText(shootout, focusGame);
+  return shootout;
+}
+
 function annotateTimelineScores(timeline, focusGame) {
   if (!timeline?.length || !focusGame) return timeline ?? [];
 
   let away = 0;
   let home = 0;
+  let awayShootout = 0;
+  let homeShootout = 0;
 
   return timeline.map((event) => {
+    if (event.shootout) {
+      const parsedShootoutScore = parseShootoutScoreText(
+        `${event.text || ""} ${event.detail || ""}`,
+        focusGame,
+      );
+      if (parsedShootoutScore) {
+        homeShootout = parsedShootoutScore.home;
+        awayShootout = parsedShootoutScore.away;
+      } else if (!event.penaltyMiss) {
+        const side = resolveTimelineTeamSide(event.team, focusGame, event);
+        if (side === "away") awayShootout += 1;
+        else if (side === "home") homeShootout += 1;
+      }
+
+      return {
+        ...event,
+        shootoutScoreAfter: {
+          away: awayShootout,
+          home: homeShootout,
+          label: `${homeShootout}-${awayShootout}`,
+        },
+      };
+    }
+
     if (!event.scoring) return event;
 
     if (event.homeScore != null && event.awayScore != null) {
@@ -2819,6 +3233,16 @@ function renderTimelineScoreBar(focusGame, sport = "soccer") {
   const awayScore = escapeHtml(focusGame.awayScore ?? "—");
   const homeScore = escapeHtml(focusGame.homeScore ?? "—");
   const showScores = focusGame.state !== "scheduled";
+  const penaltySummaryHtml = focusGame.penaltyShootout
+    ? `<div class="sports-slot__timeline-scorebar-penalties${
+        focusGame.penaltyShootout.active ? " sports-slot__timeline-scorebar-penalties--live" : ""
+      }">
+        <span class="sports-slot__timeline-scorebar-penalties-label">Pens</span>
+        <span class="sports-slot__timeline-scorebar-penalties-score">${escapeHtml(
+          `${focusGame.penaltyShootout.homeTotal}-${focusGame.penaltyShootout.awayTotal}`,
+        )}</span>
+      </div>`
+    : "";
 
   return `
     <div class="sports-slot__timeline-scorebar" aria-label="Match score">
@@ -2838,6 +3262,7 @@ function renderTimelineScoreBar(focusGame, sport = "soccer") {
               </div>`
             : `<span class="sports-slot__timeline-scorebar-vs">vs</span>`
         }
+        ${penaltySummaryHtml}
       </div>
       <div class="sports-slot__timeline-scorebar-team sports-slot__timeline-scorebar-team--away">
         ${renderTeamMark(focusGame.awayBrand, focusGame.awayTeam, focusGame.awayAbbr)}
@@ -2859,10 +3284,21 @@ function renderTimelineEventCard(event, tone) {
     event.detail && event.detail !== event.text
       ? `<p class="sports-slot__timeline-detail">${escapeHtml(event.detail)}</p>`
       : "";
-  const scoreHtml = event.scoreAfter
-    ? `<span class="sports-slot__timeline-score-pill" title="Score after this event">${escapeHtml(
-        event.scoreAfter.label,
-      )}</span>`
+  const scoreMeta = event.shootoutScoreAfter
+    ? {
+        label: `Pens ${event.shootoutScoreAfter.label}`,
+        title: "Penalty score after this kick",
+      }
+    : event.scoreAfter
+      ? {
+          label: event.scoreAfter.label,
+          title: "Score after this event",
+        }
+      : null;
+  const scoreHtml = scoreMeta
+    ? `<span class="sports-slot__timeline-score-pill" title="${escapeHtml(
+        scoreMeta.title,
+      )}">${escapeHtml(scoreMeta.label)}</span>`
     : "";
 
   return `
@@ -4797,7 +5233,9 @@ function extractSoccerGoals(summaryData, awayTeamId, homeTeamId) {
   if (!summaryData?.keyEvents) return goals;
 
   const scoringEvents = summaryData.keyEvents.filter(
-    (e) => e.scoringPlay || e.type?.type?.toLowerCase().includes("goal")
+    (e) =>
+      !e.shootout &&
+      (e.scoringPlay || e.type?.type?.toLowerCase().includes("goal"))
   );
 
   for (const e of scoringEvents) {
@@ -4945,6 +5383,8 @@ function extractMatchTimeline(summaryData, sport = "soccer") {
         sport,
         homeScore: play.homeScore != null ? String(play.homeScore) : null,
         awayScore: play.awayScore != null ? String(play.awayScore) : null,
+        shootout: false,
+        penaltyMiss: false,
       };
     });
   } else {
@@ -4973,6 +5413,10 @@ function extractMatchTimeline(summaryData, sport = "soccer") {
           isPeriod,
           isPlay: false,
           sport,
+          shootout: Boolean(event.shootout),
+          penaltyMiss:
+            Boolean(event.shootout) &&
+            /missed|saved/i.test(type || event.text || ""),
         };
       });
   }
@@ -5533,6 +5977,10 @@ function buildKeyEventLookup(keyEvents) {
       redCard: Boolean(event.redCard) || /red card/i.test(event.type?.text || ""),
       yellowCard: /yellow card/i.test(event.type?.text || ""),
       substitution: /substitution/i.test(event.type?.text || ""),
+      shootout: Boolean(event.shootout),
+      penaltyMiss:
+        Boolean(event.shootout) &&
+        /missed|saved/i.test(event.type?.text || event.text || ""),
     });
   }
   return lookup;
@@ -5592,6 +6040,68 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         text: "Lineups announced",
         detail: text,
       };
+    } else if (/^Penalty Shootout begins/i.test(text)) {
+      parsed = {
+        type: "Penalty Shootout",
+        isPeriod: true,
+        minute,
+        text: "Penalty shootout",
+        detail: text,
+        shootout: true,
+      };
+    } else if (/^Penalty Shootout ends/i.test(text)) {
+      parsed = {
+        type: "Penalty Shootout",
+        isPeriod: true,
+        minute,
+        text: "Penalty shootout complete",
+        detail: text,
+        shootout: true,
+      };
+    } else if (
+      /^Goal!/i.test(text) &&
+      /converts the penalty/i.test(text) &&
+      entry.play?.period?.number === 5
+    ) {
+      const playerMatch = text.match(/Goal!\s*(?:[^.]+\.\s*)?([^(]+)\(([^)]+)\)/i);
+      const athlete = playerMatch?.[1]?.trim() || "";
+      const team = playerMatch?.[2]?.trim() || "";
+      parsed = {
+        type: "Penalty - Scored",
+        minute,
+        athlete,
+        team,
+        text: `${text.split(".")[0]}.`,
+        detail: text,
+        assist: "",
+        scoring: true,
+        yellowCard: false,
+        redCard: false,
+        substitution: false,
+        isPeriod: false,
+        isPlay: false,
+        shootout: true,
+        penaltyMiss: false,
+      };
+    } else if (/^Penalty (saved|missed)!?/i.test(text)) {
+      const athleteMatch = parsePenaltyAttemptAthleteTeam(text);
+      parsed = {
+        type: "Penalty - Missed",
+        minute,
+        athlete: athleteMatch.athlete || entry.play?.participants?.[0]?.athlete?.displayName || "",
+        team: athleteMatch.team || entry.play?.team?.displayName || parseCommentaryEventTeam(text) || "",
+        text: `${text.split(".")[0]}.`,
+        detail: text,
+        assist: "",
+        scoring: false,
+        yellowCard: false,
+        redCard: false,
+        substitution: false,
+        isPeriod: false,
+        isPlay: false,
+        shootout: true,
+        penaltyMiss: true,
+      };
     } else if (/^Goal!/i.test(text)) {
       const playerMatch = text.match(/Goal!\s*(?:[^.]+\.\s*)?([^(]+)\(([^)]+)\)/i);
       const athlete = playerMatch?.[1]?.trim() || "";
@@ -5612,6 +6122,8 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         substitution: false,
         isPeriod: false,
         isPlay: false,
+        shootout: Boolean(enriched?.shootout),
+        penaltyMiss: Boolean(enriched?.penaltyMiss),
       };
     } else if (/is shown the yellow card/i.test(text)) {
       const playerMatch = text.match(/^([^(]+)\(([^)]+)\)/);
@@ -5629,6 +6141,8 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         substitution: false,
         isPeriod: false,
         isPlay: false,
+        shootout: entry.play?.period?.number === 5,
+        penaltyMiss: false,
       };
     } else if (/is shown the red card/i.test(text)) {
       const playerMatch = text.match(/^([^(]+)\(([^)]+)\)/);
@@ -5646,6 +6160,8 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         substitution: false,
         isPeriod: false,
         isPlay: false,
+        shootout: entry.play?.period?.number === 5,
+        penaltyMiss: false,
       };
     } else if (/^Substitution,/i.test(text)) {
       const match = text.match(
@@ -5665,6 +6181,8 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         substitution: true,
         isPeriod: false,
         isPlay: false,
+        shootout: entry.play?.period?.number === 5,
+        penaltyMiss: false,
       };
     } else if (
       /^Offside(?: call|ruling)?\b/i.test(text) ||
@@ -5694,6 +6212,8 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         substitution: false,
         isPeriod: false,
         isPlay: !team && !athlete,
+        shootout: entry.play?.period?.number === 5,
+        penaltyMiss: false,
       };
     } else if (minute) {
       const { athlete } = parseCommentaryAthleteTeam(text);
@@ -5715,6 +6235,8 @@ function parseSoccerCommentaryTimeline(commentary, keyEvents) {
         substitution: Boolean(enriched?.substitution),
         isPeriod: false,
         isPlay: !team && !athlete,
+        shootout: Boolean(enriched?.shootout) || entry.play?.period?.number === 5,
+        penaltyMiss: Boolean(enriched?.penaltyMiss),
       };
     }
 
@@ -6141,6 +6663,7 @@ function buildEspnSummaryEnrichment(summaryData, focusGame, sport) {
       focusGame.awayTeamId,
       focusGame.homeTeamId,
     );
+    focusGame.penaltyShootout = extractPenaltyShootout(summaryData, focusGame);
   }
 
   return {
@@ -6285,6 +6808,12 @@ function normalizeEspnEvent(event, sport) {
   const comp = event?.competitions?.[0];
   const date = new Date(event?.date || comp?.date || "");
   const statusType = comp?.status?.type || {};
+  const statusDetail = statusType.detail || statusType.shortDetail || "Scheduled";
+  const hasPenaltyFinish =
+    String(statusType.name || "").includes("PEN") ||
+    /pens|penalties/i.test(
+      `${statusType.description || ""} ${statusType.detail || ""} ${statusType.shortDetail || ""}`,
+    );
   const state = statusType.state === "in"
     ? "live"
     : statusType.state === "post"
@@ -6309,8 +6838,6 @@ function normalizeEspnEvent(event, sport) {
 
   const homeScore = homeCompetitor?.score == null || homeCompetitor?.score === "" ? "—" : String(homeCompetitor.score);
   const awayScore = awayCompetitor?.score == null || awayCompetitor?.score === "" ? "—" : String(awayCompetitor.score);
-
-  const detail = statusType.detail || statusType.shortDetail || "Scheduled";
 
   // Build brands
   const homeBrand = {
@@ -6345,10 +6872,12 @@ function normalizeEspnEvent(event, sport) {
     status: state === "scheduled"
       ? (sport === "mlb" ? "Live!" : formatDisplayTime(date))
       : state === "live"
-        ? (sport === "mlb" ? (detail || "Live") : (comp?.status?.displayClock || detail || "Live"))
+        ? (sport === "mlb" ? (statusDetail || "Live") : (comp?.status?.displayClock || statusDetail || "Live"))
         : state === "final"
-          ? "Final"
-          : detail || "Postponed",
+          ? hasPenaltyFinish
+            ? "After pens"
+            : "Final"
+          : statusDetail || "Postponed",
     awayTeam,
     homeTeam,
     awayAbbr,
@@ -6359,6 +6888,14 @@ function normalizeEspnEvent(event, sport) {
     homeScore,
     awayTeamId: awayCompetitor?.team?.id || "",
     homeTeamId: homeCompetitor?.team?.id || "",
+    awayShootoutScore:
+      awayCompetitor?.shootoutScore == null || awayCompetitor?.shootoutScore === ""
+        ? null
+        : Number(awayCompetitor.shootoutScore),
+    homeShootoutScore:
+      homeCompetitor?.shootoutScore == null || homeCompetitor?.shootoutScore === ""
+        ? null
+        : Number(homeCompetitor.shootoutScore),
     subLabel,
     meta: [
       comp?.venue?.fullName,
@@ -6367,6 +6904,9 @@ function normalizeEspnEvent(event, sport) {
     ].filter(Boolean).join(" • "),
     sortDate: Number.isNaN(date.getTime()) ? 0 : date.getTime(),
     providerFixtureId: event.id ? String(event.id) : "",
+    statusDetail,
+    statusDescription: statusType.description || "",
+    period: Number(comp?.status?.period || 0),
   };
 }
 
@@ -7452,6 +7992,8 @@ export const timelineTestHelpers = {
   parseCommentaryAthleteTeam,
   parseCommentaryEventTeam,
   resolveTimelineTeamSide,
+  parseShootoutScoreText,
+  extractPenaltyShootout,
 };
 
 export default slot;

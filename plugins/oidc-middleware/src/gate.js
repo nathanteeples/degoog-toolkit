@@ -1,4 +1,5 @@
 import {
+  getAvatarCache,
   getConfig,
   getCtx,
   stashHandoff,
@@ -33,7 +34,6 @@ import {
   resolvePictureClaim,
   toProfile,
 } from "./authz.js";
-import { getAvatarCache } from "./state.js";
 import {
   claimsMeta,
   configMeta,
@@ -66,40 +66,32 @@ const gateHoldMeta = (hold) =>
 const originOf = (req) =>
   getConfig()?.appUrl || new URL(req.url).origin;
 
-const bounce = (req) =>
-  new Response(null, {
-    status: 302,
-    headers: (() => {
-      const headers = new Headers({
-        location: `${originOf(req)}${adminRoutePath(req)}`,
-      });
-      for (const name of [OIDC_STATE, OIDC_NONCE, OIDC_VERIFIER]) {
-        headers.append("set-cookie", clearCookie(name));
-      }
-      return headers;
-    })(),
-  });
+const returnToFor = (req, ...candidates) =>
+  chooseReturnTo(originOf(req), candidates, adminRoutePath(req));
 
-const bounceWithHold = (req, reason, detail = "") =>
-  new Response(null, {
-    status: 302,
-    headers: (() => {
-      const returnTo = chooseReturnTo(
-        originOf(req),
-        [
-          decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
-          req.headers.get("referer") || "",
-        ],
-        adminRoutePath(req),
-      );
-      const headers = new Headers({ location: `${originOf(req)}${returnTo}` });
-      headers.append("set-cookie", bakeGateHold(req, reason, detail));
-      headers.append("set-cookie", clearCookie(OIDC_STATE));
-      headers.append("set-cookie", clearCookie(OIDC_NONCE));
-      headers.append("set-cookie", clearCookie(OIDC_VERIFIER));
-      return headers;
-    })(),
+const bounce = (req) => {
+  const headers = new Headers({
+    location: `${originOf(req)}${adminRoutePath(req)}`,
   });
+  for (const name of [OIDC_STATE, OIDC_NONCE, OIDC_VERIFIER]) {
+    headers.append("set-cookie", clearCookie(name));
+  }
+  return new Response(null, { status: 302, headers });
+};
+
+const bounceWithHold = (req, reason, detail = "") => {
+  const returnTo = returnToFor(
+    req,
+    decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
+    req.headers.get("referer") || "",
+  );
+  const headers = new Headers({ location: `${originOf(req)}${returnTo}` });
+  headers.append("set-cookie", bakeGateHold(req, reason, detail));
+  headers.append("set-cookie", clearCookie(OIDC_STATE));
+  headers.append("set-cookie", clearCookie(OIDC_NONCE));
+  headers.append("set-cookie", clearCookie(OIDC_VERIFIER));
+  return new Response(null, { status: 302, headers });
+};
 
 const onAuthCheck = (req) => {
   const config = getConfig();
@@ -120,14 +112,11 @@ const onAuthCheck = (req) => {
   }
   const ctx = getCtx();
   const url = new URL(req.url);
-  const returnTo = chooseReturnTo(
-    originOf(req),
-    [
-      url.searchParams.get("returnTo") || "",
-      req.headers.get("referer") || "",
-      decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
-    ],
-    adminPath,
+  const returnTo = returnToFor(
+    req,
+    url.searchParams.get("returnTo") || "",
+    req.headers.get("referer") || "",
+    decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
   );
   const shouldGate = targetsAdminRoute(returnTo, adminPath);
   if (!shouldGate) {

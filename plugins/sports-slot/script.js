@@ -228,7 +228,47 @@
     );
   }
 
-  function animateNewTimelineEvents(panel, previousKeys) {
+  function collectPenaltyShotKeys(panel) {
+    return new Set(
+      [...panel.querySelectorAll("[data-penalty-shot-key]")].map(
+        (node) => node.dataset.penaltyShotKey,
+      ),
+    );
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+  }
+
+  function markNewNodes(nodes, className) {
+    if (!nodes.length) return;
+    requestAnimationFrame(() => {
+      for (const node of nodes) {
+        node.classList.add(className);
+      }
+    });
+  }
+
+  function animateNewPenaltyShots(panel, previousKeys) {
+    if (!previousKeys?.size) return;
+
+    const newShots = [...panel.querySelectorAll("[data-penalty-shot-key]")].filter(
+      (node) => !previousKeys.has(node.dataset.penaltyShotKey),
+    );
+    markNewNodes(newShots, "sports-slot__penalty-shot--enter");
+  }
+
+  function measureInsertedTimelineHeight(newEvents) {
+    const first = newEvents[0];
+    const last = newEvents[newEvents.length - 1];
+    if (!first || !last) return 0;
+
+    const firstTop = first.offsetTop;
+    const lastBottom = last.offsetTop + last.offsetHeight;
+    return Math.max(0, lastBottom - firstTop);
+  }
+
+  function animateNewTimelineEvents(panel, previousKeys, previousScrollTop = 0) {
     if (!previousKeys?.size) return;
 
     const newEvents = [...panel.querySelectorAll("[data-timeline-key]")].filter(
@@ -236,10 +276,57 @@
     );
     if (!newEvents.length) return;
 
+    const isTimelineActive =
+      panel.dataset.activeTab === "timeline" ||
+      panel.querySelector(".sports-slot__tab--active")?.dataset.tab === "timeline";
+    const timelineBody = panel.querySelector(".sports-slot__timeline-body");
+    const eventsContainer = panel.querySelector(".sports-slot__timeline-events");
+
+    if (
+      !isTimelineActive ||
+      !(timelineBody instanceof HTMLElement) ||
+      !(eventsContainer instanceof HTMLElement) ||
+      prefersReducedMotion()
+    ) {
+      markNewNodes(newEvents, "sports-slot__timeline-event--enter");
+      return;
+    }
+
+    const insertedHeight = measureInsertedTimelineHeight(newEvents);
+    if (insertedHeight <= 0) {
+      markNewNodes(newEvents, "sports-slot__timeline-event--enter");
+      return;
+    }
+
+    const previousTop = Number(previousScrollTop) || 0;
+    const wasNearTop = previousTop <= 16;
+
+    if (!wasNearTop) {
+      timelineBody.scrollTop = previousTop + insertedHeight;
+      markNewNodes(newEvents, "sports-slot__timeline-event--enter");
+      return;
+    }
+
+    eventsContainer.style.transition = "none";
+    eventsContainer.style.transform = `translateY(-${insertedHeight}px)`;
+    eventsContainer.style.willChange = "transform";
+
     requestAnimationFrame(() => {
-      for (const node of newEvents) {
-        node.classList.add("sports-slot__timeline-event--enter");
-      }
+      markNewNodes(newEvents, "sports-slot__timeline-event--enter");
+
+      requestAnimationFrame(() => {
+        eventsContainer.style.transition = "transform 460ms cubic-bezier(0.2, 0.82, 0.2, 1)";
+        eventsContainer.style.transform = "translateY(0)";
+
+        const cleanup = () => {
+          eventsContainer.style.transition = "";
+          eventsContainer.style.transform = "";
+          eventsContainer.style.willChange = "";
+          eventsContainer.removeEventListener("transitionend", cleanup);
+        };
+
+        eventsContainer.addEventListener("transitionend", cleanup, { once: true });
+      });
     });
   }
 
@@ -322,6 +409,7 @@
           const scrollY = window.scrollY;
           const timelineScrollTop = getTimelineBodyScroll(panel);
           const timelineKeys = collectTimelineKeys(panel);
+          const penaltyKeys = collectPenaltyShotKeys(panel);
           const statState = collectStatState(panel);
 
           panel.replaceWith(nextPanel);
@@ -339,7 +427,8 @@
 
           restoreScrollPosition(scrollY);
           restoreTimelineBodyScroll(nextPanel, timelineScrollTop);
-          animateNewTimelineEvents(nextPanel, timelineKeys);
+          animateNewTimelineEvents(nextPanel, timelineKeys, timelineScrollTop);
+          animateNewPenaltyShots(nextPanel, penaltyKeys);
           animateStatBars(nextPanel, statState);
           return;
         }

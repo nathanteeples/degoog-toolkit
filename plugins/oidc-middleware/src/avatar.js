@@ -18,14 +18,6 @@ export const createExtensionCache = (ctx, namespace, ttlMs) => {
     : null;
 };
 
-export const cacheGet = async (cache, key) => (cache ? await cache.get(key) : null);
-export const cacheSet = async (cache, key, value, ttlMs) => {
-  if (cache) await cache.set(key, value, ttlMs);
-};
-export const cacheDelete = async (cache, key) => {
-  if (cache) await cache.delete(key);
-};
-
 export const avatarCacheKey = (identity = {}) => {
   const seed = [
     typeof identity.sub === "string" ? identity.sub : "",
@@ -35,12 +27,12 @@ export const avatarCacheKey = (identity = {}) => {
   return `avatar:${crypto.createHash("sha256").update(seed).digest("hex").slice(0, 32)}`;
 };
 
-export const encodeAvatarCacheEntry = (bytes, contentType) => ({
+const encodeEntry = (bytes, contentType) => ({
   contentType,
   data: Buffer.from(bytes).toString("base64"),
 });
 
-export const decodeAvatarCacheEntry = (entry) => {
+const decodeEntry = (entry) => {
   if (!entry?.data) return null;
   return {
     bytes: Uint8Array.from(Buffer.from(entry.data, "base64")),
@@ -66,7 +58,7 @@ const readAvatarResponse = async (response) => {
   return { bytes, contentType };
 };
 
-export const fetchProfilePicture = async (pictureUrl, accessToken = "") => {
+const fetchProfilePicture = async (pictureUrl, accessToken = "") => {
   if (!pictureUrl) return null;
   const attempts = accessToken
     ? [
@@ -110,6 +102,11 @@ export const fetchProfilePicture = async (pictureUrl, accessToken = "") => {
   return null;
 };
 
+export const deleteAvatarEntry = async (cache, identity) => {
+  if (!cache || !identity?.picture) return;
+  await cache.delete(avatarCacheKey(identity));
+};
+
 export const ensureAvatarEntry = async (
   cache,
   identity,
@@ -119,13 +116,15 @@ export const ensureAvatarEntry = async (
   if (!identity?.picture) return null;
 
   const key = avatarCacheKey(identity);
-  const cached = decodeAvatarCacheEntry(await cacheGet(cache, key));
+  const cached = cache ? decodeEntry(await cache.get(key)) : null;
   if (cached) return cached;
 
   const fetched = await fetchProfilePicture(identity.picture, accessToken);
   if (!fetched) return null;
 
-  await cacheSet(cache, key, encodeAvatarCacheEntry(fetched.bytes, fetched.contentType), ttlMs);
+  if (cache) {
+    await cache.set(key, encodeEntry(fetched.bytes, fetched.contentType), ttlMs);
+  }
   debugLog("avatar.cache.store", {
     key,
     contentType: fetched.contentType,

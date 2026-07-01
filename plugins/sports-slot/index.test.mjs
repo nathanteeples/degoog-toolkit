@@ -17,6 +17,8 @@ const {
   parseCommentaryAthleteTeam,
   parseCommentaryEventTeam,
   resolveTimelineTeamSide,
+  parseShootoutScoreText,
+  extractPenaltyShootout,
 } = timelineTestHelpers;
 
 const ivoryCoastStarters = [
@@ -417,6 +419,163 @@ test("soccer commentary timeline dedupes repeated full-time markers", () => {
     (event) => normalizeTimelineLabel(event) === "full time",
   );
   assert.equal(fullTimeMarkers.length, 1);
+});
+
+test("shootout score parser maps scoreboard text to home and away penalty totals", () => {
+  const focusGame = {
+    homeTeam: "Argentina",
+    homeAbbr: "ARG",
+    awayTeam: "France",
+    awayAbbr: "FRA",
+    homeBrand: {},
+    awayBrand: {},
+  };
+
+  assert.deepEqual(
+    parseShootoutScoreText(
+      "Goal!  Argentina 3(4), France 3(2). Gonzalo Montiel converts the penalty.",
+      focusGame,
+    ),
+    { home: 4, away: 2 },
+  );
+
+  assert.deepEqual(
+    parseShootoutScoreText(
+      "Goal!  Argentina 3, France 3(1). Kylian Mbappé converts the penalty.",
+      focusGame,
+    ),
+    { home: 0, away: 1 },
+  );
+});
+
+test("extractPenaltyShootout builds running five-kick shootout and summary state", () => {
+  const focusGame = {
+    homeTeam: "Argentina",
+    homeAbbr: "ARG",
+    homeTeamId: "202",
+    homeShootoutScore: 4,
+    awayTeam: "France",
+    awayAbbr: "FRA",
+    awayTeamId: "478",
+    awayShootoutScore: 2,
+    statusDetail: "FT-Pens",
+    statusDescription: "Final Score - After Penalties",
+    period: 5,
+    homeBrand: {},
+    awayBrand: {},
+  };
+  const summaryData = {
+    header: {
+      competitions: [
+        {
+          status: {
+            period: 5,
+            type: {
+              state: "post",
+              detail: "FT-Pens",
+              description: "Final Score - After Penalties",
+            },
+          },
+          competitors: [
+            { homeAway: "home", shootoutScore: 4 },
+            { homeAway: "away", shootoutScore: 2 },
+          ],
+        },
+      ],
+    },
+    shootout: [
+      {
+        id: "478",
+        team: "France",
+        shots: [
+          { id: "f1", player: "Kylian Mbappé", shotNumber: 1, didScore: true },
+          { id: "f2", player: "Kingsley Coman", shotNumber: 2, didScore: false },
+          { id: "f3", player: "Aurélien Tchouaméni", shotNumber: 3, didScore: false },
+          { id: "f4", player: "Randal Kolo Muani", shotNumber: 4, didScore: true },
+        ],
+      },
+      {
+        id: "202",
+        team: "Argentina",
+        shots: [
+          { id: "a1", player: "Lionel Messi", shotNumber: 1, didScore: true },
+          { id: "a2", player: "Paulo Dybala", shotNumber: 2, didScore: true },
+          { id: "a3", player: "Leandro Paredes", shotNumber: 3, didScore: true },
+          { id: "a4", player: "Gonzalo Montiel", shotNumber: 4, didScore: true },
+        ],
+      },
+    ],
+  };
+
+  const shootout = extractPenaltyShootout(summaryData, focusGame);
+
+  assert.ok(shootout);
+  assert.equal(shootout.complete, true);
+  assert.equal(shootout.homeTotal, 4);
+  assert.equal(shootout.awayTotal, 2);
+  assert.equal(shootout.homeShots.length, 4);
+  assert.equal(shootout.awayShots.length, 4);
+  assert.equal(shootout.phaseLabel, "Shootout complete");
+  assert.match(shootout.summaryText, /Argentina win 4-2/i);
+});
+
+test("extractPenaltyShootout supports sudden-death and saved penalties from commentary fallback", () => {
+  const focusGame = {
+    homeTeam: "Netherlands",
+    homeAbbr: "NED",
+    homeTeamId: "449",
+    awayTeam: "Argentina",
+    awayAbbr: "ARG",
+    awayTeamId: "202",
+    homeBrand: {},
+    awayBrand: {},
+    period: 5,
+  };
+  const summaryData = {
+    header: {
+      competitions: [
+        {
+          status: {
+            period: 5,
+            type: {
+              state: "in",
+              detail: "Penalty Shootout",
+              description: "Penalty Shootout",
+            },
+          },
+          competitors: [
+            { homeAway: "home", shootoutScore: 3 },
+            { homeAway: "away", shootoutScore: 3 },
+          ],
+        },
+      ],
+    },
+    commentary: [
+      { text: "Penalty Shootout begins Netherlands 2, Argentina 2." },
+      { text: "Penalty saved! Virgil van Dijk (Netherlands) fails to capitalise on this great opportunity." },
+      { text: "Goal!  Netherlands 2, Argentina 2(1). Lionel Messi (Argentina) converts the penalty." },
+      { text: "Penalty saved! Steven Berghuis (Netherlands) fails to capitalise on this great opportunity." },
+      { text: "Goal!  Netherlands 2, Argentina 2(2). Leandro Paredes (Argentina) converts the penalty." },
+      { text: "Goal!  Netherlands 2(1), Argentina 2(2). Teun Koopmeiners (Netherlands) converts the penalty." },
+      { text: "Goal!  Netherlands 2(1), Argentina 2(3). Gonzalo Montiel (Argentina) converts the penalty." },
+      { text: "Goal!  Netherlands 2(2), Argentina 2(3). Wout Weghorst (Netherlands) converts the penalty." },
+      { text: "Penalty missed! Bad penalty by Enzo Fernández (Argentina) right footed shot is close, but misses to the left." },
+      { text: "Goal!  Netherlands 2(3), Argentina 2(3). Luuk de Jong (Netherlands) converts the penalty." },
+    ],
+  };
+
+  const shootout = extractPenaltyShootout(summaryData, focusGame);
+
+  assert.ok(shootout);
+  assert.equal(shootout.active, true);
+  assert.equal(shootout.complete, false);
+  assert.equal(shootout.homeShots.length, 5);
+  assert.equal(shootout.awayShots.length, 4);
+  assert.equal(shootout.homeTotal, 3);
+  assert.equal(shootout.awayTotal, 3);
+  assert.equal(shootout.homeShots[0].didScore, false);
+  assert.equal(shootout.awayShots[3].didScore, false);
+  assert.equal(shootout.phaseLabel, "Round 5 of 5");
 });
 
 function normalizeTimelineLabel(event) {

@@ -2,8 +2,7 @@ import { getAvatarCache, getConfig, getCtx, claimHandoff } from "./state.js";
 import { isConfigured } from "./settings.js";
 import {
   AVATAR_CACHE_TTL_MS,
-  avatarCacheKey,
-  cacheDelete,
+  deleteAvatarEntry,
   ensureAvatarEntry,
 } from "./avatar.js";
 import {
@@ -60,6 +59,8 @@ const redirect = (location, cookies = []) => {
 };
 
 const originOf = (req) => getConfig()?.appUrl || new URL(req.url).origin;
+const returnToFor = (req, ...candidates) =>
+  chooseReturnTo(originOf(req), candidates, adminRoutePath(req));
 
 const tempCookie = (name, value, req) =>
   bakeCookie(name, value, {
@@ -76,19 +77,16 @@ const onLogin = async (req) => {
       request: requestMeta(req),
       config: configMeta(config),
     });
-    return redirect(`${originOf(req)}/`);
+    return redirect(`${originOf(req)}${adminRoutePath(req)}`);
   }
   try {
     const requestUrl = new URL(req.url);
     const adminPath = adminRoutePath(req);
-    const returnTo = chooseReturnTo(
-      originOf(req),
-      [
-        requestUrl.searchParams.get("returnTo") || "",
-        req.headers.get("referer") || "",
-        decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
-      ],
-      adminPath,
+    const returnTo = returnToFor(
+      req,
+      requestUrl.searchParams.get("returnTo") || "",
+      req.headers.get("referer") || "",
+      decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
     );
     const pkce = makePkce();
     const state = randomToken();
@@ -121,7 +119,7 @@ const onLogin = async (req) => {
       config: configMeta(config),
     });
     console.error("[oidc] login init failed:", err?.message || err);
-    return redirect(`${originOf(req)}/?oidc_error=login`);
+    return redirect(`${originOf(req)}${adminRoutePath(req)}?oidc_error=login`);
   }
 };
 
@@ -130,13 +128,10 @@ const onClaim = (req) => {
   const code = url.searchParams.get("c") || "";
   const profile = code ? claimHandoff(code) : null;
   const adminPath = adminRoutePath(req);
-  const returnTo = chooseReturnTo(
-    originOf(req),
-    [
-      decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
-      req.headers.get("referer") || "",
-    ],
-    adminPath,
+  const returnTo = returnToFor(
+    req,
+    decodeURIComponent(readCookie(req, OIDC_RETURN_TO) || ""),
+    req.headers.get("referer") || "",
   );
   const clear = [
     clearCookie(OIDC_GATE_HOLD),
@@ -227,9 +222,7 @@ const onAvatar = async (req) => {
 
 const onLogout = async (req) => {
   const identity = readIdentity(readCookie(req, USER_COOKIE));
-  if (identity?.picture) {
-    await cacheDelete(getAvatarCache(), avatarCacheKey(identity));
-  }
+  await deleteAvatarEntry(getAvatarCache(), identity);
   debugLog("route.logout", {
     request: requestMeta(req),
     config: configMeta(getConfig()),

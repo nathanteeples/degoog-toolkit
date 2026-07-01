@@ -394,6 +394,229 @@
     margin-top: 0.55rem;
 }
 
+.sports-slot__penalties {
+    margin-top: 0.8rem;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+    border-radius: calc(var(--sports-radius-card) - 2px);
+    background:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--bg) 72%, var(--primary) 4%) 0%,
+            color-mix(in srgb, var(--bg-light) 95%, var(--bg) 5%) 100%
+        );
+}
+
+.sports-slot__penalties--live {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.sports-slot__penalties-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.7rem;
+}
+
+.sports-slot__penalties-kicker {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.sports-slot__penalties-status {
+    margin-top: 0.15rem;
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.sports-slot__penalties-summary {
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--sports-radius-pill);
+    background: color-mix(in srgb, var(--bg-light) 82%, var(--bg) 18%);
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.sports-slot__penalty-row {
+    display: grid;
+    grid-template-columns: minmax(0, 140px) minmax(0, 1fr) 2rem;
+    gap: 0.7rem;
+    align-items: center;
+}
+
+.sports-slot__penalty-row + .sports-slot__penalty-row {
+    margin-top: 0.55rem;
+}
+
+.sports-slot__penalty-team {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.sports-slot__penalty-team .sports-slot__team-mark {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    border-radius: 10px;
+}
+
+.sports-slot__penalty-team-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.sports-slot__penalty-team-copy strong {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+}
+
+.sports-slot__penalty-team-copy span {
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sports-slot__penalty-shots {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.sports-slot__penalty-shot {
+    position: relative;
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+}
+
+.sports-slot__penalty-shot--sudden-death {
+    margin-left: 0.4rem;
+}
+
+.sports-slot__penalty-shot--sudden-death-start {
+    margin-left: 0.8rem;
+}
+
+.sports-slot__penalty-shot--sudden-death-start::before {
+    content: "SD";
+    position: absolute;
+    left: -0.75rem;
+    top: 50%;
+    transform: translate(-100%, -50%);
+    color: var(--text-secondary);
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.sports-slot__penalty-shot-core {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    border: 2px solid color-mix(in srgb, var(--border) 92%, var(--text-secondary) 8%);
+    background: var(--bg);
+    transition:
+        transform 220ms ease,
+        border-color 220ms ease,
+        background 220ms ease,
+        box-shadow 220ms ease;
+}
+
+.sports-slot__penalty-shot--scored .sports-slot__penalty-shot-core {
+    border-color: color-mix(in srgb, var(--success) 60%, var(--border));
+    background: color-mix(in srgb, var(--success) 84%, var(--bg) 16%);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 16%, transparent);
+}
+
+.sports-slot__penalty-shot--missed .sports-slot__penalty-shot-core {
+    border-color: color-mix(in srgb, var(--danger) 52%, var(--border));
+    background:
+        linear-gradient(
+            135deg,
+            transparent 0 44%,
+            color-mix(in srgb, var(--danger) 78%, transparent) 44% 56%,
+            transparent 56% 100%
+        ),
+        var(--bg);
+}
+
+.sports-slot__penalty-shot--pending .sports-slot__penalty-shot-core {
+    border-style: dashed;
+    opacity: 0.6;
+}
+
+.sports-slot__penalty-shot--latest .sports-slot__penalty-shot-core {
+    transform: scale(1.08);
+}
+
+.sports-slot__penalty-shot--enter .sports-slot__penalty-shot-core {
+    animation: sports-slot-penalty-shot-enter 0.5s cubic-bezier(0.18, 0.9, 0.18, 1) both;
+}
+
+@keyframes sports-slot-penalty-shot-enter {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.55);
+    }
+
+    70% {
+        opacity: 1;
+        transform: translateY(0) scale(1.14);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.sports-slot__penalty-total {
+    text-align: right;
+    font-size: 1rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+}
+
+.sports-slot__penalties-note {
+    margin-top: 0.65rem;
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+}
+
+@media (max-width: 640px) {
+    .sports-slot__penalties-head,
+    .sports-slot__penalty-row {
+        grid-template-columns: 1fr;
+    }
+
+    .sports-slot__penalties-head {
+        display: grid;
+    }
+
+    .sports-slot__penalties-summary,
+    .sports-slot__penalty-total {
+        justify-self: start;
+    }
+}
+
 /* ── Team marks ────────────────────────────────────────────────────────── */
 
 .sports-slot__team-mark {
@@ -1279,6 +1502,29 @@
     letter-spacing: 0.04em;
 }
 
+.sports-slot__timeline-scorebar-penalties {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--sports-radius-pill);
+    background: color-mix(in srgb, var(--bg) 70%, var(--primary) 8%);
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+    color: var(--text-primary);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.sports-slot__timeline-scorebar-penalties--live {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.sports-slot__timeline-scorebar-penalties-label {
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
 .sports-slot__timeline-score-pill {
     margin-left: auto;
     padding: 0.1rem 0.45rem;
@@ -1343,23 +1589,27 @@
 }
 
 .sports-slot__timeline-event--enter {
-    animation: sports-slot-timeline-enter 0.42s ease-out both;
+    animation: sports-slot-timeline-enter 0.52s cubic-bezier(0.18, 0.86, 0.22, 1) both;
 }
 
 @keyframes sports-slot-timeline-enter {
     from {
         opacity: 0;
-        transform: translateY(-14px);
+        transform: translateY(-18px) scale(0.985);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .sports-slot__timeline-event--enter {
+        animation: none;
+    }
+
+    .sports-slot__penalty-shot--enter .sports-slot__penalty-shot-core {
         animation: none;
     }
 }
@@ -1497,6 +1747,16 @@
 
 .sports-slot__timeline-card--yellow {
     border-color: color-mix(in srgb, var(--warning) 35%, var(--border));
+}
+
+.sports-slot__timeline-card--shootout-goal {
+    border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+    background: color-mix(in srgb, var(--success) 8%, var(--bg-light) 92%);
+}
+
+.sports-slot__timeline-card--shootout-miss {
+    border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+    background: color-mix(in srgb, var(--danger) 6%, var(--bg-light) 94%);
 }
 
 .sports-slot__timeline-card-head {

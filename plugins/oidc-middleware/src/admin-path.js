@@ -1,18 +1,8 @@
-const AUTH_PATH_SUFFIXES = [
-  "/api/settings/auth/callback",
-  "/api/settings/auth",
-];
-
-const trimTrailingSlash = (value) => {
-  const path = String(value || "").replace(/\/+$/, "");
-  return path || "/";
-};
-
 const normalizePath = (value) => {
   const path = String(value || "").trim();
   if (!path) return "/";
   const withSlash = path.startsWith("/") ? path : `/${path}`;
-  return trimTrailingSlash(withSlash);
+  return withSlash === "/" ? withSlash : withSlash.replace(/\/+$/, "");
 };
 
 const envTruthy = (name) => {
@@ -29,20 +19,9 @@ const configuredAdminSegment = () => {
   return envTruthy("DEGOOG_PUBLIC_INSTANCE") ? "admin" : "settings";
 };
 
-const basePathFromApiPath = (pathname) => {
-  const normalized = trimTrailingSlash(pathname);
-  for (const suffix of AUTH_PATH_SUFFIXES) {
-    if (normalized === suffix) return "";
-    if (normalized.endsWith(suffix)) {
-      return normalized.slice(0, -suffix.length);
-    }
-  }
-  return "";
-};
-
 export const adminRoutePath = (req) => {
-  const url = new URL(req.url);
-  const basePath = basePathFromApiPath(url.pathname);
+  const pathname = new URL(req.url).pathname;
+  const basePath = pathname.replace(/\/api\/settings\/auth(?:\/callback)?\/?$/, "");
   return normalizePath(`${basePath}/${configuredAdminSegment()}`);
 };
 
