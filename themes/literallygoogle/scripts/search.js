@@ -1859,46 +1859,6 @@ function getLgTranslation(key) {
         }).observe(resultsList, { childList: true, subtree: true });
     }
 
-    const resultsLayout = document.getElementById("results-layout");
-    const filtersEdgeHit = document.getElementById("lg-filters-edge-hit");
-    const filtersBar = document.getElementById("image-filters-bar");
-    if (resultsLayout && filtersEdgeHit && filtersBar && preview) {
-        let filtersHideTimer = 0;
-
-        function syncFiltersCollapse() {
-            const collapsed = preview.classList.contains("open");
-            resultsLayout.classList.toggle("lg-image-filters-collapsed", collapsed);
-            filtersEdgeHit.hidden = !collapsed;
-            filtersEdgeHit.setAttribute("aria-hidden", collapsed ? "false" : "true");
-            if (!collapsed) filtersBar.classList.remove("lg-filters-reveal");
-        }
-
-        function revealFiltersBar() {
-            clearTimeout(filtersHideTimer);
-            filtersBar.classList.add("lg-filters-reveal");
-        }
-
-        function scheduleHideFiltersBar() {
-            clearTimeout(filtersHideTimer);
-            filtersHideTimer = setTimeout(() => {
-                if (!filtersBar.matches(":hover") && !filtersEdgeHit.matches(":hover")) {
-                    filtersBar.classList.remove("lg-filters-reveal");
-                }
-            }, 200);
-        }
-
-        for (const el of [filtersEdgeHit, filtersBar]) {
-            el.addEventListener("mouseenter", revealFiltersBar);
-            el.addEventListener("mouseleave", scheduleHideFiltersBar);
-        }
-
-        new MutationObserver(syncFiltersCollapse).observe(preview, {
-            attributes: true,
-            attributeFilter: ["class"],
-        });
-        syncFiltersCollapse();
-    }
-
     scanGrids();
 })();
 
