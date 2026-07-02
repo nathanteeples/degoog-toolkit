@@ -2398,7 +2398,8 @@ body {
     }
 }
 
-/* Optional sticky sidebar (Settings → Themes → Configure → Sticky sidebar). */
+/* Optional sticky sidebar (Settings → Themes → Configure → Sticky sidebar).
+   Match #image-filters-bar: pin the column and scroll its contents in one pane. */
 
 @media (min-width: 768px) {
     html[data-sticky-sidebar="true"] #sidebar-col {
@@ -2408,16 +2409,7 @@ body {
             calc(50px + 1.5rem)
         );
         align-self: start;
-        max-height: calc(
-            100vh -
-                var(
-                    --literallygoogle-sticky-header-offset,
-                    calc(50px + 1.5rem)
-                )
-        );
-    }
-
-    html[data-sticky-sidebar="true"] #sidebar-col > .sticky {
+        min-height: 0;
         max-height: calc(
             100vh -
                 var(
@@ -2432,9 +2424,14 @@ body {
         box-sizing: border-box;
     }
 
-    html[dir="rtl"][data-sticky-sidebar="true"] #sidebar-col > .sticky {
+    html[dir="rtl"][data-sticky-sidebar="true"] #sidebar-col {
         padding-inline-start: 0.25rem;
         padding-inline-end: 0;
+    }
+
+    html[data-sticky-sidebar="true"] #sidebar-col > .sticky {
+        max-height: none;
+        overflow: visible;
     }
 }
 
