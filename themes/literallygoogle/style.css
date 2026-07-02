@@ -1935,6 +1935,54 @@ body {
         padding-top: 0;
     }
 
+    /* Live column fold while the preview pane opens — shrink columns, then hide extras. */
+    #results-list .image-grid.lg-image-grid-fold {
+        --lg-col-min: 96px;
+    }
+
+    #results-list .image-grid.lg-image-grid-fold > .image-column {
+        flex: 1 1 0;
+        min-width: var(--lg-col-min, 96px);
+        max-width: 100%;
+        transition:
+            flex-basis 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            min-width 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            max-width 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            width 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            opacity 200ms ease;
+    }
+
+    #results-list .image-grid.lg-image-grid-fold > .image-column.lg-image-col-hidden {
+        flex: 0 0 0 !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        margin: 0 !important;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    #results-list .image-grid.lg-image-grid-fold .image-thumb-wrap,
+    #results-list .image-grid.lg-image-grid-fold .image-thumb {
+        transition: width 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    #results-page .image-card.selected {
+        outline: 3px solid var(--primary);
+        outline-offset: 2px;
+        box-shadow:
+            0 0 0 1px color-mix(in srgb, var(--primary) 75%, var(--bg)),
+            0 0 0 7px color-mix(in srgb, var(--primary) 30%, transparent);
+        opacity: 1 !important;
+        position: relative;
+        z-index: 2;
+    }
+
+    #results-page .image-card.selected:hover {
+        opacity: 1 !important;
+    }
+
     html[data-image-mode-desktop-layout="preview-left"]
         #results-page[data-lg-search-type="images"]
         #media-preview-panel {
