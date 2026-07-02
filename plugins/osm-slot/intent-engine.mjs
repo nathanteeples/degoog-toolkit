@@ -104,7 +104,7 @@ function splitLocationRelation(query, parsed) {
 }
 
 function looksLikeBusinessName(text, parsed, options = {}) {
-  const { allowSingleTokenNounFallback = false } = options;
+  const { allowSingleTokenNounFallback = false, hasExplicitIntent = false } = options;
   const query = normalize(text);
   const tokens = query.split(/\s+/).filter(Boolean);
   if (!query || tokens.length > 4 || GENERIC_ONLY_RE.test(query)) return false;
@@ -114,7 +114,8 @@ function looksLikeBusinessName(text, parsed, options = {}) {
     if (!allowSingleTokenNounFallback) return false;
     return parsed.topics.length > 0 || parsed.nouns.length > 0;
   }
-  if (hasBlockedCompoundHeadword(tokens, parsed)) return false;
+  if (hasBlockedCompoundToken(tokens, hasExplicitIntent)) return false;
+  if (isCollapsedNonBusinessNounPhrase(query, tokens, parsed, hasExplicitIntent)) return false;
   if (parsed.organizations.length > 0) return true;
   if (parsed.topics.length > 0 || parsed.nouns.length > 0) return true;
   return tokens.some((token) => token.length >= 4);
@@ -142,14 +143,54 @@ const NON_PLACE_COMPOUND_HEADWORDS = new Set([
   "server", "servers", "desktop", "plugin", "plugins", "extension", "extensions",
   "tool", "tools", "software", "package", "packages", "library", "libraries",
   "sdk", "api", "bot", "bots", "model", "models",
+  "mode", "modes", "memory", "storage", "config", "configuration", "setting", "settings",
+  "preference", "preferences", "feature", "features", "session", "sessions", "cache",
+  "caches", "firmware", "driver", "drivers", "runtime", "sync", "backup", "toggle",
+  "profile", "profiles", "option", "options", "version", "versions", "parameter",
+  "parameters", "workflow", "sandbox", "workspace", "emulator", "daemon", "daemons",
+  "kernel", "middleware", "parser", "handler", "callback", "schema", "protocol",
+  "compiler", "interpreter", "deployment", "debugger", "telemetry", "logging",
 ]);
 
-function hasBlockedCompoundHeadword(tokens, parsed) {
-  if (tokens.length < 2) return false;
-  if (parsed.organizations.length > 0) return false;
+function hasBlockedCompoundToken(tokens, hasExplicitIntent = false) {
+  if (tokens.length < 2 || hasExplicitIntent) return false;
+  return tokens.some((token) => NON_PLACE_COMPOUND_HEADWORDS.has(token.toLowerCase()));
+}
 
-  const tail = tokens[tokens.length - 1].toLowerCase();
-  return NON_PLACE_COMPOUND_HEADWORDS.has(tail);
+function hasBusinessNameSignal(tokens) {
+  return tokens.some(
+    (token) =>
+      BUSINESS_INDICATOR_WORDS.has(token.toLowerCase()) || CATEGORY_RE.test(token),
+  );
+}
+
+function looksLikeProperNamePhrase(tokens) {
+  const significant = tokens.filter((token) => !/^(?:and|or|the|of|at|in|near)$/i.test(token));
+  if (significant.length < 2) return false;
+  const titled = significant.filter((token) => /^[A-Z][a-z]/.test(token));
+  return titled.length >= 2;
+}
+
+/**
+ * Compromise often collapses product/settings phrases ("hermes memory mode") into one
+ * noun span. Without a business/category token, that is not a place lookup.
+ */
+function isCollapsedNonBusinessNounPhrase(query, tokens, parsed, hasExplicitIntent = false) {
+  if (hasExplicitIntent || tokens.length < 3) return false;
+  if (parsed.organizations.length > 0 || parsed.places.length > 0) return false;
+  if (looksLikeProperNamePhrase(tokens)) return false;
+
+  const normalizedQuery = normalize(query).toLowerCase();
+  const collapsed = parsed.nouns.some(
+    (noun) => normalize(noun).toLowerCase() === normalizedQuery,
+  );
+  if (!collapsed) return false;
+  if (hasBusinessNameSignal(tokens)) return false;
+  if (tokens.some((token) => NON_PLACE_COMPOUND_HEADWORDS.has(token.toLowerCase()))) {
+    return true;
+  }
+
+  return true;
 }
 
 function isLikelyPersonName(query, parsed) {
@@ -222,6 +263,7 @@ function blockedQuery(query, hasExplicitIntent, hasCategory, parsed) {
     if (ABSTRACT_CONCEPT_RE.test(query)) return true;
     if (METAPHORICAL_PHRASE_RE.test(query)) return true;
     if (isLikelyPersonName(query, parsed)) return true;
+    if (hasBlockedCompoundToken(query.split(/\s+/).filter(Boolean))) return true;
 
     const tokens = query.split(/\s+/).filter(Boolean);
     if (tokens.every(token => COMMON_NON_PLACE_WORDS.has(token.toLowerCase()))) return true;
@@ -331,6 +373,7 @@ export function analyzePlaceIntent(rawQuery, options = {}) {
     // Bare single-token nouns are too noisy. Keep them only when the user
     // expressed place intent ("where is acme", "acme near me", etc.).
     allowSingleTokenNounFallback: hasExplicitIntent || Boolean(locationText),
+    hasExplicitIntent,
   })) {
     return {
       kind: "business",

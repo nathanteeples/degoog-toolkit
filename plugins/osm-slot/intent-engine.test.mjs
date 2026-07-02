@@ -193,6 +193,10 @@ for (const query of [
   "bridge the gap",
   "field of study",
   "hermes desktop",
+  "hermes memory mode",
+  "memory mode",
+  "safe mode",
+  "airplane mode",
 ]) {
   test(`rejects ${query}`, () => {
     assert.equal(analyzePlaceIntent(query), null);
