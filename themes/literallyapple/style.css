@@ -2170,6 +2170,17 @@ body {
     line-height: 0.85;
 }
 
+.lg-pager-control--prev10 .lg-pager-arrow,
+.lg-pager-control--next10 .lg-pager-arrow {
+    font-size: 1.55rem;
+    letter-spacing: -0.18em;
+}
+
+.lg-pager-control--prev10 .lg-pager-control-label,
+.lg-pager-control--next10 .lg-pager-control-label {
+    display: none;
+}
+
 .lg-pager-control-label {
     font-size: 0.88rem;
     line-height: 1.15;

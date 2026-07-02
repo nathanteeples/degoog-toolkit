@@ -2,8 +2,10 @@
   "theme-literallygoogle": {
     "settings": "Settings",
     "prev": "Previous",
+    "prev10": "Back 10 pages",
     "prevImage": "Previous image",
     "next": "Next",
+    "next10": "Forward 10 pages",
     "nextImage": "Next image",
     "moreOptions": "More options",
     "download": "Download",

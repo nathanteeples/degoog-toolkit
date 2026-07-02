@@ -2,8 +2,10 @@
   "theme-literallyapple": {
     "settings": "Réglages",
     "prev": "Précédent",
+    "prev10": "Reculer de 10 pages",
     "prevImage": "Image précédente",
     "next": "Suivant",
+    "next10": "Avancer de 10 pages",
     "nextImage": "Image suivante",
     "moreOptions": "Plus d'options",
     "download": "Télécharger",

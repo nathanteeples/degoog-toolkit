@@ -9,8 +9,10 @@ const LG_LANG_DICT = {
     en: {
         settings: "Settings",
         prev: "Previous",
+        prev10: "Back 10 pages",
         prevImage: "Previous image",
         next: "Next",
+        next10: "Forward 10 pages",
         nextImage: "Next image",
         moreOptions: "More options",
         download: "Download",
@@ -43,6 +45,7 @@ function getLgTranslation(key) {
 /* ── 2. Google-style degooooooog pagination ────────────────────────────── */
 (() => {
     const ENHANCED_ATTR = "data-lg-pager-enhanced";
+    let pageClickDriver = null;
 
     function getPageNumber(node) {
         const raw = node.getAttribute("data-page") || node.textContent || "";
@@ -91,38 +94,137 @@ function getLgTranslation(key) {
     }
 
     const RESULTS_PER_PAGE_HINT = 10;
+    const MIN_DEGOOG_PAGES = 2;
+    const MAX_DEGOOG_PAGES = 10;
+    const PAGE_JUMP = MAX_DEGOOG_PAGES;
 
     function getResultCount() {
         const list = document.getElementById("results-list");
         if (!list) return -1;
         if (list.querySelector(".no-results")) return 0;
-        return list.querySelectorAll(".degoog-result").length;
+        return list.querySelectorAll(
+            ".result-item:not(.lg-engine-filtered-out), .degoog-result:not(.lg-engine-filtered-out)",
+        ).length;
     }
 
     function isOptimisticMaxPageStrip(pageNodes) {
-        if (pageNodes.length !== 10) return false;
+        if (pageNodes.length !== MAX_DEGOOG_PAGES) return false;
         const pages = pageNodes
             .map(getPageNumber)
             .filter(page => page !== null)
             .sort((a, b) => a - b);
-        if (pages.length !== 10) return false;
+        if (pages.length !== MAX_DEGOOG_PAGES) return false;
         return pages.every((page, i) => page === i + 1);
     }
 
-    function shouldShowPagination(pagination) {
-        const pageNodes = getPageNodes(pagination);
-        if (pageNodes.length < 2) return false;
+    function wrapPage(page, totalPages) {
+        if (totalPages < 1) return Math.max(1, page);
+        return ((page - 1) % totalPages + totalPages) % totalPages + 1;
+    }
 
-        const resultCount = getResultCount();
-        const activePage = classifyControls(pageNodes).activePage;
+    function resolveTotalPages(pageNodes, resultCount, activePage, hasNext, storedTotal) {
+        let total = storedTotal || 0;
 
-        if (resultCount === 0 && activePage === 1) return false;
-
-        if (activePage === 1 && isOptimisticMaxPageStrip(pageNodes)) {
-            return resultCount >= RESULTS_PER_PAGE_HINT;
+        if (pageNodes.length < MIN_DEGOOG_PAGES && total < MIN_DEGOOG_PAGES) {
+            if (resultCount === 0 && activePage === 1) return 0;
+            if (pageNodes.length === 0) return 0;
         }
 
-        return true;
+        if (isOptimisticMaxPageStrip(pageNodes)) {
+            if (activePage === 1 && resultCount < RESULTS_PER_PAGE_HINT) return 0;
+            if (activePage === 1) {
+                total = Math.max(total, Math.ceil(resultCount / RESULTS_PER_PAGE_HINT));
+            }
+            if (hasNext) total = Math.max(total, activePage + 1);
+            total = Math.max(total, activePage);
+        } else if (pageNodes.length > 0) {
+            const listedMax = Math.max(
+                ...pageNodes.map(getPageNumber).filter(page => page !== null),
+            );
+            total = Math.max(total, listedMax, pageNodes.length);
+        }
+
+        total = Math.max(total, activePage);
+        return total < MIN_DEGOOG_PAGES ? 0 : total;
+    }
+
+    function resolveVisibleOCount(totalPages) {
+        return Math.max(MIN_DEGOOG_PAGES, Math.min(MAX_DEGOOG_PAGES, totalPages));
+    }
+
+    function buildDisplayPages(controls, totalPages) {
+        const visibleCount = resolveVisibleOCount(totalPages);
+        const activePage = controls.activePage;
+        const activeOIndex = (activePage - 1) % visibleCount;
+        const windowStart = Math.floor((activePage - 1) / visibleCount) * visibleCount + 1;
+        const loops = totalPages > MAX_DEGOOG_PAGES;
+        const displayPages = [];
+
+        for (let i = 0; i < visibleCount; i++) {
+            const page = loops
+                ? wrapPage(windowStart + i, totalPages)
+                : windowStart + i;
+            const existing = controls.pages.find(item => item.page === page);
+            displayPages.push({
+                page,
+                node: existing?.node || null,
+                oActive: i === activeOIndex,
+            });
+        }
+
+        return { displayPages, visibleCount };
+    }
+
+    function rememberPageClickDriver(pageNodes) {
+        for (const node of pageNodes) {
+            if (!isActivePage(node)) {
+                pageClickDriver = node;
+                return;
+            }
+        }
+        if (pageNodes[0]) pageClickDriver = pageNodes[0];
+    }
+
+    function navigateToPage(targetPage) {
+        const pagination = document.getElementById("pagination");
+        if (!pagination) return;
+
+        const existing = pagination.querySelector(
+            `[data-page="${targetPage}"]:not(.lg-pager-control)`,
+        );
+        if (existing) {
+            existing.click();
+            return;
+        }
+
+        if (pageClickDriver) {
+            const probe = pageClickDriver.cloneNode(false);
+            probe.setAttribute("data-page", String(targetPage));
+            if (pageClickDriver.className) probe.className = pageClickDriver.className;
+            probe.textContent = String(targetPage);
+            pagination.appendChild(probe);
+            probe.click();
+            probe.remove();
+            return;
+        }
+
+        const input = document.getElementById("results-search-input");
+        const query = input?.value?.trim();
+        if (!query) return;
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("q", query);
+        if (targetPage > 1) url.searchParams.set("page", String(targetPage));
+        else url.searchParams.delete("page");
+
+        const activeTab = document.querySelector(
+            ".results-tab.active[data-type], .results-tab[aria-selected='true'][data-type]",
+        );
+        const type = activeTab?.getAttribute("data-type");
+        if (type && type !== "web") url.searchParams.set("type", type);
+        else url.searchParams.delete("type");
+
+        window.location.assign(url.toString());
     }
 
     function clearPagination(pagination) {
@@ -137,11 +239,18 @@ function getLgTranslation(key) {
         return span;
     }
 
+    const CONTROL_ARROWS = {
+        prev: "‹",
+        next: "›",
+        prev10: "‹‹",
+        next10: "››",
+    };
+
     function makeControlElement(kind, label) {
         const span = document.createElement("span");
         span.className = `lg-pager-control lg-pager-control--${kind}`;
         span.innerHTML =
-            `<span class="lg-pager-arrow" aria-hidden="true">${kind === "prev" ? "‹" : "›"}</span>` +
+            `<span class="lg-pager-arrow" aria-hidden="true">${CONTROL_ARROWS[kind] || ""}</span>` +
             `<span class="lg-pager-control-label"></span>`;
         span.querySelector(".lg-pager-control-label").textContent = label;
         return span;
@@ -174,15 +283,111 @@ function getLgTranslation(key) {
         return node;
     }
 
-    function enhancePagination(pagination, pageNodes) {
-        if (!pagination || pagination.hasAttribute(ENHANCED_ATTR)) return;
+    function decorateJumpControl(kind, delta, activePage, totalPages, label) {
+        const targetPage = wrapPage(activePage + delta, totalPages);
+        const node = document.createElement("button");
+        node.type = "button";
+        node.className = `lg-pager-control lg-pager-control--${kind}`;
+        node.setAttribute("data-lg-jump-to", String(targetPage));
+        node.setAttribute("aria-label", label);
+        node.innerHTML = makeControlElement(kind, "").innerHTML;
+        node.addEventListener("click", event => {
+            event.preventDefault();
+            navigateToPage(targetPage);
+        });
+        return node;
+    }
+
+    function renderOPages(oTrack, displayPages) {
+        oTrack.replaceChildren();
+        for (const item of displayPages) {
+            const oClass = item.oActive
+                ? "lg-pager-o lg-pager-o--active"
+                : "lg-pager-o";
+            oTrack.appendChild(makeLetter("o", oClass));
+        }
+    }
+
+    function renderNumberRow(numberRow, displayPages, activePage) {
+        numberRow.replaceChildren();
+        for (const item of displayPages) {
+            let node = item.node;
+            if (!node) {
+                node = document.createElement("button");
+                node.type = "button";
+                node.className = "lg-pager-page";
+                node.setAttribute("data-page", String(item.page));
+                node.addEventListener("click", event => {
+                    event.preventDefault();
+                    navigateToPage(item.page);
+                });
+            } else {
+                node.classList.add("lg-pager-page");
+            }
+            node.classList.toggle("lg-pager-page--active", item.page === activePage);
+            node.textContent = String(item.page);
+            numberRow.appendChild(node);
+        }
+    }
+
+    function syncJumpControls(lettersLine, controls, totalPages) {
+        const showJump = totalPages > MAX_DEGOOG_PAGES;
+        for (const [kind, delta, key] of [
+            ["prev10", -PAGE_JUMP, "prev10"],
+            ["next10", PAGE_JUMP, "next10"],
+        ]) {
+            const selector = `.lg-pager-control--${kind}`;
+            const existing = lettersLine.querySelector(selector);
+            if (!showJump) {
+                existing?.remove();
+                continue;
+            }
+            const control = decorateJumpControl(
+                kind,
+                delta,
+                controls.activePage,
+                totalPages,
+                getLgTranslation(key),
+            );
+            if (existing) existing.replaceWith(control);
+            else if (kind === "prev10") lettersLine.insertBefore(control, lettersLine.firstChild);
+            else lettersLine.appendChild(control);
+        }
+    }
+
+    function updatePager(pager, displayPages, controls, visibleCount, totalPages) {
+        pager.dataset.lgPageCount = String(visibleCount);
+        pager.dataset.lgTotalPages = String(totalPages);
+        pager.dataset.lgActivePage = String(controls.activePage);
+
+        const wordmark = pager.querySelector(".lg-pager-wordmark");
+        wordmark?.style.setProperty("--lg-pager-page-count", String(visibleCount));
+
+        renderOPages(pager.querySelector(".lg-pager-o-track"), displayPages);
+        renderNumberRow(pager.querySelector(".lg-pager-pages"), displayPages, controls.activePage);
+
+        const lettersLine = pager.querySelector(".lg-pager-letters-line");
+        if (!lettersLine) return;
+        lettersLine.querySelector(".lg-pager-control--prev")?.replaceWith(
+            decorateControl(controls.prev, "prev", getLgTranslation("prev")),
+        );
+        lettersLine.querySelector(".lg-pager-control--next")?.replaceWith(
+            decorateControl(controls.next, "next", getLgTranslation("next")),
+        );
+        syncJumpControls(lettersLine, controls, totalPages);
+    }
+
+    function enhancePagination(pagination, pageNodes, displayPages, controls, visibleCount, totalPages) {
+        if (!pagination) return;
         if (pagination.querySelector(":scope > .lg-pager")) return;
 
-        const controls = classifyControls(pageNodes);
         pagination.setAttribute(ENHANCED_ATTR, "1");
 
         const root = document.createElement("nav");
         root.className = "lg-pager";
+        root.dataset.lgPageCount = String(visibleCount);
+        root.dataset.lgTotalPages = String(totalPages);
+        root.dataset.lgActivePage = String(controls.activePage);
         root.setAttribute("aria-label", "Search result pages");
 
         const wordmark = document.createElement("div");
@@ -191,15 +396,9 @@ function getLgTranslation(key) {
         const oTrack = document.createElement("div");
         const prefix = document.createElement("div");
         const suffix = document.createElement("div");
-        const oColors = [
-            "lg-pager-blue",
-            "lg-pager-green",
-            "lg-pager-red",
-            "lg-pager-yellow",
-        ];
 
         wordmark.className = "lg-pager-wordmark";
-        wordmark.style.setProperty("--lg-pager-page-count", String(controls.pages.length));
+        wordmark.style.setProperty("--lg-pager-page-count", String(visibleCount));
         lettersLine.className = "lg-pager-letters-line";
         lettersCore.className = "lg-pager-letters-core";
         prefix.className = "lg-pager-prefix";
@@ -213,31 +412,41 @@ function getLgTranslation(key) {
         ].forEach(part => {
             prefix.appendChild(makeLetter(part[0], part[1]));
         });
-        controls.pages.forEach((item, index) => {
-            const oClass =
-                item.page === controls.activePage
-                    ? "lg-pager-o lg-pager-o--active"
-                    : `lg-pager-o ${oColors[index % oColors.length]}`;
-            oTrack.appendChild(makeLetter("o", oClass));
-        });
+        renderOPages(oTrack, displayPages);
         suffix.appendChild(makeLetter("g", "lg-pager-blue"));
 
         const numberRow = document.createElement("div");
         numberRow.className = "lg-pager-pages";
-        controls.pages.forEach(item => {
-            const node = item.node;
-            node.classList.add("lg-pager-page");
-            node.classList.toggle("lg-pager-page--active", item.page === controls.activePage);
-            node.textContent = String(item.page);
-            numberRow.appendChild(node);
-        });
+        renderNumberRow(numberRow, displayPages, controls.activePage);
 
         lettersCore.appendChild(prefix);
         lettersCore.appendChild(oTrack);
         lettersCore.appendChild(suffix);
+        if (totalPages > MAX_DEGOOG_PAGES) {
+            lettersLine.appendChild(
+                decorateJumpControl(
+                    "prev10",
+                    -PAGE_JUMP,
+                    controls.activePage,
+                    totalPages,
+                    getLgTranslation("prev10"),
+                ),
+            );
+        }
         lettersLine.appendChild(decorateControl(controls.prev, "prev", getLgTranslation("prev")));
         lettersLine.appendChild(lettersCore);
         lettersLine.appendChild(decorateControl(controls.next, "next", getLgTranslation("next")));
+        if (totalPages > MAX_DEGOOG_PAGES) {
+            lettersLine.appendChild(
+                decorateJumpControl(
+                    "next10",
+                    PAGE_JUMP,
+                    controls.activePage,
+                    totalPages,
+                    getLgTranslation("next10"),
+                ),
+            );
+        }
         wordmark.appendChild(lettersLine);
         wordmark.appendChild(numberRow);
         root.appendChild(wordmark);
@@ -248,20 +457,56 @@ function getLgTranslation(key) {
         const pagination = document.getElementById("pagination");
         if (!pagination) return;
 
-        if (!shouldShowPagination(pagination)) {
+        const coreWrapper = pagination.querySelector(":scope > .pagination");
+        const pageNodes = coreWrapper ? getPageNodes(coreWrapper) : getPageNodes(pagination);
+        if (pageNodes.length > 0) rememberPageClickDriver(pageNodes);
+
+        const controls = classifyControls(pageNodes);
+        const resultCount = getResultCount();
+        const existing = pagination.querySelector(":scope > .lg-pager");
+        const storedTotal = existing
+            ? parseInt(existing.dataset.lgTotalPages || existing.dataset.lgPageCount || "0", 10)
+            : 0;
+        const totalPages = resolveTotalPages(
+            pageNodes,
+            resultCount,
+            controls.activePage,
+            Boolean(controls.next),
+            storedTotal,
+        );
+
+        if (totalPages < MIN_DEGOOG_PAGES) {
             if (pagination.childElementCount > 0) clearPagination(pagination);
             return;
         }
 
-        if (pagination.querySelector(":scope > .lg-pager")) return;
+        const { displayPages, visibleCount } = buildDisplayPages(controls, totalPages);
 
-        const pageNodes = getPageNodes(pagination);
-        if (pageNodes.length < 2) {
-            if (pagination.childElementCount > 0) clearPagination(pagination);
+        if (existing) {
+            const prevCount = parseInt(existing.dataset.lgPageCount || "0", 10);
+            const prevTotal = parseInt(existing.dataset.lgTotalPages || "0", 10);
+            const prevActive = parseInt(existing.dataset.lgActivePage || "0", 10);
+            if (
+                prevCount === visibleCount &&
+                prevTotal === totalPages &&
+                prevActive === controls.activePage
+            ) {
+                return;
+            }
+            updatePager(existing, displayPages, controls, visibleCount, totalPages);
             return;
         }
 
-        enhancePagination(pagination, pageNodes);
+        if (!coreWrapper && pageNodes.length < MIN_DEGOOG_PAGES) return;
+
+        enhancePagination(
+            pagination,
+            pageNodes,
+            displayPages,
+            controls,
+            visibleCount,
+            totalPages,
+        );
     }
 
     function observePagination() {
