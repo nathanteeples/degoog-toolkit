@@ -15,6 +15,7 @@
       : `/api/plugin/${encodeURIComponent(__PLUGIN_ID__)}`;
   const CHART_CACHE_TTL_MS = 60_000;
   const REQUEST_TIMEOUT_MS = 8_000;
+  const LIVE_MIN_INTERVAL_MS = 5_000;
   const chartCache = new Map();
   const chartInFlight = new Map();
   let gradientSequence = 0;
@@ -26,6 +27,11 @@
   function chartUrl(symbol, period) {
     const params = new URLSearchParams({ symbol, period });
     return `${PLUGIN_API_BASE}/chart?${params.toString()}`;
+  }
+
+  function quoteUrl(symbol) {
+    const params = new URLSearchParams({ symbol, live: "1" });
+    return `${PLUGIN_API_BASE}/quote?${params.toString()}`;
   }
 
   function formatPrice(value, priceHint) {
@@ -43,6 +49,22 @@
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     });
+  }
+
+  function formatChange(change, percent, priceHint) {
+    const number = Number(change);
+    if (!Number.isFinite(number)) return "";
+    const sign = number > 0 ? "+" : "";
+    const percentPart = Number.isFinite(Number(percent))
+      ? ` (${sign}${Number(percent).toFixed(2)}%)`
+      : "";
+    const hint = Number(priceHint);
+    const decimals = Number.isFinite(hint)
+      ? Math.max(0, Math.min(6, hint))
+      : Math.abs(number) < 1
+        ? 4
+        : 2;
+    return `${sign}${formatPrice(number, decimals)}${percentPart}`;
   }
 
   function escapeHtml(value) {
@@ -156,7 +178,7 @@
     else chart.classList.add("stocks-chart-flat");
   }
 
-  function renderChart(chart, body, stats, payload) {
+  function renderChart(chart, body, stats, payload, options = {}) {
     const points = payload.points
       .map((point) => ({
         price: Number(point.price),
@@ -300,6 +322,9 @@
     dotEl.setAttribute("cy", lastPoint[1].toFixed(2));
     dotEl.setAttribute("r", "3");
     dotEl.setAttribute("class", "stocks-sparkline-dot");
+    if (options.livePulse) {
+      dotEl.classList.add("stocks-sparkline-dot--pulse");
+    }
     svg.appendChild(dotEl);
 
 
@@ -426,6 +451,160 @@
     }
   }
 
+  async function fetchLiveQuote(symbol) {
+    const controller =
+      typeof AbortController === "function" ? new AbortController() : null;
+    const timeout = controller
+      ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+      : null;
+    try {
+      const response = await fetch(quoteUrl(symbol), {
+        ...(controller ? { signal: controller.signal } : {}),
+      });
+      if (!response.ok) return null;
+      const payload = await response.json();
+      return payload?.ok ? payload : null;
+    } catch {
+      return null;
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  }
+
+  function setCardTrend(card, chart, trend) {
+    const safeTrend = trend === "up" || trend === "down" ? trend : "flat";
+    card.classList.remove("stocks-card-up", "stocks-card-down", "stocks-card-flat");
+    card.classList.add(`stocks-card-${safeTrend}`);
+    if (!chart) return;
+    chart.classList.remove("stocks-chart-up", "stocks-chart-down", "stocks-chart-flat");
+    chart.classList.add(`stocks-chart-${safeTrend}`);
+  }
+
+  function flashDirectional(el, direction, upClass, downClass) {
+    if (!el || (direction !== "up" && direction !== "down")) return;
+    el.classList.remove(upClass, downClass);
+    void el.offsetWidth;
+    el.classList.add(direction === "up" ? upClass : downClass);
+  }
+
+  function applyLiveQuote(card, quote) {
+    const priceEl = card.querySelector(".stocks-price-value");
+    const changeEl = card.querySelector(".stocks-change");
+    const chart = card.querySelector(".stocks-chart");
+    const body = card.querySelector(".stocks-chart-body");
+    const stats = card.querySelector(".stocks-chart-stats");
+    if (!priceEl || !changeEl) return;
+
+    const prevPrice = Number(card.dataset.lastPrice);
+    const newPrice = Number(quote.price);
+    const priceHint = quote.priceHint;
+    let flashDir = null;
+
+    if (
+      Number.isFinite(prevPrice) &&
+      Number.isFinite(newPrice) &&
+      prevPrice !== newPrice
+    ) {
+      flashDir = newPrice > prevPrice ? "up" : "down";
+    }
+
+    if (flashDir) {
+      flashDirectional(priceEl, flashDir, "stocks-price-flash-up", "stocks-price-flash-down");
+      flashDirectional(
+        changeEl,
+        flashDir,
+        "stocks-change-flash-up",
+        "stocks-change-flash-down",
+      );
+    }
+
+    if (Number.isFinite(newPrice)) {
+      card.dataset.lastPrice = String(newPrice);
+      priceEl.textContent = formatPrice(newPrice, priceHint);
+    }
+
+    changeEl.textContent = formatChange(quote.change, quote.changePercent, priceHint);
+    setCardTrend(card, chart, quote.trend || "flat");
+
+    const activePeriod = chart?.querySelector(".stocks-period--active")?.dataset.period;
+    if (
+      activePeriod === "1d" &&
+      card._lastPayload?.period === "1d" &&
+      Array.isArray(card._lastPayload.points) &&
+      card._lastPayload.points.length > 1 &&
+      quote.chartPoint &&
+      Number.isFinite(Number(quote.chartPoint.price))
+    ) {
+      const points = card._lastPayload.points.map((point, index, list) => {
+        if (index !== list.length - 1) return { ...point };
+        return {
+          price: Number(quote.chartPoint.price),
+          time: Number(quote.chartPoint.time) || Number(point.time) || 0,
+        };
+      });
+      card._lastPayload = { ...card._lastPayload, points };
+      renderChart(chart, body, stats, card._lastPayload, { livePulse: true });
+    }
+  }
+
+  function setupLiveUpdates(card, symbol) {
+    if (card.dataset.liveUpdates !== "true") return;
+
+    const intervalMs = Math.max(
+      LIVE_MIN_INTERVAL_MS,
+      Number(card.dataset.liveInterval) || 10_000,
+    );
+    let timer = null;
+    let visible = false;
+    let inFlight = false;
+
+    async function tick() {
+      if (!card.isConnected || document.hidden || !visible || inFlight) return;
+      inFlight = true;
+      try {
+        const quote = await fetchLiveQuote(symbol);
+        if (quote && card.isConnected) applyLiveQuote(card, quote);
+      } finally {
+        inFlight = false;
+      }
+    }
+
+    function start() {
+      if (timer) return;
+      tick();
+      timer = setInterval(tick, intervalMs);
+    }
+
+    function stop() {
+      if (!timer) return;
+      clearInterval(timer);
+      timer = null;
+    }
+
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else if (visible) start();
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        visible = entries.some((entry) => entry.isIntersecting);
+        if (visible && !document.hidden) start();
+        else stop();
+      },
+      { threshold: 0.15 },
+    );
+
+    observer.observe(card);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    card._stocksLiveCleanup = () => {
+      stop();
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }
+
   function initCard(card) {
     if (card.dataset.stocksChartInit) return;
     card.dataset.stocksChartInit = "1";
@@ -469,6 +648,8 @@
         renderChart(chart, body, stats, payload);
       }
     })();
+
+    setupLiveUpdates(card, symbol);
   }
 
   function scan() {

@@ -121,6 +121,55 @@
     font-variant-numeric: tabular-nums;
     font-weight: 700;
     line-height: 1.05;
+    border-radius: 6px;
+    padding: 0 0.15rem;
+    transition: color 180ms ease;
+}
+
+@keyframes stocks-price-flash-up {
+    0% {
+        background-color: color-mix(in srgb, var(--stocks-up) 38%, transparent);
+        color: var(--stocks-up);
+    }
+    100% {
+        background-color: transparent;
+        color: var(--text-primary);
+    }
+}
+
+@keyframes stocks-price-flash-down {
+    0% {
+        background-color: color-mix(in srgb, var(--stocks-down) 38%, transparent);
+        color: var(--stocks-down);
+    }
+    100% {
+        background-color: transparent;
+        color: var(--text-primary);
+    }
+}
+
+.stocks-price-flash-up {
+    animation: stocks-price-flash-up 650ms ease-out;
+}
+
+.stocks-price-flash-down {
+    animation: stocks-price-flash-down 650ms ease-out;
+}
+
+@keyframes stocks-change-flash {
+    0% {
+        transform: scale(1.04);
+        filter: brightness(1.08);
+    }
+    100% {
+        transform: scale(1);
+        filter: none;
+    }
+}
+
+.stocks-change-flash-up,
+.stocks-change-flash-down {
+    animation: stocks-change-flash 450ms ease-out;
 }
 
 .stocks-currency {
@@ -342,6 +391,26 @@
 
 .stocks-sparkline-dot {
     fill: var(--stocks-line);
+    transition: cy 280ms ease, cx 280ms ease;
+}
+
+@keyframes stocks-dot-pulse {
+    0% {
+        r: 3;
+        opacity: 1;
+    }
+    40% {
+        r: 5.5;
+        opacity: 0.85;
+    }
+    100% {
+        r: 3;
+        opacity: 1;
+    }
+}
+
+.stocks-sparkline-dot--pulse {
+    animation: stocks-dot-pulse 520ms ease-out;
 }
 
 .stocks-sparkline-label {

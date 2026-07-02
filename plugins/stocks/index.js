@@ -2,6 +2,8 @@ let templateHtml = "";
 let pluginFetch = (...args) => fetch(...args);
 let quoteCache = null;
 let sparklineSequence = 0;
+let liveUpdatesEnabled = true;
+let liveUpdateIntervalMs = 10_000;
 
 function t(key) {
   return `{{ t:plugin-stocks.${key} }}`;
@@ -9,6 +11,8 @@ function t(key) {
 
 const PLUGIN_NAME = "Stocks";
 const CACHE_TTL_MS = 60 * 1000;
+const LIVE_CACHE_TTL_MS = 9 * 1000;
+const DEFAULT_LIVE_INTERVAL_MS = 10 * 1000;
 const REQUEST_TIMEOUT_MS = 8_000;
 const YAHOO_SEARCH_URL = "https://query1.finance.yahoo.com/v1/finance/search";
 const YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote";
@@ -228,6 +232,33 @@ export const slot = {
   position: "above-results",
   slotPositions: ["above-results", "knowledge-panel"],
   waitForResults: true,
+  settingsSchema: [
+    {
+      key: "liveUpdates",
+      label: "Live price updates",
+      type: "toggle",
+      default: "true",
+      description:
+        "Refresh the quote while the card is visible (uses extra Yahoo Finance requests).",
+    },
+    {
+      key: "liveUpdateIntervalSeconds",
+      label: "Update interval (seconds)",
+      type: "select",
+      options: ["5", "10", "15", "30", "60"],
+      default: "10",
+      description: "How often to poll for a fresh price when live updates are on.",
+    },
+  ],
+
+  configure(settings) {
+    liveUpdatesEnabled =
+      settings?.liveUpdates !== false && settings?.liveUpdates !== "false";
+    const seconds = parseInt(settings?.liveUpdateIntervalSeconds, 10);
+    liveUpdateIntervalMs = [5, 10, 15, 30, 60].includes(seconds)
+      ? seconds * 1000
+      : DEFAULT_LIVE_INTERVAL_MS;
+  },
 
   async init(ctx) {
     templateHtml = ctx?.template || "";
@@ -288,6 +319,11 @@ export const routes = [
     method: "get",
     handler: handleChartRoute,
   },
+  {
+    path: "quote",
+    method: "get",
+    handler: handleQuoteRoute,
+  },
 ];
 
 async function getCachedQuote(request, doFetch) {
@@ -298,6 +334,37 @@ async function getCachedQuote(request, doFetch) {
   const quote = await resolveQuote(request, doFetch);
   if (quote) await cacheSet(quoteCache, key, quote, CACHE_TTL_MS);
   return quote;
+}
+
+async function getLiveQuote(symbol, doFetch) {
+  const key = `stocks:live:${symbol}`;
+  const cached = await cacheGet(quoteCache, key);
+  if (cached) return cached;
+
+  const quote = await resolveQuote({ kind: "symbol", symbol }, doFetch);
+  if (quote) await cacheSet(quoteCache, key, quote, LIVE_CACHE_TTL_MS);
+  return quote;
+}
+
+function serializeLiveQuote(quote) {
+  const change = Number(quote.change);
+  const trend = change > 0 ? "up" : change < 0 ? "down" : "flat";
+  return {
+    ok: true,
+    symbol: quote.symbol,
+    price: quote.price,
+    priceHint: quote.priceHint,
+    currency: quote.currency,
+    change: quote.change,
+    changePercent: quote.changePercent,
+    previousClose: quote.previousClose,
+    asOf: quote.asOf,
+    marketState: quote.marketState,
+    trend,
+    chartPoint: Number.isFinite(quote.price)
+      ? { price: quote.price, time: Math.floor(Date.now() / 1000) }
+      : null,
+  };
 }
 
 async function getCachedChartSeries(symbol, period, doFetch) {
@@ -539,6 +606,45 @@ async function handleChartRoute(request) {
       {
         ok: false,
         error: "Internal error while fetching chart data",
+      },
+      500,
+    );
+  }
+}
+
+async function handleQuoteRoute(request) {
+  try {
+    const url = new URL(request.url);
+    const symbol = normalizeSymbol(url.searchParams.get("symbol"), {
+      allowAmbiguous: true,
+    });
+    if (!symbol) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Missing or invalid symbol",
+        },
+        400,
+      );
+    }
+
+    const quote = await getLiveQuote(symbol, pluginFetch);
+    if (!quote) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Quote unavailable",
+        },
+        502,
+      );
+    }
+
+    return jsonResponse(serializeLiveQuote(quote));
+  } catch {
+    return jsonResponse(
+      {
+        ok: false,
+        error: "Internal error while fetching quote data",
       },
       500,
     );
@@ -1167,6 +1273,9 @@ function renderQuote(quote) {
     sparkline: renderSparkline(quote.chartPoints, trend, quote.chartLabel),
     stats: renderStats(quote, trend),
     details: renderDetails(quote),
+    live_updates: liveUpdatesEnabled ? "true" : "false",
+    live_interval_ms: String(liveUpdateIntervalMs),
+    initial_price: escapeAttr(String(quote.price)),
   };
 
   if (!templateHtml) {

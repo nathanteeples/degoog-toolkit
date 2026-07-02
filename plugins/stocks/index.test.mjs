@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { slot } from "./index.js";
+import { routes, slot } from "./index.js";
 
 function yahooFetch(url) {
   const parsed = new URL(url);
@@ -165,4 +165,22 @@ test("does not treat a partial company-name match as stock evidence", async () =
   });
 
   assert.deepEqual(output, { html: "" });
+});
+
+test("quote route returns a live quote payload", async () => {
+  slot.configure({ liveUpdates: true, liveUpdateIntervalSeconds: "10" });
+  await slot.init({ fetch: yahooFetch });
+  const quoteRoute = routes.find((route) => route.path === "quote");
+  assert.ok(quoteRoute);
+
+  const response = await quoteRoute.handler(
+    new Request("http://localhost/quote?symbol=AAPL&live=1"),
+  );
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.symbol, "AAPL");
+  assert.equal(body.price, 200);
+  assert.equal(body.trend, "up");
+  assert.ok(body.chartPoint);
 });
