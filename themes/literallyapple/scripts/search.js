@@ -1171,6 +1171,34 @@ function getLaTranslation(key) {
     const HIDDEN_CLASS = "lg-engine-filtered-out";
     const RESULT_SELECTORS = ".result-item, .image-card, .video-card";
 
+    function installEngineResultLearnerEarly() {
+        if (EventSource.prototype.__lgEngineLearner) return;
+        const nativeAdd = EventSource.prototype.addEventListener;
+        EventSource.prototype.addEventListener = function (type, listener, options) {
+            if (type === "engine-result" && typeof listener === "function") {
+                const stream = this;
+                const wrapped = event => {
+                    try {
+                        if (!stream.__lgEngineStreamSeen) {
+                            stream.__lgEngineStreamSeen = true;
+                            resetSourceEngineLearner();
+                        }
+                        const data = JSON.parse(event.data);
+                        ingestEngineResultBatch(data.engine, data.results);
+                    } catch {
+                        /* ignore malformed stream payloads */
+                    }
+                    return listener.call(this, event);
+                };
+                return nativeAdd.call(this, type, wrapped, options);
+            }
+            return nativeAdd.call(this, type, listener, options);
+        };
+        EventSource.prototype.__lgEngineLearner = true;
+    }
+
+    installEngineResultLearnerEarly();
+
     function getPage() {
         return document.getElementById("results-page");
     }
@@ -1179,7 +1207,61 @@ function getLaTranslation(key) {
         return (name || "").trim().toLowerCase();
     }
 
-    function sourceMatchesEngine(source, engineName) {
+    function compactEngineToken(name) {
+        return normalizeEngine(name).replace(/[^a-z0-9]+/g, "");
+    }
+
+    /** Sources learned from SSE engine-result batches (source tag → engine display names). */
+    const sourceEngineAliases = new Map();
+    let streamUrlSources = new Map();
+
+    function resetSourceEngineLearner() {
+        sourceEngineAliases.clear();
+        streamUrlSources = new Map();
+    }
+
+    function rememberSourceEngine(source, engineName) {
+        const srcKey = normalizeEngine(source);
+        const engKey = normalizeEngine(engineName);
+        if (!srcKey || !engKey) return;
+        let aliases = sourceEngineAliases.get(srcKey);
+        if (!aliases) {
+            aliases = new Set();
+            sourceEngineAliases.set(srcKey, aliases);
+        }
+        aliases.add(engKey);
+    }
+
+    function ingestEngineResultBatch(engineName, results) {
+        if (!engineName || !Array.isArray(results)) return;
+        for (const result of results) {
+            const sources = Array.isArray(result.sources)
+                ? result.sources.map(part => String(part).trim()).filter(Boolean)
+                : result.source
+                  ? [String(result.source).trim()]
+                  : [];
+            if (!result.url || !sources.length) continue;
+
+            const prev = streamUrlSources.get(result.url) || new Set();
+            const next = new Set(sources);
+            for (const source of next) {
+                if (!prev.has(source)) {
+                    rememberSourceEngine(source, engineName);
+                }
+            }
+            streamUrlSources.set(result.url, next);
+        }
+        if (getSelectedEngines().length) {
+            requestAnimationFrame(() => applyFilter(getSelectedEngines()));
+        }
+    }
+
+    function sourceKnownForEngine(source, engineName) {
+        const aliases = sourceEngineAliases.get(normalizeEngine(source));
+        return aliases?.has(normalizeEngine(engineName)) ?? false;
+    }
+
+    function sourceMatchesEngineStrict(source, engineName) {
         const normalized = normalizeEngine(source);
         const needle = normalizeEngine(engineName);
         if (!needle) return true;
@@ -1190,7 +1272,21 @@ function getLaTranslation(key) {
         if (!sourceBase) return false;
         if (sourceBase === needle) return true;
         if (needle.startsWith(`${sourceBase} `)) return true;
-        return sourceBase.startsWith(`${needle} `);
+        if (sourceBase.startsWith(`${needle} `)) return true;
+
+        const compactSource = compactEngineToken(source);
+        const compactNeedle = compactEngineToken(engineName);
+        const compactBase = compactEngineToken(sourceBase);
+        if (!compactNeedle) return true;
+        if (compactSource === compactNeedle) return true;
+        if (compactBase && compactNeedle.startsWith(compactBase)) return true;
+        if (compactBase && compactBase.startsWith(compactNeedle)) return true;
+        return false;
+    }
+
+    function sourceMatchesEngine(source, engineName) {
+        if (sourceMatchesEngineStrict(source, engineName)) return true;
+        return sourceKnownForEngine(source, engineName);
     }
 
     function enginePanelRoots() {
@@ -1357,6 +1453,7 @@ function getLaTranslation(key) {
     }
 
     function clearFilter() {
+        resetSourceEngineLearner();
         setSelectedEngines([]);
     }
 
