@@ -1751,10 +1751,23 @@ function getLgTranslation(key) {
         );
     }
 
-    function scrollSelectedImageIntoView() {
+    function scrollSelectedImageIntoView({ block = "nearest" } = {}) {
         document
             .querySelector("#results-list .image-card.selected")
-            ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+            ?.scrollIntoView({ block, inline: "nearest", behavior: "smooth" });
+    }
+
+    let scrollSelectedFrame = 0;
+    function scheduleScrollToSelected() {
+        if (!isPreviewOpen()) return;
+        if (!document.querySelector("#results-list .image-card.selected")) return;
+        if (scrollSelectedFrame) return;
+        scrollSelectedFrame = requestAnimationFrame(() => {
+            scrollSelectedFrame = 0;
+            requestAnimationFrame(() => {
+                scrollSelectedImageIntoView({ block: "center" });
+            });
+        });
     }
 
     function bindGrid(grid) {
@@ -1766,6 +1779,7 @@ function getLgTranslation(key) {
             absorbNewItems(grid);
         }
         applyFold(grid);
+        scheduleScrollToSelected();
     }
 
     function scanGrids() {
@@ -1782,6 +1796,7 @@ function getLgTranslation(key) {
             document
                 .querySelectorAll("#results-list .image-grid.lg-image-grid-fold")
                 .forEach(applyFold);
+            scheduleScrollToSelected();
         });
     }
 
@@ -1840,7 +1855,48 @@ function getLgTranslation(key) {
             }
             if (needsBind) scanGrids();
             else scheduleFold();
+            scheduleScrollToSelected();
         }).observe(resultsList, { childList: true, subtree: true });
+    }
+
+    const resultsLayout = document.getElementById("results-layout");
+    const filtersEdgeHit = document.getElementById("lg-filters-edge-hit");
+    const filtersBar = document.getElementById("image-filters-bar");
+    if (resultsLayout && filtersEdgeHit && filtersBar && preview) {
+        let filtersHideTimer = 0;
+
+        function syncFiltersCollapse() {
+            const collapsed = preview.classList.contains("open");
+            resultsLayout.classList.toggle("lg-image-filters-collapsed", collapsed);
+            filtersEdgeHit.hidden = !collapsed;
+            filtersEdgeHit.setAttribute("aria-hidden", collapsed ? "false" : "true");
+            if (!collapsed) filtersBar.classList.remove("lg-filters-reveal");
+        }
+
+        function revealFiltersBar() {
+            clearTimeout(filtersHideTimer);
+            filtersBar.classList.add("lg-filters-reveal");
+        }
+
+        function scheduleHideFiltersBar() {
+            clearTimeout(filtersHideTimer);
+            filtersHideTimer = setTimeout(() => {
+                if (!filtersBar.matches(":hover") && !filtersEdgeHit.matches(":hover")) {
+                    filtersBar.classList.remove("lg-filters-reveal");
+                }
+            }, 200);
+        }
+
+        for (const el of [filtersEdgeHit, filtersBar]) {
+            el.addEventListener("mouseenter", revealFiltersBar);
+            el.addEventListener("mouseleave", scheduleHideFiltersBar);
+        }
+
+        new MutationObserver(syncFiltersCollapse).observe(preview, {
+            attributes: true,
+            attributeFilter: ["class"],
+        });
+        syncFiltersCollapse();
     }
 
     scanGrids();
