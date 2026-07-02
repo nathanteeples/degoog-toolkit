@@ -1296,6 +1296,36 @@ function getLgTranslation(key) {
         );
     }
 
+    function getVisualImageCards() {
+        const cards = [...document.querySelectorAll("#results-list .image-card")].filter(
+            card => card.offsetParent !== null,
+        );
+        const rowTolerance = 14;
+        cards.sort((a, b) => {
+            const ar = a.getBoundingClientRect();
+            const br = b.getBoundingClientRect();
+            if (Math.abs(ar.top - br.top) > rowTolerance) {
+                return ar.top - br.top;
+            }
+            return ar.left - br.left;
+        });
+        return cards;
+    }
+
+    function navigatePreviewByVisualOrder(direction) {
+        const cards = getVisualImageCards();
+        if (cards.length < 2) return;
+        const current = document.querySelector("#results-list .image-card.selected");
+        const currentIndex = Math.max(0, cards.indexOf(current));
+        const nextIndex = (currentIndex + direction + cards.length) % cards.length;
+        const target = cards[nextIndex];
+        if (!target) return;
+        target.scrollIntoView({ block: "nearest", inline: "nearest" });
+        target.dispatchEvent(
+            new MouseEvent("click", { bubbles: true, cancelable: true, view: window }),
+        );
+    }
+
     function syncMp2DownloadVisibility(panel) {
         const dl = panel.querySelector("#mp2-download");
         if (!dl) return;
@@ -1322,11 +1352,31 @@ function getLgTranslation(key) {
         if (prevBtn) {
             prevBtn.setAttribute("aria-label", getLgTranslation("prevImage"));
             prevBtn.setAttribute("title", getLgTranslation("prev"));
+            prevBtn.addEventListener(
+                "click",
+                e => {
+                    if (isVideosTabActive()) return;
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    navigatePreviewByVisualOrder(-1);
+                },
+                true,
+            );
         }
         const nextBtn = panel.querySelector("#media-preview-next");
         if (nextBtn) {
             nextBtn.setAttribute("aria-label", getLgTranslation("nextImage"));
             nextBtn.setAttribute("title", getLgTranslation("next"));
+            nextBtn.addEventListener(
+                "click",
+                e => {
+                    if (isVideosTabActive()) return;
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    navigatePreviewByVisualOrder(1);
+                },
+                true,
+            );
         }
         if (menuBtn) {
             menuBtn.setAttribute("aria-label", getLgTranslation("moreOptions"));
@@ -1400,6 +1450,19 @@ function getLgTranslation(key) {
                 if (menuBtn) menuBtn.setAttribute("aria-expanded", "false");
             }
         });
+
+        document.addEventListener(
+            "keydown",
+            e => {
+                if (isVideosTabActive()) return;
+                if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                if (!panel.classList.contains("open")) return;
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                navigatePreviewByVisualOrder(e.key === "ArrowLeft" ? -1 : 1);
+            },
+            true,
+        );
 
         if (dlBtn) {
             dlBtn.addEventListener("click", () => {
@@ -1506,6 +1569,23 @@ function getLgTranslation(key) {
         });
     }
 
+    let fallbackSeq = 0;
+    function itemSortKey(item) {
+        const rawIdx = item.getAttribute("data-idx") || item.dataset.idx || "";
+        const parsed = Number.parseInt(rawIdx, 10);
+        if (Number.isFinite(parsed)) {
+            return { primary: parsed, secondary: 0 };
+        }
+        if (!item.dataset.lgImageSeq) {
+            fallbackSeq += 1;
+            item.dataset.lgImageSeq = String(fallbackSeq);
+        }
+        return {
+            primary: 1_000_000,
+            secondary: Number.parseInt(item.dataset.lgImageSeq, 10) || 0,
+        };
+    }
+
     function relayoutGrid(grid) {
         if (!grid?.isConnected) return;
 
@@ -1528,6 +1608,13 @@ function getLgTranslation(key) {
             items.push(child);
         }
 
+        items.sort((a, b) => {
+            const ka = itemSortKey(a);
+            const kb = itemSortKey(b);
+            if (ka.primary !== kb.primary) return ka.primary - kb.primary;
+            return ka.secondary - kb.secondary;
+        });
+
         grid.replaceChildren();
         const columns = Array.from({ length: targetCols }, () => {
             const col = document.createElement("div");
@@ -1541,10 +1628,13 @@ function getLgTranslation(key) {
         grid.dataset.lgImageColLayout = layoutKey;
     }
 
+    let relayoutInProgress = 0;
     function runRelayout() {
+        relayoutInProgress += 1;
         document
             .querySelectorAll("#results-list .image-grid, #results-list .skeleton-image-grid")
             .forEach(relayoutGrid);
+        relayoutInProgress = Math.max(0, relayoutInProgress - 1);
     }
 
     let relayoutFrame = 0;
@@ -1575,9 +1665,14 @@ function getLgTranslation(key) {
 
     const preview = document.getElementById("media-preview-panel");
     if (preview) {
+        let wasOpen = preview.classList.contains("open");
         new MutationObserver(() => {
+            const isOpen = preview.classList.contains("open");
             scheduleRelayout();
-            pulseRelayoutDuringPreviewTransition();
+            if (isOpen && !wasOpen) {
+                pulseRelayoutDuringPreviewTransition();
+            }
+            wasOpen = isOpen;
         }).observe(preview, {
             attributes: true,
             attributeFilter: ["class"],
@@ -1589,7 +1684,10 @@ function getLgTranslation(key) {
 
     const resultsList = document.getElementById("results-list");
     if (resultsList) {
-        new MutationObserver(scheduleRelayout).observe(resultsList, {
+        new MutationObserver(() => {
+            if (relayoutInProgress > 0) return;
+            scheduleRelayout();
+        }).observe(resultsList, {
             childList: true,
             subtree: true,
         });
