@@ -1059,6 +1059,194 @@ function getLgTranslation(key) {
     scheduleRelayout();
 })();
 
+/* ── 5c. Engine performance row → filter results by engine ─────────────── */
+(() => {
+    const FILTER_ATTR = "data-lg-engine-filter";
+    const ACTIVE_CLASS = "lg-engine-stat-row--active";
+    const HIDDEN_CLASS = "lg-engine-filtered-out";
+    const RESULT_SELECTORS = ".result-item, .image-card, .video-card";
+
+    function getPage() {
+        return document.getElementById("results-page");
+    }
+
+    function normalizeEngine(name) {
+        return (name || "").trim().toLowerCase();
+    }
+
+    function getActiveEngine() {
+        return getPage()?.getAttribute(FILTER_ATTR) || "";
+    }
+
+    function getResultSources(el) {
+        if (el.classList.contains("result-item")) {
+            return [...el.querySelectorAll(".result-engine-tag")].map(tag =>
+                tag.textContent.trim(),
+            );
+        }
+        const meta = el.querySelector(".lg-result-sources");
+        if (!meta) return [];
+        return meta.textContent
+            .split("|")
+            .map(part => part.trim())
+            .filter(Boolean);
+    }
+
+    function resultMatches(engineName, el) {
+        if (!engineName) return true;
+        const needle = normalizeEngine(engineName);
+        return getResultSources(el).some(source => normalizeEngine(source) === needle);
+    }
+
+    function syncRowHighlights(engineName) {
+        const needle = normalizeEngine(engineName);
+        document.querySelectorAll(".engine-stat-row").forEach(row => {
+            const rowEngine = normalizeEngine(row.querySelector(".engine-stat-label")?.textContent);
+            const active = Boolean(needle) && rowEngine === needle;
+            row.classList.toggle(ACTIVE_CLASS, active);
+            row.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+    }
+
+    function applyFilter(engineName) {
+        const list = document.getElementById("results-list");
+        if (!list) return;
+        list.querySelectorAll(RESULT_SELECTORS).forEach(el => {
+            const show = resultMatches(engineName, el);
+            el.classList.toggle(HIDDEN_CLASS, !show);
+        });
+    }
+
+    function setActiveEngine(name) {
+        const page = getPage();
+        if (!page) return;
+        if (name) {
+            page.setAttribute(FILTER_ATTR, name);
+        } else {
+            page.removeAttribute(FILTER_ATTR);
+        }
+        syncRowHighlights(name);
+        applyFilter(name);
+    }
+
+    function engineNameFromRow(row) {
+        return row.querySelector(".engine-stat-label")?.textContent?.trim() || "";
+    }
+
+    function onRowActivate(row) {
+        const name = engineNameFromRow(row);
+        if (!name) return;
+        if (normalizeEngine(name) === normalizeEngine(getActiveEngine())) {
+            setActiveEngine("");
+            return;
+        }
+        setActiveEngine(name);
+    }
+
+    function decorateRows() {
+        document.querySelectorAll(".engine-stat-row").forEach(row => {
+            if (row.dataset.lgEngineFilterBound === "1") return;
+            row.dataset.lgEngineFilterBound = "1";
+            row.classList.add("lg-engine-stat-row--filterable");
+            if (!row.hasAttribute("role")) row.setAttribute("role", "button");
+            if (!row.hasAttribute("tabindex")) row.setAttribute("tabindex", "0");
+            row.setAttribute("aria-pressed", "false");
+        });
+    }
+
+    function clearFilter() {
+        setActiveEngine("");
+    }
+
+    function scheduleApply() {
+        const engine = getActiveEngine();
+        if (!engine) return;
+        requestAnimationFrame(() => applyFilter(engine));
+    }
+
+    function nodeStartsSearch(node) {
+        if (!node || node.nodeType !== 1) return false;
+        return (
+            node.classList?.contains("skeleton-results") ||
+            node.classList?.contains("skeleton-card") ||
+            node.classList?.contains("skeleton-sidebar") ||
+            node.classList?.contains("skeleton-image-grid") ||
+            node.classList?.contains("streaming-engine-panel") ||
+            !!node.querySelector?.(
+                ".skeleton-results, .skeleton-card, .skeleton-sidebar, .skeleton-image-grid, .streaming-engine-panel",
+            )
+        );
+    }
+
+    function onClick(event) {
+        const target = event.target;
+        if (!target?.closest) return;
+        if (target.closest(".engine-retry-link")) return;
+        const row = target.closest(".engine-stat-row");
+        if (!row) return;
+        event.preventDefault();
+        onRowActivate(row);
+    }
+
+    function onKeydown(event) {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const row = event.target.closest?.(".engine-stat-row");
+        if (!row) return;
+        event.preventDefault();
+        onRowActivate(row);
+    }
+
+    function observeEngineRoots() {
+        for (const id of ["results-sidebar", "image-engine-panel"]) {
+            const root = document.getElementById(id);
+            if (!root) continue;
+            new MutationObserver(() => {
+                decorateRows();
+                syncRowHighlights(getActiveEngine());
+            }).observe(root, { childList: true, subtree: true });
+        }
+    }
+
+    function init() {
+        if (!getPage()) return;
+
+        document.addEventListener("click", onClick, true);
+        document.addEventListener("keydown", onKeydown, true);
+
+        const resultsList = document.getElementById("results-list");
+        if (resultsList) {
+            new MutationObserver(mutations => {
+                const started = mutations.some(mutation =>
+                    [...mutation.addedNodes].some(nodeStartsSearch),
+                );
+                if (started) clearFilter();
+                decorateRows();
+                scheduleApply();
+            }).observe(resultsList, { childList: true, subtree: true });
+        }
+
+        observeEngineRoots();
+
+        document.getElementById("results-search-btn")?.addEventListener("click", clearFilter);
+        document.getElementById("results-search-input")?.addEventListener("keydown", event => {
+            if (event.key === "Enter") clearFilter();
+        });
+
+        window.addEventListener("degoog-results-ready", () => {
+            decorateRows();
+            scheduleApply();
+        });
+
+        decorateRows();
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
+})();
+
 /* ── 6. Immediate search-type state for theme layout ───────────────────── */
 (() => {
     const TYPE_ATTR = "data-lg-search-type";

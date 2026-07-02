@@ -1019,6 +1019,28 @@ html[dir="rtl"] #image-filters-bar.open {
     margin-bottom: 0;
 }
 
+.engine-stat-row.lg-engine-stat-row--filterable {
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.engine-stat-row.lg-engine-stat-row--filterable:hover {
+    background: var(--bg-hover);
+}
+
+.engine-stat-row.lg-engine-stat-row--active {
+    background: color-mix(in srgb, var(--primary) 12%, var(--bg-light));
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+.result-item.lg-engine-filtered-out,
+.image-card.lg-engine-filtered-out,
+.video-card.lg-engine-filtered-out {
+    display: none !important;
+}
+
 .related-search-link {
     display: block;
     padding: 14px;
