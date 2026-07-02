@@ -2099,6 +2099,20 @@ body {
     --lg-engine-active-fg: var(--text-primary);
 }
 
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) #results-page {
+        --lg-selection-accent: #669df6;
+        --lg-selection-active-bg: #d4e2fc;
+        --lg-selection-active-ring: color-mix(in srgb, #669df6 42%, #d4e2fc);
+    }
+}
+
+[data-theme="light"] #results-page {
+    --lg-selection-accent: #669df6;
+    --lg-selection-active-bg: #d4e2fc;
+    --lg-selection-active-ring: color-mix(in srgb, #669df6 42%, #d4e2fc);
+}
+
 #results-tabs .lg-filters-wrap {
     position: relative;
 }
