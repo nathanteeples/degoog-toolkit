@@ -1,4 +1,4 @@
-import { getAvatarCache, getConfig, getCtx, claimHandoff } from "./state.js";
+import { getAvatarCache, getConfig, getCtx, claimHandoff, clearAvatarToken, takeAvatarToken } from "./state.js";
 import { isConfigured } from "./settings.js";
 import {
   AVATAR_CACHE_TTL_MS,
@@ -22,7 +22,7 @@ import {
   OIDC_RETURN_TO,
 } from "./cookies.js";
 import { buildAuthUrl, makePkce, randomToken } from "./oidc.js";
-import { chooseReturnTo } from "./return-to.js";
+import { chooseReturnTo, DEFAULT_RETURN_FALLBACK } from "./return-to.js";
 import {
   configMeta,
   ctxMeta,
@@ -60,7 +60,7 @@ const redirect = (location, cookies = []) => {
 
 const originOf = (req) => getConfig()?.appUrl || new URL(req.url).origin;
 const returnToFor = (req, ...candidates) =>
-  chooseReturnTo(originOf(req), candidates, adminRoutePath(req));
+  chooseReturnTo(originOf(req), candidates, DEFAULT_RETURN_FALLBACK);
 
 const tempCookie = (name, value, req) =>
   bakeCookie(name, value, {
@@ -77,7 +77,7 @@ const onLogin = async (req) => {
       request: requestMeta(req),
       config: configMeta(config),
     });
-    return redirect(`${originOf(req)}${adminRoutePath(req)}`);
+    return redirect(`${originOf(req)}${DEFAULT_RETURN_FALLBACK}`);
   }
   try {
     const requestUrl = new URL(req.url);
@@ -119,7 +119,7 @@ const onLogin = async (req) => {
       config: configMeta(config),
     });
     console.error("[oidc] login init failed:", err?.message || err);
-    return redirect(`${originOf(req)}${adminRoutePath(req)}?oidc_error=login`);
+    return redirect(`${originOf(req)}${DEFAULT_RETURN_FALLBACK}?oidc_error=login`);
   }
 };
 
@@ -205,7 +205,7 @@ const onAvatar = async (req) => {
   const entry = await ensureAvatarEntry(
     getAvatarCache(),
     identity,
-    "",
+    takeAvatarToken(identity),
     AVATAR_CACHE_TTL_MS,
   );
   if (!entry) return jsonError(404);
@@ -222,6 +222,7 @@ const onAvatar = async (req) => {
 
 const onLogout = async (req) => {
   const identity = readIdentity(readCookie(req, USER_COOKIE));
+  clearAvatarToken(identity);
   await deleteAvatarEntry(getAvatarCache(), identity);
   debugLog("route.logout", {
     request: requestMeta(req),

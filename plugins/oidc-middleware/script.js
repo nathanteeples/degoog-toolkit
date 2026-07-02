@@ -47,27 +47,22 @@
       if (!authRes.ok) return false;
       const auth = await authRes.json();
 
-      const redirectTo =
-        typeof auth.redirectToAdmin === "string" ? auth.redirectToAdmin.trim() : "";
-      if (redirectTo && normalizePath(redirectTo) !== pathname) {
-        log("settings-alias.redirect", { from: pathname, to: redirectTo, via: "gate" });
-        window.location.replace(`${redirectTo}${window.location.search}${window.location.hash}`);
-        return true;
-      }
-
       const legacyPath =
         typeof auth.legacySettingsPath === "string" ? auth.legacySettingsPath : "";
       const adminPath = typeof auth.adminPath === "string" ? auth.adminPath : "";
       if (!legacyPath || !adminPath) return false;
       if (normalizePath(legacyPath) === normalizePath(adminPath)) return false;
-      if (
-        pathname !== normalizePath(legacyPath) &&
-        !pathname.startsWith(`${normalizePath(legacyPath)}/`)
-      ) {
-        return false;
-      }
 
-      const targetAdmin = mapLegacyToAdmin(pathname, legacyPath, adminPath);
+      const normalizedLegacy = normalizePath(legacyPath);
+      const onLegacyPath =
+        pathname === normalizedLegacy || pathname.startsWith(`${normalizedLegacy}/`);
+      if (!onLegacyPath) return false;
+
+      const redirectTo =
+        typeof auth.redirectToAdmin === "string" ? auth.redirectToAdmin.trim() : "";
+      const targetAdmin = redirectTo || mapLegacyToAdmin(pathname, legacyPath, adminPath);
+      if (normalizePath(targetAdmin) === pathname) return false;
+
       const [adminAuthRes, meRes] = await Promise.all([
         fetch(`/api/settings/auth?returnTo=${encodeURIComponent(targetAdmin)}`, {
           credentials: "same-origin",
@@ -395,9 +390,29 @@
     }
   };
 
+  const refreshAvatarMarkup = (wrap, me) => {
+    const trigger = wrap.querySelector(".degoog-oidc-trigger");
+    const menuAvatar = wrap.querySelector(".degoog-oidc-menu-profile .degoog-oidc-avatar");
+    if (trigger) {
+      const current = trigger.querySelector(".degoog-oidc-avatar, .degoog-oidc-avatar-initials");
+      const next = document.createElement("div");
+      next.innerHTML = avatarMarkup(me);
+      const replacement = next.firstElementChild;
+      if (current && replacement) current.replaceWith(replacement);
+    }
+    if (menuAvatar) {
+      const next = document.createElement("div");
+      next.innerHTML = avatarMarkup(me, "degoog-oidc-avatar degoog-oidc-avatar--menu");
+      const replacement = next.firstElementChild;
+      if (replacement) menuAvatar.replaceWith(replacement);
+    }
+    wireAvatarFallbacks(wrap, me);
+  };
+
   const render = (me) => {
     const existing = document.getElementById(MOUNT_ID);
     if (existing) {
+      refreshAvatarMarkup(existing, me);
       mount(existing);
       return;
     }

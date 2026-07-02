@@ -70,7 +70,7 @@
   right: 0;
   min-width: min(18rem, calc(100vw - 24px));
   padding: 0.4rem;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--theme-radius-md, 12px);
   background: var(--search-bar-focused, var(--bg-light));
   box-shadow: var(--lg-search-shadow-dropdown, 0 10px 26px rgba(0, 0, 0, 0.18));
@@ -107,11 +107,11 @@
 
 .degoog-oidc-menu-rows {
   display: grid;
-  gap: 1px;
-  padding: 0.1rem;
-  border-radius: var(--theme-radius-md, 12px);
-  background: color-mix(in srgb, var(--border-light) 70%, transparent);
-  overflow: hidden;
+  gap: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
 }
 
 .degoog-oidc-row {
@@ -121,8 +121,8 @@
   width: 100%;
   padding: 0.82rem 0.9rem;
   border: none;
-  border-radius: 0;
-  background: var(--bg);
+  border-radius: var(--theme-radius-sm, 8px);
+  background: transparent;
   color: var(--text-primary);
   cursor: pointer;
   font: inherit;
@@ -221,18 +221,24 @@
   gap: 10px;
   min-height: 44px;
   padding: 0 18px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: var(--bg-light);
+  background: var(--search-bar-focused, var(--bg-light));
   color: var(--text-primary);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--lg-search-shadow, 0 2px 8px 1px rgba(0, 0, 0, 0.24));
+  transition: box-shadow 0.16s ease;
 }
 
 .oidc-settings-gate__button:hover,
 .oidc-settings-gate__button:focus-visible {
-  border-color: var(--primary);
+  border-color: transparent;
+  box-shadow: var(
+    --lg-search-shadow-hover,
+    var(--lg-search-shadow, 0 2px 8px 1px rgba(0, 0, 0, 0.24))
+  );
 }
 
 .oidc-settings-gate__hint {

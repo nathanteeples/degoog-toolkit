@@ -7,6 +7,7 @@ let _ctx = null;
 let _avatarCache = null;
 
 const _handoffs = new Map();
+const _avatarTokens = new Map();
 
 export const setConfig = (config) => {
   _config = config;
@@ -46,4 +47,27 @@ export const sweepHandoffs = () => {
   for (const [code, entry] of _handoffs) {
     if (now > entry.exp) _handoffs.delete(code);
   }
+};
+
+export const stashAvatarToken = (identity, accessToken, ttlMs) => {
+  const sub = typeof identity?.sub === "string" ? identity.sub.trim() : "";
+  const token = typeof accessToken === "string" ? accessToken.trim() : "";
+  if (!sub || !token) return;
+  _avatarTokens.set(sub, { token, exp: Date.now() + ttlMs });
+};
+
+export const takeAvatarToken = (identity) => {
+  const sub = typeof identity?.sub === "string" ? identity.sub.trim() : "";
+  if (!sub) return "";
+  const entry = _avatarTokens.get(sub);
+  if (!entry || Date.now() > entry.exp) {
+    _avatarTokens.delete(sub);
+    return "";
+  }
+  return entry.token;
+};
+
+export const clearAvatarToken = (identity) => {
+  const sub = typeof identity?.sub === "string" ? identity.sub.trim() : "";
+  if (sub) _avatarTokens.delete(sub);
 };

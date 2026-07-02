@@ -18,7 +18,7 @@ import {
   targetsAdminRoute,
 } from "./src/admin-path.js";
 import { userinfoNeeds } from "./src/gate.js";
-import { chooseReturnTo, sanitizeReturnTo } from "./src/return-to.js";
+import { chooseReturnTo, DEFAULT_RETURN_FALLBACK, sanitizeReturnTo } from "./src/return-to.js";
 import { parseSettings, isConfigured } from "./src/settings.js";
 import { validateClaims } from "./src/jwt.js";
 
@@ -185,9 +185,9 @@ test("profile pictures are sanitized to safe URL schemes", () => {
     toProfile({
       sub: "123",
       email: "admin@example.com",
-      avatarUrl: "https://auth.example.com/avatar-camel.png",
+      attributes: { avatar: "https://auth.example.com/avatar-authentik.png" },
     }).picture,
-    "https://auth.example.com/avatar-camel.png",
+    "https://auth.example.com/avatar-authentik.png",
   );
 });
 
@@ -207,9 +207,13 @@ test("return target resolution keeps same-origin custom admin paths", () => {
         "https://evil.example.com/admin",
         "https://search.example.com/my-secret-panel-abc123",
       ],
-      "/",
+      DEFAULT_RETURN_FALLBACK,
     ),
     "/my-secret-panel-abc123",
+  );
+  assert.equal(
+    chooseReturnTo("https://search.example.com", [], DEFAULT_RETURN_FALLBACK),
+    "/",
   );
 });
 

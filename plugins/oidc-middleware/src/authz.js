@@ -21,6 +21,8 @@ const DEFAULT_PICTURE_CLAIM_PATHS = [
   "profile.avatar",
   "user.picture",
   "user.avatar",
+  "attributes.picture",
+  "attributes.avatar",
 ];
 
 const safePicture = (value, base) => {

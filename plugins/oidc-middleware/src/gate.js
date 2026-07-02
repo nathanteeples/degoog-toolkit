@@ -2,6 +2,7 @@ import {
   getAvatarCache,
   getConfig,
   getCtx,
+  stashAvatarToken,
   stashHandoff,
   sweepHandoffs,
 } from "./state.js";
@@ -28,7 +29,7 @@ import {
   fetchUserInfo,
   handoffCode,
 } from "./oidc.js";
-import { chooseReturnTo } from "./return-to.js";
+import { chooseReturnTo, DEFAULT_RETURN_FALLBACK } from "./return-to.js";
 import {
   accessDenyDetail,
   evaluateAccess,
@@ -56,6 +57,7 @@ import {
 } from "./admin-path.js";
 
 const HANDOFF_TTL_MS = 2 * 60 * 1000;
+const IDENTITY_TTL_MS = 12 * 60 * 60 * 1000;
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), {
@@ -76,11 +78,11 @@ const originOf = (req) =>
   getConfig()?.appUrl || new URL(req.url).origin;
 
 const returnToFor = (req, ...candidates) =>
-  chooseReturnTo(originOf(req), candidates, adminRoutePath(req));
+  chooseReturnTo(originOf(req), candidates, DEFAULT_RETURN_FALLBACK);
 
 const bounce = (req) => {
   const headers = new Headers({
-    location: `${originOf(req)}${adminRoutePath(req)}`,
+    location: `${originOf(req)}${DEFAULT_RETURN_FALLBACK}`,
   });
   for (const name of [OIDC_STATE, OIDC_NONCE, OIDC_VERIFIER]) {
     headers.append("set-cookie", clearCookie(name));
@@ -349,6 +351,7 @@ const onCallback = async (req) => {
     const code2 = handoffCode();
     const profile = toProfile(claims, config);
     await ensureAvatarEntry(getAvatarCache(), profile, token.access_token, AVATAR_CACHE_TTL_MS);
+    stashAvatarToken(profile, token.access_token, IDENTITY_TTL_MS);
     sweepHandoffs();
     stashHandoff(code2, profile, HANDOFF_TTL_MS);
     const ctx = getCtx();

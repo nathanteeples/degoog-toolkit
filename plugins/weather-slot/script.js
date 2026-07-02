@@ -419,21 +419,6 @@
       });
     }
 
-    labels.forEach((lbl, i) => {
-      if (i % 2 === 0) {
-        const x = padL + i * stepX;
-        const text = svgEl("text", {
-          x: x,
-          y: H - 8,
-          "font-size": 10,
-          "text-anchor": "middle",
-          fill: "var(--text-secondary)",
-        });
-        text.textContent = lbl;
-        svg.appendChild(text);
-      }
-    });
-
     const triggerOverlay = svgEl("rect", {
       x: 0,
       y: 0,
@@ -443,15 +428,36 @@
       style: "cursor:crosshair",
     });
     svg.appendChild(triggerOverlay);
-    chartEl.appendChild(svg);
+
+    const mount = document.createElement("div");
+    mount.className = "weather-chart-mount";
+    if (isNarrow) mount.style.width = renderW + "px";
+    mount.appendChild(svg);
+
+    const axis = document.createElement("div");
+    axis.className = "weather-chart-axis";
+    axis.setAttribute("aria-hidden", "true");
+    labels.forEach((lbl, i) => {
+      if (i % 2 !== 0) return;
+      const tick = document.createElement("span");
+      tick.className = "weather-chart-axis-tick";
+      tick.textContent = lbl;
+      tick.style.left = ((padL + i * stepX) / renderW * 100) + "%";
+      axis.appendChild(tick);
+    });
+    mount.appendChild(axis);
+    chartEl.appendChild(mount);
 
     function showTooltip(xPos) {
       const rect = chartEl.getBoundingClientRect();
       const scrollL = chartEl.scrollLeft;
-      const xInSvg = xPos - rect.left + scrollL;
+      const mountEl = chartEl.querySelector(".weather-chart-mount");
+      const plotWidth = mountEl?.offsetWidth || rect.width;
+      const plotScale = plotWidth / renderW;
+      const xInView = (xPos - rect.left + scrollL) / plotScale;
       const i = Math.max(
         0,
-        Math.min(23, Math.round((xInSvg - padL) / stepX))
+        Math.min(23, Math.round((xInView - padL) / stepX))
       );
       const p = mainPoints[i];
       if (!p) return;
@@ -486,8 +492,11 @@
       const tWidth = tooltipEl.offsetWidth;
       const tHeight = tooltipEl.offsetHeight;
       const wrapRect = chartEl.parentNode.getBoundingClientRect();
-      const leftPx = p.x - scrollL - tWidth / 2 + padL;
-      const topPx = p.y - tHeight - 8;
+      const svgElNode = mountEl?.querySelector("svg");
+      const plotHeight = svgElNode?.getBoundingClientRect().height || H;
+      const plotScaleY = plotHeight / H;
+      const leftPx = p.x * plotScale - scrollL - tWidth / 2;
+      const topPx = p.y * plotScaleY - tHeight - 8;
 
       tooltipEl.style.left =
         Math.max(4, Math.min(wrapRect.width - tWidth - 4, leftPx)) + "px";

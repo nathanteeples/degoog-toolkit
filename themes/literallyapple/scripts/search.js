@@ -46,6 +46,144 @@ function getLaTranslation(key) {
 (() => {
     const ENHANCED_ATTR = "data-la-pager-enhanced";
     let pageClickDriver = null;
+    const clientPager = {
+        enabled: false,
+        currentPage: 1,
+        queryKey: "",
+    };
+    const RESULTS_PER_PAGE_HINT = 10;
+    const MIN_DEGOOG_PAGES = 2;
+    const MAX_DEGOOG_PAGES = 10;
+    const PAGE_JUMP = MAX_DEGOOG_PAGES;
+
+    function getSearchQueryKey() {
+        return (document.getElementById("results-search-input")?.value || "").trim();
+    }
+
+    function getUrlPage() {
+        const raw = new URLSearchParams(window.location.search).get("page");
+        const page = parseInt(raw || "1", 10);
+        return Number.isFinite(page) && page > 0 ? page : 1;
+    }
+
+    function isWebTab() {
+        const page = document.getElementById("results-page");
+        const layoutType = page?.getAttribute("data-lg-search-type");
+        if (layoutType && layoutType !== "web") return false;
+        const activeTab = document.querySelector(
+            ".results-tab.active[data-type], .results-tab[aria-selected='true'][data-type]",
+        );
+        const tabType = activeTab?.getAttribute("data-type");
+        return !tabType || tabType === "web";
+    }
+
+    function getResultItems() {
+        const list = document.getElementById("results-list");
+        if (!list) return [];
+        return [...list.querySelectorAll(".result-item, .degoog-result")].filter(
+            el => !el.classList.contains("lg-engine-filtered-out"),
+        );
+    }
+
+    function shouldEnableClientPagination(resultCount) {
+        if (!isWebTab()) return false;
+        if (getUrlPage() > 1) return false;
+        return resultCount > RESULTS_PER_PAGE_HINT;
+    }
+
+    function resetClientPagination() {
+        clientPager.enabled = false;
+        clientPager.currentPage = 1;
+        clientPager.queryKey = "";
+        document.querySelectorAll(".lg-client-page-hidden").forEach(el => {
+            el.classList.remove("lg-client-page-hidden");
+        });
+        document.getElementById("results-list")?.removeAttribute("data-lg-client-page");
+    }
+
+    function applyClientPage(page, options = {}) {
+        const items = getResultItems();
+        const totalPages = Math.max(1, Math.ceil(items.length / RESULTS_PER_PAGE_HINT));
+        const target = wrapPage(page, totalPages);
+        const start = (target - 1) * RESULTS_PER_PAGE_HINT;
+        const end = start + RESULTS_PER_PAGE_HINT;
+
+        clientPager.enabled = true;
+        clientPager.currentPage = target;
+        clientPager.queryKey = getSearchQueryKey();
+
+        items.forEach((el, index) => {
+            el.classList.toggle("lg-client-page-hidden", index < start || index >= end);
+        });
+
+        document
+            .getElementById("results-list")
+            ?.setAttribute("data-lg-client-page", String(target));
+
+        if (!options.preserveScroll) {
+            window.scrollTo(0, 0);
+        }
+
+        if (!options.skipPagerSync) {
+            window.requestAnimationFrame(syncPagination);
+        }
+
+        window.dispatchEvent(
+            new CustomEvent("lg-client-page-change", {
+                detail: { page: target, totalPages },
+            }),
+        );
+    }
+
+    function syncClientResultsPage() {
+        const list = document.getElementById("results-list");
+        if (!list) return;
+
+        if (list.querySelector(".skeleton-card, .skeleton, .no-results")) {
+            resetClientPagination();
+            return;
+        }
+
+        const queryKey = getSearchQueryKey();
+        if (clientPager.queryKey && queryKey !== clientPager.queryKey) {
+            resetClientPagination();
+        }
+
+        const resultCount = getResultCount();
+        if (resultCount < 0) return;
+
+        if (!shouldEnableClientPagination(resultCount)) {
+            if (clientPager.enabled) resetClientPagination();
+            return;
+        }
+
+        if (!clientPager.enabled) {
+            applyClientPage(1, { skipPagerSync: true, preserveScroll: true });
+            return;
+        }
+
+        applyClientPage(clientPager.currentPage, {
+            skipPagerSync: true,
+            preserveScroll: true,
+        });
+    }
+
+    function buildClientControls(totalPages, activePage) {
+        const pages = [];
+        for (let page = 1; page <= totalPages; page += 1) {
+            pages.push({ page, node: null });
+        }
+        return {
+            pages,
+            activePage,
+            prev: activePage > 1 ? { page: activePage - 1, node: null } : null,
+            next: activePage < totalPages ? { page: activePage + 1, node: null } : null,
+        };
+    }
+
+    function usesClientPagination(resultCount) {
+        return clientPager.enabled || shouldEnableClientPagination(resultCount);
+    }
 
     function getPageNumber(node) {
         const raw = node.getAttribute("data-page") || node.textContent || "";
@@ -92,11 +230,6 @@ function getLaTranslation(key) {
 
         return { pages, activePage, prev, next };
     }
-
-    const RESULTS_PER_PAGE_HINT = 10;
-    const MIN_DEGOOG_PAGES = 2;
-    const MAX_DEGOOG_PAGES = 10;
-    const PAGE_JUMP = MAX_DEGOOG_PAGES;
 
     function getResultCount() {
         const list = document.getElementById("results-list");
@@ -186,6 +319,12 @@ function getLaTranslation(key) {
     }
 
     function navigateToPage(targetPage) {
+        const resultCount = getResultCount();
+        if (usesClientPagination(resultCount)) {
+            applyClientPage(targetPage);
+            return;
+        }
+
         const pagination = document.getElementById("pagination");
         if (!pagination) return;
 
@@ -265,20 +404,15 @@ function getLaTranslation(key) {
 
     function decorateControl(item, kind, label) {
         if (!item) return makeDisabledControl(kind, label);
-        const source = item.node;
-        const node = document.createElement(source.tagName === "A" ? "a" : "button");
+        const node = document.createElement("button");
+        node.type = "button";
         node.className = `lg-pager-control lg-pager-control--${kind}`;
         node.setAttribute("data-page", String(item.page));
-        if (node.tagName === "BUTTON") node.type = "button";
-        const href = source.getAttribute("href");
-        if (node.tagName === "A" && href) {
-            node.setAttribute("href", href);
-        } else {
-            node.addEventListener("click", event => {
-                event.preventDefault();
-                source.click();
-            });
-        }
+        node.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            navigateToPage(item.page);
+        });
         node.innerHTML = makeControlElement(kind, label).innerHTML;
         return node;
     }
@@ -457,23 +591,34 @@ function getLaTranslation(key) {
         const pagination = document.getElementById("pagination");
         if (!pagination) return;
 
+        syncClientResultsPage();
+
+        const resultCount = getResultCount();
+        const clientMode = usesClientPagination(resultCount);
         const coreWrapper = pagination.querySelector(":scope > .pagination");
         const pageNodes = coreWrapper ? getPageNodes(coreWrapper) : getPageNodes(pagination);
         if (pageNodes.length > 0) rememberPageClickDriver(pageNodes);
 
-        const controls = classifyControls(pageNodes);
-        const resultCount = getResultCount();
+        let controls;
+        let totalPages;
         const existing = pagination.querySelector(":scope > .lg-pager");
         const storedTotal = existing
             ? parseInt(existing.dataset.lgTotalPages || existing.dataset.lgPageCount || "0", 10)
             : 0;
-        const totalPages = resolveTotalPages(
-            pageNodes,
-            resultCount,
-            controls.activePage,
-            Boolean(controls.next),
-            storedTotal,
-        );
+
+        if (clientMode) {
+            totalPages = Math.max(MIN_DEGOOG_PAGES, Math.ceil(resultCount / RESULTS_PER_PAGE_HINT));
+            controls = buildClientControls(totalPages, clientPager.currentPage);
+        } else {
+            controls = classifyControls(pageNodes);
+            totalPages = resolveTotalPages(
+                pageNodes,
+                resultCount,
+                controls.activePage,
+                Boolean(controls.next),
+                storedTotal,
+            );
+        }
 
         if (totalPages < MIN_DEGOOG_PAGES) {
             if (pagination.childElementCount > 0) clearPagination(pagination);
@@ -497,7 +642,7 @@ function getLaTranslation(key) {
             return;
         }
 
-        if (!coreWrapper && pageNodes.length < MIN_DEGOOG_PAGES) return;
+        if (!clientMode && !coreWrapper && pageNodes.length < MIN_DEGOOG_PAGES) return;
 
         enhancePagination(
             pagination,
@@ -509,9 +654,32 @@ function getLaTranslation(key) {
         );
     }
 
+    function interceptPaginationClicks(event) {
+        const target = event.target;
+        if (!target || typeof target.closest !== "function") return;
+        const link = target.closest("#pagination [data-page]");
+        if (!link || link.classList.contains("lg-pager-control")) return;
+
+        const page = getPageNumber(link);
+        if (!page) return;
+
+        const resultCount = getResultCount();
+        if (!usesClientPagination(resultCount)) return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        applyClientPage(page);
+    }
+
     function observePagination() {
         const pagination = document.getElementById("pagination");
         if (!pagination) return;
+
+        if (!window._lgClientPagerClickBound) {
+            window._lgClientPagerClickBound = true;
+            document.addEventListener("click", interceptPaginationClicks, true);
+        }
+
         new MutationObserver(() => {
             window.requestAnimationFrame(syncPagination);
         }).observe(pagination, { childList: true, subtree: false });
@@ -524,6 +692,9 @@ function getLaTranslation(key) {
         }
 
         window.addEventListener("degoog-results-ready", () => {
+            window.requestAnimationFrame(syncPagination);
+        });
+        window.addEventListener("lg-results-layout-changed", () => {
             window.requestAnimationFrame(syncPagination);
         });
 
@@ -732,6 +903,59 @@ function getLaTranslation(key) {
         document.body.removeChild(ta);
     }
 
+    function faviconUrlForOrigin(origin) {
+        const page = encodeURIComponent(`${origin}/`);
+        return `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${page}&size=64`;
+    }
+
+    function tuneFavicon(favicon) {
+        if (!favicon) return;
+        favicon.classList.remove("mp2-favicon--fill");
+        const nw = favicon.naturalWidth;
+        const nh = favicon.naturalHeight;
+        if (!nw || !nh) return;
+        const minSide = Math.min(nw, nh);
+        const maxSide = Math.max(nw, nh);
+        if (minSide <= 20 && maxSide / minSide < 1.35) {
+            favicon.classList.add("mp2-favicon--fill");
+        }
+    }
+
+    function fitPreviewImage(panel) {
+        const img = panel.querySelector("#media-preview-img");
+        const wrap = panel.querySelector(".media-preview-img-wrap");
+        if (!img || !wrap || img.style.display === "none") return;
+
+        const apply = () => {
+            wrap.style.removeProperty("width");
+            wrap.style.removeProperty("aspect-ratio");
+            img.style.removeProperty("width");
+            img.style.removeProperty("height");
+            const nw = img.naturalWidth;
+            const nh = img.naturalHeight;
+            if (!nw || !nh) return;
+
+            const body = wrap.closest(".mp2-body");
+            const maxW = Math.max(120, (body?.clientWidth || wrap.clientWidth || 360) - 28);
+            const maxH = Math.min(window.innerHeight * 0.56, 448);
+            let w = nw;
+            let h = nh;
+            if (h > maxH) {
+                w = (nw / nh) * maxH;
+                h = maxH;
+            }
+            if (w > maxW) {
+                h = (h / w) * maxW;
+                w = maxW;
+            }
+            img.style.width = `${Math.max(1, Math.round(w))}px`;
+            img.style.height = `${Math.max(1, Math.round(h))}px`;
+        };
+
+        if (img.complete) apply();
+        img.addEventListener("load", apply);
+    }
+
     function syncMeta(panel) {
         const info = panel.querySelector("#media-preview-info");
         if (!info) return;
@@ -744,10 +968,16 @@ function getLaTranslation(key) {
             const hostname = parsed.hostname;
             if (host) host.textContent = hostname;
             if (favicon) {
-                favicon.src = `${parsed.origin}/favicon.ico`;
+                favicon.classList.remove("mp2-favicon--fill");
+                favicon.src = faviconUrlForOrigin(parsed.origin);
                 favicon.style.display = "block";
+                favicon.onload = () => tuneFavicon(favicon);
                 favicon.onerror = () => {
-                    favicon.style.display = "none";
+                    favicon.src = `${parsed.origin}/favicon.ico`;
+                    favicon.onload = () => tuneFavicon(favicon);
+                    favicon.onerror = () => {
+                        favicon.style.display = "none";
+                    };
                 };
             }
         } catch (e) {}
@@ -831,10 +1061,22 @@ function getLaTranslation(key) {
 
         if (info) {
             syncMeta(panel);
+            fitPreviewImage(panel);
             new MutationObserver(() => {
                 syncMeta(panel);
             }).observe(info, { childList: true, subtree: true });
         }
+
+        const previewImg = panel.querySelector("#media-preview-img");
+        if (previewImg) {
+            fitPreviewImage(panel);
+            new MutationObserver(() => fitPreviewImage(panel)).observe(previewImg, {
+                attributes: true,
+                attributeFilter: ["src", "style", "class"],
+            });
+        }
+
+        window.addEventListener("resize", () => fitPreviewImage(panel), { passive: true });
 
         if (menuBtn && dropdown) {
             menuBtn.addEventListener("click", e => {
@@ -939,7 +1181,13 @@ function getLaTranslation(key) {
         const needle = normalizeEngine(engineName);
         if (!needle) return true;
         if (normalized === needle) return true;
-        return normalized.startsWith(`${needle}:`);
+        if (normalized.startsWith(`${needle}:`)) return true;
+
+        const sourceBase = normalized.split(":")[0]?.trim();
+        if (!sourceBase) return false;
+        if (sourceBase === needle) return true;
+        if (needle.startsWith(`${sourceBase} `)) return true;
+        return sourceBase.startsWith(`${needle} `);
     }
 
     function enginePanelRoots() {
@@ -949,8 +1197,17 @@ function getLaTranslation(key) {
         ].filter(Boolean);
     }
 
-    function getActiveEngine() {
-        return getPage()?.getAttribute(FILTER_ATTR) || "";
+    function getSelectedEngines() {
+        const raw = getPage()?.getAttribute(FILTER_ATTR);
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed)
+                ? parsed.map(name => String(name).trim()).filter(Boolean)
+                : [];
+        } catch {
+            return raw.trim() ? [raw.trim()] : [];
+        }
     }
 
     function getResultSources(el) {
@@ -967,40 +1224,53 @@ function getLaTranslation(key) {
             .filter(Boolean);
     }
 
-    function resultMatches(engineName, el) {
-        if (!engineName) return true;
-        return getResultSources(el).some(source => sourceMatchesEngine(source, engineName));
+    function resultMatches(selectedEngines, el) {
+        if (!selectedEngines.length) return true;
+        return getResultSources(el).some(source =>
+            selectedEngines.some(engine => sourceMatchesEngine(source, engine)),
+        );
     }
 
-    function syncRowHighlights(engineName) {
-        const needle = normalizeEngine(engineName);
+    function syncRowHighlights(selectedEngines) {
+        const active = new Set(selectedEngines.map(normalizeEngine));
         document.querySelectorAll(".engine-stat-row").forEach(row => {
             const rowEngine = normalizeEngine(row.querySelector(".engine-stat-label")?.textContent);
-            const active = Boolean(needle) && rowEngine === needle;
-            row.classList.toggle(ACTIVE_CLASS, active);
-            row.setAttribute("aria-pressed", active ? "true" : "false");
+            const isActive = active.has(rowEngine);
+            row.classList.toggle(ACTIVE_CLASS, isActive);
+            row.setAttribute("aria-pressed", isActive ? "true" : "false");
         });
     }
 
-    function applyFilter(engineName) {
+    function applyFilter(selectedEngines) {
         const list = document.getElementById("results-list");
         if (!list) return;
         list.querySelectorAll(RESULT_SELECTORS).forEach(el => {
-            const show = resultMatches(engineName, el);
+            const show = resultMatches(selectedEngines, el);
             el.classList.toggle(HIDDEN_CLASS, !show);
         });
     }
 
-    function setActiveEngine(name) {
+    function setSelectedEngines(engines) {
         const page = getPage();
         if (!page) return;
-        if (name) {
-            page.setAttribute(FILTER_ATTR, name);
-        } else {
-            page.removeAttribute(FILTER_ATTR);
+        const unique = [];
+        const seen = new Set();
+        for (const engine of engines) {
+            const name = String(engine || "").trim();
+            if (!name) continue;
+            const key = normalizeEngine(name);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            unique.push(name);
         }
-        syncRowHighlights(name);
-        applyFilter(name);
+        if (unique.length === 0) {
+            page.removeAttribute(FILTER_ATTR);
+        } else {
+            page.setAttribute(FILTER_ATTR, JSON.stringify(unique));
+        }
+        syncRowHighlights(unique);
+        applyFilter(unique);
+        window.dispatchEvent(new CustomEvent("lg-results-layout-changed"));
     }
 
     function engineNameFromRow(row) {
@@ -1010,11 +1280,15 @@ function getLaTranslation(key) {
     function onRowActivate(row) {
         const name = engineNameFromRow(row);
         if (!name) return;
-        if (normalizeEngine(name) === normalizeEngine(getActiveEngine())) {
-            setActiveEngine("");
-            return;
+        const selected = getSelectedEngines();
+        const key = normalizeEngine(name);
+        const index = selected.findIndex(engine => normalizeEngine(engine) === key);
+        if (index >= 0) {
+            selected.splice(index, 1);
+        } else {
+            selected.push(name);
         }
-        setActiveEngine(name);
+        setSelectedEngines(selected);
     }
 
     function decorateRows() {
@@ -1028,21 +1302,65 @@ function getLaTranslation(key) {
         }
     }
 
-    function bindEnginePanel(root) {
-        if (!root || root.dataset.lgEngineFilterClick === "1") return;
-        root.dataset.lgEngineFilterClick = "1";
-        root.addEventListener("click", onClick);
-        root.addEventListener("keydown", onKeydown);
+    function rowInEnginePanel(row) {
+        return enginePanelRoots().some(root => root.contains(row));
+    }
+
+    const observedEngineRoots = new WeakSet();
+
+    function ensureRootObserved(root) {
+        if (!root || observedEngineRoots.has(root)) return;
+        observedEngineRoots.add(root);
+        new MutationObserver(() => {
+            decorateRows();
+            syncRowHighlights(getSelectedEngines());
+        }).observe(root, { childList: true, subtree: true });
+    }
+
+    function refreshEnginePanels() {
+        for (const root of enginePanelRoots()) {
+            ensureRootObserved(root);
+        }
+        decorateRows();
+        syncRowHighlights(getSelectedEngines());
+    }
+
+    function nodeAddsEnginePanel(node) {
+        if (!node || node.nodeType !== 1) return false;
+        return (
+            node.id === "image-engine-panel" ||
+            node.id === "image-filters-bar" ||
+            !!node.querySelector?.("#image-engine-panel, .engine-stat-row")
+        );
+    }
+
+    function observeEnginePanelMount() {
+        const layout = document.getElementById("results-layout");
+        const target = layout || document.documentElement;
+        new MutationObserver(mutations => {
+            const added = mutations.some(mutation =>
+                [...mutation.addedNodes].some(nodeAddsEnginePanel),
+            );
+            if (added) refreshEnginePanels();
+        }).observe(target, { childList: true, subtree: true });
+    }
+
+    function bindEnginePanelDelegation() {
+        const page = getPage();
+        if (!page || page.dataset.lgEngineFilterClick === "1") return;
+        page.dataset.lgEngineFilterClick = "1";
+        page.addEventListener("click", onClick);
+        page.addEventListener("keydown", onKeydown);
     }
 
     function clearFilter() {
-        setActiveEngine("");
+        setSelectedEngines([]);
     }
 
     function scheduleApply() {
-        const engine = getActiveEngine();
-        if (!engine) return;
-        requestAnimationFrame(() => applyFilter(engine));
+        const engines = getSelectedEngines();
+        if (!engines.length) return;
+        requestAnimationFrame(() => applyFilter(engines));
     }
 
     function nodeStartsSearch(node) {
@@ -1064,7 +1382,7 @@ function getLaTranslation(key) {
         if (!target?.closest) return;
         if (target.closest(".engine-retry-link")) return;
         const row = target.closest(".engine-stat-row");
-        if (!row || !event.currentTarget.contains(row)) return;
+        if (!row || !rowInEnginePanel(row)) return;
         event.preventDefault();
         event.stopPropagation();
         onRowActivate(row);
@@ -1073,25 +1391,15 @@ function getLaTranslation(key) {
     function onKeydown(event) {
         if (event.key !== "Enter" && event.key !== " ") return;
         const row = event.target.closest?.(".engine-stat-row");
-        if (!row) return;
+        if (!row || !rowInEnginePanel(row)) return;
         event.preventDefault();
         onRowActivate(row);
-    }
-
-    function observeEngineRoots() {
-        for (const root of enginePanelRoots()) {
-            bindEnginePanel(root);
-            new MutationObserver(() => {
-                decorateRows();
-                syncRowHighlights(getActiveEngine());
-            }).observe(root, { childList: true, subtree: true });
-        }
     }
 
     function init() {
         if (!getPage()) return;
 
-        for (const root of enginePanelRoots()) bindEnginePanel(root);
+        bindEnginePanelDelegation();
 
         const resultsList = document.getElementById("results-list");
         if (resultsList) {
@@ -1105,7 +1413,8 @@ function getLaTranslation(key) {
             }).observe(resultsList, { childList: true, subtree: true });
         }
 
-        observeEngineRoots();
+        refreshEnginePanels();
+        observeEnginePanelMount();
 
         document.getElementById("results-search-btn")?.addEventListener("click", clearFilter);
         document.getElementById("results-search-input")?.addEventListener("keydown", event => {
