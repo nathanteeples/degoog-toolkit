@@ -1148,8 +1148,9 @@ html[dir="rtl"] #image-filters-bar.open {
 }
 
 :is(#results-sidebar, #image-engine-panel) .engine-stat-row.lg-engine-stat-row--active {
-    background: var(--lg-engine-active-bg, #9ac1fd);
-    color: var(--lg-engine-active-fg, #fff);
+    background: var(--lg-selection-active-bg);
+    box-shadow: inset 0 0 0 2px var(--lg-selection-active-ring);
+    color: var(--text-primary);
 }
 
 :is(#results-sidebar, #image-engine-panel) .engine-stat-row.lg-engine-stat-row--active .engine-stat-label,
@@ -1158,11 +1159,11 @@ html[dir="rtl"] #image-filters-bar.open {
 }
 
 :is(#results-sidebar, #image-engine-panel) .engine-retry-link {
-    color: var(--lg-engine-active-bg, #9ac1fd);
+    color: var(--lg-selection-accent, #9ac1fd);
 }
 
 :is(#results-sidebar, #image-engine-panel) .engine-stat-row.lg-engine-stat-row--active .engine-retry-link {
-    color: var(--lg-engine-active-fg, #fff);
+    color: var(--lg-selection-accent, #9ac1fd);
 }
 
 .result-item.lg-engine-filtered-out,
@@ -1921,6 +1922,40 @@ body {
 
 .degoog-img-filter-option {
     text-align: start;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 14px;
+    font-size: 0.875rem;
+    line-height: 1.2;
+    color: var(--text-primary);
+    background: var(--bg-light);
+    border: 0;
+    border-radius: var(--theme-radius-xs);
+    cursor: pointer;
+    transition:
+        background-color var(--la-duration) var(--la-ease),
+        box-shadow var(--la-duration) var(--la-ease);
+}
+
+.degoog-img-filter-option:hover:not(.is-active) {
+    background: color-mix(in srgb, #fff 12%, var(--bg));
+}
+
+.degoog-img-filter-option.is-active {
+    background: var(--lg-selection-active-bg);
+    box-shadow: inset 0 0 0 2px var(--lg-selection-active-ring);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.degoog-img-filter-option.is-active::after {
+    content: "✓";
+    flex-shrink: 0;
+    font-size: 0.875rem;
+    color: var(--lg-selection-accent, #9ac1fd);
 }
 
 /* Optional sticky sidebar (Settings → Themes → Configure → Sticky sidebar). */
@@ -3635,6 +3670,9 @@ button.mp2-item[hidden] {
 
 #results-page {
     background: var(--bg);
+    --lg-selection-accent: #9ac1fd;
+    --lg-selection-active-bg: color-mix(in srgb, var(--lg-selection-accent) 16%, var(--bg-light));
+    --lg-selection-active-ring: color-mix(in srgb, var(--lg-selection-accent) 65%, transparent);
 }
 
 @media (min-width: 768px) {
