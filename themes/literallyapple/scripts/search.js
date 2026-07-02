@@ -1536,6 +1536,76 @@ function getLaTranslation(key) {
     }
 })();
 
+/* ── 5c. Sidebar scroll — don't cancel document momentum on hover ─────── */
+(() => {
+    const ACTIVE_CLASS = "lg-sidebar-scroll-active";
+    const SCROLL_TARGETS =
+        "#sidebar-col > .sticky, #image-filters-bar .degoog-img-sidebar-body";
+    const wired = new WeakSet();
+
+    function canScroll(el) {
+        return el.scrollHeight > el.clientHeight + 1;
+    }
+
+    function atScrollEdge(el, deltaY) {
+        if (deltaY < 0) return el.scrollTop <= 0;
+        if (deltaY > 0) {
+            return el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+        }
+        return true;
+    }
+
+    function bindScrollTarget(el) {
+        if (!el || wired.has(el)) return;
+        wired.add(el);
+
+        el.addEventListener("pointerleave", () => {
+            el.classList.remove(ACTIVE_CLASS);
+        });
+
+        el.addEventListener(
+            "wheel",
+            event => {
+                if (!canScroll(el)) return;
+
+                const { deltaY } = event;
+                const active = el.classList.contains(ACTIVE_CLASS);
+
+                if (!active) {
+                    if (atScrollEdge(el, deltaY)) return;
+                    el.classList.add(ACTIVE_CLASS);
+                    event.preventDefault();
+                    el.scrollTop += deltaY;
+                    return;
+                }
+
+                if (atScrollEdge(el, deltaY)) {
+                    el.classList.remove(ACTIVE_CLASS);
+                    return;
+                }
+            },
+            { passive: false },
+        );
+    }
+
+    function scan() {
+        document.querySelectorAll(SCROLL_TARGETS).forEach(bindScrollTarget);
+    }
+
+    function init() {
+        scan();
+        const page = document.getElementById("results-page");
+        if (!page) return;
+        new MutationObserver(scan).observe(page, { childList: true, subtree: true });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
+})();
+
 /* ── 6. Sidebar accordion panels (theme settings) ──────────────────────── */
 (() => {
     const ENGINE_MODE_MOBILE = "data-sidebar-panels-mobile";

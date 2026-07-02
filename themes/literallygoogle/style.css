@@ -2537,7 +2537,7 @@ body {
 }
 
 #image-filters-bar .degoog-img-sidebar-body {
-    overflow-y: auto;
+    overflow-y: hidden;
     max-height: none;
 }
 
@@ -2561,10 +2561,14 @@ body {
         padding: 0;
         flex: 1 1 auto;
         min-height: 0;
-        overflow-y: auto;
-        overscroll-behavior: contain;
+        overflow-y: hidden;
         scrollbar-width: thin;
         max-height: none;
+    }
+
+    #image-filters-bar .degoog-img-sidebar-body.lg-sidebar-scroll-active {
+        overflow-y: auto;
+        overscroll-behavior: contain;
     }
 
     #image-filters-bar .degoog-img-filter-group {
@@ -2615,8 +2619,8 @@ body {
 }
 
 /* Optional sticky sidebar (Settings → Themes → Configure → Sticky sidebar).
-   Pin on #sidebar-col; scroll inside > .sticky so wheel events do not fight
-   the document while results are still moving. */
+   Pin on #sidebar-col; inner scroll is opt-in via .lg-sidebar-scroll-active (see
+   search.js) so hovering the rail does not cancel document scroll momentum. */
 
 @media (min-width: 768px) {
     html[data-sticky-sidebar="true"] #sidebar-col {
@@ -2644,11 +2648,15 @@ body {
                     calc(50px + 1.5rem)
                 )
         );
-        overflow-y: auto;
-        overscroll-behavior: contain;
+        overflow-y: hidden;
         scrollbar-width: thin;
         padding-inline-end: 0.25rem;
         box-sizing: border-box;
+    }
+
+    html[data-sticky-sidebar="true"] #sidebar-col > .sticky.lg-sidebar-scroll-active {
+        overflow-y: auto;
+        overscroll-behavior: contain;
     }
 
     html[dir="rtl"][data-sticky-sidebar="true"] #sidebar-col > .sticky {
