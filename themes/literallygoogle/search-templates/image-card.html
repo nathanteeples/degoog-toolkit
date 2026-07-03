@@ -4,5 +4,8 @@
 </div>
 <div class="image-info">
   <span class="image-title">{{ title }}</span>
-  <span class="image-source">{{ hostname }}</span>
+  <span class="image-source-row">
+    <img class="image-favicon" src="/api/proxy/favicon?domain={{ hostname }}" alt="" loading="lazy" onerror="this.style.display='none'">
+    <span class="image-source">{{ hostname }}</span>
+  </span>
 </div>

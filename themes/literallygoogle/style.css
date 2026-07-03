@@ -2222,17 +2222,20 @@ body {
 
     #results-page .image-card.selected {
         outline: none;
-        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 24%, transparent);
         opacity: 1 !important;
         position: relative;
         z-index: 2;
     }
 
-    #results-page .image-card.selected::after {
+    #results-page .image-card.selected .image-thumb-wrap {
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 34%, transparent);
+    }
+
+    #results-page .image-card.selected .image-thumb-wrap::after {
         content: "";
         position: absolute;
         inset: 0;
-        border: 3px solid var(--primary);
+        border: 3px solid color-mix(in srgb, var(--primary) 86%, white 14%);
         border-radius: inherit;
         pointer-events: none;
         z-index: 3;
@@ -3952,6 +3955,7 @@ body {
     position: relative;
     overflow: hidden;
     background: var(--bg-light);
+    border-radius: var(--theme-radius-md);
 }
 
 #results-list .image-thumb-wrap::before {
@@ -3982,6 +3986,75 @@ body {
 
 #results-list .image-thumb-wrap.loaded img.image-thumb {
     opacity: 1;
+}
+
+#results-page #results-list .image-card {
+    overflow: visible;
+    border-radius: var(--theme-radius-md);
+}
+
+#results-page #results-list .image-thumb {
+    border-radius: inherit;
+}
+
+#results-page #results-list .image-info {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 0.16rem;
+    width: 100%;
+    max-width: 100%;
+    padding: 0.4rem 0 0.35rem;
+    background: transparent;
+    opacity: 1;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+#results-page #results-list .image-card:hover .image-info {
+    opacity: 1;
+}
+
+#results-page #results-list .image-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    white-space: normal;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.22;
+}
+
+#results-page #results-list .image-source-row {
+    display: flex;
+    align-items: center;
+    gap: 0.28rem;
+    min-width: 0;
+    max-width: 100%;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+#results-page #results-list .image-favicon {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    border-radius: var(--theme-radius-xs);
+    object-fit: contain;
+    background: var(--bg-light);
+}
+
+#results-page #results-list .image-source {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--text-secondary);
 }
 
 
