@@ -3193,13 +3193,13 @@ button.mp2-item[hidden] {
 
 .media-preview-more-grid {
     column-count: 3;
-    column-gap: 0.35rem;
+    column-gap: 0.18rem;
 }
 
 .media-preview-more-item {
     display: block;
     width: 100%;
-    margin: 0 0 0.35rem;
+    margin: 0 0 0.18rem;
     padding: 0;
     break-inside: avoid;
     overflow: hidden;
