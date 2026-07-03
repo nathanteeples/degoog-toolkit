@@ -3797,6 +3797,137 @@ body {
     }
 }
 
+@media (min-width: 768px) {
+    #results-page.lg-image-fab-filters #image-filters-bar {
+        --lg-fab-size: 3.5rem;
+        --lg-fab-inset-inline: 1rem;
+        --lg-fab-inset-bottom: 1rem;
+        --lg-drawer-duration: 400ms;
+        --lg-drawer-ease-open: cubic-bezier(0.16, 1, 0.3, 1);
+        --lg-drawer-ease-close: cubic-bezier(0.4, 0, 0.2, 1);
+        position: fixed !important;
+        order: initial !important;
+        flex: 0 0 auto !important;
+        align-self: auto !important;
+        top: auto !important;
+        margin: 0 !important;
+        transform: none !important;
+        background: var(--bg);
+        border: 1px solid var(--border-light);
+        border-radius: clamp(1.5rem, 2.25vw, 2rem);
+        box-shadow:
+            0 24px 56px rgba(0, 0, 0, 0.3),
+            0 8px 20px rgba(0, 0, 0, 0.18);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        overflow: hidden;
+        z-index: 215;
+        transition:
+            width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            max-width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            max-height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            border-radius var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            bottom var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            background var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            border-color var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            box-shadow var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            opacity 180ms ease,
+            visibility 0s linear var(--lg-drawer-duration);
+    }
+
+    #results-page.lg-image-fab-filters
+        #image-filters-bar:not(.open):not(.lg-image-drawer-animating) {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    #results-page.lg-image-fab-filters #image-filters-bar.lg-image-drawer-animating:not(.open) {
+        display: block !important;
+        width: var(--lg-fab-size) !important;
+        height: var(--lg-fab-size) !important;
+        min-width: var(--lg-fab-size) !important;
+        max-width: var(--lg-fab-size) !important;
+        min-height: var(--lg-fab-size) !important;
+        max-height: var(--lg-fab-size) !important;
+        border-radius: calc(var(--lg-fab-size) / 2) !important;
+        inset-inline-start: var(--lg-fab-inset-inline) !important;
+        inset-inline-end: auto !important;
+        bottom: var(--lg-fab-inset-bottom) !important;
+        background: var(--bg-light);
+        border-color: color-mix(in srgb, var(--border-light) 82%, transparent);
+        box-shadow:
+            0 12px 28px rgba(0, 0, 0, 0.22),
+            inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
+        visibility: visible;
+        opacity: 1;
+        pointer-events: none;
+        z-index: 213;
+        transition:
+            width var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            height var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            max-width var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            max-height var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            border-radius var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            bottom var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            background var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            border-color var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            box-shadow var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            opacity 180ms ease,
+            visibility 0s;
+    }
+
+    #results-page.lg-image-fab-filters
+        #image-filters-bar.lg-image-drawer-anchor-end.lg-image-drawer-animating:not(.open) {
+        inset-inline-start: auto !important;
+        inset-inline-end: var(--lg-fab-inset-inline) !important;
+    }
+
+    #results-page.lg-image-fab-filters #image-filters-bar.open {
+        display: block !important;
+        width: min(23.5rem, calc(100vw - 2rem)) !important;
+        max-width: min(23.5rem, calc(100vw - 2rem)) !important;
+        min-width: 0 !important;
+        height: min(44rem, var(--lg-drawer-max-height, calc(100dvh - 2rem))) !important;
+        max-height: var(--lg-drawer-max-height, calc(100dvh - 2rem)) !important;
+        min-height: 0 !important;
+        inset-inline-start: var(--lg-fab-inset-inline) !important;
+        inset-inline-end: auto !important;
+        bottom: var(--lg-fab-inset-bottom) !important;
+        visibility: visible;
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    #results-page.lg-image-fab-filters #image-filters-bar.open.lg-image-drawer-anchor-end {
+        inset-inline-start: auto !important;
+        inset-inline-end: var(--lg-fab-inset-inline) !important;
+    }
+
+    #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar {
+        display: flex;
+        height: 100%;
+        max-height: 100%;
+        min-height: 0;
+    }
+
+    #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar-head {
+        display: flex;
+        justify-content: center;
+        padding: 0.55rem 0.9rem 0.25rem;
+    }
+
+    #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar-body {
+        padding: 0 0 0.5rem;
+    }
+}
+
 /* Optional sticky sidebar (Settings → Themes → Configure → Sticky sidebar).
    Pin on #sidebar-col; inner scroll is opt-in via .lg-sidebar-scroll-active (see
    search.js) so hovering the results rail does not cancel document scroll
