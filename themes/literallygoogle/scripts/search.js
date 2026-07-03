@@ -1047,27 +1047,14 @@ function getLgTranslation(key) {
         syncImageDrawerInlineAnchor(page);
         syncImageDrawerViewport(page);
         prepareImageDrawerAnimation(page);
+        setImageFiltersSidebarOpen(true);
+        sidebar.classList.add("lg-drawer-dragging");
+        applyImageDrawerMotionProgress(sidebar, getImageDrawerMotionMetrics(page, sidebar), 1);
         sidebar.getBoundingClientRect();
 
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                if (sidebar.classList.contains("open")) return;
-
-                const coreToggle = document.querySelector(".degoog-img-filter-toggle");
-                if (coreToggle) {
-                    coreToggle.click();
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            if (!sidebar.classList.contains("open")) {
-                                setImageFiltersSidebarOpen(true);
-                            }
-                        });
-                    });
-                    return;
-                }
-
-                setImageFiltersSidebarOpen(true);
-            });
+            sidebar.classList.remove("lg-drawer-dragging");
+            clearImageDrawerMotionProgress(sidebar);
         });
     }
 
@@ -1165,6 +1152,91 @@ function getLgTranslation(key) {
         syncImageFabPreviewAnchor(page);
     }
 
+    function getPx(value, fallback = 0) {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function lerp(start, end, progress) {
+        return start + (end - start) * progress;
+    }
+
+    function getImageDrawerMotionMetrics(page, sidebar) {
+        const rect = sidebar.getBoundingClientRect();
+        const styles = getComputedStyle(sidebar);
+        const anchorEnd =
+            page.classList.contains("lg-image-drawer-anchor-end") ||
+            sidebar.classList.contains("lg-image-drawer-anchor-end");
+        const fabSize = getPx(styles.getPropertyValue("--lg-fab-size"), 56);
+        const fabInset = getPx(styles.getPropertyValue("--lg-fab-inset-inline"), 16);
+        const fabBottom = getPx(styles.getPropertyValue("--lg-fab-inset-bottom"), 16);
+        const openInset = anchorEnd ? window.innerWidth - rect.right : rect.left;
+        const openBottom = window.innerHeight - rect.bottom;
+        const openRadius =
+            getPx(styles.borderTopLeftRadius, 0) || getPx(styles.borderRadius, fabSize / 2);
+
+        return {
+            anchorEnd,
+            dragDistance: Math.max(1, rect.height - fabSize),
+            fabBottom,
+            fabInset,
+            fabSize,
+            openBottom,
+            openHeight: rect.height,
+            openInset,
+            openRadius,
+            openWidth: rect.width,
+        };
+    }
+
+    function applyImageDrawerMotionProgress(sidebar, metrics, progress) {
+        if (!sidebar || !metrics) return;
+        const clamped = Math.max(0, Math.min(progress, 1));
+        const width = lerp(metrics.openWidth, metrics.fabSize, clamped);
+        const height = lerp(metrics.openHeight, metrics.fabSize, clamped);
+        const radius = lerp(metrics.openRadius, metrics.fabSize / 2, clamped);
+        const inset = lerp(metrics.openInset, metrics.fabInset, clamped);
+        const bottom = lerp(metrics.openBottom, metrics.fabBottom, clamped);
+        const contentOpacity = Math.max(0, 1 - clamped * 1.45);
+        const contentOffset = 20 * clamped;
+        const contentScale = 1 - clamped * 0.08;
+
+        sidebar.style.setProperty("width", `${width}px`, "important");
+        sidebar.style.setProperty("max-width", `${width}px`, "important");
+        sidebar.style.setProperty("height", `${height}px`, "important");
+        sidebar.style.setProperty("min-height", `${height}px`, "important");
+        sidebar.style.setProperty("max-height", `${height}px`, "important");
+        sidebar.style.setProperty("border-radius", `${radius}px`, "important");
+        sidebar.style.setProperty("bottom", `${bottom}px`, "important");
+
+        if (metrics.anchorEnd) {
+            sidebar.style.removeProperty("inset-inline-start");
+            sidebar.style.setProperty("inset-inline-end", `${inset}px`, "important");
+        } else {
+            sidebar.style.removeProperty("inset-inline-end");
+            sidebar.style.setProperty("inset-inline-start", `${inset}px`, "important");
+        }
+
+        sidebar.style.setProperty("--lg-drawer-content-opacity", String(contentOpacity));
+        sidebar.style.setProperty("--lg-drawer-content-y", `${contentOffset}px`);
+        sidebar.style.setProperty("--lg-drawer-content-scale", String(contentScale));
+    }
+
+    function clearImageDrawerMotionProgress(sidebar) {
+        sidebar?.style.removeProperty("width");
+        sidebar?.style.removeProperty("max-width");
+        sidebar?.style.removeProperty("height");
+        sidebar?.style.removeProperty("min-height");
+        sidebar?.style.removeProperty("max-height");
+        sidebar?.style.removeProperty("border-radius");
+        sidebar?.style.removeProperty("bottom");
+        sidebar?.style.removeProperty("inset-inline-start");
+        sidebar?.style.removeProperty("inset-inline-end");
+        sidebar?.style.removeProperty("--lg-drawer-content-opacity");
+        sidebar?.style.removeProperty("--lg-drawer-content-y");
+        sidebar?.style.removeProperty("--lg-drawer-content-scale");
+    }
+
     function wireImageFabPreviewAnchor(page) {
         if (page.dataset.lgFabPreviewAnchorWired === "1") return;
         page.dataset.lgFabPreviewAnchorWired = "1";
@@ -1240,90 +1312,15 @@ function getLgTranslation(key) {
             return sidebar.querySelector(".degoog-img-sidebar-close");
         }
 
-        function getPx(value, fallback = 0) {
-            const parsed = Number.parseFloat(value);
-            return Number.isFinite(parsed) ? parsed : fallback;
-        }
-
-        function lerp(start, end, progress) {
-            return start + (end - start) * progress;
-        }
-
-        function getDragMetrics() {
-            const rect = sidebar.getBoundingClientRect();
-            const styles = getComputedStyle(sidebar);
-            const anchorEnd =
-                page.classList.contains("lg-image-drawer-anchor-end") ||
-                sidebar.classList.contains("lg-image-drawer-anchor-end");
-            const fabSize = getPx(styles.getPropertyValue("--lg-fab-size"), 56);
-            const fabInset = getPx(styles.getPropertyValue("--lg-fab-inset-inline"), 16);
-            const fabBottom = getPx(styles.getPropertyValue("--lg-fab-inset-bottom"), 16);
-            const openInset = anchorEnd ? window.innerWidth - rect.right : rect.left;
-            const openBottom = window.innerHeight - rect.bottom;
-            const openRadius =
-                getPx(styles.borderTopLeftRadius, 0) || getPx(styles.borderRadius, fabSize / 2);
-
-            return {
-                anchorEnd,
-                dragDistance: Math.max(1, rect.height - fabSize),
-                fabBottom,
-                fabInset,
-                fabSize,
-                openBottom,
-                openHeight: rect.height,
-                openInset,
-                openRadius,
-                openWidth: rect.width,
-            };
-        }
-
         function applyDragProgress(progress) {
             if (!dragMetrics) return;
             const clamped = Math.max(0, Math.min(progress, 1));
-            const width = lerp(dragMetrics.openWidth, dragMetrics.fabSize, clamped);
-            const height = lerp(dragMetrics.openHeight, dragMetrics.fabSize, clamped);
-            const radius = lerp(dragMetrics.openRadius, dragMetrics.fabSize / 2, clamped);
-            const inset = lerp(dragMetrics.openInset, dragMetrics.fabInset, clamped);
-            const bottom = lerp(dragMetrics.openBottom, dragMetrics.fabBottom, clamped);
-            const contentOpacity = Math.max(0, 1 - clamped * 1.45);
-            const contentOffset = 20 * clamped;
-            const contentScale = 1 - clamped * 0.08;
-
-            sidebar.style.setProperty("width", `${width}px`, "important");
-            sidebar.style.setProperty("max-width", `${width}px`, "important");
-            sidebar.style.setProperty("height", `${height}px`, "important");
-            sidebar.style.setProperty("min-height", `${height}px`, "important");
-            sidebar.style.setProperty("max-height", `${height}px`, "important");
-            sidebar.style.setProperty("border-radius", `${radius}px`, "important");
-            sidebar.style.setProperty("bottom", `${bottom}px`, "important");
-
-            if (dragMetrics.anchorEnd) {
-                sidebar.style.removeProperty("inset-inline-start");
-                sidebar.style.setProperty("inset-inline-end", `${inset}px`, "important");
-            } else {
-                sidebar.style.removeProperty("inset-inline-end");
-                sidebar.style.setProperty("inset-inline-start", `${inset}px`, "important");
-            }
-
-            sidebar.style.setProperty("--lg-drawer-content-opacity", String(contentOpacity));
-            sidebar.style.setProperty("--lg-drawer-content-y", `${contentOffset}px`);
-            sidebar.style.setProperty("--lg-drawer-content-scale", String(contentScale));
+            applyImageDrawerMotionProgress(sidebar, dragMetrics, clamped);
             dragProgress = clamped;
         }
 
         function clearDragGeometry() {
-            sidebar.style.removeProperty("width");
-            sidebar.style.removeProperty("max-width");
-            sidebar.style.removeProperty("height");
-            sidebar.style.removeProperty("min-height");
-            sidebar.style.removeProperty("max-height");
-            sidebar.style.removeProperty("border-radius");
-            sidebar.style.removeProperty("bottom");
-            sidebar.style.removeProperty("inset-inline-start");
-            sidebar.style.removeProperty("inset-inline-end");
-            sidebar.style.removeProperty("--lg-drawer-content-opacity");
-            sidebar.style.removeProperty("--lg-drawer-content-y");
-            sidebar.style.removeProperty("--lg-drawer-content-scale");
+            clearImageDrawerMotionProgress(sidebar);
             dragMetrics = null;
             dragProgress = 0;
         }
@@ -1371,7 +1368,7 @@ function getLgTranslation(key) {
                 dragging = false;
                 dragArmed = true;
                 dragProgress = 0;
-                dragMetrics = getDragMetrics();
+                dragMetrics = getImageDrawerMotionMetrics(page, sidebar);
             },
             { passive: true },
         );
