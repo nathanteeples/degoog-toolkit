@@ -904,6 +904,7 @@ function getLgTranslation(key) {
         if (meta?.parentNode === row) {
             page.insertBefore(meta, row);
         }
+        page.classList.remove("lg-image-meta-filters");
         const panel = document.getElementById("tools-panel");
         if (panel?.parentNode === row) {
             tabs?.after(panel);
@@ -938,11 +939,96 @@ function getLgTranslation(key) {
         toggle.dataset.lgFiltersLabel = "1";
     }
 
+    function renderFiltersButton(button, { iconOnly = false } = {}) {
+        const filterLabel = getLgTranslation("filters");
+        let icon = button.querySelector(".lg-filters-icon");
+        if (!icon) {
+            icon = document.createElement("span");
+            icon.className = "lg-filters-icon";
+            button.prepend(icon);
+        }
+        icon.innerHTML = LG_FILTERS_ICON;
+
+        const existingLabel = button.querySelector(".lg-filters-label");
+        if (iconOnly) {
+            existingLabel?.remove();
+            button.classList.add("lg-tools-toggle-icon-only");
+        } else {
+            let label = existingLabel;
+            if (!label) {
+                label = document.createElement("span");
+                label.className = "lg-filters-label";
+                button.appendChild(label);
+            }
+            label.textContent = filterLabel;
+            button.classList.remove("lg-tools-toggle-icon-only");
+        }
+        button.setAttribute("aria-label", filterLabel);
+    }
+
     function isImageDrawerMode(page) {
         return (
             page?.getAttribute("data-lg-search-type") === "images" &&
             window.matchMedia("(max-width: 767px)").matches
         );
+    }
+
+    function syncMetaFiltersProxy(toggle) {
+        const proxy = document.getElementById("lg-meta-tools-toggle");
+        if (!proxy) return;
+        proxy.classList.toggle("active", toggle.classList.contains("active"));
+        proxy.classList.toggle("is-open", toggle.classList.contains("is-open"));
+        proxy.setAttribute("aria-expanded", toggle.getAttribute("aria-expanded") || "false");
+    }
+
+    function ensureMetaFiltersRow(page, toggle) {
+        const meta = document.getElementById("results-meta");
+        if (!meta) return;
+
+        let row = document.getElementById("lg-meta-row");
+        if (!row) {
+            row = document.createElement("div");
+            row.id = "lg-meta-row";
+            page.insertBefore(row, meta);
+        }
+
+        let wrap = row.querySelector(".lg-meta-tools-wrap");
+        if (!wrap) {
+            wrap = document.createElement("div");
+            wrap.className = "lg-meta-tools-wrap";
+            row.appendChild(wrap);
+        }
+
+        let proxy = row.querySelector("#lg-meta-tools-toggle");
+        if (!proxy) {
+            proxy = document.createElement("button");
+            proxy.id = "lg-meta-tools-toggle";
+            proxy.className = "tools-toggle";
+            proxy.type = "button";
+            renderFiltersButton(proxy, { iconOnly: true });
+            wrap.appendChild(proxy);
+        }
+
+        if (!row.contains(meta)) {
+            row.appendChild(meta);
+        }
+
+        if (proxy.dataset.lgProxyWired !== "1") {
+            proxy.dataset.lgProxyWired = "1";
+            proxy.addEventListener("click", event => {
+                const currentPage = document.getElementById("results-page");
+                const sidebar = document.getElementById("image-filters-bar");
+                if (!isImageDrawerMode(currentPage)) return;
+                if (sidebar?.classList.contains("open")) {
+                    event.preventDefault();
+                    return;
+                }
+                toggle.click();
+            });
+        }
+
+        syncMetaFiltersProxy(toggle);
+        page.classList.add("lg-image-meta-filters");
     }
 
     function syncCustomDateMenuState(panel) {
@@ -1035,6 +1121,24 @@ function getLgTranslation(key) {
         });
     }
 
+    function wireDrawerToggleGuard(toggle) {
+        if (toggle.dataset.lgDrawerGuardWired === "1") return;
+        toggle.dataset.lgDrawerGuardWired = "1";
+
+        toggle.addEventListener(
+            "click",
+            event => {
+                const page = document.getElementById("results-page");
+                const sidebar = document.getElementById("image-filters-bar");
+                if (!isImageDrawerMode(page)) return;
+                if (!sidebar?.classList.contains("open")) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            },
+            true,
+        );
+    }
+
     function isBangCommandQuery(query) {
         const trimmed = query.trim();
         if (!trimmed) return false;
@@ -1091,9 +1195,16 @@ function getLgTranslation(key) {
         const drawerMode = isImageDrawerMode(page);
 
         relabelFiltersToggle(toggle);
+        wireDrawerToggleGuard(toggle);
         panel.classList.remove("lg-tools-inline");
         panel.classList.add("lg-filters-dropdown");
         toolsBar?.classList.add("lg-filters-wrap");
+
+        if (drawerMode) {
+            ensureMetaFiltersRow(page, toggle);
+        } else {
+            unwrapMetaRow();
+        }
 
         positionFiltersPanel(panel, toggle, page);
         wireCustomDateMenuState(panel);
@@ -1113,6 +1224,7 @@ function getLgTranslation(key) {
                 requestAnimationFrame(() => {
                     positionFiltersPanel(panel, toggle, page);
                     syncCustomDateMenuState(panel);
+                    syncMetaFiltersProxy(toggle);
                 });
             });
             window.addEventListener("resize", () => positionFiltersPanel(panel, toggle, page));
@@ -1125,7 +1237,13 @@ function getLgTranslation(key) {
                 attributes: true,
                 attributeFilter: ["style", "class"],
             });
+            new MutationObserver(() => syncMetaFiltersProxy(toggle)).observe(toggle, {
+                attributes: true,
+                attributeFilter: ["class", "aria-expanded"],
+            });
         }
+
+        syncMetaFiltersProxy(toggle);
     }
 
     function scheduleFiltersDropdown() {

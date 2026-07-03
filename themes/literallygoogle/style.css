@@ -715,34 +715,67 @@ html[data-image-mode-desktop-layout="preview-left"] {
 #image-filters-bar {
     display: none;
     position: fixed;
-    top: 0;
-    bottom: 0;
+    top: 0.75rem;
+    bottom: 0.75rem;
     z-index: 210;
-    width: var(--literallygoogle-mobile-drawer-width);
-    max-width: var(--literallygoogle-mobile-drawer-width);
-    background: var(--bg);
-    border-inline-end: 1px solid var(--border-light);
+    width: min(23rem, calc(100vw - 1rem));
+    max-width: min(23rem, calc(100vw - 1rem));
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-light) 76%, transparent);
+    border-inline-start: 0;
+    border-start-end-radius: var(--theme-radius-xl);
+    border-end-end-radius: var(--theme-radius-xl);
     overflow: hidden;
+    backdrop-filter: blur(18px) saturate(120%);
+    -webkit-backdrop-filter: blur(18px) saturate(120%);
     inset-inline-start: 0;
     inset-inline-end: auto;
     left: auto;
     right: auto;
-    transform: translateX(calc(-100% - 1rem));
+    transform: translateX(calc(-100% - 1.25rem));
     transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
 html[dir="rtl"] #image-filters-bar {
     inset-inline-start: auto;
     inset-inline-end: 0;
+    border-inline-start: 1px solid color-mix(in srgb, var(--border-light) 76%, transparent);
     border-inline-end: 0;
-    border-inline-start: 1px solid var(--border-light);
-    transform: translateX(calc(100% + 1rem));
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+    border-start-start-radius: var(--theme-radius-xl);
+    border-end-start-radius: var(--theme-radius-xl);
+    transform: translateX(calc(100% + 1.25rem));
 }
 
 #image-filters-bar.open,
 html[dir="rtl"] #image-filters-bar.open {
     transform: translateX(0);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.26);
+}
+
+.degoog-img-sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 205;
+    background: color-mix(in srgb, var(--bg) 36%, transparent);
+    backdrop-filter: blur(14px) saturate(115%);
+    -webkit-backdrop-filter: blur(14px) saturate(115%);
+    opacity: 0;
+    transition: opacity 180ms ease;
+}
+
+.degoog-img-sidebar-overlay.open {
+    display: block;
+    opacity: 1;
+}
+
+@media (min-width: 768px) {
+    .degoog-img-sidebar-overlay.open {
+        display: none;
+        opacity: 0;
+    }
 }
 
 .degoog-img-filter-bar {
@@ -1011,6 +1044,14 @@ html[dir="rtl"] #image-filters-bar.open {
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
     border-end-start-radius: var(--theme-radius-xs);
     border-end-end-radius: var(--theme-radius-xs);
+}
+
+:is(#results-sidebar, #image-engine-panel) .sidebar-accordion:has(.engine-stat-row)
+    > .sidebar-accordion-body,
+:is(#results-sidebar, #image-engine-panel) .sidebar-accordion.streaming-engine-panel
+    > .sidebar-accordion-body {
+    max-height: none !important;
+    overflow: visible !important;
 }
 
 .engine-stat-row {
@@ -2030,6 +2071,107 @@ body {
         gap: 12px;
     }
 
+    #results-page.lg-image-meta-filters #results-tabs #tools-bar {
+        display: none !important;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        column-gap: 0.75rem;
+        row-gap: 0.5rem;
+        padding: 1rem 0.75rem 0.5rem;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row .lg-meta-tools-wrap {
+        flex: 0 0 auto;
+        order: 0;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row #results-meta {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 0;
+        column-gap: 0.75rem;
+        row-gap: 0.5rem;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row #results-meta .media-engine-bar {
+        order: 3;
+        flex: 1 0 100%;
+        justify-content: flex-start;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row #results-meta .results-meta-stats {
+        order: 2;
+        margin-inline-start: auto;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row .tools-toggle {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: var(--literallygoogle-control-height);
+        min-width: max-content;
+        padding: 0.55rem 0.9rem;
+        border: 1px solid var(--border-light);
+        border-radius: var(--theme-radius-pill);
+        background: var(--bg-light);
+        color: var(--text-primary);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        box-shadow:
+            inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent),
+            0 1px 2px color-mix(in srgb, var(--text-primary) 8%, transparent);
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row .tools-toggle.lg-tools-toggle-icon-only {
+        justify-content: center;
+        gap: 0;
+        min-width: var(--literallygoogle-control-height);
+        width: var(--literallygoogle-control-height);
+        padding: 0;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row .tools-toggle::after {
+        display: none;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row .tools-toggle:hover,
+    #results-page.lg-image-meta-filters #lg-meta-row .tools-toggle.is-open,
+    #results-page.lg-image-meta-filters #lg-meta-row .tools-toggle.active {
+        background: var(--lg-row-hover-bg);
+        color: var(--text-primary);
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row .tools-toggle.is-open {
+        box-shadow: inset 0 0 0 2px var(--lg-selection-active-ring);
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row .lg-filters-icon {
+        display: inline-flex;
+        width: 1rem;
+        height: 1rem;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row .lg-filters-icon svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row .lg-filters-label {
+        white-space: nowrap;
+    }
+
+    #results-page.lg-image-meta-filters #lg-meta-row .lg-tools-toggle-icon-only .lg-filters-label {
+        display: none;
+    }
+
     #results-page[data-lg-search-type="images"] #results-tabs {
         gap: 0.5rem;
         padding-inline: 0.75rem;
@@ -2714,7 +2856,7 @@ body {
 #image-filters-bar .degoog-img-sidebar-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     position: sticky;
     top: 0;
     z-index: 1;
@@ -2724,27 +2866,28 @@ body {
 }
 
 #image-filters-bar .degoog-img-sidebar-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-primary);
+    display: none;
 }
 
 #image-filters-bar .degoog-img-sidebar-close {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.5rem;
+    height: 2.5rem;
     padding: 0;
-    border: 1px solid var(--border-light);
+    border: 1px solid color-mix(in srgb, var(--border-light) 80%, transparent);
     border-radius: var(--theme-radius-pill);
-    background: var(--bg-light);
+    background: color-mix(in srgb, var(--bg-light) 84%, transparent);
     color: var(--text-secondary);
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent),
+        0 1px 2px color-mix(in srgb, var(--text-primary) 8%, transparent);
     cursor: pointer;
 }
 
 #image-filters-bar .degoog-img-sidebar-close:hover {
-    background: var(--bg-hover);
+    background: var(--lg-row-hover-bg);
     color: var(--text-primary);
 }
 
@@ -2759,6 +2902,19 @@ body {
 }
 
 @media (min-width: 768px) {
+    #image-filters-bar {
+        top: auto;
+        bottom: auto;
+        width: var(--literallygoogle-media-filter-width);
+        max-width: var(--literallygoogle-media-filter-width);
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
     #image-filters-bar .degoog-img-sidebar {
         display: flex;
         flex-direction: column;
@@ -2770,11 +2926,7 @@ body {
     }
 
     #image-filters-bar .degoog-img-sidebar-head {
-        flex: 0 0 auto;
-        padding: 0;
-        border-bottom: 0;
-        position: static;
-        background: transparent;
+        display: none;
     }
 
     #image-filters-bar .degoog-img-sidebar-body {
