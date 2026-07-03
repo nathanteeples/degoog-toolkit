@@ -738,6 +738,11 @@ html[data-image-mode-desktop-layout="preview-left"] {
     transition:
         transform 280ms cubic-bezier(0.2, 0.9, 0.2, 1),
         opacity 180ms ease,
+        background 280ms ease,
+        border-color 280ms ease,
+        backdrop-filter 280ms ease,
+        -webkit-backdrop-filter 280ms ease,
+        box-shadow 280ms ease,
         visibility 0s linear 180ms;
 }
 
@@ -764,14 +769,6 @@ html[dir="rtl"] #image-filters-bar.open {
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
-    transition:
-        transform 280ms cubic-bezier(0.2, 0.9, 0.2, 1),
-        opacity 180ms ease,
-        visibility 0s;
-}
-
-#image-filters-bar.open.lg-image-drawer-open-ready,
-html[dir="rtl"] #image-filters-bar.open.lg-image-drawer-open-ready {
     background: color-mix(in srgb, var(--bg) 90%, transparent);
     border-color: color-mix(in srgb, var(--border-light) 76%, transparent);
     backdrop-filter: blur(20px) saturate(125%);
@@ -779,6 +776,19 @@ html[dir="rtl"] #image-filters-bar.open.lg-image-drawer-open-ready {
     box-shadow:
         0 28px 64px rgba(0, 0, 0, 0.28),
         0 8px 24px rgba(0, 0, 0, 0.18);
+    transition:
+        transform 280ms cubic-bezier(0.2, 0.9, 0.2, 1),
+        opacity 180ms ease,
+        background 280ms ease,
+        border-color 280ms ease,
+        backdrop-filter 280ms ease,
+        -webkit-backdrop-filter 280ms ease,
+        box-shadow 280ms ease,
+        visibility 0s;
+}
+
+#image-filters-bar.open.lg-image-drawer-open-ready,
+html[dir="rtl"] #image-filters-bar.open.lg-image-drawer-open-ready {
 }
 
 #image-filters-bar.open:not(.lg-image-drawer-open-ready) .degoog-img-sidebar-body,
@@ -799,24 +809,27 @@ html[dir="rtl"] #image-filters-bar.open.lg-image-drawer-open-ready {
     position: fixed;
     inset: 0;
     z-index: 205;
-    background: color-mix(in srgb, var(--bg) 58%, transparent);
+    background: color-mix(in srgb, var(--bg) 42%, transparent);
+    backdrop-filter: blur(0px) saturate(100%);
+    -webkit-backdrop-filter: blur(0px) saturate(100%);
     opacity: 0;
-    transition: opacity 180ms ease;
+    transition:
+        opacity var(--lg-drawer-duration, 400ms) cubic-bezier(0.16, 1, 0.3, 1),
+        backdrop-filter var(--lg-drawer-duration, 400ms) cubic-bezier(0.16, 1, 0.3, 1),
+        -webkit-backdrop-filter var(--lg-drawer-duration, 400ms) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .degoog-img-sidebar-overlay.open {
     display: block;
     opacity: 1;
+    backdrop-filter: blur(14px) saturate(110%);
+    -webkit-backdrop-filter: blur(14px) saturate(110%);
 }
 
 .degoog-img-sidebar-overlay.open.lg-image-drawer-animating {
-    transition: opacity var(--lg-drawer-duration, 500ms) ease;
 }
 
 .degoog-img-sidebar-overlay.open.lg-image-drawer-open-ready {
-    background: color-mix(in srgb, var(--bg) 42%, transparent);
-    backdrop-filter: blur(14px) saturate(110%);
-    -webkit-backdrop-filter: blur(14px) saturate(110%);
 }
 
 #results-page.lg-image-drawer-animating {
@@ -2425,11 +2438,17 @@ body {
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            max-width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             max-height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             border-radius var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            background var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            border-color var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            backdrop-filter var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            -webkit-backdrop-filter var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            box-shadow var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             opacity 180ms ease,
             visibility 0s linear var(--lg-drawer-duration);
     }
@@ -2438,11 +2457,16 @@ body {
         will-change:
             width,
             height,
+            max-width,
             max-height,
             border-radius,
             inset-inline-start,
             inset-inline-end,
             bottom,
+            background,
+            border-color,
+            backdrop-filter,
+            box-shadow,
             opacity;
     }
 
@@ -2488,11 +2512,17 @@ body {
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             height var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            max-width var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             max-height var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             border-radius var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            background var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            border-color var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            backdrop-filter var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            -webkit-backdrop-filter var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            box-shadow var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             opacity 180ms ease,
             visibility 0s;
     }
@@ -2531,11 +2561,17 @@ body {
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            max-width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             max-height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             border-radius var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            background var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            border-color var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            backdrop-filter var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            -webkit-backdrop-filter var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            box-shadow var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             opacity 220ms ease,
             visibility 0s;
     }
@@ -2549,11 +2585,17 @@ body {
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            max-width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             max-height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             border-radius var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            background var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            border-color var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            backdrop-filter var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            -webkit-backdrop-filter var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            box-shadow var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             opacity 180ms ease,
             visibility 0s;
     }
@@ -2566,6 +2608,7 @@ body {
         transition:
             width 320ms var(--lg-drawer-ease-open),
             height 320ms var(--lg-drawer-ease-open),
+            max-width 320ms var(--lg-drawer-ease-open),
             max-height 320ms var(--lg-drawer-ease-open),
             border-radius 320ms var(--lg-drawer-ease-open),
             inset-inline-start 320ms var(--lg-drawer-ease-open),
