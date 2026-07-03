@@ -2463,8 +2463,8 @@ body {
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 1.125rem;
-        height: 0.125rem;
+        width: 1.625rem;
+        height: 0.1875rem;
         border-radius: 100px;
         transform: translate(-50%, -50%);
         background: color-mix(in srgb, var(--text-secondary) 52%, transparent);
@@ -2794,7 +2794,7 @@ body {
             --lg-fab-inset-bottom,
             calc(env(safe-area-inset-bottom, 0px) + 0.75rem)
         ) !important;
-        z-index: 10010;
+        z-index: 100000;
         visibility: visible;
         opacity: 1;
         pointer-events: auto;
@@ -2888,8 +2888,8 @@ body {
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 1.125rem;
-        height: 0.125rem;
+        width: 1.625rem;
+        height: 0.1875rem;
         border-radius: 100px;
         transform: translate(-50%, -50%);
         background: color-mix(in srgb, var(--text-secondary) 52%, transparent);
@@ -3828,7 +3828,7 @@ body {
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
         overflow: hidden;
-        z-index: 10010;
+        z-index: 100000;
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
@@ -3878,7 +3878,7 @@ body {
         visibility: visible;
         opacity: 1;
         pointer-events: none;
-        z-index: 10009;
+        z-index: 99999;
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             height var(--lg-drawer-duration) var(--lg-drawer-ease-close),

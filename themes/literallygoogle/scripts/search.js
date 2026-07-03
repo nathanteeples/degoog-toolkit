@@ -1103,15 +1103,16 @@ function getLgTranslation(key) {
         syncImageDrawerInlineAnchor(page);
         syncImageDrawerViewport(page);
         prepareImageDrawerAnimation(page);
+        setImageFiltersSidebarOpen(true);
         sidebar.classList.add("lg-drawer-dragging");
         applyImageDrawerMotionProgress(sidebar, getImageDrawerMotionMetrics(page, sidebar), 1);
         sidebar.getBoundingClientRect();
-        setImageFiltersSidebarOpen(true);
-        sidebar.getBoundingClientRect();
 
         requestAnimationFrame(() => {
-            sidebar.classList.remove("lg-drawer-dragging");
-            clearImageDrawerMotionProgress(sidebar);
+            requestAnimationFrame(() => {
+                sidebar.classList.remove("lg-drawer-dragging");
+                clearImageDrawerMotionProgress(sidebar);
+            });
         });
     }
 
@@ -1166,7 +1167,10 @@ function getLgTranslation(key) {
 
     function ensureImageDrawerHost(page) {
         const sidebar = document.getElementById("image-filters-bar");
-        if (!page || !sidebar) return;
+        if (!page || !sidebar || !isDesktopImageDrawerMode(page)) {
+            restoreImageDrawerHost();
+            return;
+        }
         sidebar.classList.add("lg-image-fab-drawer");
         if (sidebar.parentNode === document.body) return;
         document.body.appendChild(sidebar);
@@ -1799,7 +1803,11 @@ function getLgTranslation(key) {
         toolsBar?.classList.add("lg-filters-wrap");
 
         if (drawerMode) {
-            ensureImageDrawerHost(page);
+            if (isDesktopImageDrawerMode(page)) {
+                ensureImageDrawerHost(page);
+            } else {
+                restoreImageDrawerHost();
+            }
             ensureFloatingFiltersLauncher(page, toggle);
             wireImageDrawerPerformance(page);
             wireImageDrawerViewport(page);
@@ -1881,6 +1889,7 @@ function getLgTranslation(key) {
     scheduleFiltersSync();
     window.addEventListener("degoog-results-ready", scheduleFiltersSync);
     window.addEventListener("lg-sync-search-type", scheduleFiltersSync);
+    desktopQuery.addEventListener?.("change", scheduleFiltersSync);
 
     const page = document.getElementById("results-page");
     if (page) {
