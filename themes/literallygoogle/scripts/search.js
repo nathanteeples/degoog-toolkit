@@ -18,8 +18,16 @@ const LG_LANG_DICT = {
     }
 };
 const LG_FILTERS_ICON = `
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path fill="currentColor" d="M3 7.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 7.25Zm3.5 4.75a.75.75 0 0 1 .75-.75h9.5a.75.75 0 0 1 0 1.5h-9.5A.75.75 0 0 1 6.5 12Zm3.25 4.75a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1-.75-.75Z"/>
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 5H3"/>
+        <path d="M12 19H3"/>
+        <path d="M14 3v4"/>
+        <path d="M16 17v4"/>
+        <path d="M21 12h-9"/>
+        <path d="M21 19h-5"/>
+        <path d="M21 5h-7"/>
+        <path d="M8 10v4"/>
+        <path d="M8 12H3"/>
     </svg>`;
 const LG_CLOSE_ICON = `
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
