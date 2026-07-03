@@ -1186,38 +1186,7 @@ function getLgTranslation(key) {
     }
 
     function syncImageFabPreviewAnchor(page) {
-        if (
-            !page?.classList.contains("lg-image-fab-filters") ||
-            !isImageDrawerMode(page) ||
-            isDesktopImageDrawerMode(page)
-        ) {
-            clearImageFabInsetBottom(page);
-            return;
-        }
-
-        const preview = document.getElementById("media-preview-panel");
-        const layout = document.getElementById("results-layout");
-        if (!preview?.classList.contains("open") || !layout?.classList.contains("media-mode")) {
-            clearImageFabInsetBottom(page);
-            return;
-        }
-
-        const rect = preview.getBoundingClientRect();
-        if (rect.height < 8 || rect.top >= window.innerHeight - 8) {
-            clearImageFabInsetBottom(page);
-            return;
-        }
-
-        const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-        const gapPx = 0.75 * remPx;
-        const vv = window.visualViewport;
-        const viewportBottom = (vv?.offsetTop ?? 0) + (vv?.height ?? window.innerHeight);
-        const fabBottomEdge = Math.min(rect.top - gapPx, viewportBottom - remPx);
-        const insetBottom = Math.max(remPx, viewportBottom - fabBottomEdge);
-        const value = `${insetBottom}px`;
-
-        page.style.setProperty("--lg-fab-inset-bottom", value);
-        document.getElementById("image-filters-bar")?.style.setProperty("--lg-fab-inset-bottom", value);
+        clearImageFabInsetBottom(page);
     }
 
     function syncImageDrawerViewport(page) {
@@ -2318,17 +2287,9 @@ function getLgTranslation(key) {
 (() => {
     function isImageFabDrawerMode() {
         const page = document.getElementById("results-page");
-        const desktopLayout = (
-            document.documentElement.getAttribute("data-image-mode-desktop-layout") || ""
-        )
-            .trim()
-            .toLowerCase();
-        const desktopFab =
-            window.matchMedia("(min-width: 768px)").matches &&
-            ["organizers-left", "preview-left", "fab-left", "fab-right"].includes(desktopLayout);
         return (
             page?.classList.contains("lg-image-fab-filters") &&
-            (window.matchMedia("(max-width: 767px)").matches || desktopFab)
+            window.matchMedia("(max-width: 767px)").matches
         );
     }
 

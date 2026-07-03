@@ -39,6 +39,7 @@ var {
     --literallygoogle-results-layout-max: 76rem;
     --literallygoogle-results-main-col-max: 48rem;
     --lg-chrome-surface: var(--bg-light);
+    --lg-sidebar-row-surface: var(--bg-light);
     --literallygoogle-results-sidebar-min: 17rem;
     --literallygoogle-results-sidebar-max: 20.5rem;
     --literallygoogle-media-filter-width: 15rem;
@@ -106,6 +107,7 @@ html[data-image-mode-desktop-layout="fab-right"] {
         --success: #34a853;
         --bg: #fff;
         --bg-light: #f8f9fa;
+        --lg-sidebar-row-surface: #e9ebf0;
         --bg-hover: #e8eaed;
         --border: #dadce0;
         --border-light: #d2d2d2;
@@ -141,6 +143,7 @@ html[data-image-mode-desktop-layout="fab-right"] {
     --success: #34a853;
     --bg: #fff;
     --bg-light: #f8f9fa;
+    --lg-sidebar-row-surface: #e9ebf0;
     --bg-hover: #e8eaed;
     --border: #dadce0;
     --border-light: #d2d2d2;
@@ -1122,7 +1125,7 @@ html[dir="rtl"] #image-filters-bar.open.lg-image-drawer-open-ready {
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar,
 :is(#results-sidebar, #image-engine-panel) .sidebar-accordion.streaming-engine-panel
     > .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     border-start-start-radius: var(--theme-radius-lg);
     border-start-end-radius: var(--theme-radius-lg);
     border-end-start-radius: var(--theme-radius-lg);
@@ -1153,7 +1156,7 @@ html[dir="rtl"] #image-filters-bar.open.lg-image-drawer-open-ready {
 
 .engine-stat-row {
     border-radius: var(--theme-radius-xs);
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     padding: 14px;
     margin-bottom: 2px;
 }
@@ -1223,7 +1226,7 @@ html[dir="rtl"] #image-filters-bar.open.lg-image-drawer-open-ready {
     border-bottom: 0;
     margin-bottom: 2px;
     font-size: 14px;
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     border-radius: var(--theme-radius-xs);
 }
 
@@ -2320,6 +2323,22 @@ body {
     }
 
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
+        #lg-image-tools-fab::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: 0.55rem;
+        width: 1.15rem;
+        height: 0.1875rem;
+        border-radius: 999px;
+        transform: translateX(-50%);
+        background: color-mix(in srgb, var(--white) 92%, transparent);
+        box-shadow: 0 1px 0 color-mix(in srgb, #000 10%, transparent);
+        opacity: 0.95;
+        pointer-events: none;
+    }
+
+    #results-page[data-lg-search-type="images"].lg-image-fab-filters
         #lg-image-tools-fab.lg-image-tools-fab-entering {
         opacity: 0.92;
         transform: translate3d(0, 0.42rem, 0) scale(0.82);
@@ -2364,6 +2383,7 @@ body {
         height: 1.25rem;
         color: var(--text-primary);
         pointer-events: none;
+        transform: translateY(-0.25rem);
     }
 
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
@@ -2467,8 +2487,8 @@ body {
         height: 0.1875rem;
         border-radius: 100px;
         transform: translate(-50%, -50%);
-        background: color-mix(in srgb, var(--text-secondary) 52%, transparent);
-        box-shadow: 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
+        background: color-mix(in srgb, var(--white) 92%, transparent);
+        box-shadow: 0 1px 0 color-mix(in srgb, #000 10%, transparent);
     }
 
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
@@ -3539,7 +3559,7 @@ body {
     justify-content: space-between;
     width: 100%;
     padding: 0.85rem 1rem;
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     border: 0;
     border-start-start-radius: var(--theme-radius-lg);
     border-start-end-radius: var(--theme-radius-lg);
@@ -3596,7 +3616,7 @@ body {
     font-size: 0.875rem;
     line-height: 1.2;
     color: var(--text-primary);
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     border: 0;
     border-radius: var(--theme-radius-xs);
     text-align: start;
