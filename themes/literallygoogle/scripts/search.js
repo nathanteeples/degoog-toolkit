@@ -992,7 +992,16 @@ function getLgTranslation(key) {
 
     function isDesktopFabLayout() {
         const layout = getImageModeDesktopLayout();
-        return layout === "fab-left" || layout === "fab-right";
+        return (
+            layout === "organizers-left" ||
+            layout === "preview-left" ||
+            layout === "fab-left" ||
+            layout === "fab-right"
+        );
+    }
+
+    function isDesktopFabEndAnchor(layout = getImageModeDesktopLayout()) {
+        return layout === "preview-left" || layout === "fab-right";
     }
 
     function isDesktopImageDrawerMode(page) {
@@ -1042,7 +1051,7 @@ function getLgTranslation(key) {
         const launcher = document.getElementById("lg-image-tools-fab");
         const desktopLayout = getImageModeDesktopLayout();
         if (desktopQuery.matches && isDesktopFabLayout()) {
-            const useEndAnchor = desktopLayout === "fab-right";
+            const useEndAnchor = isDesktopFabEndAnchor(desktopLayout);
             const anchorStart = !useEndAnchor;
             page.classList.toggle("lg-image-drawer-anchor-start", anchorStart);
             page.classList.toggle("lg-image-drawer-anchor-end", useEndAnchor);
@@ -2287,7 +2296,7 @@ function getLgTranslation(key) {
             .toLowerCase();
         const desktopFab =
             window.matchMedia("(min-width: 768px)").matches &&
-            (desktopLayout === "fab-left" || desktopLayout === "fab-right");
+            ["organizers-left", "preview-left", "fab-left", "fab-right"].includes(desktopLayout);
         return (
             page?.classList.contains("lg-image-fab-filters") &&
             (window.matchMedia("(max-width: 767px)").matches || desktopFab)
