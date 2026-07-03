@@ -42,6 +42,9 @@ var {
     --literallygoogle-results-sidebar-max: 20.5rem;
     --literallygoogle-media-filter-width: 15rem;
     --literallygoogle-media-row-gap: 0.5rem;
+    --literallygoogle-row-padding: 14px;
+    --literallygoogle-control-height: 2.5rem;
+    --literallygoogle-mobile-drawer-width: min(22rem, calc(100vw - 2.75rem));
     --literallygoogle-image-organizers-order: 1;
     --literallygoogle-image-results-order: 2;
     --literallygoogle-image-preview-order: 3;
@@ -711,22 +714,35 @@ html[data-image-mode-desktop-layout="preview-left"] {
 /* Image search filters (requires #image-filters-bar in search.html). */
 #image-filters-bar {
     display: none;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: 210;
+    width: var(--literallygoogle-mobile-drawer-width);
+    max-width: var(--literallygoogle-mobile-drawer-width);
+    background: var(--bg);
+    border-inline-end: 1px solid var(--border-light);
+    overflow: hidden;
     inset-inline-start: 0;
     inset-inline-end: auto;
     left: auto;
     right: auto;
-    transform: translateX(-100%);
+    transform: translateX(calc(-100% - 1rem));
+    transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
 html[dir="rtl"] #image-filters-bar {
     inset-inline-start: auto;
     inset-inline-end: 0;
-    transform: translateX(100%);
+    border-inline-end: 0;
+    border-inline-start: 1px solid var(--border-light);
+    transform: translateX(calc(100% + 1rem));
 }
 
 #image-filters-bar.open,
 html[dir="rtl"] #image-filters-bar.open {
     transform: translateX(0);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
 }
 
 .degoog-img-filter-bar {
@@ -1993,7 +2009,7 @@ body {
     }
 }
 
-/* Mobile: single column, no custom offsets */
+/* Mobile results */
 @media (max-width: 767px) {
     #results-layout {
         padding-block: 0;
@@ -2012,6 +2028,75 @@ body {
         display: flex;
         flex-direction: column;
         gap: 12px;
+    }
+
+    #results-page[data-lg-search-type="images"] #results-tabs {
+        gap: 0.5rem;
+        padding-inline: 0.75rem;
+    }
+
+    #results-page[data-lg-search-type="images"] #results-tabs .lg-filters-wrap {
+        order: -1;
+        flex: 0 0 auto;
+        margin-inline-start: 0;
+    }
+
+    #results-page[data-lg-search-type="images"] #results-tabs .tools-wrap::before,
+    #results-page[data-lg-search-type="images"] > .tools-panel.lg-filters-dropdown {
+        display: none !important;
+    }
+
+    #results-page[data-lg-search-type="images"] #results-tabs .tools-toggle {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: var(--literallygoogle-control-height);
+        min-width: max-content;
+        padding: 0.55rem 0.9rem;
+        border: 1px solid var(--border-light);
+        border-radius: var(--theme-radius-pill);
+        background: var(--bg-light);
+        color: var(--text-primary);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        box-shadow:
+            inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent),
+            0 1px 2px color-mix(in srgb, var(--text-primary) 8%, transparent);
+    }
+
+    #results-page[data-lg-search-type="images"] #results-tabs .tools-toggle::after {
+        display: none;
+    }
+
+    #results-page[data-lg-search-type="images"] #results-tabs .tools-toggle:hover,
+    #results-page[data-lg-search-type="images"] #results-tabs .tools-toggle.is-open,
+    #results-page[data-lg-search-type="images"] #results-tabs .tools-toggle.active {
+        background: var(--lg-row-hover-bg);
+        color: var(--text-primary);
+    }
+
+    #results-page[data-lg-search-type="images"] #results-tabs .tools-toggle.is-open {
+        box-shadow: inset 0 0 0 2px var(--lg-selection-active-ring);
+    }
+
+    #results-page[data-lg-search-type="images"] #results-tabs .lg-filters-icon {
+        display: inline-flex;
+        width: 1rem;
+        height: 1rem;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+    }
+
+    #results-page[data-lg-search-type="images"] #results-tabs .lg-filters-icon svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+
+    #results-page[data-lg-search-type="images"] #results-tabs .lg-filters-label {
+        display: inline-block;
+        white-space: nowrap;
     }
 }
 
@@ -2127,6 +2212,7 @@ body {
 
 #results-tabs .lg-filters-wrap {
     position: relative;
+    flex: 0 0 auto;
 }
 
 #results-page #results-tabs {
@@ -2564,7 +2650,7 @@ body {
     justify-content: space-between;
     gap: 0.75rem;
     width: 100%;
-    padding: 14px;
+    padding: var(--literallygoogle-row-padding);
     font-size: 0.875rem;
     line-height: 1.2;
     color: var(--text-primary);
@@ -2613,8 +2699,63 @@ body {
 }
 
 #image-filters-bar .degoog-img-sidebar-body {
-    overflow-y: hidden;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    overflow-y: auto;
     max-height: none;
+}
+
+#image-filters-bar .degoog-img-sidebar {
+    height: 100%;
+    padding: 0;
+    background: var(--bg);
+}
+
+#image-filters-bar .degoog-img-sidebar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 1rem 0.75rem 0.75rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border-light);
+}
+
+#image-filters-bar .degoog-img-sidebar-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+#image-filters-bar .degoog-img-sidebar-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 1px solid var(--border-light);
+    border-radius: var(--theme-radius-pill);
+    background: var(--bg-light);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+#image-filters-bar .degoog-img-sidebar-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+#image-filters-bar .degoog-img-sidebar-close svg {
+    width: 1rem;
+    height: 1rem;
+    display: block;
+}
+
+#image-filters-bar #image-engine-panel:empty {
+    display: none;
 }
 
 @media (min-width: 768px) {
@@ -2630,6 +2771,10 @@ body {
 
     #image-filters-bar .degoog-img-sidebar-head {
         flex: 0 0 auto;
+        padding: 0;
+        border-bottom: 0;
+        position: static;
+        background: transparent;
     }
 
     #image-filters-bar .degoog-img-sidebar-body {

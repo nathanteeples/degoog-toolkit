@@ -1,13 +1,7 @@
-/*
- * LiterallyGoogle — search-page behaviour bundle
- *
- * Loaded by search.html. Each IIFE is self-contained and uses MutationObservers
- * so it stays valid across client-side DOM updates.
- */
-
 const LG_LANG_DICT = {
     en: {
         settings: "Settings",
+        filters: "Filters",
         prev: "Previous",
         prev10: "Back 10 pages",
         prevImage: "Previous image",
@@ -22,6 +16,17 @@ const LG_LANG_DICT = {
         linkCopied: "Link copied!"
     }
 };
+const LG_FILTERS_ICON = `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M3 7.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 7.25Zm3.5 4.75a.75.75 0 0 1 .75-.75h9.5a.75.75 0 0 1 0 1.5h-9.5A.75.75 0 0 1 6.5 12Zm3.25 4.75a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1-.75-.75Z" fill="currentColor"></path>
+        <circle cx="8.5" cy="7.25" r="1.75" fill="currentColor"></circle>
+        <circle cx="14.5" cy="12" r="1.75" fill="currentColor"></circle>
+        <circle cx="12" cy="16.75" r="1.75" fill="currentColor"></circle>
+    </svg>`;
+const LG_CLOSE_ICON = `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M6.97 6.97a.75.75 0 0 1 1.06 0L12 10.94l3.97-3.97a.75.75 0 1 1 1.06 1.06L13.06 12l3.97 3.97a.75.75 0 1 1-1.06 1.06L12 13.06l-3.97 3.97a.75.75 0 1 1-1.06-1.06L10.94 12 6.97 8.03a.75.75 0 0 1 0-1.06Z" fill="currentColor"></path>
+    </svg>`;
 
 function getLgTranslation(key) {
     const attrName = `data-t-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
@@ -885,7 +890,7 @@ function getLgTranslation(key) {
     moveSpellCheck();
 })();
 
-/* ── 4b. Google-style Filters dropdown (tab-row toggle + flyout menus) ─── */
+/* Filters dropdown */
 (() => {
     let filtersFrame = 0;
 
@@ -908,7 +913,15 @@ function getLgTranslation(key) {
 
     function relabelFiltersToggle(toggle) {
         if (toggle.dataset.lgFiltersLabel === "1") return;
-        toggle.querySelector("i")?.remove();
+        const filterLabel = getLgTranslation("filters");
+        let icon = toggle.querySelector(".lg-filters-icon");
+        if (!icon) {
+            toggle.querySelector("i")?.remove();
+            icon = document.createElement("span");
+            icon.className = "lg-filters-icon";
+            icon.innerHTML = LG_FILTERS_ICON;
+            toggle.prepend(icon);
+        }
         for (const node of [...toggle.childNodes]) {
             if (node.nodeType === Node.TEXT_NODE) {
                 node.remove();
@@ -920,8 +933,16 @@ function getLgTranslation(key) {
             label.className = "lg-filters-label";
             toggle.appendChild(label);
         }
-        label.textContent = "Filters";
+        label.textContent = filterLabel;
+        toggle.setAttribute("aria-label", filterLabel);
         toggle.dataset.lgFiltersLabel = "1";
+    }
+
+    function isImageDrawerMode(page) {
+        return (
+            page?.getAttribute("data-lg-search-type") === "images" &&
+            window.matchMedia("(max-width: 767px)").matches
+        );
     }
 
     function syncCustomDateMenuState(panel) {
@@ -947,6 +968,7 @@ function getLgTranslation(key) {
     }
 
     function positionFiltersPanel(panel, toggle, page) {
+        if (isImageDrawerMode(page)) return;
         if (panel.style.display === "none") return;
         const toggleRect = toggle.getBoundingClientRect();
         const pageRect = page.getBoundingClientRect();
@@ -1066,6 +1088,7 @@ function getLgTranslation(key) {
         const toggle = document.getElementById("tools-toggle");
         const toolsBar = document.getElementById("tools-bar");
         if (!page || !panel || !toggle) return;
+        const drawerMode = isImageDrawerMode(page);
 
         relabelFiltersToggle(toggle);
         panel.classList.remove("lg-tools-inline");
@@ -1074,12 +1097,16 @@ function getLgTranslation(key) {
 
         positionFiltersPanel(panel, toggle, page);
         wireCustomDateMenuState(panel);
-        wireFiltersHover(panel);
+        if (!drawerMode) {
+            wireFiltersHover(panel);
+        }
         syncFiltersVisibility(toolsBar, panel, toggle, page);
 
         if (toggle.dataset.lgFiltersWired !== "1") {
-            ensureFiltersClosedAfterCore(panel, toggle);
-            wireFiltersDismiss(panel, toggle);
+            if (!drawerMode) {
+                ensureFiltersClosedAfterCore(panel, toggle);
+                wireFiltersDismiss(panel, toggle);
+            }
             toggle.dataset.lgFiltersWired = "1";
 
             toggle.addEventListener("click", () => {
@@ -1529,6 +1556,32 @@ function getLgTranslation(key) {
     });
 
     tryBind();
+})();
+
+(() => {
+    function syncImageSidebarChrome() {
+        const close = document.querySelector("#image-filters-bar .degoog-img-sidebar-close");
+        if (close && close.dataset.lgIcon !== "1") {
+            close.innerHTML = LG_CLOSE_ICON;
+            close.dataset.lgIcon = "1";
+        }
+    }
+
+    function init() {
+        syncImageSidebarChrome();
+        const page = document.getElementById("results-page");
+        if (!page) return;
+        new MutationObserver(syncImageSidebarChrome).observe(page, {
+            childList: true,
+            subtree: true,
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
 })();
 
 /* ── 5b. Image grid fold-in when preview pane opens ───────────────────── */
