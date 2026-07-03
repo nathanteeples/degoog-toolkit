@@ -974,6 +974,7 @@ function getLgTranslation(key) {
     const DRAWER_ANIMATING = "lg-image-drawer-animating";
     const DRAWER_READY = "lg-image-drawer-open-ready";
     const DRAWER_ANIM_MS = 500;
+    const FAB_READY = "lg-image-tools-fab-ready";
     const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     let drawerAnimTimeout = 0;
 
@@ -996,6 +997,8 @@ function getLgTranslation(key) {
         if (panel && toggle) {
             ensureFiltersClosed(panel, toggle);
         }
+
+        prepareImageDrawerAnimation(page);
 
         const coreToggle = document.querySelector(".degoog-img-filter-toggle");
         if (coreToggle) {
@@ -1282,30 +1285,6 @@ function getLgTranslation(key) {
         sidebar.dataset.lgDrawerPerfWired = "1";
 
         let wasOpen = sidebar.classList.contains("open");
-        let finishFrame = 0;
-
-        function scheduleFinish() {
-            if (finishFrame) return;
-            finishFrame = requestAnimationFrame(() => {
-                finishFrame = 0;
-                finishImageDrawerAnimation(page);
-            });
-        }
-
-        sidebar.addEventListener("transitionend", event => {
-            if (event.target !== sidebar || !sidebar.classList.contains(DRAWER_ANIMATING)) {
-                return;
-            }
-            if (
-                event.propertyName !== "width" &&
-                event.propertyName !== "height" &&
-                event.propertyName !== "max-height" &&
-                event.propertyName !== "border-radius"
-            ) {
-                return;
-            }
-            scheduleFinish();
-        });
 
         new MutationObserver(() => {
             if (!isImageDrawerMode(page)) {
@@ -1316,9 +1295,11 @@ function getLgTranslation(key) {
             const open = sidebar.classList.contains("open");
             if (open === wasOpen) return;
 
-            prepareImageDrawerAnimation(page);
+            if (!sidebar.classList.contains(DRAWER_ANIMATING)) {
+                prepareImageDrawerAnimation(page);
+            }
             if (reducedMotionQuery.matches) {
-                scheduleFinish();
+                requestAnimationFrame(() => finishImageDrawerAnimation(page));
             }
             syncImageDrawerViewport(page);
             wasOpen = open;
@@ -1330,6 +1311,16 @@ function getLgTranslation(key) {
         clearImageDrawerPerformance(page);
         clearImageFabInsetBottom(page);
         document.getElementById("lg-image-tools-fab")?.remove();
+    }
+
+    function armFloatingFiltersLauncher(launcher) {
+        if (!launcher || launcher.dataset.lgFabMounted === "1") return;
+        launcher.dataset.lgFabMounted = "1";
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                launcher.classList.add(FAB_READY);
+            });
+        });
     }
 
     let syncFabFrame = 0;
@@ -1372,6 +1363,7 @@ function getLgTranslation(key) {
         renderFiltersButton(launcher, { iconOnly: true });
         launcher.setAttribute("aria-label", getLgTranslation("tools"));
         launcher.setAttribute("aria-haspopup", "dialog");
+        armFloatingFiltersLauncher(launcher);
 
         if (launcher.dataset.lgFabWired !== "1") {
             launcher.dataset.lgFabWired = "1";
