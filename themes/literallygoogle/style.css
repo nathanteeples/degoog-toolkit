@@ -3468,11 +3468,6 @@ body {
         box-sizing: border-box;
         width: 100%;
         margin-inline: 0;
-        direction: rtl;
-    }
-
-    #image-filters-bar .degoog-img-sidebar-body > * {
-        direction: ltr;
     }
 
     #image-filters-bar .degoog-img-filter-group {
@@ -3560,24 +3555,11 @@ body {
         box-sizing: border-box;
         width: 100%;
         margin-inline: 0;
-        direction: rtl;
-    }
-
-    html[data-sticky-sidebar="true"] #sidebar-col > .sticky > * {
-        direction: ltr;
     }
 
     html[data-sticky-sidebar="true"] #sidebar-col > .sticky.lg-sidebar-scroll-active {
         overflow-y: auto;
         overscroll-behavior: contain;
-    }
-
-    html[dir="rtl"][data-sticky-sidebar="true"] #sidebar-col > .sticky {
-        direction: ltr;
-    }
-
-    html[dir="rtl"][data-sticky-sidebar="true"] #sidebar-col > .sticky > * {
-        direction: rtl;
     }
 }
 
