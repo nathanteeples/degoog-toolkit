@@ -32,8 +32,9 @@ var {
 
 :root {
     /* Repo-only: results grid / layout (not in the upstream example file). */
+    --literallygoogle-results-logo-size: clamp(1.875rem, 1.625rem + 1.1vw, 2.5rem);
     --literallygoogle-results-content-inline-start: calc(
-        1.25rem + 0.75rem + 1rem + 3.35 * clamp(1.875rem, 3rem - 2.5vw, 2.5rem)
+        1.25rem + 0.75rem + 1rem + 3.35 * var(--literallygoogle-results-logo-size)
     );
     --literallygoogle-results-layout-max: 76rem;
     --literallygoogle-results-main-col-max: 48rem;
@@ -1249,7 +1250,7 @@ body {
     #results-header > .results-logo {
         display: inline-flex;
         align-items: center;
-        min-height: 36px;
+        min-height: 40px;
         line-height: 1;
         margin-block: 0;
     }
@@ -1258,7 +1259,7 @@ body {
     #results-header > button[aria-label="Apps"] {
         align-self: center;
         margin-block: 0;
-        transform: translateY(7px);
+        transform: none;
     }
 }
 
@@ -3838,7 +3839,7 @@ body {
    ══════════════════════════════════════════════════════════════════════════ */
 
 .results-logo {
-    font-size: clamp(1.875rem, 3rem - 2.5vw, 2.5rem);
+    font-size: var(--literallygoogle-results-logo-size);
     font-weight: 500;
     letter-spacing: -1px;
     text-decoration: none;
@@ -3846,6 +3847,9 @@ body {
     color: var(--text-primary);
     flex-shrink: 0;
     align-self: center;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
     padding-inline-start: 0;
     padding-inline-end: 1rem;
 }
