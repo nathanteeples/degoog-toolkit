@@ -1183,7 +1183,10 @@ body {
 }
 
 @media (min-width: 768px) {
-    /* Sticky media preview `top` / `height` — matches header block below. */
+    html {
+        scrollbar-gutter: stable;
+    }
+
     #results-page {
         --literallygoogle-sticky-header-offset: calc(50px + 1.5rem);
     }
@@ -1241,7 +1244,7 @@ body {
         padding-inline-start: var(
             --literallygoogle-results-content-inline-start
         );
-        padding-inline-end: 1.25rem;
+        padding-inline-end: calc(1.25rem + var(--lg-scrollbar-gutter, 0.625rem));
     }
 
     #results-page #results-layout > #slot-above-results {
@@ -2268,6 +2271,7 @@ body {
 /* Google-style Filters dropdown in the tab row */
 #results-page {
     position: relative;
+    --lg-scrollbar-gutter: 0.625rem;
     --lg-selection-accent: #9ac1fd;
     --lg-selection-active-bg: color-mix(in srgb, var(--lg-selection-accent) 16%, var(--bg-light));
     --lg-selection-active-ring: color-mix(in srgb, var(--lg-selection-accent) 65%, transparent);
@@ -2898,6 +2902,24 @@ body {
         overscroll-behavior: contain;
         scrollbar-width: thin;
         max-height: none;
+        box-sizing: border-box;
+        width: calc(100% - var(--lg-scrollbar-gutter, 0.625rem));
+        margin-inline-end: var(--lg-scrollbar-gutter, 0.625rem);
+    }
+
+    html[data-image-mode-desktop-layout="preview-left"]
+        #results-page:is(
+            :has(#results-tabs .results-tab[data-type="images"].active),
+            :has(
+                #results-tabs
+                    .results-tab[data-type="images"][aria-selected="true"]
+            ),
+            :has(#results-list .image-card)
+        )
+        #image-filters-bar
+        .degoog-img-sidebar-body {
+        margin-inline-start: var(--lg-scrollbar-gutter, 0.625rem);
+        margin-inline-end: 0;
     }
 
     #image-filters-bar .degoog-img-filter-group {
@@ -2980,8 +3002,9 @@ body {
         );
         overflow-y: hidden;
         scrollbar-width: thin;
-        padding-inline-end: 0.25rem;
         box-sizing: border-box;
+        width: calc(100% - var(--lg-scrollbar-gutter, 0.625rem));
+        margin-inline-end: var(--lg-scrollbar-gutter, 0.625rem);
     }
 
     html[data-sticky-sidebar="true"] #sidebar-col > .sticky.lg-sidebar-scroll-active {
@@ -2990,8 +3013,8 @@ body {
     }
 
     html[dir="rtl"][data-sticky-sidebar="true"] #sidebar-col > .sticky {
-        padding-inline-start: 0.25rem;
-        padding-inline-end: 0;
+        margin-inline-start: var(--lg-scrollbar-gutter, 0.625rem);
+        margin-inline-end: 0;
     }
 }
 
