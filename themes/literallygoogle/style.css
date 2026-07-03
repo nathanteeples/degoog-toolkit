@@ -2181,7 +2181,7 @@ body {
         position: fixed;
         inset-inline-start: 1rem;
         inset-inline-end: auto;
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+        bottom: var(--lg-fab-inset-bottom, calc(env(safe-area-inset-bottom, 0px) + 1rem));
         z-index: 214;
         display: inline-flex;
         align-items: center;
@@ -2201,6 +2201,7 @@ body {
             0 12px 28px rgba(0, 0, 0, 0.22),
             inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
         transition:
+            bottom 320ms cubic-bezier(0.2, 0.9, 0.2, 1),
             transform 220ms cubic-bezier(0.2, 0.9, 0.2, 1),
             opacity 180ms ease;
     }
@@ -2303,7 +2304,10 @@ body {
         border-radius: clamp(1.5rem, 5vw, 2rem);
         inset-inline-start: 0.75rem !important;
         inset-inline-end: auto !important;
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
+        bottom: var(
+            --lg-fab-inset-bottom,
+            calc(env(safe-area-inset-bottom, 0px) + 0.75rem)
+        ) !important;
         z-index: 215;
         visibility: visible;
         opacity: 1;
