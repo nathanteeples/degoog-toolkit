@@ -1163,6 +1163,20 @@ function getLgTranslation(key) {
         document.getElementById("image-filters-bar")?.style.removeProperty("--lg-fab-inset-bottom");
     }
 
+    function ensureImageDrawerHost(page) {
+        const sidebar = document.getElementById("image-filters-bar");
+        if (!page || !sidebar || sidebar.parentNode === page) return;
+        page.appendChild(sidebar);
+    }
+
+    function restoreImageDrawerHost() {
+        const sidebar = document.getElementById("image-filters-bar");
+        const layout = document.getElementById("results-layout");
+        const preview = document.getElementById("media-preview-panel");
+        if (!sidebar || !layout || sidebar.parentNode === layout) return;
+        layout.insertBefore(sidebar, preview || null);
+    }
+
     function syncImageFabPreviewAnchor(page) {
         if (
             !page?.classList.contains("lg-image-fab-filters") ||
@@ -1514,6 +1528,7 @@ function getLgTranslation(key) {
         clearImageFabInsetBottom(page);
         clearImageDrawerInlineAnchor(page);
         document.getElementById("lg-image-tools-fab")?.remove();
+        restoreImageDrawerHost();
     }
 
     function playFloatingFiltersLauncherIntro(launcher) {
@@ -1780,6 +1795,7 @@ function getLgTranslation(key) {
         toolsBar?.classList.add("lg-filters-wrap");
 
         if (drawerMode) {
+            ensureImageDrawerHost(page);
             ensureFloatingFiltersLauncher(page, toggle);
             wireImageDrawerPerformance(page);
             wireImageDrawerViewport(page);

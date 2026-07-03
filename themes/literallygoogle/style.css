@@ -2289,7 +2289,7 @@ body {
         inset-inline-start: 1rem;
         inset-inline-end: auto;
         bottom: 1rem;
-        z-index: 214;
+        z-index: 10000;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -2794,7 +2794,7 @@ body {
             --lg-fab-inset-bottom,
             calc(env(safe-area-inset-bottom, 0px) + 0.75rem)
         ) !important;
-        z-index: 215;
+        z-index: 10010;
         visibility: visible;
         opacity: 1;
         pointer-events: auto;
@@ -3821,7 +3821,7 @@ body {
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
         overflow: hidden;
-        z-index: 215;
+        z-index: 10010;
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
@@ -3866,7 +3866,7 @@ body {
         visibility: visible;
         opacity: 1;
         pointer-events: none;
-        z-index: 213;
+        z-index: 10009;
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             height var(--lg-drawer-duration) var(--lg-drawer-ease-close),
