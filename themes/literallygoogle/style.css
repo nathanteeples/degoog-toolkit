@@ -2420,7 +2420,7 @@ body {
         --lg-fab-inset-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
         --lg-drawer-duration: 400ms;
         --lg-drawer-ease-open: cubic-bezier(0.16, 1, 0.3, 1);
-        --lg-drawer-ease-close: cubic-bezier(0.16, 1, 0.3, 1);
+        --lg-drawer-ease-close: cubic-bezier(0.4, 0, 0.2, 1);
         transform: none !important;
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
@@ -2633,9 +2633,7 @@ body {
         inset-inline-end: 0.75rem !important;
     }
 
-    #results-page.lg-image-fab-filters:has(#image-filters-bar.open) #lg-image-tools-fab,
-    #results-page.lg-image-fab-filters:has(#image-filters-bar.lg-image-drawer-animating)
-        #lg-image-tools-fab {
+    #results-page.lg-image-fab-filters:has(#image-filters-bar.open) #lg-image-tools-fab {
         opacity: 0;
         transform: translate3d(0, 0.35rem, 0) scale(0.88);
         pointer-events: none;
