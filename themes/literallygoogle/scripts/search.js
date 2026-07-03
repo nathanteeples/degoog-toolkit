@@ -1012,6 +1012,154 @@ function getLgTranslation(key) {
         setImageDrawerReady(page, false);
     }
 
+    function syncImageDrawerViewport(page) {
+        const sidebar = document.getElementById("image-filters-bar");
+        const vv = window.visualViewport;
+        if (!sidebar || !page?.classList.contains("lg-image-fab-filters") || !vv) return;
+
+        const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const bottomPx = 0.75 * remPx;
+        const topPx = 0.5 * remPx;
+        const maxH = Math.max(14 * remPx, vv.height - topPx - bottomPx);
+        sidebar.style.setProperty("--lg-drawer-max-height", `${maxH}px`);
+    }
+
+    function wireImageDrawerViewport(page) {
+        if (page.dataset.lgDrawerViewportWired === "1") return;
+        page.dataset.lgDrawerViewportWired = "1";
+
+        const sync = () => syncImageDrawerViewport(page);
+        window.visualViewport?.addEventListener("resize", sync);
+        window.visualViewport?.addEventListener("scroll", sync);
+        window.addEventListener("resize", sync);
+        window.addEventListener("orientationchange", sync);
+        sync();
+    }
+
+    function wireImageDrawerPullDismiss(page, toggle) {
+        const sidebar = document.getElementById("image-filters-bar");
+        if (!sidebar || sidebar.dataset.lgDrawerPullWired === "1") return;
+        sidebar.dataset.lgDrawerPullWired = "1";
+
+        const DISMISS_DISTANCE = 72;
+        const DISMISS_VELOCITY = 0.45;
+        const DRAG_START_THRESHOLD = 6;
+
+        let startY = 0;
+        let lastY = 0;
+        let lastT = 0;
+        let velocity = 0;
+        let dragging = false;
+        let dragArmed = false;
+
+        function getHandle() {
+            return sidebar.querySelector(".degoog-img-sidebar-close");
+        }
+
+        function clearDragVars() {
+            sidebar.classList.remove("lg-drawer-dragging", "lg-drawer-drag-snap");
+            sidebar.style.removeProperty("--lg-drawer-drag-y");
+            sidebar.style.removeProperty("--lg-drawer-drag-scale");
+        }
+
+        function setDragOffset(dy) {
+            const progress = Math.min(dy / 220, 1);
+            sidebar.style.setProperty("--lg-drawer-drag-y", `${dy}px`);
+            sidebar.style.setProperty("--lg-drawer-drag-scale", String(1 - progress * 0.1));
+        }
+
+        function closeDrawer() {
+            if (!sidebar.classList.contains("open")) return;
+            clearDragVars();
+            prepareImageDrawerAnimation(page);
+            getHandle()?.click();
+        }
+
+        function snapBack() {
+            sidebar.classList.add("lg-drawer-drag-snap");
+            setDragOffset(0);
+            const onEnd = event => {
+                if (event.target !== sidebar || event.propertyName !== "transform") return;
+                sidebar.removeEventListener("transitionend", onEnd);
+                clearDragVars();
+            };
+            sidebar.addEventListener("transitionend", onEnd);
+        }
+
+        sidebar.addEventListener(
+            "touchstart",
+            event => {
+                if (!isImageDrawerMode(page) || !sidebar.classList.contains("open")) return;
+                if (sidebar.classList.contains(DRAWER_ANIMATING)) return;
+                const handle = getHandle();
+                if (!handle || !(event.target instanceof Node) || !handle.contains(event.target)) {
+                    return;
+                }
+
+                const touch = event.touches[0];
+                startY = touch.clientY;
+                lastY = startY;
+                lastT = performance.now();
+                velocity = 0;
+                dragging = false;
+                dragArmed = true;
+            },
+            { passive: true },
+        );
+
+        sidebar.addEventListener(
+            "touchmove",
+            event => {
+                if (!dragArmed) return;
+                const touch = event.touches[0];
+                const dy = touch.clientY - startY;
+                if (!dragging && dy < DRAG_START_THRESHOLD) return;
+
+                if (!dragging) {
+                    dragging = true;
+                    sidebar.classList.add("lg-drawer-dragging");
+                }
+
+                const clampedDy = Math.max(0, dy);
+                const now = performance.now();
+                const dt = now - lastT;
+                if (dt > 0) {
+                    velocity = (touch.clientY - lastY) / dt;
+                }
+                lastY = touch.clientY;
+                lastT = now;
+
+                event.preventDefault();
+                setDragOffset(clampedDy);
+            },
+            { passive: false },
+        );
+
+        function finishDrag() {
+            if (!dragArmed) return;
+            dragArmed = false;
+            if (!dragging) return;
+
+            const dy = Math.max(0, lastY - startY);
+            dragging = false;
+
+            if (dy > DISMISS_DISTANCE || velocity > DISMISS_VELOCITY) {
+                closeDrawer();
+                return;
+            }
+
+            if (dy > 0) {
+                snapBack();
+                return;
+            }
+
+            clearDragVars();
+        }
+
+        sidebar.addEventListener("touchend", finishDrag, { passive: true });
+        sidebar.addEventListener("touchcancel", finishDrag, { passive: true });
+    }
+
     function wireImageDrawerPerformance(page) {
         const sidebar = document.getElementById("image-filters-bar");
         if (!sidebar || sidebar.dataset.lgDrawerPerfWired === "1") return;
@@ -1049,6 +1197,7 @@ function getLgTranslation(key) {
             if (reducedMotionQuery.matches) {
                 scheduleFinish();
             }
+            syncImageDrawerViewport(page);
             wasOpen = open;
         }).observe(sidebar, { attributes: true, attributeFilter: ["class"] });
     }
@@ -1292,6 +1441,9 @@ function getLgTranslation(key) {
         if (drawerMode) {
             ensureFloatingFiltersLauncher(page, toggle);
             wireImageDrawerPerformance(page);
+            wireImageDrawerViewport(page);
+            wireImageDrawerPullDismiss(page, toggle);
+            syncImageDrawerViewport(page);
         } else {
             removeFloatingFiltersLauncher(page);
         }
@@ -1347,6 +1499,7 @@ function getLgTranslation(key) {
         }
 
         syncFloatingFiltersLauncher(toggle, page);
+        window.dispatchEvent(new Event("lg-sync-sidebar-chrome"));
     }
 
     function scheduleFiltersDropdown() {
@@ -1780,9 +1933,29 @@ function getLgTranslation(key) {
 })();
 
 (() => {
+    function isImageFabDrawerMode() {
+        const page = document.getElementById("results-page");
+        return (
+            page?.classList.contains("lg-image-fab-filters") &&
+            window.matchMedia("(max-width: 767px)").matches
+        );
+    }
+
     function syncImageSidebarChrome() {
         const close = document.querySelector("#image-filters-bar .degoog-img-sidebar-close");
-        if (close && close.dataset.lgIcon !== "1") {
+        if (!close) return;
+
+        if (isImageFabDrawerMode()) {
+            close.classList.add("lg-drawer-pull-tab");
+            close.innerHTML = "";
+            close.setAttribute("aria-label", getLgTranslation("close"));
+            close.dataset.lgFabPullTab = "1";
+            return;
+        }
+
+        close.classList.remove("lg-drawer-pull-tab");
+        delete close.dataset.lgFabPullTab;
+        if (close.dataset.lgIcon !== "1") {
             close.innerHTML = LG_CLOSE_ICON;
             close.dataset.lgIcon = "1";
         }
@@ -1803,6 +1976,7 @@ function getLgTranslation(key) {
     } else {
         init();
     }
+    window.addEventListener("lg-sync-sidebar-chrome", syncImageSidebarChrome);
 })();
 
 /* ── 5b. Image grid fold-in when preview pane opens ───────────────────── */
