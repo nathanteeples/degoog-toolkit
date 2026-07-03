@@ -973,7 +973,9 @@ function getLgTranslation(key) {
 
     const DRAWER_ANIMATING = "lg-image-drawer-animating";
     const DRAWER_READY = "lg-image-drawer-open-ready";
+    const DRAWER_ANIM_MS = 500;
     const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let drawerAnimTimeout = 0;
 
     function getImageDrawerOverlay() {
         return document.querySelector(".degoog-img-sidebar-overlay");
@@ -1023,9 +1025,18 @@ function getLgTranslation(key) {
     function prepareImageDrawerAnimation(page) {
         setImageDrawerReady(page, false);
         setImageDrawerAnimating(page, true);
+        window.clearTimeout(drawerAnimTimeout);
+        if (!reducedMotionQuery.matches) {
+            drawerAnimTimeout = window.setTimeout(
+                () => finishImageDrawerAnimation(page),
+                DRAWER_ANIM_MS + 80,
+            );
+        }
     }
 
     function finishImageDrawerAnimation(page) {
+        window.clearTimeout(drawerAnimTimeout);
+        drawerAnimTimeout = 0;
         const sidebar = document.getElementById("image-filters-bar");
         const open = sidebar?.classList.contains("open") ?? false;
         setImageDrawerAnimating(page, false);
@@ -1033,6 +1044,8 @@ function getLgTranslation(key) {
     }
 
     function clearImageDrawerPerformance(page) {
+        window.clearTimeout(drawerAnimTimeout);
+        drawerAnimTimeout = 0;
         setImageDrawerAnimating(page, false);
         setImageDrawerReady(page, false);
     }
@@ -1283,7 +1296,14 @@ function getLgTranslation(key) {
             if (event.target !== sidebar || !sidebar.classList.contains(DRAWER_ANIMATING)) {
                 return;
             }
-            if (event.propertyName !== "width" && event.propertyName !== "height") return;
+            if (
+                event.propertyName !== "width" &&
+                event.propertyName !== "height" &&
+                event.propertyName !== "max-height" &&
+                event.propertyName !== "border-radius"
+            ) {
+                return;
+            }
             scheduleFinish();
         });
 
@@ -1297,9 +1317,7 @@ function getLgTranslation(key) {
             if (open === wasOpen) return;
 
             prepareImageDrawerAnimation(page);
-            if (open) {
-                requestAnimationFrame(() => setImageDrawerReady(page, true));
-            } else if (reducedMotionQuery.matches) {
+            if (reducedMotionQuery.matches) {
                 scheduleFinish();
             }
             syncImageDrawerViewport(page);
