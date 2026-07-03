@@ -29,14 +29,93 @@ const LG_FILTERS_ICON = `
         <path d="M8 10v4"/>
         <path d="M8 12H3"/>
     </svg>`;
-const LG_CLOSE_ICON = `
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M6.97 6.97a.75.75 0 0 1 1.06 0L12 10.94l3.97-3.97a.75.75 0 1 1 1.06 1.06L13.06 12l3.97 3.97a.75.75 0 1 1-1.06 1.06L12 13.06l-3.97 3.97a.75.75 0 1 1-1.06-1.06L10.94 12 6.97 8.03a.75.75 0 0 1 0-1.06Z" fill="currentColor"></path>
-    </svg>`;
+const SEARCH_ACTIVITY_TEXT = Object.freeze({
+    runningCommand: "Running command...",
+    aboutResultsPattern: /^About \d+ results/i,
+    streamingPattern: /streaming/i,
+    searchingPattern: /^searching/i,
+    completePattern: /results/i,
+    completeTimePattern: /seconds?\)/i,
+});
+const SEARCH_START_SELECTOR =
+    ".skeleton-results, .skeleton-card, .skeleton-sidebar, .streaming-engine-panel";
+const SEARCH_START_SELECTOR_WITH_IMAGE_GRID = `${SEARCH_START_SELECTOR}, .skeleton-image-grid`;
+
+function onReady(callback) {
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", callback, { once: true });
+    } else {
+        callback();
+    }
+}
+
+function getResultsPage() {
+    return document.getElementById("results-page");
+}
+
+function getResultsList() {
+    return document.getElementById("results-list");
+}
+
+function getResultsMeta() {
+    return document.getElementById("results-meta");
+}
+
+function getResultsTabs() {
+    return document.getElementById("results-tabs");
+}
+
+function getImageFiltersBar() {
+    return document.getElementById("image-filters-bar");
+}
+
+function getResultsLayout() {
+    return document.getElementById("results-layout");
+}
+
+function getMediaPreviewPanel() {
+    return document.getElementById("media-preview-panel");
+}
+
+function getResultsSearchInput() {
+    return document.getElementById("results-search-input");
+}
+
+function getResultsSearchButton() {
+    return document.getElementById("results-search-btn");
+}
+
+function getActiveResultsTab() {
+    return document.querySelector(
+        '.results-tab.active[data-type], .results-tab[aria-selected="true"][data-type]',
+    );
+}
+
+function getActiveSearchType(defaultType = "web") {
+    return getResultsPage()?.getAttribute("data-lg-search-type") || getActiveResultsTab()?.dataset.type || defaultType;
+}
+
+function markWired(node, key) {
+    if (!node || node.dataset[key] === "1") return false;
+    node.dataset[key] = "1";
+    return true;
+}
+
+function nodeStartsSearch(node, { includeImageGrid = false } = {}) {
+    if (!node || node.nodeType !== 1) return false;
+    const selector = includeImageGrid
+        ? SEARCH_START_SELECTOR_WITH_IMAGE_GRID
+        : SEARCH_START_SELECTOR;
+    return node.matches?.(selector) || Boolean(node.querySelector?.(selector));
+}
+
+function mutationsStartSearch(mutations, options) {
+    return mutations.some(mutation => [...mutation.addedNodes].some(node => nodeStartsSearch(node, options)));
+}
 
 function getLgTranslation(key) {
     const attrName = `data-t-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
-    const el = document.getElementById("results-page");
+    const el = getResultsPage();
     return el?.getAttribute(attrName) || LG_LANG_DICT.en[key] || key;
 }
 
@@ -53,9 +132,10 @@ function getLgTranslation(key) {
     );
 })();
 
-/* ── 2. Google-style degooooooog pagination ────────────────────────────── */
+/* ── 2. Result pagination enhancements ─────────────────────────────────── */
 (() => {
     const ENHANCED_ATTR = "data-lg-pager-enhanced";
+    let paginationClickBound = false;
     let pageClickDriver = null;
     const clientPager = {
         enabled: false,
@@ -68,7 +148,7 @@ function getLgTranslation(key) {
     const PAGE_JUMP = MAX_DEGOOG_PAGES;
 
     function getSearchQueryKey() {
-        return (document.getElementById("results-search-input")?.value || "").trim();
+        return (getResultsSearchInput()?.value || "").trim();
     }
 
     function getUrlPage() {
@@ -78,18 +158,11 @@ function getLgTranslation(key) {
     }
 
     function isWebTab() {
-        const page = document.getElementById("results-page");
-        const layoutType = page?.getAttribute("data-lg-search-type");
-        if (layoutType && layoutType !== "web") return false;
-        const activeTab = document.querySelector(
-            ".results-tab.active[data-type], .results-tab[aria-selected='true'][data-type]",
-        );
-        const tabType = activeTab?.getAttribute("data-type");
-        return !tabType || tabType === "web";
+        return getActiveSearchType() === "web";
     }
 
     function getResultItems() {
-        const list = document.getElementById("results-list");
+        const list = getResultsList();
         if (!list) return [];
         return [...list.querySelectorAll(".result-item, .degoog-result")].filter(
             el => !el.classList.contains("lg-engine-filtered-out"),
@@ -109,7 +182,7 @@ function getLgTranslation(key) {
         document.querySelectorAll(".lg-client-page-hidden").forEach(el => {
             el.classList.remove("lg-client-page-hidden");
         });
-        document.getElementById("results-list")?.removeAttribute("data-lg-client-page");
+        getResultsList()?.removeAttribute("data-lg-client-page");
     }
 
     function applyClientPage(page, options = {}) {
@@ -127,9 +200,7 @@ function getLgTranslation(key) {
             el.classList.toggle("lg-client-page-hidden", index < start || index >= end);
         });
 
-        document
-            .getElementById("results-list")
-            ?.setAttribute("data-lg-client-page", String(target));
+        getResultsList()?.setAttribute("data-lg-client-page", String(target));
 
         if (!options.preserveScroll) {
             window.scrollTo(0, 0);
@@ -147,7 +218,7 @@ function getLgTranslation(key) {
     }
 
     function syncClientResultsPage() {
-        const list = document.getElementById("results-list");
+        const list = getResultsList();
         if (!list) return;
 
         if (list.querySelector(".skeleton-card, .skeleton, .no-results")) {
@@ -243,7 +314,7 @@ function getLgTranslation(key) {
     }
 
     function getResultCount() {
-        const list = document.getElementById("results-list");
+        const list = getResultsList();
         if (!list) return -1;
         if (list.querySelector(".no-results")) return 0;
         return list.querySelectorAll(
@@ -686,8 +757,8 @@ function getLgTranslation(key) {
         const pagination = document.getElementById("pagination");
         if (!pagination) return;
 
-        if (!window._lgClientPagerClickBound) {
-            window._lgClientPagerClickBound = true;
+        if (!paginationClickBound) {
+            paginationClickBound = true;
             document.addEventListener("click", interceptPaginationClicks, true);
         }
 
@@ -695,7 +766,7 @@ function getLgTranslation(key) {
             window.requestAnimationFrame(syncPagination);
         }).observe(pagination, { childList: true, subtree: false });
 
-        const resultsList = document.getElementById("results-list");
+        const resultsList = getResultsList();
         if (resultsList) {
             new MutationObserver(() => {
                 window.requestAnimationFrame(syncPagination);
@@ -712,11 +783,7 @@ function getLgTranslation(key) {
         syncPagination();
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", observePagination);
-    } else {
-        observePagination();
-    }
+    onReady(observePagination);
 })();
 
 /* ── 3. Result-slot hygiene during pagination ──────────────────────────── */
@@ -727,6 +794,9 @@ function getLgTranslation(key) {
         "slot-above-sidebar",
         "slot-below-sidebar",
     ];
+    const observedSlots = new WeakSet();
+    const observedContainers = new WeakSet();
+    let sidebarRowResizeBound = false;
 
     function slotContainers() {
         return SLOT_CONTAINER_IDS.map(id => document.getElementById(id)).filter(Boolean);
@@ -814,21 +884,23 @@ function getLgTranslation(key) {
         syncSidebarGridRow();
 
         const slot = document.getElementById("slot-above-results");
-        if (slot && !slot._lgSidebarRowObserver) {
-            slot._lgSidebarRowObserver = true;
+        if (slot && !observedSlots.has(slot)) {
+            observedSlots.add(slot);
             new MutationObserver(() => {
                 window.requestAnimationFrame(syncSidebarGridRow);
             }).observe(slot, { childList: true });
         }
 
-        if (!window._lgSidebarRowResizeBound) {
-            window._lgSidebarRowResizeBound = true;
+        if (!sidebarRowResizeBound) {
+            sidebarRowResizeBound = true;
             window.addEventListener("resize", syncSidebarGridRow, { passive: true });
             window.addEventListener("degoog-results-ready", syncSidebarGridRow);
         }
 
         slotContainers().forEach(container => {
             dedupeFullWidthPanels(container);
+            if (observedContainers.has(container)) return;
+            observedContainers.add(container);
             new MutationObserver(mutations => {
                 const shouldDedupe = mutations.some(mutation => mutation.addedNodes.length > 0);
                 if (shouldDedupe) dedupeFullWidthPanels(container);
@@ -836,11 +908,7 @@ function getLgTranslation(key) {
         });
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", observeSlots);
-    } else {
-        observeSlots();
-    }
+    onReady(observeSlots);
 })();
 
 /* ── 4. Move spell-check notices into #results-meta ─────────────────────── */
@@ -864,7 +932,7 @@ function getLgTranslation(key) {
 
     function moveSpellCheck() {
         const notices = document.querySelectorAll(".spell-check-notice");
-        const meta = document.getElementById("results-meta");
+        const meta = getResultsMeta();
         wrapResultsStats(meta);
         for (let i = 0; i < notices.length; i++) {
             const notice = notices[i];
@@ -884,7 +952,7 @@ function getLgTranslation(key) {
         });
     }
 
-    const target = document.getElementById("results-page") || document.documentElement;
+    const target = getResultsPage() || document.documentElement;
     new MutationObserver(mutations => {
         const shouldCheck = mutations.some(mutation => mutation.addedNodes.length > 0);
         if (shouldCheck) scheduleSpellCheck();
@@ -896,15 +964,15 @@ function getLgTranslation(key) {
     moveSpellCheck();
 })();
 
-/* Filters dropdown */
+/* ── 4a. Filters dropdown ──────────────────────────────────────────────── */
 (() => {
     let filtersFrame = 0;
 
     function unwrapMetaRow() {
         const row = document.getElementById("lg-meta-row");
-        const meta = document.getElementById("results-meta");
-        const page = document.getElementById("results-page");
-        const tabs = document.getElementById("results-tabs");
+        const meta = getResultsMeta();
+        const page = getResultsPage();
+        const tabs = getResultsTabs();
         if (!page) return;
         if (!row) return;
         if (meta?.parentNode === row) {
@@ -1024,7 +1092,7 @@ function getLgTranslation(key) {
     }
 
     function setImageFiltersSidebarOpen(open) {
-        const sidebar = document.getElementById("image-filters-bar");
+        const sidebar = getImageFiltersBar();
         const overlay = getImageDrawerOverlay();
         if (!sidebar) return;
         sidebar.classList.toggle("open", open);
@@ -1033,16 +1101,15 @@ function getLgTranslation(key) {
 
     function clearImageDrawerInlineAnchor(page) {
         page?.classList.remove("lg-image-drawer-anchor-start", "lg-image-drawer-anchor-end");
-        document
-            .getElementById("image-filters-bar")
-            ?.classList.remove("lg-image-drawer-anchor-start", "lg-image-drawer-anchor-end");
-        document
-            .getElementById("lg-image-tools-fab")
-            ?.classList.remove("lg-image-drawer-anchor-start", "lg-image-drawer-anchor-end");
+        getImageFiltersBar()?.classList.remove("lg-image-drawer-anchor-start", "lg-image-drawer-anchor-end");
+        document.getElementById("lg-image-tools-fab")?.classList.remove(
+            "lg-image-drawer-anchor-start",
+            "lg-image-drawer-anchor-end",
+        );
     }
 
     function syncImageDrawerInlineAnchor(page) {
-        const sidebar = document.getElementById("image-filters-bar");
+        const sidebar = getImageFiltersBar();
         if (!sidebar || !page?.classList.contains("lg-image-fab-filters") || !isImageDrawerMode(page)) {
             clearImageDrawerInlineAnchor(page);
             return;
@@ -1093,7 +1160,7 @@ function getLgTranslation(key) {
     }
 
     function openImageFiltersDrawer(page, toggle, panel) {
-        const sidebar = document.getElementById("image-filters-bar");
+        const sidebar = getImageFiltersBar();
         if (!sidebar || sidebar.classList.contains("open")) return;
 
         if (panel && toggle) {
@@ -1117,7 +1184,7 @@ function getLgTranslation(key) {
     }
 
     function setImageDrawerAnimating(page, on) {
-        const sidebar = document.getElementById("image-filters-bar");
+        const sidebar = getImageFiltersBar();
         const overlay = getImageDrawerOverlay();
         page?.classList.toggle(DRAWER_ANIMATING, on);
         sidebar?.classList.toggle(DRAWER_ANIMATING, on);
@@ -1125,7 +1192,7 @@ function getLgTranslation(key) {
     }
 
     function setImageDrawerReady(page, on) {
-        const sidebar = document.getElementById("image-filters-bar");
+        const sidebar = getImageFiltersBar();
         const overlay = getImageDrawerOverlay();
         page?.classList.toggle(DRAWER_READY, on);
         sidebar?.classList.toggle(DRAWER_READY, on);
@@ -1147,7 +1214,7 @@ function getLgTranslation(key) {
     function finishImageDrawerAnimation(page) {
         window.clearTimeout(drawerAnimTimeout);
         drawerAnimTimeout = 0;
-        const sidebar = document.getElementById("image-filters-bar");
+        const sidebar = getImageFiltersBar();
         const open = sidebar?.classList.contains("open") ?? false;
         setImageDrawerAnimating(page, false);
         setImageDrawerReady(page, open);
@@ -1162,11 +1229,11 @@ function getLgTranslation(key) {
 
     function clearImageFabInsetBottom(page) {
         page?.style.removeProperty("--lg-fab-inset-bottom");
-        document.getElementById("image-filters-bar")?.style.removeProperty("--lg-fab-inset-bottom");
+        getImageFiltersBar()?.style.removeProperty("--lg-fab-inset-bottom");
     }
 
     function ensureImageDrawerHost(page) {
-        const sidebar = document.getElementById("image-filters-bar");
+        const sidebar = getImageFiltersBar();
         if (!page || !sidebar || !isDesktopImageDrawerMode(page)) {
             restoreImageDrawerHost();
             return;
@@ -1177,20 +1244,16 @@ function getLgTranslation(key) {
     }
 
     function restoreImageDrawerHost() {
-        const sidebar = document.getElementById("image-filters-bar");
-        const layout = document.getElementById("results-layout");
-        const preview = document.getElementById("media-preview-panel");
+        const sidebar = getImageFiltersBar();
+        const layout = getResultsLayout();
+        const preview = getMediaPreviewPanel();
         if (!sidebar || !layout || sidebar.parentNode === layout) return;
         sidebar.classList.remove("lg-image-fab-drawer");
         layout.insertBefore(sidebar, preview || null);
     }
 
-    function syncImageFabPreviewAnchor(page) {
-        clearImageFabInsetBottom(page);
-    }
-
     function syncImageDrawerViewport(page) {
-        const sidebar = document.getElementById("image-filters-bar");
+        const sidebar = getImageFiltersBar();
         const vv = window.visualViewport;
         if (!sidebar || !page?.classList.contains("lg-image-fab-filters")) return;
 
@@ -1201,7 +1264,19 @@ function getLgTranslation(key) {
         const maxH = Math.max(14 * remPx, viewportHeight - topPx - bottomPx);
         sidebar.style.setProperty("--lg-drawer-max-height", `${maxH}px`);
         syncImageDrawerInlineAnchor(page);
-        syncImageFabPreviewAnchor(page);
+        clearImageFabInsetBottom(page);
+    }
+
+    function wireImageDrawerViewport(page) {
+        if (page.dataset.lgDrawerViewportWired === "1") return;
+        page.dataset.lgDrawerViewportWired = "1";
+
+        const sync = () => syncImageDrawerViewport(page);
+        window.visualViewport?.addEventListener("resize", sync);
+        window.visualViewport?.addEventListener("scroll", sync);
+        window.addEventListener("resize", sync);
+        window.addEventListener("orientationchange", sync);
+        sync();
     }
 
     function getPx(value, fallback = 0) {
@@ -1283,63 +1358,9 @@ function getLgTranslation(key) {
         sidebar?.style.removeProperty("--lg-drawer-content-opacity");
     }
 
-    function wireImageFabPreviewAnchor(page) {
-        if (page.dataset.lgFabPreviewAnchorWired === "1") return;
-        page.dataset.lgFabPreviewAnchorWired = "1";
-
-        const sync = () => syncImageFabPreviewAnchor(page);
-        const preview = document.getElementById("media-preview-panel");
-        const layout = document.getElementById("results-layout");
-
-        window.addEventListener("resize", sync);
-        window.addEventListener("orientationchange", sync);
-        window.visualViewport?.addEventListener("resize", sync);
-        window.visualViewport?.addEventListener("scroll", sync);
-        window.addEventListener("degoog-results-ready", sync);
-
-        if (preview) {
-            new MutationObserver(sync).observe(preview, {
-                attributes: true,
-                attributeFilter: ["class", "style"],
-            });
-            preview.addEventListener("transitionend", event => {
-                if (event.target !== preview) return;
-                if (!["transform", "max-height", "height", "flex-basis", "width"].includes(event.propertyName)) {
-                    return;
-                }
-                sync();
-            });
-            if (typeof ResizeObserver !== "undefined") {
-                new ResizeObserver(sync).observe(preview);
-            }
-        }
-
-        if (layout) {
-            new MutationObserver(sync).observe(layout, {
-                attributes: true,
-                attributeFilter: ["class"],
-            });
-        }
-
-        sync();
-    }
-
-    function wireImageDrawerViewport(page) {
-        if (page.dataset.lgDrawerViewportWired === "1") return;
-        page.dataset.lgDrawerViewportWired = "1";
-
-        const sync = () => syncImageDrawerViewport(page);
-        window.visualViewport?.addEventListener("resize", sync);
-        window.visualViewport?.addEventListener("scroll", sync);
-        window.addEventListener("resize", sync);
-        window.addEventListener("orientationchange", sync);
-        sync();
-    }
-
-    function wireImageDrawerPullDismiss(page, toggle) {
-        const sidebar = document.getElementById("image-filters-bar");
-        if (!sidebar || sidebar.dataset.lgDrawerPullWired === "1") return;
-        sidebar.dataset.lgDrawerPullWired = "1";
+    function wireImageDrawerPullDismiss(page) {
+        const sidebar = getImageFiltersBar();
+        if (!markWired(sidebar, "lgDrawerPullWired")) return;
 
         const DISMISS_DISTANCE = 120;
         const DISMISS_VELOCITY = 0.45;
@@ -1473,9 +1494,8 @@ function getLgTranslation(key) {
     }
 
     function wireImageDrawerPerformance(page) {
-        const sidebar = document.getElementById("image-filters-bar");
-        if (!sidebar || sidebar.dataset.lgDrawerPerfWired === "1") return;
-        sidebar.dataset.lgDrawerPerfWired = "1";
+        const sidebar = getImageFiltersBar();
+        if (!markWired(sidebar, "lgDrawerPerfWired")) return;
 
         let wasOpen = sidebar.classList.contains("open");
 
@@ -1537,7 +1557,7 @@ function getLgTranslation(key) {
 
     function applyFloatingFiltersLauncherState(launcher, toggle, page) {
         if (!launcher || !page) return;
-        const sidebar = document.getElementById("image-filters-bar");
+        const sidebar = getImageFiltersBar();
         const drawerMode = isImageDrawerMode(page);
         const isOpen = drawerMode
             ? Boolean(sidebar?.classList.contains("open"))
@@ -1583,11 +1603,10 @@ function getLgTranslation(key) {
         applyFloatingFiltersLauncherState(launcher, toggle, page);
         armFloatingFiltersLauncher(launcher);
 
-        if (launcher.dataset.lgFabWired !== "1") {
-            launcher.dataset.lgFabWired = "1";
+        if (markWired(launcher, "lgFabWired")) {
             launcher.addEventListener("click", event => {
-                const currentPage = document.getElementById("results-page");
-                const sidebar = document.getElementById("image-filters-bar");
+                const currentPage = getResultsPage();
+                const sidebar = getImageFiltersBar();
                 const panel = document.getElementById("tools-panel");
                 const currentToggle = document.getElementById("tools-toggle");
                 if (!isImageDrawerMode(currentPage)) return;
@@ -1613,8 +1632,7 @@ function getLgTranslation(key) {
     }
 
     function wireCustomDateMenuState(panel) {
-        if (panel.dataset.lgCustomDateWired === "1") return;
-        panel.dataset.lgCustomDateWired = "1";
+        if (!markWired(panel, "lgCustomDateWired")) return;
         panel.querySelectorAll(".tools-custom-date").forEach(customDate => {
             new MutationObserver(() => syncCustomDateMenuState(panel)).observe(
                 customDate,
@@ -1647,7 +1665,7 @@ function getLgTranslation(key) {
         try {
             localStorage.setItem("degoog-tools-open", "false");
         } catch {
-            /* ignore */
+            /* Persisting the transient tools-panel state is optional. */
         }
     }
 
@@ -1664,8 +1682,7 @@ function getLgTranslation(key) {
     }
 
     function wireFiltersDismiss(panel, toggle) {
-        if (panel.dataset.lgFiltersDismissWired === "1") return;
-        panel.dataset.lgFiltersDismissWired = "1";
+        if (!markWired(panel, "lgFiltersDismissWired")) return;
 
         document.addEventListener("click", event => {
             if (panel.style.display === "none") return;
@@ -1677,8 +1694,7 @@ function getLgTranslation(key) {
     }
 
     function wireFiltersHover(panel) {
-        if (panel.dataset.lgFiltersHoverWired === "1") return;
-        panel.dataset.lgFiltersHoverWired = "1";
+        if (!markWired(panel, "lgFiltersHoverWired")) return;
 
         panel.addEventListener("mouseover", e => {
             if (panel.style.display === "none") return;
@@ -1693,14 +1709,13 @@ function getLgTranslation(key) {
     }
 
     function wireDrawerToggleGuard(toggle) {
-        if (toggle.dataset.lgDrawerGuardWired === "1") return;
-        toggle.dataset.lgDrawerGuardWired = "1";
+        if (!markWired(toggle, "lgDrawerGuardWired")) return;
 
         toggle.addEventListener(
             "click",
             event => {
-                const page = document.getElementById("results-page");
-                const sidebar = document.getElementById("image-filters-bar");
+                const page = getResultsPage();
+                const sidebar = getImageFiltersBar();
                 if (!isImageDrawerMode(page)) return;
                 if (!sidebar?.classList.contains("open")) return;
                 event.preventDefault();
@@ -1717,20 +1732,18 @@ function getLgTranslation(key) {
     }
 
     function isCommandMode() {
-        const input = document.getElementById("results-search-input");
-        const query = input?.value ?? "";
+        const query = getResultsSearchInput()?.value ?? "";
         if (!isBangCommandQuery(query)) return false;
 
-        const meta = document.getElementById("results-meta");
-        const metaText = meta?.textContent?.trim() ?? "";
-        if (metaText === "Running command...") return true;
-        if (/^About \d+ results/i.test(metaText)) return false;
+        const metaText = getResultsMeta()?.textContent?.trim() ?? "";
+        if (metaText === SEARCH_ACTIVITY_TEXT.runningCommand) return true;
+        if (SEARCH_ACTIVITY_TEXT.aboutResultsPattern.test(metaText)) return false;
 
-        const list = document.getElementById("results-list");
+        const list = getResultsList();
         if (!list) return false;
 
         if (list.querySelector(".loading-dots")) {
-            return metaText === "Running command...";
+            return metaText === SEARCH_ACTIVITY_TEXT.runningCommand;
         }
 
         if (list.querySelector(".command-result, .command-help-table")) return true;
@@ -1755,13 +1768,79 @@ function getLgTranslation(key) {
         }
     }
 
+    function getFiltersElements() {
+        return {
+            page: getResultsPage(),
+            panel: document.getElementById("tools-panel"),
+            toggle: document.getElementById("tools-toggle"),
+            toolsBar: document.getElementById("tools-bar"),
+        };
+    }
+
+    function activateImageDrawerMode(page, toggle) {
+        if (isDesktopImageDrawerMode(page)) {
+            ensureImageDrawerHost(page);
+        } else {
+            restoreImageDrawerHost();
+        }
+        ensureFloatingFiltersLauncher(page, toggle);
+        wireImageDrawerPerformance(page);
+        wireImageDrawerViewport(page);
+        wireImageDrawerPullDismiss(page);
+        syncImageDrawerViewport(page);
+        clearImageFabInsetBottom(page);
+    }
+
+    function deactivateImageDrawerMode(page) {
+        removeFloatingFiltersLauncher(page);
+        clearImageFabInsetBottom(page);
+    }
+
+    function wireFiltersUiObservers(panel, toggle, page) {
+        toggle.addEventListener("click", () => {
+            requestAnimationFrame(() => {
+                positionFiltersPanel(panel, toggle, page);
+                syncCustomDateMenuState(panel);
+                syncFloatingFiltersLauncher(toggle, page);
+            });
+        });
+        window.addEventListener("resize", () => {
+            scheduleFiltersDropdown();
+            positionFiltersPanel(panel, toggle, page);
+        });
+        window.addEventListener(
+            "scroll",
+            () => positionFiltersPanel(panel, toggle, page),
+            true,
+        );
+        new MutationObserver(() => positionFiltersPanel(panel, toggle, page)).observe(panel, {
+            attributes: true,
+            attributeFilter: ["style", "class"],
+        });
+        new MutationObserver(() => syncFloatingFiltersLauncher(toggle, page)).observe(toggle, {
+            attributes: true,
+            attributeFilter: ["class", "aria-expanded"],
+        });
+
+        const sidebar = getImageFiltersBar();
+        if (!sidebar) return;
+
+        new MutationObserver(() => syncFloatingFiltersLauncher(toggle, page)).observe(sidebar, {
+            attributes: true,
+            attributeFilter: ["class", "style"],
+        });
+    }
+
+    function syncFiltersVisibilityFromDom(page = getResultsPage()) {
+        const { toolsBar, panel, toggle } = getFiltersElements();
+        if (!panel || !toggle) return;
+        syncFiltersVisibility(toolsBar, panel, toggle, page);
+    }
+
     function setupFiltersDropdown() {
         unwrapMetaRow();
 
-        const page = document.getElementById("results-page");
-        const panel = document.getElementById("tools-panel");
-        const toggle = document.getElementById("tools-toggle");
-        const toolsBar = document.getElementById("tools-bar");
+        const { page, panel, toggle, toolsBar } = getFiltersElements();
         if (!page || !panel || !toggle) return;
         const drawerMode = isImageDrawerMode(page);
 
@@ -1772,71 +1851,23 @@ function getLgTranslation(key) {
         toolsBar?.classList.add("lg-filters-wrap");
 
         if (drawerMode) {
-            if (isDesktopImageDrawerMode(page)) {
-                ensureImageDrawerHost(page);
-            } else {
-                restoreImageDrawerHost();
-            }
-            ensureFloatingFiltersLauncher(page, toggle);
-            wireImageDrawerPerformance(page);
-            wireImageDrawerViewport(page);
-            wireImageFabPreviewAnchor(page);
-            wireImageDrawerPullDismiss(page, toggle);
-            syncImageDrawerViewport(page);
-            syncImageFabPreviewAnchor(page);
+            activateImageDrawerMode(page, toggle);
         } else {
-            removeFloatingFiltersLauncher(page);
-            clearImageFabInsetBottom(page);
+            deactivateImageDrawerMode(page);
         }
 
         positionFiltersPanel(panel, toggle, page);
         wireCustomDateMenuState(panel);
         if (!drawerMode) {
+            ensureFiltersClosedAfterCore(panel, toggle);
+            wireFiltersDismiss(panel, toggle);
             wireFiltersHover(panel);
         }
         syncFiltersVisibility(toolsBar, panel, toggle, page);
 
         if (toggle.dataset.lgFiltersWired !== "1") {
-            if (!drawerMode) {
-                ensureFiltersClosedAfterCore(panel, toggle);
-                wireFiltersDismiss(panel, toggle);
-            }
             toggle.dataset.lgFiltersWired = "1";
-
-            toggle.addEventListener("click", () => {
-                requestAnimationFrame(() => {
-                    positionFiltersPanel(panel, toggle, page);
-                    syncCustomDateMenuState(panel);
-                    syncFloatingFiltersLauncher(toggle, page);
-                });
-            });
-            window.addEventListener("resize", () => {
-                scheduleFiltersDropdown();
-                positionFiltersPanel(panel, toggle, page);
-            });
-            window.addEventListener(
-                "scroll",
-                () => positionFiltersPanel(panel, toggle, page),
-                true,
-            );
-            new MutationObserver(() => positionFiltersPanel(panel, toggle, page)).observe(panel, {
-                attributes: true,
-                attributeFilter: ["style", "class"],
-            });
-            new MutationObserver(() => syncFloatingFiltersLauncher(toggle, page)).observe(toggle, {
-                attributes: true,
-                attributeFilter: ["class", "aria-expanded"],
-            });
-            const sidebar = document.getElementById("image-filters-bar");
-            if (sidebar) {
-                new MutationObserver(() => syncFloatingFiltersLauncher(toggle, page)).observe(
-                    sidebar,
-                    {
-                        attributes: true,
-                        attributeFilter: ["class", "style"],
-                    },
-                );
-            }
+            wireFiltersUiObservers(panel, toggle, page);
         }
 
         syncFloatingFiltersLauncher(toggle, page);
@@ -1860,7 +1891,7 @@ function getLgTranslation(key) {
     window.addEventListener("lg-sync-search-type", scheduleFiltersSync);
     desktopQuery.addEventListener?.("change", scheduleFiltersSync);
 
-    const page = document.getElementById("results-page");
+    const page = getResultsPage();
     if (page) {
         new MutationObserver(mutations => {
             let needsSetup = false;
@@ -1914,14 +1945,7 @@ function getLgTranslation(key) {
             if (needsSetup) {
                 scheduleFiltersDropdown();
             } else if (needsVisibilitySync) {
-                requestAnimationFrame(() => {
-                    syncFiltersVisibility(
-                        document.getElementById("tools-bar"),
-                        document.getElementById("tools-panel"),
-                        document.getElementById("tools-toggle"),
-                        page,
-                    );
-                });
+                requestAnimationFrame(() => syncFiltersVisibilityFromDom(page));
             }
         }).observe(page, {
             childList: true,
@@ -2285,19 +2309,21 @@ function getLgTranslation(key) {
 })();
 
 (() => {
-    function isImageFabDrawerMode() {
-        const page = document.getElementById("results-page");
-        return (
-            page?.classList.contains("lg-image-fab-filters") &&
-            window.matchMedia("(max-width: 767px)").matches
-        );
+    function usesImageFabDrawerChrome() {
+        return getResultsPage()?.classList.contains("lg-image-fab-filters");
     }
 
     function syncImageSidebarChrome() {
         const close = document.querySelector("#image-filters-bar .degoog-img-sidebar-close");
         if (!close) return;
+        if (!("lgDefaultInnerHtml" in close.dataset)) {
+            close.dataset.lgDefaultInnerHtml = close.innerHTML;
+        }
+        if (!("lgDefaultAriaLabel" in close.dataset)) {
+            close.dataset.lgDefaultAriaLabel = close.getAttribute("aria-label") || "";
+        }
 
-        if (isImageFabDrawerMode()) {
+        if (usesImageFabDrawerChrome()) {
             close.classList.add("lg-drawer-pull-tab");
             close.innerHTML = "";
             close.setAttribute("aria-label", getLgTranslation("close"));
@@ -2307,15 +2333,17 @@ function getLgTranslation(key) {
 
         close.classList.remove("lg-drawer-pull-tab");
         delete close.dataset.lgFabPullTab;
-        if (close.dataset.lgIcon !== "1") {
-            close.innerHTML = LG_CLOSE_ICON;
-            close.dataset.lgIcon = "1";
+        close.innerHTML = close.dataset.lgDefaultInnerHtml || "";
+        if (close.dataset.lgDefaultAriaLabel) {
+            close.setAttribute("aria-label", close.dataset.lgDefaultAriaLabel);
+        } else {
+            close.removeAttribute("aria-label");
         }
     }
 
     function init() {
         syncImageSidebarChrome();
-        const page = document.getElementById("results-page");
+        const page = getResultsPage();
         if (!page) return;
         new MutationObserver(syncImageSidebarChrome).observe(page, {
             childList: true,
@@ -2323,11 +2351,7 @@ function getLgTranslation(key) {
         });
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
-    } else {
-        init();
-    }
+    onReady(init);
     window.addEventListener("lg-sync-sidebar-chrome", syncImageSidebarChrome);
 })();
 
@@ -2572,15 +2596,13 @@ function getLgTranslation(key) {
 
     function bindGrid(grid) {
         if (!grid) return;
-        if (grid.dataset.lgFoldBound !== "1") {
-            grid.dataset.lgFoldBound = "1";
+        if (markWired(grid, "lgFoldBound")) {
             stabilizeGrid(grid);
         } else {
             absorbNewItems(grid);
         }
         applyFold(grid);
 
-        // Mark already complete images as loaded immediately
         grid.querySelectorAll(".image-thumb-wrap:not(.loaded)").forEach(wrap => {
             const img = wrap.querySelector("img.image-thumb");
             if (img && img.complete) {
@@ -2645,7 +2667,7 @@ function getLgTranslation(key) {
         scheduleFold();
     });
 
-    const resultsList = document.getElementById("results-list");
+    const resultsList = getResultsList();
     if (resultsList) {
         new MutationObserver(mutations => {
             let needsBind = false;
@@ -2703,7 +2725,7 @@ function getLgTranslation(key) {
                         const data = JSON.parse(event.data);
                         ingestEngineResultBatch(data.engine, data.results);
                     } catch {
-                        /* ignore malformed stream payloads */
+                        /* Some stream events do not carry JSON result payloads. */
                     }
                     return listener.call(this, event);
                 };
@@ -2717,7 +2739,7 @@ function getLgTranslation(key) {
     installEngineResultLearnerEarly();
 
     function getPage() {
-        return document.getElementById("results-page");
+        return getResultsPage();
     }
 
     function normalizeEngine(name) {
@@ -2858,7 +2880,7 @@ function getLgTranslation(key) {
     }
 
     function applyFilter(selectedEngines) {
-        const list = document.getElementById("results-list");
+        const list = getResultsList();
         if (!list) return;
         list.querySelectorAll(RESULT_SELECTORS).forEach(el => {
             const show = resultMatches(selectedEngines, el);
@@ -2980,20 +3002,6 @@ function getLgTranslation(key) {
         requestAnimationFrame(() => applyFilter(engines));
     }
 
-    function nodeStartsSearch(node) {
-        if (!node || node.nodeType !== 1) return false;
-        return (
-            node.classList?.contains("skeleton-results") ||
-            node.classList?.contains("skeleton-card") ||
-            node.classList?.contains("skeleton-sidebar") ||
-            node.classList?.contains("skeleton-image-grid") ||
-            node.classList?.contains("streaming-engine-panel") ||
-            !!node.querySelector?.(
-                ".skeleton-results, .skeleton-card, .skeleton-sidebar, .skeleton-image-grid, .streaming-engine-panel",
-            )
-        );
-    }
-
     function onClick(event) {
         const target = event.target;
         if (!target?.closest) return;
@@ -3018,12 +3026,10 @@ function getLgTranslation(key) {
 
         bindEnginePanelDelegation();
 
-        const resultsList = document.getElementById("results-list");
+        const resultsList = getResultsList();
         if (resultsList) {
             new MutationObserver(mutations => {
-                const started = mutations.some(mutation =>
-                    [...mutation.addedNodes].some(nodeStartsSearch),
-                );
+                const started = mutationsStartSearch(mutations, { includeImageGrid: true });
                 if (started) clearFilter();
                 decorateRows();
                 scheduleApply();
@@ -3033,8 +3039,8 @@ function getLgTranslation(key) {
         refreshEnginePanels();
         observeEnginePanelMount();
 
-        document.getElementById("results-search-btn")?.addEventListener("click", clearFilter);
-        document.getElementById("results-search-input")?.addEventListener("keydown", event => {
+        getResultsSearchButton()?.addEventListener("click", clearFilter);
+        getResultsSearchInput()?.addEventListener("keydown", event => {
             if (event.key === "Enter") clearFilter();
         });
 
@@ -3046,11 +3052,7 @@ function getLgTranslation(key) {
         decorateRows();
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
-    } else {
-        init();
-    }
+    onReady(init);
 })();
 
 /* ── 5d. Results sidebar scroll — don't cancel document momentum on hover ─ */
@@ -3110,16 +3112,12 @@ function getLgTranslation(key) {
 
     function init() {
         scan();
-        const page = document.getElementById("results-page");
+        const page = getResultsPage();
         if (!page) return;
         new MutationObserver(scan).observe(page, { childList: true, subtree: true });
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
-    } else {
-        init();
-    }
+    onReady(init);
 })();
 
 /* ── 6. Immediate search-type state for theme layout ───────────────────── */
@@ -3128,7 +3126,7 @@ function getLgTranslation(key) {
     let observedTabs = null;
 
     function getRoot() {
-        return document.getElementById("results-page");
+        return getResultsPage();
     }
 
     function normalizeType(type) {
@@ -3137,13 +3135,6 @@ function getLgTranslation(key) {
         if (type.startsWith("engine:")) return type.slice(7);
         if (type.startsWith("tab:")) return type.slice(4);
         return type;
-    }
-
-    function getTypeFromTabs() {
-        const active = document.querySelector(
-            '#results-tabs .results-tab.active[data-type], #results-tabs .results-tab[aria-selected="true"][data-type]',
-        );
-        return active?.dataset.type || null;
     }
 
     function getTypeFromUrl() {
@@ -3160,7 +3151,7 @@ function getLgTranslation(key) {
     function syncSearchType() {
         const root = getRoot();
         const prev = root?.getAttribute(TYPE_ATTR) || "";
-        setSearchType(getTypeFromTabs() || getTypeFromUrl());
+        setSearchType(getActiveResultsTab()?.dataset.type || getTypeFromUrl());
         const next = root?.getAttribute(TYPE_ATTR) || "";
         if (prev !== next) {
             window.dispatchEvent(new Event("lg-sync-search-type"));
@@ -3168,7 +3159,7 @@ function getLgTranslation(key) {
     }
 
     function bindTabsClick() {
-        const tabs = document.getElementById("results-tabs");
+        const tabs = getResultsTabs();
         if (!tabs || tabs === observedTabs) return;
         observedTabs = tabs;
 
@@ -3207,11 +3198,7 @@ function getLgTranslation(key) {
         syncSearchType();
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
-    } else {
-        init();
-    }
+    onReady(init);
 })();
 
 /* ── 7. Sidebar accordion panels (theme settings) ──────────────────────── */
@@ -3342,23 +3329,26 @@ function getLgTranslation(key) {
     }
 
     function getMetaText() {
-        const meta = document.getElementById("results-meta");
+        const meta = getResultsMeta();
         return meta ? meta.textContent || "" : "";
     }
 
     function isMetaStreaming(text) {
-        return /streaming/i.test(text);
+        return SEARCH_ACTIVITY_TEXT.streamingPattern.test(text);
     }
 
     function isMetaSearching(text) {
-        return /^searching/i.test(text.trim());
+        return SEARCH_ACTIVITY_TEXT.searchingPattern.test(text.trim());
     }
 
     function isMetaComplete(text) {
         if (!text.trim() || isMetaStreaming(text) || isMetaSearching(text)) {
             return false;
         }
-        return /results/i.test(text) && /seconds?\)/i.test(text);
+        return (
+            SEARCH_ACTIVITY_TEXT.completePattern.test(text) &&
+            SEARCH_ACTIVITY_TEXT.completeTimePattern.test(text)
+        );
     }
 
     function isSearching() {
@@ -3455,19 +3445,6 @@ function getLgTranslation(key) {
         markSearching();
     }
 
-    function nodeStartsSearch(node) {
-        if (!node || node.nodeType !== 1) return false;
-        return (
-            node.classList?.contains("skeleton-results") ||
-            node.classList?.contains("skeleton-card") ||
-            node.classList?.contains("skeleton-sidebar") ||
-            node.classList?.contains("streaming-engine-panel") ||
-            !!node.querySelector?.(
-                ".skeleton-results, .skeleton-card, .skeleton-sidebar, .streaming-engine-panel",
-            )
-        );
-    }
-
     function bindSidebar(root) {
         if (!root || root.hasAttribute("data-lg-sidebar-bound")) return;
         root.setAttribute("data-lg-sidebar-bound", "1");
@@ -3508,17 +3485,15 @@ function getLgTranslation(key) {
     }
 
     function observeSearchLifecycle() {
-        const resultsList = document.getElementById("results-list");
+        const resultsList = getResultsList();
         if (resultsList) {
             new MutationObserver(mutations => {
-                const started = mutations.some(mutation =>
-                    [...mutation.addedNodes].some(nodeStartsSearch),
-                );
+                const started = mutationsStartSearch(mutations);
                 if (started) onSearchStart();
             }).observe(resultsList, { childList: true, subtree: true });
         }
 
-        const meta = document.getElementById("results-meta");
+        const meta = getResultsMeta();
         if (meta) {
             new MutationObserver(() => {
                 const text = getMetaText();
@@ -3532,11 +3507,8 @@ function getLgTranslation(key) {
 
         window.addEventListener("degoog-results-ready", markComplete);
 
-        const searchBtn = document.getElementById("results-search-btn");
-        searchBtn?.addEventListener("click", onSearchStart);
-
-        const searchInput = document.getElementById("results-search-input");
-        searchInput?.addEventListener("keydown", event => {
+        getResultsSearchButton()?.addEventListener("click", onSearchStart);
+        getResultsSearchInput()?.addEventListener("keydown", event => {
             if (event.key === "Enter") onSearchStart();
         });
     }
@@ -3573,11 +3545,7 @@ function getLgTranslation(key) {
         scheduleSync();
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
-    } else {
-        init();
-    }
+    onReady(init);
 })();
 
 /* ── 8. Translate settings gear title ───────────────────────────────────── */
@@ -3588,9 +3556,5 @@ function getLgTranslation(key) {
             settingsEl.setAttribute("title", getLgTranslation("settings"));
         }
     }
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", translateSettingsGear);
-    } else {
-        translateSettingsGear();
-    }
+    onReady(translateSettingsGear);
 })();
