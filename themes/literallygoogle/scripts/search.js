@@ -2051,7 +2051,11 @@ function getLgTranslation(key) {
         try {
             const parsed = new URL(link.href);
             const hostname = parsed.hostname;
-            if (host) host.textContent = hostname;
+            if (host) {
+                host.textContent = hostname;
+                host.href = link.href;
+                host.title = hostname;
+            }
             if (favicon) {
                 favicon.classList.remove("mp2-favicon--fill");
                 favicon.src = faviconUrlForOrigin(parsed.origin);

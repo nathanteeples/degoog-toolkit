@@ -5030,7 +5030,7 @@ body {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0.8rem 0.65rem;
+    padding: 0.8rem 0.5rem;
     background: var(--mp2-panel-bg);
 }
 
@@ -5088,6 +5088,12 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+    text-decoration: none;
+}
+
+.mp2-host:hover {
+    color: var(--text-link);
+    text-decoration: underline;
 }
 
 .mp2-controls {
@@ -5175,11 +5181,6 @@ button.mp2-item[hidden] {
 }
 
 /* RTL: flip the prev/next chevrons so ‹ › become › ‹ */
-[dir="rtl"] #media-preview-prev svg,
-[dir="rtl"] #media-preview-next svg {
-    transform: scaleX(-1);
-}
-
 .media-preview-img-wrap {
     position: relative;
     display: flex;
@@ -5260,9 +5261,7 @@ button.mp2-item[hidden] {
     flex: 0 0 auto;
     width: 100%;
     align-self: stretch;
-    padding-top: 0.1rem;
-    display: flex;
-    justify-content: center;
+    padding: 0.1rem 0 clamp(0.75rem, 3vw, 1.25rem);
 }
 
 .media-preview-more:empty {
@@ -5270,21 +5269,17 @@ button.mp2-item[hidden] {
 }
 
 .media-preview-more-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.28rem;
+    column-count: 3;
+    column-gap: 0.25rem;
     width: 100%;
-    max-width: 100%;
-    margin: 0 auto;
-    align-items: start;
-    justify-items: stretch;
 }
 
 .media-preview-more-item {
     display: block;
     width: 100%;
-    margin: 0;
+    margin: 0 0 0.25rem;
     padding: 0;
+    break-inside: avoid;
     overflow: hidden;
     background: color-mix(in srgb, var(--lg-chrome-surface) 82%, var(--bg) 18%);
     border: 1px solid color-mix(in srgb, var(--border-light) 70%, transparent);
