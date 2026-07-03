@@ -2520,12 +2520,21 @@ function getLgTranslation(key) {
             absorbNewItems(grid);
         }
         applyFold(grid);
+
+        // Mark already complete images as loaded immediately
+        grid.querySelectorAll(".image-thumb-wrap:not(.loaded)").forEach(wrap => {
+            const img = wrap.querySelector("img.image-thumb");
+            if (img && img.complete) {
+                wrap.classList.add("loaded");
+            }
+        });
+
         scheduleScrollToSelected();
     }
 
     function scanGrids() {
         document
-            .querySelectorAll("#results-list .image-grid, #results-list .skeleton-image-grid")
+            .querySelectorAll("#results-list .image-grid")
             .forEach(bindGrid);
     }
 
@@ -2585,8 +2594,8 @@ function getLgTranslation(key) {
                 for (const node of mutation.addedNodes) {
                     if (node.nodeType !== 1) continue;
                     if (
-                        node.matches?.(".image-grid, .skeleton-image-grid") ||
-                        node.querySelector?.(".image-grid, .skeleton-image-grid, .image-card")
+                        node.matches?.(".image-grid") ||
+                        node.querySelector?.(".image-grid, .image-card")
                     ) {
                         needsBind = true;
                         break;
@@ -2599,6 +2608,16 @@ function getLgTranslation(key) {
             scheduleScrollToSelected();
         }).observe(resultsList, { childList: true, subtree: true });
     }
+
+    document.addEventListener("load", (event) => {
+        const target = event.target;
+        if (target instanceof HTMLImageElement && target.classList.contains("image-thumb")) {
+            const wrap = target.closest(".image-thumb-wrap");
+            if (wrap) {
+                wrap.classList.add("loaded");
+            }
+        }
+    }, true);
 
     scanGrids();
 })();

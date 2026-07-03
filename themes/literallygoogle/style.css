@@ -3936,6 +3936,47 @@ body {
     margin-top: 0;
 }
 
+@keyframes shimmer-slide {
+    0% { transform: translate3d(-100%, 0, 0); }
+    100% { transform: translate3d(100%, 0, 0); }
+}
+
+#results-list .image-thumb-wrap {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-light);
+}
+
+#results-list .image-thumb-wrap::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in srgb, var(--bg-hover) 80%, transparent),
+        transparent
+    );
+    transform: translate3d(-100%, 0, 0);
+    animation: shimmer-slide 1.5s infinite linear;
+}
+
+#results-list .image-thumb-wrap.loaded::before {
+    display: none !important;
+}
+
+#results-list .image-thumb-wrap img.image-thumb {
+    position: relative;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 250ms ease-in-out;
+}
+
+#results-list .image-thumb-wrap.loaded img.image-thumb {
+    opacity: 1;
+}
+
 
 .skeleton-card {
     padding: 1rem 0;
