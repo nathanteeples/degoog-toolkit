@@ -1369,9 +1369,7 @@ function getLgTranslation(key) {
         document.getElementById("lg-image-tools-fab")?.remove();
     }
 
-    function armFloatingFiltersLauncher(launcher) {
-        if (!launcher || launcher.dataset.lgFabMounted === "1") return;
-        launcher.dataset.lgFabMounted = "1";
+    function playFloatingFiltersLauncherIntro(launcher) {
         launcher.classList.remove(FAB_READY);
         launcher.classList.add(FAB_ENTERING);
         launcher.getBoundingClientRect();
@@ -1386,6 +1384,29 @@ function getLgTranslation(key) {
                 launcher.classList.remove(FAB_ENTERING);
             }, FAB_ENTER_MS);
         }, FAB_ENTER_MS);
+    }
+
+    function armFloatingFiltersLauncher(launcher) {
+        if (!launcher || launcher.dataset.lgFabMounted === "1") return;
+        launcher.dataset.lgFabMounted = "1";
+
+        const startIntro = () => {
+            if (!launcher.isConnected) return;
+            playFloatingFiltersLauncherIntro(launcher);
+        };
+
+        if (document.readyState === "complete") {
+            requestAnimationFrame(startIntro);
+            return;
+        }
+
+        window.addEventListener(
+            "load",
+            () => {
+                requestAnimationFrame(startIntro);
+            },
+            { once: true },
+        );
     }
 
     function applyFloatingFiltersLauncherState(launcher, toggle, page) {
