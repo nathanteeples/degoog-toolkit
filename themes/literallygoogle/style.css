@@ -2440,6 +2440,8 @@ body {
         padding: 0.55rem 0.9rem 0.25rem;
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer
+        .degoog-img-sidebar-close.lg-drawer-pull-tab,
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
         #image-filters-bar
         .degoog-img-sidebar-close.lg-drawer-pull-tab {
@@ -2447,12 +2449,12 @@ body {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 2rem;
-        height: 1rem;
-        min-width: 2rem;
-        min-height: 1rem;
-        max-width: 2rem;
-        max-height: 1rem;
+        width: 1.875rem;
+        height: 0.75rem;
+        min-width: 1.875rem;
+        min-height: 0.75rem;
+        max-width: 1.875rem;
+        max-height: 0.75rem;
         padding: 0;
         border: 0;
         border-radius: 0;
@@ -2466,6 +2468,8 @@ body {
         -webkit-tap-highlight-color: transparent;
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer
+        .degoog-img-sidebar-close.lg-drawer-pull-tab::before,
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
         #image-filters-bar
         .degoog-img-sidebar-close.lg-drawer-pull-tab::before {
@@ -2481,6 +2485,8 @@ body {
         box-shadow: 0 1px 0 color-mix(in srgb, #000 10%, transparent);
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer
+        .degoog-img-sidebar-close.lg-drawer-pull-tab:hover,
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
         #image-filters-bar
         .degoog-img-sidebar-close.lg-drawer-pull-tab:hover {
@@ -2489,6 +2495,9 @@ body {
         color: transparent;
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer
+        .degoog-img-sidebar-close.lg-drawer-pull-tab
+        svg,
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
         #image-filters-bar
         .degoog-img-sidebar-close.lg-drawer-pull-tab
@@ -2991,6 +3000,7 @@ body {
 
     #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar-body {
         gap: 2px;
+        padding: 0 0.8rem 0.55rem;
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-filter-group {
@@ -3986,7 +3996,7 @@ body {
 
     body > #image-filters-bar.lg-image-fab-drawer .degoog-img-sidebar-body,
     #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar-body {
-        padding: 0 0 0.5rem;
+        padding: 0 0.8rem 0.6rem;
     }
 }
 
