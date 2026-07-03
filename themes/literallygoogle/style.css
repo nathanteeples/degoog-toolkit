@@ -2254,6 +2254,10 @@ body {
         display: none !important;
     }
 
+    #results-page.lg-image-fab-filters .degoog-img-filter-toggle {
+        display: none !important;
+    }
+
     #results-page.lg-image-fab-filters #results-tabs {
         gap: 0.5rem;
         padding-inline: 0.75rem;

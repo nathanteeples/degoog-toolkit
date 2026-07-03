@@ -19,7 +19,7 @@ const LG_LANG_DICT = {
 };
 const LG_FILTERS_ICON = `
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path fill="currentColor" d="M6 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm10-6c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-6 12c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0-14H4v2h6V5zm10 6h-6v2h6v-2zM4 17h6v-2H4v2zm10 0h6v-2h-6v2z"/>
+        <path fill="currentColor" d="M3 7.25a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 7.25Zm3.5 4.75a.75.75 0 0 1 .75-.75h9.5a.75.75 0 0 1 0 1.5h-9.5A.75.75 0 0 1 6.5 12Zm3.25 4.75a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1-.75-.75Z"/>
     </svg>`;
 const LG_CLOSE_ICON = `
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -979,6 +979,31 @@ function getLgTranslation(key) {
         return document.querySelector(".degoog-img-sidebar-overlay");
     }
 
+    function setImageFiltersSidebarOpen(open) {
+        const sidebar = document.getElementById("image-filters-bar");
+        const overlay = getImageDrawerOverlay();
+        if (!sidebar) return;
+        sidebar.classList.toggle("open", open);
+        overlay?.classList.toggle("open", open);
+    }
+
+    function openImageFiltersDrawer(page, toggle, panel) {
+        const sidebar = document.getElementById("image-filters-bar");
+        if (!sidebar || sidebar.classList.contains("open")) return;
+
+        if (panel && toggle) {
+            ensureFiltersClosed(panel, toggle);
+        }
+
+        const coreToggle = document.querySelector(".degoog-img-filter-toggle");
+        if (coreToggle) {
+            coreToggle.click();
+            return;
+        }
+
+        setImageFiltersSidebarOpen(true);
+    }
+
     function setImageDrawerAnimating(page, on) {
         const sidebar = document.getElementById("image-filters-bar");
         const overlay = getImageDrawerOverlay();
@@ -1298,11 +1323,15 @@ function getLgTranslation(key) {
             const launcher = document.getElementById("lg-image-tools-fab");
             if (!launcher || !page) return;
             const sidebar = document.getElementById("image-filters-bar");
-            const isOpen =
-                sidebar?.classList.contains("open") ||
-                toggle.classList.contains("is-open") ||
-                toggle.classList.contains("active") ||
-                toggle.getAttribute("aria-expanded") === "true";
+            const drawerMode = isImageDrawerMode(page);
+            const isOpen = drawerMode
+                ? Boolean(sidebar?.classList.contains("open"))
+                : Boolean(
+                      sidebar?.classList.contains("open") ||
+                          toggle.classList.contains("is-open") ||
+                          toggle.classList.contains("active") ||
+                          toggle.getAttribute("aria-expanded") === "true",
+                  );
 
             page.classList.add("lg-image-fab-filters");
             page.classList.toggle("lg-image-fab-open", Boolean(isOpen));
@@ -1331,12 +1360,14 @@ function getLgTranslation(key) {
             launcher.addEventListener("click", event => {
                 const currentPage = document.getElementById("results-page");
                 const sidebar = document.getElementById("image-filters-bar");
+                const panel = document.getElementById("tools-panel");
+                const currentToggle = document.getElementById("tools-toggle");
                 if (!isImageDrawerMode(currentPage)) return;
                 if (sidebar?.classList.contains("open")) {
                     event.preventDefault();
                     return;
                 }
-                toggle.click();
+                openImageFiltersDrawer(currentPage, currentToggle, panel);
             });
         }
 
