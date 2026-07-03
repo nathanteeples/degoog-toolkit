@@ -1241,6 +1241,26 @@ body {
     z-index: 120;
 }
 
+@media (max-width: 767px) {
+    #results-header {
+        align-items: center;
+    }
+
+    #results-header > .results-logo {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        line-height: 1;
+        margin-block: 0;
+    }
+
+    #results-header > :is(#nav-settings-results, #apps-pocket-toggle, .apps-pocket-toggle),
+    #results-header > button[aria-label="Apps"] {
+        align-self: center;
+        margin-block: 0;
+    }
+}
+
 /* Settings gear hover spin: cancel the small upward nudge. */
 :is(#nav-settings-top, #nav-settings-results) svg {
     position: relative;
@@ -2298,8 +2318,22 @@ body {
         pointer-events: none;
         transition:
             bottom var(--lg-drawer-duration, 500ms) var(--lg-drawer-ease-open, cubic-bezier(0.22, 1.05, 0.32, 1)),
+            width 320ms cubic-bezier(0.22, 1.05, 0.32, 1),
+            height 320ms cubic-bezier(0.22, 1.05, 0.32, 1),
+            border-radius 320ms cubic-bezier(0.22, 1.05, 0.32, 1),
             transform 280ms cubic-bezier(0.22, 1.05, 0.32, 1),
             opacity 280ms ease;
+    }
+
+    #results-page.lg-image-fab-filters #lg-image-tools-fab.lg-image-tools-fab-entering {
+        width: min(8.5rem, calc(100vw - 2rem));
+        min-width: min(8.5rem, calc(100vw - 2rem));
+        height: 3.9rem;
+        min-height: 3.9rem;
+        border-radius: clamp(1.45rem, 7vw, 2rem);
+        opacity: 1;
+        transform: translate3d(0, 0.18rem, 0) scale(1);
+        pointer-events: none;
     }
 
     #results-page.lg-image-fab-filters #lg-image-tools-fab.lg-image-tools-fab-ready {

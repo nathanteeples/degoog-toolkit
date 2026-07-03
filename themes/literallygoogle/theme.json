@@ -94,6 +94,15 @@
       "default": "organizers-left"
     },
     {
+      "key": "imageFabSideMobile",
+      "label": "Images FAB side (mobile)",
+      "description": "Choose which side the floating Tools button uses on narrow screens. Auto uses the page language and direction, defaulting to the right for English-style layouts and the left for Hebrew/Japanese.",
+      "type": "select",
+      "options": ["auto", "right", "left"],
+      "optionLabels": ["Auto", "Right", "Left"],
+      "default": "auto"
+    },
+    {
       "key": "knowledgePanelMobile",
       "label": "Knowledge panel (mobile)",
       "description": "Default open or collapsed state for Wikipedia and knowledge plugin panels in the sidebar.",
@@ -121,6 +130,7 @@
     "relatedSearchesDesktop": "related-searches-desktop",
     "stickySidebar": "sticky-sidebar",
     "imageModeDesktopLayout": "image-mode-desktop-layout",
+    "imageFabSideMobile": "image-fab-side-mobile",
     "knowledgePanelMobile": "knowledge-panel-mobile",
     "knowledgePanelDesktop": "knowledge-panel-desktop"
   },

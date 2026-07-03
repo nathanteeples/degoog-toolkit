@@ -975,6 +975,8 @@ function getLgTranslation(key) {
     const DRAWER_READY = "lg-image-drawer-open-ready";
     const DRAWER_ANIM_MS = 500;
     const FAB_READY = "lg-image-tools-fab-ready";
+    const FAB_ENTERING = "lg-image-tools-fab-entering";
+    const IMAGE_FAB_SIDE_MOBILE = "data-image-fab-side-mobile";
     const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     let drawerAnimTimeout = 0;
 
@@ -1005,11 +1007,26 @@ function getLgTranslation(key) {
         }
 
         const launcher = document.getElementById("lg-image-tools-fab");
-        const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
-        const launcherRect = launcher?.getBoundingClientRect();
-        const useEndAnchor = launcherRect
-            ? launcherRect.left + launcherRect.width / 2 >= viewportWidth / 2
-            : document.documentElement.dir === "rtl";
+        const sideSetting = (document.documentElement.getAttribute(IMAGE_FAB_SIDE_MOBILE) || "auto")
+            .trim()
+            .toLowerCase();
+        const locale = (
+            document.documentElement.lang ||
+            navigator.language ||
+            navigator.languages?.[0] ||
+            ""
+        )
+            .trim()
+            .toLowerCase();
+        const lang = locale.split(/[-_]/)[0];
+        const autoUsesLeft =
+            document.documentElement.dir === "rtl" || lang === "he" || lang === "iw" || lang === "ja";
+        const useEndAnchor =
+            sideSetting === "right"
+                ? true
+                : sideSetting === "left"
+                  ? false
+                  : !autoUsesLeft;
         const anchorStart = !useEndAnchor;
 
         page.classList.toggle("lg-image-drawer-anchor-start", anchorStart);
@@ -1353,11 +1370,14 @@ function getLgTranslation(key) {
     function armFloatingFiltersLauncher(launcher) {
         if (!launcher || launcher.dataset.lgFabMounted === "1") return;
         launcher.dataset.lgFabMounted = "1";
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                launcher.classList.add(FAB_READY);
-            });
-        });
+        launcher.classList.add(FAB_ENTERING);
+        launcher.getBoundingClientRect();
+        window.setTimeout(() => {
+            launcher.classList.add(FAB_READY);
+            window.setTimeout(() => {
+                launcher.classList.remove(FAB_ENTERING);
+            }, 260);
+        }, 28);
     }
 
     let syncFabFrame = 0;
