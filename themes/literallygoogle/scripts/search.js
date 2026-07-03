@@ -1372,6 +1372,7 @@ function getLgTranslation(key) {
     function armFloatingFiltersLauncher(launcher) {
         if (!launcher || launcher.dataset.lgFabMounted === "1") return;
         launcher.dataset.lgFabMounted = "1";
+        launcher.classList.remove(FAB_READY);
         launcher.classList.add(FAB_ENTERING);
         launcher.getBoundingClientRect();
         if (reducedMotionQuery.matches) {
@@ -1387,6 +1388,27 @@ function getLgTranslation(key) {
         }, FAB_ENTER_MS);
     }
 
+    function applyFloatingFiltersLauncherState(launcher, toggle, page) {
+        if (!launcher || !page) return;
+        const sidebar = document.getElementById("image-filters-bar");
+        const drawerMode = isImageDrawerMode(page);
+        const isOpen = drawerMode
+            ? Boolean(sidebar?.classList.contains("open"))
+            : Boolean(
+                  sidebar?.classList.contains("open") ||
+                      toggle.classList.contains("is-open") ||
+                      toggle.classList.contains("active") ||
+                      toggle.getAttribute("aria-expanded") === "true",
+              );
+
+        page.classList.add("lg-image-fab-filters");
+        page.classList.toggle("lg-image-fab-open", Boolean(isOpen));
+        syncImageDrawerInlineAnchor(page);
+        launcher.classList.toggle("is-open", Boolean(isOpen));
+        launcher.classList.toggle("active", Boolean(isOpen));
+        launcher.setAttribute("aria-expanded", String(Boolean(isOpen)));
+    }
+
     let syncFabFrame = 0;
     function syncFloatingFiltersLauncher(toggle, page) {
         if (syncFabFrame) return;
@@ -1394,24 +1416,7 @@ function getLgTranslation(key) {
             syncFabFrame = 0;
 
             const launcher = document.getElementById("lg-image-tools-fab");
-            if (!launcher || !page) return;
-            const sidebar = document.getElementById("image-filters-bar");
-            const drawerMode = isImageDrawerMode(page);
-            const isOpen = drawerMode
-                ? Boolean(sidebar?.classList.contains("open"))
-                : Boolean(
-                      sidebar?.classList.contains("open") ||
-                          toggle.classList.contains("is-open") ||
-                          toggle.classList.contains("active") ||
-                          toggle.getAttribute("aria-expanded") === "true",
-                  );
-
-            page.classList.add("lg-image-fab-filters");
-            page.classList.toggle("lg-image-fab-open", Boolean(isOpen));
-            syncImageDrawerInlineAnchor(page);
-            launcher.classList.toggle("is-open", Boolean(isOpen));
-            launcher.classList.toggle("active", Boolean(isOpen));
-            launcher.setAttribute("aria-expanded", String(Boolean(isOpen)));
+            applyFloatingFiltersLauncherState(launcher, toggle, page);
         });
     }
 
@@ -1428,6 +1433,7 @@ function getLgTranslation(key) {
         renderFiltersButton(launcher, { iconOnly: true });
         launcher.setAttribute("aria-label", getLgTranslation("tools"));
         launcher.setAttribute("aria-haspopup", "dialog");
+        applyFloatingFiltersLauncherState(launcher, toggle, page);
         armFloatingFiltersLauncher(launcher);
 
         if (launcher.dataset.lgFabWired !== "1") {
