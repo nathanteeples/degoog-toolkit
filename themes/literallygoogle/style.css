@@ -2327,13 +2327,13 @@ body {
     }
 
     #results-page.lg-image-fab-filters #lg-image-tools-fab.lg-image-tools-fab-entering {
-        width: min(12rem, calc(100vw - 2rem));
-        min-width: min(12rem, calc(100vw - 2rem));
-        height: 4.25rem;
-        min-height: 4.25rem;
-        border-radius: 1.45rem;
-        opacity: 1;
-        transform: translate3d(0, 0.18rem, 0) scale(1);
+        width: 3.5rem;
+        min-width: 3.5rem;
+        height: 3.5rem;
+        min-height: 3.5rem;
+        border-radius: 50%;
+        opacity: 0.92;
+        transform: translate3d(0, 0.42rem, 0) scale(0.82);
         pointer-events: none;
     }
 
