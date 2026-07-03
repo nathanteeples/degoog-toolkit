@@ -2934,14 +2934,10 @@ body {
         padding: 0;
         flex: 1 1 auto;
         min-height: 0;
-        overflow-y: hidden;
-        scrollbar-width: thin;
-        max-height: none;
-    }
-
-    #image-filters-bar .degoog-img-sidebar-body.lg-sidebar-scroll-active {
         overflow-y: auto;
         overscroll-behavior: contain;
+        scrollbar-width: thin;
+        max-height: none;
     }
 
     #image-filters-bar .degoog-img-filter-group {
@@ -2993,7 +2989,8 @@ body {
 
 /* Optional sticky sidebar (Settings → Themes → Configure → Sticky sidebar).
    Pin on #sidebar-col; inner scroll is opt-in via .lg-sidebar-scroll-active (see
-   search.js) so hovering the rail does not cancel document scroll momentum. */
+   search.js) so hovering the results rail does not cancel document scroll
+   momentum. */
 
 @media (min-width: 768px) {
     html[data-sticky-sidebar="true"] #sidebar-col {

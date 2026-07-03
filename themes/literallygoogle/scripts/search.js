@@ -1,7 +1,8 @@
 const LG_LANG_DICT = {
     en: {
         settings: "Settings",
-        filters: "Filters",
+        filters: "Tools",
+        tools: "Tools",
         prev: "Previous",
         prev10: "Back 10 pages",
         prevImage: "Previous image",
@@ -914,7 +915,7 @@ function getLgTranslation(key) {
 
     function relabelFiltersToggle(toggle) {
         if (toggle.dataset.lgFiltersLabel === "1") return;
-        const filterLabel = getLgTranslation("filters");
+        const filterLabel = getLgTranslation("tools");
         let icon = toggle.querySelector(".lg-filters-icon");
         if (!icon) {
             toggle.querySelector("i")?.remove();
@@ -940,7 +941,7 @@ function getLgTranslation(key) {
     }
 
     function renderFiltersButton(button, { iconOnly = false } = {}) {
-        const filterLabel = getLgTranslation("filters");
+        const filterLabel = getLgTranslation("tools");
         let icon = button.querySelector(".lg-filters-icon");
         if (!icon) {
             icon = document.createElement("span");
@@ -2405,11 +2406,10 @@ function getLgTranslation(key) {
     }
 })();
 
-/* ── 5d. Sidebar scroll — don't cancel document momentum on hover ─────── */
+/* ── 5d. Results sidebar scroll — don't cancel document momentum on hover ─ */
 (() => {
     const ACTIVE_CLASS = "lg-sidebar-scroll-active";
-    const SCROLL_TARGETS =
-        "#sidebar-col > .sticky, #image-filters-bar .degoog-img-sidebar-body";
+    const SCROLL_TARGETS = "#sidebar-col > .sticky";
     const wired = new WeakSet();
 
     function canScroll(el) {

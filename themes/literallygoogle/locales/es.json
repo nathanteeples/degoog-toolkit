@@ -1,7 +1,8 @@
 {
   "theme-literallygoogle": {
     "settings": "Ajustes",
-    "filters": "Filtros",
+    "filters": "Herramientas",
+    "tools": "Herramientas",
     "prev": "Anterior",
     "prev10": "Retroceder 10 páginas",
     "prevImage": "Imagen anterior",

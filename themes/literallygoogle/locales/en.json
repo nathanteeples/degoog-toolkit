@@ -1,7 +1,8 @@
 {
   "theme-literallygoogle": {
     "settings": "Settings",
-    "filters": "Filters",
+    "filters": "Tools",
+    "tools": "Tools",
     "prev": "Previous",
     "prev10": "Back 10 pages",
     "prevImage": "Previous image",
