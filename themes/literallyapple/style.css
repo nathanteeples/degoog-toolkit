@@ -3178,6 +3178,52 @@ button.mp2-item[hidden] {
     padding-top: 0.1rem;
 }
 
+.media-preview-more {
+    width: 100%;
+    align-self: stretch;
+    padding-top: 0.1rem;
+}
+
+.media-preview-more:empty {
+    display: none;
+}
+
+.media-preview-more-grid {
+    column-count: 3;
+    column-gap: 0.35rem;
+}
+
+.media-preview-more-item {
+    display: block;
+    width: 100%;
+    margin: 0 0 0.35rem;
+    padding: 0;
+    break-inside: avoid;
+    overflow: hidden;
+    background: var(--la-fill-secondary);
+    border: 1px solid var(--la-separator);
+    border-radius: var(--theme-radius-md);
+    cursor: pointer;
+    transition:
+        background 120ms ease,
+        border-color 120ms ease,
+        opacity 120ms ease,
+        transform 120ms ease;
+}
+
+.media-preview-more-item:hover {
+    background: var(--la-fill-tertiary);
+    border-color: color-mix(in srgb, var(--text-secondary) 28%, var(--la-separator));
+    opacity: 0.92;
+    transform: translateY(-1px);
+}
+
+.media-preview-more-img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
 .media-preview-visit,
 .media-preview-download {
     display: inline-flex;

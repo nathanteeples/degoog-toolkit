@@ -4738,6 +4738,50 @@ button.mp2-item[hidden] {
     padding-top: 0.1rem;
 }
 
+.media-preview-more {
+    width: 100%;
+    align-self: stretch;
+    padding-top: 0.1rem;
+}
+
+.media-preview-more:empty {
+    display: none;
+}
+
+.media-preview-more-grid {
+    column-count: 3;
+    column-gap: 0.35rem;
+}
+
+.media-preview-more-item {
+    display: block;
+    width: 100%;
+    margin: 0 0 0.35rem;
+    padding: 0;
+    break-inside: avoid;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--lg-chrome-surface) 82%, var(--bg) 18%);
+    border: 1px solid color-mix(in srgb, var(--border-light) 70%, transparent);
+    border-radius: var(--theme-radius-md);
+    cursor: pointer;
+    transition:
+        border-color 120ms ease,
+        opacity 120ms ease,
+        transform 120ms ease;
+}
+
+.media-preview-more-item:hover {
+    border-color: color-mix(in srgb, var(--text-secondary) 32%, transparent);
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.media-preview-more-img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
 .media-preview-visit,
 .media-preview-download {
     display: inline-flex;
