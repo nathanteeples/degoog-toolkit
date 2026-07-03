@@ -2227,6 +2227,35 @@ body {
 
 /* Mobile results */
 @media (max-width: 767px) {
+    #results-meta {
+        padding-inline: 0.75rem;
+    }
+
+    #results-page:not(
+            :is(
+                [data-lg-search-type="images"],
+                [data-lg-search-type="videos"],
+                :has(#results-tabs .results-tab[data-type="images"].active),
+                :has(
+                    #results-tabs
+                        .results-tab[data-type="images"][aria-selected="true"]
+                ),
+                :has(#results-tabs .results-tab[data-type="videos"].active),
+                :has(
+                    #results-tabs
+                        .results-tab[data-type="videos"][aria-selected="true"]
+                ),
+                :has(#results-list .image-card),
+                :has(#results-list .video-card)
+            )
+        )
+        #results-meta
+        .results-meta-stats {
+        width: 100%;
+        margin-inline-start: 0;
+        text-align: start;
+    }
+
     /* Never show the legacy scale(0.18) miniature sidebar on image search. */
     #results-page:is(
             [data-lg-search-type="images"],
