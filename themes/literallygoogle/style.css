@@ -722,24 +722,22 @@ html[data-image-mode-desktop-layout="preview-left"] {
     max-width: min(23.5rem, calc(100vw - 1.5rem));
     height: min(44rem, calc(100vh - 1.5rem - env(safe-area-inset-bottom, 0px)));
     max-height: calc(100vh - 1.5rem - env(safe-area-inset-bottom, 0px));
-    background: color-mix(in srgb, var(--bg) 90%, transparent);
-    border: 1px solid color-mix(in srgb, var(--border-light) 76%, transparent);
-    border-radius: var(--theme-radius-pill);
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: clamp(1.5rem, 5vw, 2rem);
     overflow: hidden;
-    backdrop-filter: blur(20px) saturate(125%);
-    -webkit-backdrop-filter: blur(20px) saturate(125%);
     inset-inline-start: 0.75rem;
     inset-inline-end: auto;
     left: auto;
     right: auto;
-    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+    box-shadow: none;
+    contain: layout style;
     transform-origin: 1.35rem calc(100% - 1.35rem);
     transform: translate3d(-0.9rem, 0.9rem, 0) scale(0.18);
     transition:
-        transform 360ms cubic-bezier(0.22, 0.88, 0.22, 1.08),
-        box-shadow 260ms ease,
-        border-radius 360ms cubic-bezier(0.22, 0.88, 0.22, 1.08);
-    will-change: transform;
+        transform 280ms cubic-bezier(0.2, 0.9, 0.2, 1),
+        opacity 180ms ease,
+        visibility 0s linear 180ms;
 }
 
 html[dir="rtl"] #image-filters-bar {
@@ -749,13 +747,50 @@ html[dir="rtl"] #image-filters-bar {
     transform: translate3d(0.9rem, 0.9rem, 0) scale(0.18);
 }
 
+#image-filters-bar.lg-image-drawer-animating {
+    will-change: transform;
+    contain: strict;
+    pointer-events: none;
+}
+
+#image-filters-bar.open.lg-image-drawer-animating {
+    pointer-events: none;
+}
+
 #image-filters-bar.open,
 html[dir="rtl"] #image-filters-bar.open {
     transform: translate3d(0, 0, 0) scale(1);
-    border-radius: clamp(1.5rem, 5vw, 2rem);
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transition:
+        transform 280ms cubic-bezier(0.2, 0.9, 0.2, 1),
+        opacity 180ms ease,
+        visibility 0s;
+}
+
+#image-filters-bar.open.lg-image-drawer-open-ready,
+html[dir="rtl"] #image-filters-bar.open.lg-image-drawer-open-ready {
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    border-color: color-mix(in srgb, var(--border-light) 76%, transparent);
+    backdrop-filter: blur(20px) saturate(125%);
+    -webkit-backdrop-filter: blur(20px) saturate(125%);
     box-shadow:
         0 28px 64px rgba(0, 0, 0, 0.28),
         0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+#image-filters-bar.open:not(.lg-image-drawer-open-ready) .degoog-img-sidebar-body,
+#image-filters-bar.open:not(.lg-image-drawer-open-ready) .degoog-img-sidebar-head {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#image-filters-bar.open.lg-image-drawer-open-ready .degoog-img-sidebar-body,
+#image-filters-bar.open.lg-image-drawer-open-ready .degoog-img-sidebar-head {
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 140ms ease;
 }
 
 .degoog-img-sidebar-overlay {
@@ -763,9 +798,7 @@ html[dir="rtl"] #image-filters-bar.open {
     position: fixed;
     inset: 0;
     z-index: 205;
-    background: color-mix(in srgb, var(--bg) 42%, transparent);
-    backdrop-filter: blur(14px) saturate(110%);
-    -webkit-backdrop-filter: blur(14px) saturate(110%);
+    background: color-mix(in srgb, var(--bg) 58%, transparent);
     opacity: 0;
     transition: opacity 180ms ease;
 }
@@ -773,6 +806,36 @@ html[dir="rtl"] #image-filters-bar.open {
 .degoog-img-sidebar-overlay.open {
     display: block;
     opacity: 1;
+}
+
+.degoog-img-sidebar-overlay.open.lg-image-drawer-open-ready {
+    background: color-mix(in srgb, var(--bg) 42%, transparent);
+    backdrop-filter: blur(14px) saturate(110%);
+    -webkit-backdrop-filter: blur(14px) saturate(110%);
+}
+
+#results-page.lg-image-drawer-animating {
+    touch-action: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #image-filters-bar,
+    #image-filters-bar.open,
+    .degoog-img-sidebar-overlay,
+    .degoog-img-sidebar-overlay.open,
+    #results-page.lg-image-fab-filters #lg-image-tools-fab {
+        transition: none !important;
+    }
+
+    #image-filters-bar.open {
+        transform: none;
+    }
+
+    #image-filters-bar.open:not(.lg-image-drawer-open-ready) .degoog-img-sidebar-body,
+    #image-filters-bar.open:not(.lg-image-drawer-open-ready) .degoog-img-sidebar-head {
+        opacity: 1;
+        pointer-events: auto;
+    }
 }
 
 @media (min-width: 768px) {
@@ -2123,27 +2186,21 @@ body {
         justify-content: center;
         width: 3.5rem;
         height: 3.5rem;
+        min-width: 3.5rem;
+        min-height: 3.5rem;
         padding: 0;
         border: 1px solid color-mix(in srgb, var(--border-light) 82%, transparent);
-        border-radius: var(--theme-radius-pill);
-        background:
-            linear-gradient(
-                180deg,
-                color-mix(in srgb, var(--bg-light) 96%, transparent),
-                color-mix(in srgb, var(--bg) 94%, transparent)
-            );
+        border-radius: 50%;
+        overflow: hidden;
+        aspect-ratio: 1;
+        background: var(--bg-light);
         color: var(--text-primary);
         box-shadow:
-            0 18px 38px rgba(0, 0, 0, 0.24),
+            0 12px 28px rgba(0, 0, 0, 0.22),
             inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
-        backdrop-filter: blur(18px) saturate(125%);
-        -webkit-backdrop-filter: blur(18px) saturate(125%);
         transition:
-            transform 320ms cubic-bezier(0.22, 0.88, 0.22, 1.08),
-            opacity 220ms ease,
-            box-shadow 220ms ease,
-            background 220ms ease;
-        will-change: transform, opacity;
+            transform 220ms cubic-bezier(0.2, 0.9, 0.2, 1),
+            opacity 180ms ease;
     }
 
     html[dir="rtl"] #results-page.lg-image-fab-filters #lg-image-tools-fab {
@@ -2153,16 +2210,11 @@ body {
 
     #results-page.lg-image-fab-filters #lg-image-tools-fab:hover,
     #results-page.lg-image-fab-filters #lg-image-tools-fab:focus-visible {
-        background:
-            linear-gradient(
-                180deg,
-                color-mix(in srgb, var(--bg-hover) 92%, transparent),
-                color-mix(in srgb, var(--bg-light) 92%, transparent)
-            );
+        background: var(--bg-hover);
         box-shadow:
-            0 20px 40px rgba(0, 0, 0, 0.28),
+            0 14px 30px rgba(0, 0, 0, 0.26),
             inset 0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent);
-        transform: translateY(-2px) scale(1.03);
+        transform: translateY(-1px) scale(1.02);
     }
 
     #results-page.lg-image-fab-filters #lg-image-tools-fab .lg-filters-icon {
@@ -2189,7 +2241,17 @@ body {
         display: none !important;
     }
 
-    #results-page.lg-image-fab-filters #image-filters-bar:not(.open) {
+    #results-page.lg-image-fab-filters #image-filters-bar:not(.open):not(
+            .lg-image-drawer-animating
+        ) {
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    #results-page.lg-image-fab-filters #image-filters-bar.lg-image-drawer-animating:not(.open) {
+        visibility: visible;
+        opacity: 1;
         pointer-events: none;
     }
 }

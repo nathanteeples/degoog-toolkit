@@ -974,26 +974,113 @@ function getLgTranslation(key) {
         );
     }
 
+    const DRAWER_ANIMATING = "lg-image-drawer-animating";
+    const DRAWER_READY = "lg-image-drawer-open-ready";
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    function getImageDrawerOverlay() {
+        return document.querySelector(".degoog-img-sidebar-overlay");
+    }
+
+    function setImageDrawerAnimating(page, on) {
+        const sidebar = document.getElementById("image-filters-bar");
+        const overlay = getImageDrawerOverlay();
+        page?.classList.toggle(DRAWER_ANIMATING, on);
+        sidebar?.classList.toggle(DRAWER_ANIMATING, on);
+        overlay?.classList.toggle(DRAWER_ANIMATING, on);
+    }
+
+    function setImageDrawerReady(page, on) {
+        const sidebar = document.getElementById("image-filters-bar");
+        const overlay = getImageDrawerOverlay();
+        page?.classList.toggle(DRAWER_READY, on);
+        sidebar?.classList.toggle(DRAWER_READY, on);
+        overlay?.classList.toggle(DRAWER_READY, on);
+    }
+
+    function prepareImageDrawerAnimation(page) {
+        setImageDrawerReady(page, false);
+        setImageDrawerAnimating(page, true);
+    }
+
+    function finishImageDrawerAnimation(page) {
+        const sidebar = document.getElementById("image-filters-bar");
+        const open = sidebar?.classList.contains("open") ?? false;
+        setImageDrawerAnimating(page, false);
+        setImageDrawerReady(page, open);
+    }
+
+    function clearImageDrawerPerformance(page) {
+        setImageDrawerAnimating(page, false);
+        setImageDrawerReady(page, false);
+    }
+
+    function wireImageDrawerPerformance(page) {
+        const sidebar = document.getElementById("image-filters-bar");
+        if (!sidebar || sidebar.dataset.lgDrawerPerfWired === "1") return;
+        sidebar.dataset.lgDrawerPerfWired = "1";
+
+        let wasOpen = sidebar.classList.contains("open");
+        let finishFrame = 0;
+
+        function scheduleFinish() {
+            if (finishFrame) return;
+            finishFrame = requestAnimationFrame(() => {
+                finishFrame = 0;
+                finishImageDrawerAnimation(page);
+            });
+        }
+
+        sidebar.addEventListener("transitionend", event => {
+            if (event.target !== sidebar || event.propertyName !== "transform") return;
+            if (!sidebar.classList.contains(DRAWER_ANIMATING)) return;
+            scheduleFinish();
+        });
+
+        new MutationObserver(() => {
+            if (!isImageDrawerMode(page)) {
+                wasOpen = sidebar.classList.contains("open");
+                return;
+            }
+
+            const open = sidebar.classList.contains("open");
+            if (open === wasOpen) return;
+
+            prepareImageDrawerAnimation(page);
+            if (reducedMotionQuery.matches) {
+                scheduleFinish();
+            }
+            wasOpen = open;
+        }).observe(sidebar, { attributes: true, attributeFilter: ["class"] });
+    }
+
     function removeFloatingFiltersLauncher(page) {
         page?.classList.remove("lg-image-fab-filters", "lg-image-fab-open");
+        clearImageDrawerPerformance(page);
         document.getElementById("lg-image-tools-fab")?.remove();
     }
 
+    let syncFabFrame = 0;
     function syncFloatingFiltersLauncher(toggle, page) {
-        const launcher = document.getElementById("lg-image-tools-fab");
-        if (!launcher || !page) return;
-        const sidebar = document.getElementById("image-filters-bar");
-        const isOpen =
-            sidebar?.classList.contains("open") ||
-            toggle.classList.contains("is-open") ||
-            toggle.classList.contains("active") ||
-            toggle.getAttribute("aria-expanded") === "true";
+        if (syncFabFrame) return;
+        syncFabFrame = requestAnimationFrame(() => {
+            syncFabFrame = 0;
 
-        page.classList.add("lg-image-fab-filters");
-        page.classList.toggle("lg-image-fab-open", Boolean(isOpen));
-        launcher.classList.toggle("is-open", Boolean(isOpen));
-        launcher.classList.toggle("active", Boolean(isOpen));
-        launcher.setAttribute("aria-expanded", String(Boolean(isOpen)));
+            const launcher = document.getElementById("lg-image-tools-fab");
+            if (!launcher || !page) return;
+            const sidebar = document.getElementById("image-filters-bar");
+            const isOpen =
+                sidebar?.classList.contains("open") ||
+                toggle.classList.contains("is-open") ||
+                toggle.classList.contains("active") ||
+                toggle.getAttribute("aria-expanded") === "true";
+
+            page.classList.add("lg-image-fab-filters");
+            page.classList.toggle("lg-image-fab-open", Boolean(isOpen));
+            launcher.classList.toggle("is-open", Boolean(isOpen));
+            launcher.classList.toggle("active", Boolean(isOpen));
+            launcher.setAttribute("aria-expanded", String(Boolean(isOpen)));
+        });
     }
 
     function ensureFloatingFiltersLauncher(page, toggle) {
@@ -1020,7 +1107,10 @@ function getLgTranslation(key) {
                     event.preventDefault();
                     return;
                 }
-                toggle.click();
+                prepareImageDrawerAnimation(currentPage);
+                requestAnimationFrame(() => {
+                    toggle.click();
+                });
             });
         }
 
@@ -1198,6 +1288,7 @@ function getLgTranslation(key) {
 
         if (drawerMode) {
             ensureFloatingFiltersLauncher(page, toggle);
+            wireImageDrawerPerformance(page);
         } else {
             removeFloatingFiltersLauncher(page);
         }
