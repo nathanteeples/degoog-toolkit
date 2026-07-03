@@ -964,22 +964,43 @@ function getLgTranslation(key) {
         button.setAttribute("aria-label", filterLabel);
     }
 
-    function isImageDrawerMode(page) {
-        return (
-            page?.getAttribute("data-lg-search-type") === "images" &&
-            window.matchMedia("(max-width: 767px)").matches
-        );
-    }
-
     const DRAWER_ANIMATING = "lg-image-drawer-animating";
     const DRAWER_READY = "lg-image-drawer-open-ready";
     const DRAWER_ANIM_MS = 400;
     const FAB_READY = "lg-image-tools-fab-ready";
     const FAB_ENTERING = "lg-image-tools-fab-entering";
     const FAB_ENTER_MS = 20;
+    const IMAGE_MODE_DESKTOP_LAYOUT = "data-image-mode-desktop-layout";
     const IMAGE_FAB_SIDE_MOBILE = "data-image-fab-side-mobile";
     const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const desktopQuery = window.matchMedia("(min-width: 768px)");
     let drawerAnimTimeout = 0;
+
+    function getImageModeDesktopLayout() {
+        return (document.documentElement.getAttribute(IMAGE_MODE_DESKTOP_LAYOUT) || "organizers-left")
+            .trim()
+            .toLowerCase();
+    }
+
+    function isDesktopFabLayout() {
+        const layout = getImageModeDesktopLayout();
+        return layout === "fab-left" || layout === "fab-right";
+    }
+
+    function isDesktopImageDrawerMode(page) {
+        return (
+            page?.getAttribute("data-lg-search-type") === "images" &&
+            desktopQuery.matches &&
+            isDesktopFabLayout()
+        );
+    }
+
+    function isImageDrawerMode(page) {
+        return (
+            page?.getAttribute("data-lg-search-type") === "images" &&
+            (!desktopQuery.matches || isDesktopFabLayout())
+        );
+    }
 
     function getImageDrawerOverlay() {
         return document.querySelector(".degoog-img-sidebar-overlay");
@@ -998,6 +1019,9 @@ function getLgTranslation(key) {
         document
             .getElementById("image-filters-bar")
             ?.classList.remove("lg-image-drawer-anchor-start", "lg-image-drawer-anchor-end");
+        document
+            .getElementById("lg-image-tools-fab")
+            ?.classList.remove("lg-image-drawer-anchor-start", "lg-image-drawer-anchor-end");
     }
 
     function syncImageDrawerInlineAnchor(page) {
@@ -1008,6 +1032,19 @@ function getLgTranslation(key) {
         }
 
         const launcher = document.getElementById("lg-image-tools-fab");
+        const desktopLayout = getImageModeDesktopLayout();
+        if (desktopQuery.matches && isDesktopFabLayout()) {
+            const useEndAnchor = desktopLayout === "fab-right";
+            const anchorStart = !useEndAnchor;
+            page.classList.toggle("lg-image-drawer-anchor-start", anchorStart);
+            page.classList.toggle("lg-image-drawer-anchor-end", useEndAnchor);
+            sidebar.classList.toggle("lg-image-drawer-anchor-start", anchorStart);
+            sidebar.classList.toggle("lg-image-drawer-anchor-end", useEndAnchor);
+            launcher?.classList.toggle("lg-image-drawer-anchor-start", anchorStart);
+            launcher?.classList.toggle("lg-image-drawer-anchor-end", useEndAnchor);
+            return;
+        }
+
         const sideSetting = (document.documentElement.getAttribute(IMAGE_FAB_SIDE_MOBILE) || "auto")
             .trim()
             .toLowerCase();
@@ -1034,6 +1071,8 @@ function getLgTranslation(key) {
         page.classList.toggle("lg-image-drawer-anchor-end", useEndAnchor);
         sidebar.classList.toggle("lg-image-drawer-anchor-start", anchorStart);
         sidebar.classList.toggle("lg-image-drawer-anchor-end", useEndAnchor);
+        launcher?.classList.toggle("lg-image-drawer-anchor-start", anchorStart);
+        launcher?.classList.toggle("lg-image-drawer-anchor-end", useEndAnchor);
     }
 
     function openImageFiltersDrawer(page, toggle, panel) {
@@ -1108,7 +1147,11 @@ function getLgTranslation(key) {
     }
 
     function syncImageFabPreviewAnchor(page) {
-        if (!page?.classList.contains("lg-image-fab-filters") || !isImageDrawerMode(page)) {
+        if (
+            !page?.classList.contains("lg-image-fab-filters") ||
+            !isImageDrawerMode(page) ||
+            isDesktopImageDrawerMode(page)
+        ) {
             clearImageFabInsetBottom(page);
             return;
         }
@@ -1141,12 +1184,13 @@ function getLgTranslation(key) {
     function syncImageDrawerViewport(page) {
         const sidebar = document.getElementById("image-filters-bar");
         const vv = window.visualViewport;
-        if (!sidebar || !page?.classList.contains("lg-image-fab-filters") || !vv) return;
+        if (!sidebar || !page?.classList.contains("lg-image-fab-filters")) return;
 
         const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
         const bottomPx = 0.75 * remPx;
         const topPx = 0.5 * remPx;
-        const maxH = Math.max(14 * remPx, vv.height - topPx - bottomPx);
+        const viewportHeight = vv?.height ?? window.innerHeight;
+        const maxH = Math.max(14 * remPx, viewportHeight - topPx - bottomPx);
         sidebar.style.setProperty("--lg-drawer-max-height", `${maxH}px`);
         syncImageDrawerInlineAnchor(page);
         syncImageFabPreviewAnchor(page);
@@ -2228,9 +2272,17 @@ function getLgTranslation(key) {
 (() => {
     function isImageFabDrawerMode() {
         const page = document.getElementById("results-page");
+        const desktopLayout = (
+            document.documentElement.getAttribute("data-image-mode-desktop-layout") || ""
+        )
+            .trim()
+            .toLowerCase();
+        const desktopFab =
+            window.matchMedia("(min-width: 768px)").matches &&
+            (desktopLayout === "fab-left" || desktopLayout === "fab-right");
         return (
             page?.classList.contains("lg-image-fab-filters") &&
-            window.matchMedia("(max-width: 767px)").matches
+            (window.matchMedia("(max-width: 767px)").matches || desktopFab)
         );
     }
 

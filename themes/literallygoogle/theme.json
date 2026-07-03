@@ -84,12 +84,14 @@
     {
       "key": "imageModeDesktopLayout",
       "label": "Image mode layout (desktop)",
-      "description": "Choose whether the filters and engine performance rail appears to the left or right of the preview panel on laptop and desktop image search.",
+      "description": "Choose whether the filters and engine performance rail appears inline, or as a floating Tools button, on laptop and desktop image search.",
       "type": "select",
-      "options": ["organizers-left", "preview-left"],
+      "options": ["organizers-left", "preview-left", "fab-left", "fab-right"],
       "optionLabels": [
         "Filters / Engine Performance left, Preview right",
-        "Preview left, Filters / Engine Performance right"
+        "Preview left, Filters / Engine Performance right",
+        "FAB left, Preview right",
+        "FAB right, Preview left"
       ],
       "default": "organizers-left"
     },

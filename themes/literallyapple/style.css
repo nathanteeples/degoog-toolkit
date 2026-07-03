@@ -800,6 +800,19 @@ html[dir="rtl"] #image-filters-bar.open {
     transform: translateX(0);
 }
 
+#image-filters-bar .degoog-img-sidebar-close::before {
+    content: "";
+    display: block;
+    width: 1.6rem;
+    height: 0.1875rem;
+    border-radius: 100px;
+    background: color-mix(in srgb, var(--text-secondary) 48%, transparent);
+}
+
+#image-filters-bar .degoog-img-sidebar-close svg {
+    display: none;
+}
+
 .degoog-img-filter-bar {
     display: flex;
     gap: 0.5rem;
