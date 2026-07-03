@@ -2324,6 +2324,7 @@ function getLgTranslation(key) {
         }
 
         if (usesImageFabDrawerChrome()) {
+            if (close.dataset.lgFabPullTab === "1") return;
             close.classList.add("lg-drawer-pull-tab");
             close.innerHTML = "";
             close.setAttribute("aria-label", getLgTranslation("close"));
@@ -2331,6 +2332,7 @@ function getLgTranslation(key) {
             return;
         }
 
+        if (close.dataset.lgFabPullTab !== "1") return;
         close.classList.remove("lg-drawer-pull-tab");
         delete close.dataset.lgFabPullTab;
         close.innerHTML = close.dataset.lgDefaultInnerHtml || "";
