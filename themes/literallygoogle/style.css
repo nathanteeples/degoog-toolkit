@@ -3122,6 +3122,12 @@ body {
     display: none !important;
 }
 
+#results-page:has(#results-list .command-result) #tools-bar,
+#results-page:has(#results-list .command-help-table) #tools-bar,
+#results-page:has(#results-meta) #tools-bar[hidden] {
+    display: none !important;
+}
+
 #results-tabs .tools-toggle {
     display: inline-flex;
     align-items: center;
@@ -4804,7 +4810,7 @@ body {
    sticky child behaviour in most browsers. We move scrolling to
    .mp2-body instead, keeping the bar as a plain flex-shrink-0 header. */
 #media-preview-panel {
-    --mp2-panel-width: 26.25rem;
+    --mp2-panel-width: min(30rem, calc(100vw - 2rem));
     --mp2-panel-chrome: var(--lg-chrome-surface);
     --mp2-panel-bg: var(--bg);
     --mp2-panel-border: var(--border-light);
@@ -4865,6 +4871,55 @@ body {
    Do not set `overflow-x: hidden` on `#results-layout` in video mode — it breaks
    sticky; clip the grid column on `#results-main` instead. */
 @media (min-width: 768px) {
+    #results-page.lg-image-fab-filters:has(#results-layout.media-mode) #media-preview-panel {
+        position: fixed;
+        top: var(
+            --literallygoogle-sticky-header-offset,
+            calc(50px + 1.5rem)
+        );
+        bottom: auto;
+        height: calc(
+            100vh -
+                var(
+                    --literallygoogle-sticky-header-offset,
+                    calc(50px + 1.5rem)
+                )
+        );
+        max-height: calc(
+            100vh -
+                var(
+                    --literallygoogle-sticky-header-offset,
+                    calc(50px + 1.5rem)
+                )
+        );
+        width: var(--mp2-panel-width);
+        max-width: var(--mp2-panel-width);
+        flex: 0 0 auto;
+        z-index: 10005;
+    }
+
+    #results-page.lg-image-fab-filters.lg-image-drawer-anchor-start:has(#results-layout.media-mode)
+        #media-preview-panel {
+        inset-inline-start: auto;
+        inset-inline-end: 0.75rem;
+        transform: translateX(1rem) scale(0.975);
+        transform-origin: right center;
+    }
+
+    #results-page.lg-image-fab-filters.lg-image-drawer-anchor-end:has(#results-layout.media-mode)
+        #media-preview-panel {
+        inset-inline-start: 0.75rem;
+        inset-inline-end: auto;
+        transform: translateX(-1rem) scale(0.975);
+        transform-origin: left center;
+    }
+
+    #results-page.lg-image-fab-filters:has(#results-layout.media-mode) #media-preview-panel.open {
+        width: var(--mp2-panel-width);
+        max-width: var(--mp2-panel-width);
+        transform: translateX(0) scale(1);
+    }
+
     #results-page:has(#results-layout.media-mode) #media-preview-panel {
         top: var(
             --literallygoogle-sticky-header-offset,
@@ -4952,7 +5007,7 @@ body {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0.8rem;
+    padding: 0.8rem 0.65rem;
     background: var(--mp2-panel-bg);
 }
 
@@ -5191,13 +5246,14 @@ button.mp2-item[hidden] {
 
 .media-preview-more-grid {
     column-count: 3;
-    column-gap: 0.18rem;
+    column-gap: 0.22rem;
+    width: 100%;
 }
 
 .media-preview-more-item {
     display: block;
     width: 100%;
-    margin: 0 0 0.18rem;
+    margin: 0 0 0.22rem;
     padding: 0;
     break-inside: avoid;
     overflow: hidden;

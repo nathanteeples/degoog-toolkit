@@ -1103,9 +1103,10 @@ function getLgTranslation(key) {
         syncImageDrawerInlineAnchor(page);
         syncImageDrawerViewport(page);
         prepareImageDrawerAnimation(page);
-        setImageFiltersSidebarOpen(true);
         sidebar.classList.add("lg-drawer-dragging");
         applyImageDrawerMotionProgress(sidebar, getImageDrawerMotionMetrics(page, sidebar), 1);
+        sidebar.getBoundingClientRect();
+        setImageFiltersSidebarOpen(true);
         sidebar.getBoundingClientRect();
 
         requestAnimationFrame(() => {
@@ -1175,6 +1176,19 @@ function getLgTranslation(key) {
         const preview = document.getElementById("media-preview-panel");
         if (!sidebar || !layout || sidebar.parentNode === layout) return;
         layout.insertBefore(sidebar, preview || null);
+    }
+
+    function ensureMediaPreviewHost(page) {
+        const preview = document.getElementById("media-preview-panel");
+        if (!page || !preview || preview.parentNode === page) return;
+        page.appendChild(preview);
+    }
+
+    function restoreMediaPreviewHost() {
+        const preview = document.getElementById("media-preview-panel");
+        const layout = document.getElementById("results-layout");
+        if (!preview || !layout || preview.parentNode === layout) return;
+        layout.appendChild(preview);
     }
 
     function syncImageFabPreviewAnchor(page) {
@@ -1529,6 +1543,7 @@ function getLgTranslation(key) {
         clearImageDrawerInlineAnchor(page);
         document.getElementById("lg-image-tools-fab")?.remove();
         restoreImageDrawerHost();
+        restoreMediaPreviewHost();
     }
 
     function playFloatingFiltersLauncherIntro(launcher) {
@@ -1796,6 +1811,11 @@ function getLgTranslation(key) {
 
         if (drawerMode) {
             ensureImageDrawerHost(page);
+            if (isDesktopImageDrawerMode(page)) {
+                ensureMediaPreviewHost(page);
+            } else {
+                restoreMediaPreviewHost();
+            }
             ensureFloatingFiltersLauncher(page, toggle);
             wireImageDrawerPerformance(page);
             wireImageDrawerViewport(page);
