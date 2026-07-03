@@ -1364,6 +1364,7 @@ function getLgTranslation(key) {
         page?.classList.remove("lg-image-fab-filters", "lg-image-fab-open");
         clearImageDrawerPerformance(page);
         clearImageFabInsetBottom(page);
+        clearImageDrawerInlineAnchor(page);
         document.getElementById("lg-image-tools-fab")?.remove();
     }
 
@@ -1401,6 +1402,7 @@ function getLgTranslation(key) {
 
             page.classList.add("lg-image-fab-filters");
             page.classList.toggle("lg-image-fab-open", Boolean(isOpen));
+            syncImageDrawerInlineAnchor(page);
             launcher.classList.toggle("is-open", Boolean(isOpen));
             launcher.classList.toggle("active", Boolean(isOpen));
             launcher.setAttribute("aria-expanded", String(Boolean(isOpen)));
