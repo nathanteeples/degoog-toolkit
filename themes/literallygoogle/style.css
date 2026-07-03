@@ -1719,6 +1719,13 @@ body {
         inset-inline-end: auto;
         left: auto;
         right: auto;
+        height: calc(
+            100vh -
+                var(
+                    --literallygoogle-sticky-header-offset,
+                    calc(50px + 1.5rem)
+                )
+        );
         max-height: calc(
             100vh -
                 var(
@@ -1847,6 +1854,13 @@ body {
         inset-inline-end: auto;
         left: auto;
         right: auto;
+        height: calc(
+            100vh -
+                var(
+                    --literallygoogle-sticky-header-offset,
+                    calc(50px + 1.5rem)
+                )
+        );
         max-height: calc(
             100vh -
                 var(
@@ -1928,6 +1942,13 @@ body {
         inset-inline-end: auto;
         left: auto;
         right: auto;
+        height: calc(
+            100vh -
+                var(
+                    --literallygoogle-sticky-header-offset,
+                    calc(50px + 1.5rem)
+                )
+        );
         max-height: calc(
             100vh -
                 var(
