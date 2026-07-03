@@ -2511,6 +2511,27 @@ function getLgTranslation(key) {
         });
     }
 
+    function bindLoadingThumbs(grid) {
+        if (!grid) return;
+        grid.querySelectorAll(".image-thumb-wrap").forEach(wrap => {
+            if (wrap.dataset.lgThumbWired === "1") return;
+            wrap.dataset.lgThumbWired = "1";
+            const img = wrap.querySelector("img.image-thumb");
+            if (!img) return;
+
+            const onLoaded = () => {
+                wrap.classList.add("loaded");
+            };
+
+            if (img.complete) {
+                onLoaded();
+            } else {
+                img.addEventListener("load", onLoaded, { once: true });
+                img.addEventListener("error", onLoaded, { once: true });
+            }
+        });
+    }
+
     function bindGrid(grid) {
         if (!grid) return;
         if (grid.dataset.lgFoldBound !== "1") {
@@ -2520,13 +2541,17 @@ function getLgTranslation(key) {
             absorbNewItems(grid);
         }
         applyFold(grid);
+        bindLoadingThumbs(grid);
         scheduleScrollToSelected();
     }
 
     function scanGrids() {
         document
             .querySelectorAll("#results-list .image-grid, #results-list .skeleton-image-grid")
-            .forEach(bindGrid);
+            .forEach(grid => {
+                bindGrid(grid);
+                bindLoadingThumbs(grid);
+            });
     }
 
     let foldFrame = 0;
