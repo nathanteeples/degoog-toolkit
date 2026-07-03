@@ -2348,12 +2348,12 @@ body {
         transform: translate3d(0, 0.65rem, 0) scale(0.9);
         pointer-events: none;
         transition:
-            bottom var(--lg-drawer-duration, 500ms) var(--lg-drawer-ease-open, cubic-bezier(0.22, 1.05, 0.32, 1)),
-            width 420ms cubic-bezier(0.22, 1.05, 0.32, 1),
-            height 420ms cubic-bezier(0.22, 1.05, 0.32, 1),
-            border-radius 420ms cubic-bezier(0.22, 1.05, 0.32, 1),
-            transform 380ms cubic-bezier(0.22, 1.05, 0.32, 1),
-            opacity 320ms ease;
+            bottom var(--lg-drawer-duration, 400ms) var(--lg-drawer-ease-open, cubic-bezier(0.16, 1, 0.3, 1)),
+            width 320ms cubic-bezier(0.16, 1, 0.3, 1),
+            height 320ms cubic-bezier(0.16, 1, 0.3, 1),
+            border-radius 320ms cubic-bezier(0.16, 1, 0.3, 1),
+            transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 200ms ease;
     }
 
     #results-page.lg-image-fab-filters #lg-image-tools-fab.lg-image-tools-fab-entering {
@@ -2418,9 +2418,9 @@ body {
         --lg-fab-size: 3.5rem;
         --lg-fab-inset-inline: 1rem;
         --lg-fab-inset-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
-        --lg-drawer-duration: 620ms;
+        --lg-drawer-duration: 400ms;
         --lg-drawer-ease-open: cubic-bezier(0.16, 1, 0.3, 1);
-        --lg-drawer-ease-close: cubic-bezier(0.4, 0, 0.2, 1);
+        --lg-drawer-ease-close: cubic-bezier(0.16, 1, 0.3, 1);
         transform: none !important;
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
@@ -2430,7 +2430,7 @@ body {
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-open),
-            opacity 220ms ease,
+            opacity 180ms ease,
             visibility 0s linear var(--lg-drawer-duration);
     }
 
@@ -2493,7 +2493,7 @@ body {
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-close),
-            opacity 220ms ease,
+            opacity 180ms ease,
             visibility 0s;
     }
 
@@ -2554,7 +2554,7 @@ body {
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-open),
-            opacity 220ms ease,
+            opacity 180ms ease,
             visibility 0s;
     }
 
@@ -2644,26 +2644,21 @@ body {
     #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar-body,
     #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar-head {
         opacity: var(--lg-drawer-content-opacity, 0);
-        transform: translate3d(0, var(--lg-drawer-content-y, 0.85rem), 0)
-            scale(var(--lg-drawer-content-scale, 0.98));
-        transform-origin: 50% 100%;
+        transform: none;
         pointer-events: none;
-        transition:
-            opacity 220ms ease,
-            transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
+        transition: opacity 160ms ease;
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar.open .degoog-img-sidebar-body,
     #results-page.lg-image-fab-filters #image-filters-bar.open .degoog-img-sidebar-head {
         opacity: var(--lg-drawer-content-opacity, 1);
-        transform: translate3d(0, var(--lg-drawer-content-y, 0), 0)
-            scale(var(--lg-drawer-content-scale, 1));
+        transform: none;
         pointer-events: auto;
-        transition-delay: 140ms;
+        transition-delay: 100ms;
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar.open .degoog-img-sidebar-head {
-        transition-delay: 100ms;
+        transition-delay: 60ms;
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar-body {

@@ -973,10 +973,10 @@ function getLgTranslation(key) {
 
     const DRAWER_ANIMATING = "lg-image-drawer-animating";
     const DRAWER_READY = "lg-image-drawer-open-ready";
-    const DRAWER_ANIM_MS = 620;
+    const DRAWER_ANIM_MS = 400;
     const FAB_READY = "lg-image-tools-fab-ready";
     const FAB_ENTERING = "lg-image-tools-fab-entering";
-    const FAB_ENTER_MS = 40;
+    const FAB_ENTER_MS = 20;
     const IMAGE_FAB_SIDE_MOBILE = "data-image-fab-side-mobile";
     const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     let drawerAnimTimeout = 0;
@@ -1197,9 +1197,7 @@ function getLgTranslation(key) {
         const radius = lerp(metrics.openRadius, metrics.fabSize / 2, clamped);
         const inset = lerp(metrics.openInset, metrics.fabInset, clamped);
         const bottom = lerp(metrics.openBottom, metrics.fabBottom, clamped);
-        const contentOpacity = Math.max(0, 1 - clamped * 1.45);
-        const contentOffset = 20 * clamped;
-        const contentScale = 1 - clamped * 0.08;
+        const contentOpacity = Math.max(0, 1 - clamped * 1.8);
 
         sidebar.style.setProperty("width", `${width}px`, "important");
         sidebar.style.setProperty("max-width", `${width}px`, "important");
@@ -1218,8 +1216,6 @@ function getLgTranslation(key) {
         }
 
         sidebar.style.setProperty("--lg-drawer-content-opacity", String(contentOpacity));
-        sidebar.style.setProperty("--lg-drawer-content-y", `${contentOffset}px`);
-        sidebar.style.setProperty("--lg-drawer-content-scale", String(contentScale));
     }
 
     function clearImageDrawerMotionProgress(sidebar) {
@@ -1233,8 +1229,6 @@ function getLgTranslation(key) {
         sidebar?.style.removeProperty("inset-inline-start");
         sidebar?.style.removeProperty("inset-inline-end");
         sidebar?.style.removeProperty("--lg-drawer-content-opacity");
-        sidebar?.style.removeProperty("--lg-drawer-content-y");
-        sidebar?.style.removeProperty("--lg-drawer-content-scale");
     }
 
     function wireImageFabPreviewAnchor(page) {
@@ -1485,18 +1479,7 @@ function getLgTranslation(key) {
             playFloatingFiltersLauncherIntro(launcher);
         };
 
-        if (document.readyState === "complete") {
-            requestAnimationFrame(startIntro);
-            return;
-        }
-
-        window.addEventListener(
-            "load",
-            () => {
-                requestAnimationFrame(startIntro);
-            },
-            { once: true },
-        );
+        requestAnimationFrame(startIntro);
     }
 
     function applyFloatingFiltersLauncherState(launcher, toggle, page) {
