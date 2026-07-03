@@ -1171,6 +1171,7 @@ function getLgTranslation(key) {
         syncImageDrawerViewport(page);
         prepareImageDrawerAnimation(page);
         setImageFiltersSidebarOpen(true);
+        setImageDrawerReady(page, true);
         sidebar.classList.add("lg-drawer-dragging");
         applyImageDrawerMotionProgress(sidebar, getImageDrawerMotionMetrics(page, sidebar), 1);
         sidebar.getBoundingClientRect();
