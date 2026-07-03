@@ -990,6 +990,34 @@ function getLgTranslation(key) {
         overlay?.classList.toggle("open", open);
     }
 
+    function clearImageDrawerInlineAnchor(page) {
+        page?.classList.remove("lg-image-drawer-anchor-start", "lg-image-drawer-anchor-end");
+        document
+            .getElementById("image-filters-bar")
+            ?.classList.remove("lg-image-drawer-anchor-start", "lg-image-drawer-anchor-end");
+    }
+
+    function syncImageDrawerInlineAnchor(page) {
+        const sidebar = document.getElementById("image-filters-bar");
+        if (!sidebar || !page?.classList.contains("lg-image-fab-filters") || !isImageDrawerMode(page)) {
+            clearImageDrawerInlineAnchor(page);
+            return;
+        }
+
+        const launcher = document.getElementById("lg-image-tools-fab");
+        const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+        const launcherRect = launcher?.getBoundingClientRect();
+        const useEndAnchor = launcherRect
+            ? launcherRect.left + launcherRect.width / 2 >= viewportWidth / 2
+            : document.documentElement.dir === "rtl";
+        const anchorStart = !useEndAnchor;
+
+        page.classList.toggle("lg-image-drawer-anchor-start", anchorStart);
+        page.classList.toggle("lg-image-drawer-anchor-end", useEndAnchor);
+        sidebar.classList.toggle("lg-image-drawer-anchor-start", anchorStart);
+        sidebar.classList.toggle("lg-image-drawer-anchor-end", useEndAnchor);
+    }
+
     function openImageFiltersDrawer(page, toggle, panel) {
         const sidebar = document.getElementById("image-filters-bar");
         if (!sidebar || sidebar.classList.contains("open")) return;
@@ -998,11 +1026,19 @@ function getLgTranslation(key) {
             ensureFiltersClosed(panel, toggle);
         }
 
+        syncImageDrawerInlineAnchor(page);
         prepareImageDrawerAnimation(page);
 
         const coreToggle = document.querySelector(".degoog-img-filter-toggle");
         if (coreToggle) {
             coreToggle.click();
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    if (!sidebar.classList.contains("open")) {
+                        setImageFiltersSidebarOpen(true);
+                    }
+                });
+            });
             return;
         }
 
@@ -1099,6 +1135,7 @@ function getLgTranslation(key) {
         const topPx = 0.5 * remPx;
         const maxH = Math.max(14 * remPx, vv.height - topPx - bottomPx);
         sidebar.style.setProperty("--lg-drawer-max-height", `${maxH}px`);
+        syncImageDrawerInlineAnchor(page);
         syncImageFabPreviewAnchor(page);
     }
 

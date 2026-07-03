@@ -2313,6 +2313,16 @@ body {
         inset-inline-end: 1rem;
     }
 
+    #results-page.lg-image-fab-filters.lg-image-drawer-anchor-end #lg-image-tools-fab {
+        inset-inline-start: auto;
+        inset-inline-end: 1rem;
+    }
+
+    html[dir="rtl"] #results-page.lg-image-fab-filters.lg-image-drawer-anchor-end #lg-image-tools-fab {
+        inset-inline-start: 1rem;
+        inset-inline-end: auto;
+    }
+
     #results-page.lg-image-fab-filters #lg-image-tools-fab:hover,
     #results-page.lg-image-fab-filters #lg-image-tools-fab:focus-visible {
         background: var(--bg-hover);
@@ -2353,6 +2363,7 @@ body {
             max-height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             border-radius var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             opacity 220ms ease,
             visibility 0s linear var(--lg-drawer-duration);
@@ -2383,6 +2394,7 @@ body {
         max-width: var(--lg-fab-size) !important;
         border-radius: 50%;
         inset-inline-start: var(--lg-fab-inset-inline) !important;
+        inset-inline-end: auto !important;
         bottom: var(--lg-fab-inset-bottom) !important;
         background: var(--bg-light);
         border: 1px solid color-mix(in srgb, var(--border-light) 82%, transparent);
@@ -2402,9 +2414,15 @@ body {
             max-height var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             border-radius var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-close),
+            inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             opacity 220ms ease,
             visibility 0s;
+    }
+
+    #results-page.lg-image-fab-filters #image-filters-bar.lg-image-drawer-anchor-end.lg-image-drawer-animating:not(.open) {
+        inset-inline-start: auto !important;
+        inset-inline-end: var(--lg-fab-inset-inline) !important;
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar.open {
@@ -2439,9 +2457,15 @@ body {
             max-height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             border-radius var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             opacity 220ms ease,
             visibility 0s;
+    }
+
+    #results-page.lg-image-fab-filters #image-filters-bar.open.lg-image-drawer-anchor-end {
+        inset-inline-start: auto !important;
+        inset-inline-end: 0.75rem !important;
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready) {
@@ -2451,6 +2475,7 @@ body {
             max-height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             border-radius var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             inset-inline-start var(--lg-drawer-duration) var(--lg-drawer-ease-open),
+            inset-inline-end var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             bottom var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             opacity 220ms ease,
             visibility 0s;
