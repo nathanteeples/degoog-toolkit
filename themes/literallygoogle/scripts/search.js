@@ -1272,7 +1272,9 @@ function getLgTranslation(key) {
             if (open === wasOpen) return;
 
             prepareImageDrawerAnimation(page);
-            if (reducedMotionQuery.matches) {
+            if (open) {
+                requestAnimationFrame(() => setImageDrawerReady(page, true));
+            } else if (reducedMotionQuery.matches) {
                 scheduleFinish();
             }
             syncImageDrawerViewport(page);
@@ -1334,14 +1336,7 @@ function getLgTranslation(key) {
                     event.preventDefault();
                     return;
                 }
-                prepareImageDrawerAnimation(currentPage);
-                const sidebarEl = document.getElementById("image-filters-bar");
-                sidebarEl?.getBoundingClientRect();
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        toggle.click();
-                    });
-                });
+                toggle.click();
             });
         }
 
@@ -1598,6 +1593,7 @@ function getLgTranslation(key) {
 
     scheduleFiltersSync();
     window.addEventListener("degoog-results-ready", scheduleFiltersSync);
+    window.addEventListener("lg-sync-search-type", scheduleFiltersSync);
 
     const page = document.getElementById("results-page");
     if (page) {
@@ -1606,6 +1602,15 @@ function getLgTranslation(key) {
             let needsVisibilitySync = false;
 
             for (const mutation of mutations) {
+                if (
+                    mutation.type === "attributes" &&
+                    mutation.target === page &&
+                    mutation.attributeName === "data-lg-search-type"
+                ) {
+                    needsSetup = true;
+                    continue;
+                }
+
                 if (
                     mutation.type === "attributes" &&
                     mutation.target instanceof Element &&
@@ -1657,7 +1662,7 @@ function getLgTranslation(key) {
             childList: true,
             subtree: true,
             attributes: true,
-            attributeFilter: ["class", "aria-selected"],
+            attributeFilter: ["class", "aria-selected", "data-lg-search-type"],
         });
     }
 })();
@@ -2869,7 +2874,13 @@ function getLgTranslation(key) {
     }
 
     function syncSearchType() {
+        const root = getRoot();
+        const prev = root?.getAttribute(TYPE_ATTR) || "";
         setSearchType(getTypeFromTabs() || getTypeFromUrl());
+        const next = root?.getAttribute(TYPE_ATTR) || "";
+        if (prev !== next) {
+            window.dispatchEvent(new Event("lg-sync-search-type"));
+        }
     }
 
     function bindTabsClick() {
