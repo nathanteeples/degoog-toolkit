@@ -1178,19 +1178,6 @@ function getLgTranslation(key) {
         layout.insertBefore(sidebar, preview || null);
     }
 
-    function ensureMediaPreviewHost(page) {
-        const preview = document.getElementById("media-preview-panel");
-        if (!page || !preview || preview.parentNode === page) return;
-        page.appendChild(preview);
-    }
-
-    function restoreMediaPreviewHost() {
-        const preview = document.getElementById("media-preview-panel");
-        const layout = document.getElementById("results-layout");
-        if (!preview || !layout || preview.parentNode === layout) return;
-        layout.appendChild(preview);
-    }
-
     function syncImageFabPreviewAnchor(page) {
         if (
             !page?.classList.contains("lg-image-fab-filters") ||
@@ -1543,7 +1530,6 @@ function getLgTranslation(key) {
         clearImageDrawerInlineAnchor(page);
         document.getElementById("lg-image-tools-fab")?.remove();
         restoreImageDrawerHost();
-        restoreMediaPreviewHost();
     }
 
     function playFloatingFiltersLauncherIntro(launcher) {
@@ -1811,11 +1797,6 @@ function getLgTranslation(key) {
 
         if (drawerMode) {
             ensureImageDrawerHost(page);
-            if (isDesktopImageDrawerMode(page)) {
-                ensureMediaPreviewHost(page);
-            } else {
-                restoreMediaPreviewHost();
-            }
             ensureFloatingFiltersLauncher(page, toggle);
             wireImageDrawerPerformance(page);
             wireImageDrawerViewport(page);

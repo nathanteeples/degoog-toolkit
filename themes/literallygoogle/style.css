@@ -4871,55 +4871,6 @@ body {
    Do not set `overflow-x: hidden` on `#results-layout` in video mode — it breaks
    sticky; clip the grid column on `#results-main` instead. */
 @media (min-width: 768px) {
-    #results-page.lg-image-fab-filters:has(#results-layout.media-mode) #media-preview-panel {
-        position: fixed;
-        top: var(
-            --literallygoogle-sticky-header-offset,
-            calc(50px + 1.5rem)
-        );
-        bottom: auto;
-        height: calc(
-            100vh -
-                var(
-                    --literallygoogle-sticky-header-offset,
-                    calc(50px + 1.5rem)
-                )
-        );
-        max-height: calc(
-            100vh -
-                var(
-                    --literallygoogle-sticky-header-offset,
-                    calc(50px + 1.5rem)
-                )
-        );
-        width: var(--mp2-panel-width);
-        max-width: var(--mp2-panel-width);
-        flex: 0 0 auto;
-        z-index: 10005;
-    }
-
-    #results-page.lg-image-fab-filters.lg-image-drawer-anchor-start:has(#results-layout.media-mode)
-        #media-preview-panel {
-        inset-inline-start: auto;
-        inset-inline-end: 0.75rem;
-        transform: translateX(1rem) scale(0.975);
-        transform-origin: right center;
-    }
-
-    #results-page.lg-image-fab-filters.lg-image-drawer-anchor-end:has(#results-layout.media-mode)
-        #media-preview-panel {
-        inset-inline-start: 0.75rem;
-        inset-inline-end: auto;
-        transform: translateX(-1rem) scale(0.975);
-        transform-origin: left center;
-    }
-
-    #results-page.lg-image-fab-filters:has(#results-layout.media-mode) #media-preview-panel.open {
-        width: var(--mp2-panel-width);
-        max-width: var(--mp2-panel-width);
-        transform: translateX(0) scale(1);
-    }
-
     #results-page:has(#results-layout.media-mode) #media-preview-panel {
         top: var(
             --literallygoogle-sticky-header-offset,
