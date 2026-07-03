@@ -905,7 +905,7 @@ function getLgTranslation(key) {
         if (meta?.parentNode === row) {
             page.insertBefore(meta, row);
         }
-        page.classList.remove("lg-image-meta-filters");
+        page.classList.remove("lg-image-meta-filters", "lg-image-fab-filters", "lg-image-fab-open");
         const panel = document.getElementById("tools-panel");
         if (panel?.parentNode === row) {
             tabs?.after(panel);
@@ -974,49 +974,45 @@ function getLgTranslation(key) {
         );
     }
 
-    function syncMetaFiltersProxy(toggle) {
-        const proxy = document.getElementById("lg-meta-tools-toggle");
-        if (!proxy) return;
-        proxy.classList.toggle("active", toggle.classList.contains("active"));
-        proxy.classList.toggle("is-open", toggle.classList.contains("is-open"));
-        proxy.setAttribute("aria-expanded", toggle.getAttribute("aria-expanded") || "false");
+    function removeFloatingFiltersLauncher(page) {
+        page?.classList.remove("lg-image-fab-filters", "lg-image-fab-open");
+        document.getElementById("lg-image-tools-fab")?.remove();
     }
 
-    function ensureMetaFiltersRow(page, toggle) {
-        const meta = document.getElementById("results-meta");
-        if (!meta) return;
+    function syncFloatingFiltersLauncher(toggle, page) {
+        const launcher = document.getElementById("lg-image-tools-fab");
+        if (!launcher || !page) return;
+        const sidebar = document.getElementById("image-filters-bar");
+        const isOpen =
+            sidebar?.classList.contains("open") ||
+            toggle.classList.contains("is-open") ||
+            toggle.classList.contains("active") ||
+            toggle.getAttribute("aria-expanded") === "true";
 
-        let row = document.getElementById("lg-meta-row");
-        if (!row) {
-            row = document.createElement("div");
-            row.id = "lg-meta-row";
-            page.insertBefore(row, meta);
+        page.classList.add("lg-image-fab-filters");
+        page.classList.toggle("lg-image-fab-open", Boolean(isOpen));
+        launcher.classList.toggle("is-open", Boolean(isOpen));
+        launcher.classList.toggle("active", Boolean(isOpen));
+        launcher.setAttribute("aria-expanded", String(Boolean(isOpen)));
+    }
+
+    function ensureFloatingFiltersLauncher(page, toggle) {
+        let launcher = document.getElementById("lg-image-tools-fab");
+        if (!launcher) {
+            launcher = document.createElement("button");
+            launcher.id = "lg-image-tools-fab";
+            launcher.className = "lg-image-tools-fab";
+            launcher.type = "button";
+            page.appendChild(launcher);
         }
 
-        let wrap = row.querySelector(".lg-meta-tools-wrap");
-        if (!wrap) {
-            wrap = document.createElement("div");
-            wrap.className = "lg-meta-tools-wrap";
-            row.appendChild(wrap);
-        }
+        renderFiltersButton(launcher, { iconOnly: true });
+        launcher.setAttribute("aria-label", getLgTranslation("tools"));
+        launcher.setAttribute("aria-haspopup", "dialog");
 
-        let proxy = row.querySelector("#lg-meta-tools-toggle");
-        if (!proxy) {
-            proxy = document.createElement("button");
-            proxy.id = "lg-meta-tools-toggle";
-            proxy.className = "tools-toggle";
-            proxy.type = "button";
-            renderFiltersButton(proxy, { iconOnly: true });
-            wrap.appendChild(proxy);
-        }
-
-        if (!row.contains(meta)) {
-            row.appendChild(meta);
-        }
-
-        if (proxy.dataset.lgProxyWired !== "1") {
-            proxy.dataset.lgProxyWired = "1";
-            proxy.addEventListener("click", event => {
+        if (launcher.dataset.lgFabWired !== "1") {
+            launcher.dataset.lgFabWired = "1";
+            launcher.addEventListener("click", event => {
                 const currentPage = document.getElementById("results-page");
                 const sidebar = document.getElementById("image-filters-bar");
                 if (!isImageDrawerMode(currentPage)) return;
@@ -1028,8 +1024,7 @@ function getLgTranslation(key) {
             });
         }
 
-        syncMetaFiltersProxy(toggle);
-        page.classList.add("lg-image-meta-filters");
+        syncFloatingFiltersLauncher(toggle, page);
     }
 
     function syncCustomDateMenuState(panel) {
@@ -1202,9 +1197,9 @@ function getLgTranslation(key) {
         toolsBar?.classList.add("lg-filters-wrap");
 
         if (drawerMode) {
-            ensureMetaFiltersRow(page, toggle);
+            ensureFloatingFiltersLauncher(page, toggle);
         } else {
-            unwrapMetaRow();
+            removeFloatingFiltersLauncher(page);
         }
 
         positionFiltersPanel(panel, toggle, page);
@@ -1225,10 +1220,13 @@ function getLgTranslation(key) {
                 requestAnimationFrame(() => {
                     positionFiltersPanel(panel, toggle, page);
                     syncCustomDateMenuState(panel);
-                    syncMetaFiltersProxy(toggle);
+                    syncFloatingFiltersLauncher(toggle, page);
                 });
             });
-            window.addEventListener("resize", () => positionFiltersPanel(panel, toggle, page));
+            window.addEventListener("resize", () => {
+                scheduleFiltersDropdown();
+                positionFiltersPanel(panel, toggle, page);
+            });
             window.addEventListener(
                 "scroll",
                 () => positionFiltersPanel(panel, toggle, page),
@@ -1238,13 +1236,23 @@ function getLgTranslation(key) {
                 attributes: true,
                 attributeFilter: ["style", "class"],
             });
-            new MutationObserver(() => syncMetaFiltersProxy(toggle)).observe(toggle, {
+            new MutationObserver(() => syncFloatingFiltersLauncher(toggle, page)).observe(toggle, {
                 attributes: true,
                 attributeFilter: ["class", "aria-expanded"],
             });
+            const sidebar = document.getElementById("image-filters-bar");
+            if (sidebar) {
+                new MutationObserver(() => syncFloatingFiltersLauncher(toggle, page)).observe(
+                    sidebar,
+                    {
+                        attributes: true,
+                        attributeFilter: ["class", "style"],
+                    },
+                );
+            }
         }
 
-        syncMetaFiltersProxy(toggle);
+        syncFloatingFiltersLauncher(toggle, page);
     }
 
     function scheduleFiltersDropdown() {
