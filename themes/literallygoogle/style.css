@@ -4667,6 +4667,7 @@ button.mp2-item[hidden] {
 .media-preview-img-wrap {
     position: relative;
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: center;
     width: fit-content;
@@ -4696,6 +4697,7 @@ button.mp2-item[hidden] {
 
 .media-preview-info {
     display: flex;
+    flex: 0 0 auto;
     flex-direction: column;
     gap: 0.8rem;
     width: 100%;
@@ -4739,6 +4741,7 @@ button.mp2-item[hidden] {
 }
 
 .media-preview-more {
+    flex: 0 0 auto;
     width: 100%;
     align-self: stretch;
     padding-top: 0.1rem;
