@@ -2221,14 +2221,21 @@ body {
     }
 
     #results-page .image-card.selected {
-        outline: 3px solid var(--primary);
-        outline-offset: 2px;
-        box-shadow:
-            0 0 0 1px color-mix(in srgb, var(--primary) 75%, var(--bg)),
-            0 0 0 7px color-mix(in srgb, var(--primary) 30%, transparent);
+        outline: none;
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 24%, transparent);
         opacity: 1 !important;
         position: relative;
         z-index: 2;
+    }
+
+    #results-page .image-card.selected::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border: 3px solid var(--primary);
+        border-radius: inherit;
+        pointer-events: none;
+        z-index: 3;
     }
 
     #results-page .image-card.selected:hover {
