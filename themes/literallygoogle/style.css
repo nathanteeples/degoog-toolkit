@@ -3804,6 +3804,7 @@ body {
 }
 
 @media (min-width: 768px) {
+    body > #image-filters-bar.lg-image-fab-drawer,
     #results-page.lg-image-fab-filters #image-filters-bar {
         --lg-fab-size: 3.5rem;
         --lg-fab-inset-inline: 1rem;
@@ -3844,6 +3845,10 @@ body {
             visibility 0s linear var(--lg-drawer-duration);
     }
 
+    body
+        > #image-filters-bar.lg-image-fab-drawer:not(.open):not(
+            .lg-image-drawer-animating
+        ),
     #results-page.lg-image-fab-filters
         #image-filters-bar:not(.open):not(.lg-image-drawer-animating) {
         display: none !important;
@@ -3852,6 +3857,7 @@ body {
         pointer-events: none !important;
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer.lg-image-drawer-animating:not(.open),
     #results-page.lg-image-fab-filters #image-filters-bar.lg-image-drawer-animating:not(.open) {
         display: block !important;
         width: var(--lg-fab-size) !important;
@@ -3889,12 +3895,17 @@ body {
             visibility 0s;
     }
 
+    body
+        > #image-filters-bar.lg-image-fab-drawer.lg-image-drawer-anchor-end.lg-image-drawer-animating:not(
+            .open
+        ),
     #results-page.lg-image-fab-filters
         #image-filters-bar.lg-image-drawer-anchor-end.lg-image-drawer-animating:not(.open) {
         inset-inline-start: auto !important;
         inset-inline-end: var(--lg-fab-inset-inline) !important;
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer.open,
     #results-page.lg-image-fab-filters #image-filters-bar.open {
         display: block !important;
         width: min(23.5rem, calc(100vw - 2rem)) !important;
@@ -3911,11 +3922,13 @@ body {
         pointer-events: auto;
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer.open.lg-image-drawer-anchor-end,
     #results-page.lg-image-fab-filters #image-filters-bar.open.lg-image-drawer-anchor-end {
         inset-inline-start: auto !important;
         inset-inline-end: var(--lg-fab-inset-inline) !important;
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer .degoog-img-sidebar,
     #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar {
         display: flex;
         height: 100%;
@@ -3923,12 +3936,14 @@ body {
         min-height: 0;
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer .degoog-img-sidebar-head,
     #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar-head {
         display: flex;
         justify-content: center;
         padding: 0.55rem 0.9rem 0.25rem;
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer .degoog-img-sidebar-body,
     #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar-body {
         padding: 0 0 0.5rem;
     }

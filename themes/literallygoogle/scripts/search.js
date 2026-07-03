@@ -1166,8 +1166,10 @@ function getLgTranslation(key) {
 
     function ensureImageDrawerHost(page) {
         const sidebar = document.getElementById("image-filters-bar");
-        if (!page || !sidebar || sidebar.parentNode === page) return;
-        page.appendChild(sidebar);
+        if (!page || !sidebar) return;
+        sidebar.classList.add("lg-image-fab-drawer");
+        if (sidebar.parentNode === document.body) return;
+        document.body.appendChild(sidebar);
     }
 
     function restoreImageDrawerHost() {
@@ -1175,6 +1177,7 @@ function getLgTranslation(key) {
         const layout = document.getElementById("results-layout");
         const preview = document.getElementById("media-preview-panel");
         if (!sidebar || !layout || sidebar.parentNode === layout) return;
+        sidebar.classList.remove("lg-image-fab-drawer");
         layout.insertBefore(sidebar, preview || null);
     }
 
