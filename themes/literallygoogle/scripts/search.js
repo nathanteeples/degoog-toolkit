@@ -976,6 +976,7 @@ function getLgTranslation(key) {
     const DRAWER_ANIM_MS = 500;
     const FAB_READY = "lg-image-tools-fab-ready";
     const FAB_ENTERING = "lg-image-tools-fab-entering";
+    const FAB_ENTER_MS = 240;
     const IMAGE_FAB_SIDE_MOBILE = "data-image-fab-side-mobile";
     const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     let drawerAnimTimeout = 0;
@@ -1373,12 +1374,17 @@ function getLgTranslation(key) {
         launcher.dataset.lgFabMounted = "1";
         launcher.classList.add(FAB_ENTERING);
         launcher.getBoundingClientRect();
+        if (reducedMotionQuery.matches) {
+            launcher.classList.add(FAB_READY);
+            launcher.classList.remove(FAB_ENTERING);
+            return;
+        }
         window.setTimeout(() => {
             launcher.classList.add(FAB_READY);
             window.setTimeout(() => {
                 launcher.classList.remove(FAB_ENTERING);
-            }, 260);
-        }, 28);
+            }, FAB_ENTER_MS);
+        }, FAB_ENTER_MS);
     }
 
     let syncFabFrame = 0;
