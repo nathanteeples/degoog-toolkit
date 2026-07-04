@@ -75,13 +75,6 @@
       "default": "open"
     },
     {
-      "key": "stickySidebar",
-      "label": "Sticky sidebar",
-      "description": "Keep the sidebar pinned below the header while scrolling results (desktop only).",
-      "type": "toggle",
-      "default": false
-    },
-    {
       "key": "imageModeDesktopLayout",
       "label": "Image mode layout (desktop)",
       "description": "Choose which side the floating Tools button uses relative to the preview panel on laptop and desktop image search.",
@@ -128,7 +121,6 @@
     "sidebarPanelsImagesDesktop": "sidebar-panels-images-desktop",
     "relatedSearchesMobile": "related-searches-mobile",
     "relatedSearchesDesktop": "related-searches-desktop",
-    "stickySidebar": "sticky-sidebar",
     "imageModeDesktopLayout": "image-mode-desktop-layout",
     "imageFabSideMobile": "image-fab-side-mobile",
     "knowledgePanelMobile": "knowledge-panel-mobile",

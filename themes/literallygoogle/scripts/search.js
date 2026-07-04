@@ -2015,9 +2015,6 @@ function getLgTranslation(key) {
             closeFiltersDropdown(panel, toggle);
             return;
         }
-        if (toolsBar.hidden) {
-            toolsBar.hidden = false;
-        }
     }
 
     function getFiltersElements() {
@@ -3377,7 +3374,7 @@ function getLgTranslation(key) {
 /* ── 5d. Results sidebar scroll — don't cancel document momentum on hover ─ */
 (() => {
     const ACTIVE_CLASS = "lg-sidebar-scroll-active";
-    const SCROLL_TARGETS = "#sidebar-col > .sticky";
+    const SCROLL_TARGETS = "#sidebar-col.is-sticky > .sticky";
     const wired = new WeakSet();
 
     function canScroll(el) {

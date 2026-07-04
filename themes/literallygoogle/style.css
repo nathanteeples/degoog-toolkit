@@ -3175,6 +3175,9 @@ body {
 #results-tabs .lg-filters-wrap {
     position: relative;
     flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    max-width: max-content;
 }
 
 #results-page #results-tabs {
@@ -3182,20 +3185,27 @@ body {
     z-index: 110;
 }
 
-/* Author `.tools-wrap { display: flex }` beats UA `[hidden]`; hide Filters only for bang commands. */
+/* Author `.tools-wrap { display: flex }` beats UA `[hidden]`; restore hidden semantics. */
+#results-page #results-tabs #tools-bar[hidden] {
+    display: none !important;
+}
+
 #results-page.lg-command-mode #tools-bar {
     display: none !important;
 }
 
 #results-page:has(#results-list .command-result) #tools-bar,
-#results-page:has(#results-list .command-help-table) #tools-bar,
-#results-page:has(#results-meta) #tools-bar[hidden] {
+#results-page:has(#results-list .command-help-table) #tools-bar {
     display: none !important;
 }
 
 #results-tabs .tools-toggle {
     display: inline-flex;
     align-items: center;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    max-width: max-content;
     gap: 0.35rem;
     padding: 0.75rem 1rem;
     font-size: 0.8125rem;
@@ -4014,13 +4024,12 @@ body {
     }
 }
 
-/* Optional sticky sidebar (Settings → Themes → Configure → Sticky sidebar).
-   Pin on #sidebar-col; inner scroll is opt-in via .lg-sidebar-scroll-active (see
-   search.js) so hovering the results rail does not cancel document scroll
-   momentum. */
+/* Core sticky sidebar setting.
+   degoog toggles #sidebar-col.is-sticky; the theme only supplies the Google-like
+   offset and inner scroll behavior. */
 
 @media (min-width: 768px) {
-    html[data-sticky-sidebar="true"] #sidebar-col {
+    #sidebar-col.is-sticky {
         position: sticky;
         top: var(
             --literallygoogle-sticky-header-offset,
@@ -4037,7 +4046,7 @@ body {
         );
     }
 
-    html[data-sticky-sidebar="true"] #sidebar-col > .sticky {
+    #sidebar-col.is-sticky > .sticky {
         max-height: calc(
             100vh -
                 var(
@@ -4052,7 +4061,7 @@ body {
         margin-inline: 0;
     }
 
-    html[data-sticky-sidebar="true"] #sidebar-col > .sticky.lg-sidebar-scroll-active {
+    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active {
         overflow-y: auto;
         overscroll-behavior: contain;
     }
