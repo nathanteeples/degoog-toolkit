@@ -4514,6 +4514,34 @@ body {
     margin-bottom: 0.75rem;
 }
 
+#at-a-glance .skeleton-glance,
+#at-a-glance .glance-ai-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+#at-a-glance .skeleton-line {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 0;
+    background: color-mix(in srgb, var(--bg-hover) 55%, var(--bg-light));
+}
+
+#at-a-glance .skeleton-line::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in srgb, var(--text-primary) 16%, transparent),
+        transparent
+    );
+    transform: translate3d(-100%, 0, 0);
+    animation: shimmer-slide 1.5s infinite linear;
+}
+
 .skeleton-line--url {
     width: 40%;
 }
