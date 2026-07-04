@@ -36,6 +36,9 @@ var {
     --literallygoogle-results-content-inline-start: calc(
         1.25rem + 0.75rem + 1rem + 3.35 * var(--literallygoogle-results-logo-size)
     );
+    --literallygoogle-results-content-inline-end: calc(
+        1.25rem + var(--lg-scrollbar-gutter, 0.625rem)
+    );
     --literallygoogle-results-layout-max: 76rem;
     --literallygoogle-results-main-col-max: 48rem;
     --lg-chrome-surface: var(--bg-light);
@@ -1333,7 +1336,7 @@ body {
         padding-inline-start: var(
             --literallygoogle-results-content-inline-start
         );
-        padding-inline-end: 1.25rem;
+        padding-inline-end: var(--literallygoogle-results-content-inline-end);
     }
 }
 
@@ -1367,7 +1370,7 @@ body {
         padding-inline-start: var(
             --literallygoogle-results-content-inline-start
         );
-        padding-inline-end: calc(1.25rem + var(--lg-scrollbar-gutter, 0.625rem));
+        padding-inline-end: var(--literallygoogle-results-content-inline-end);
     }
 
     #results-page #results-layout > #slot-above-results {

@@ -1071,6 +1071,170 @@ function getLgTranslation(key) {
 
 /* ── 4a. Filters dropdown ──────────────────────────────────────────────── */
 (() => {
+    const SEARCHING_ATTR = "data-lg-sidebar-searching";
+    const GLANCE_PLACEHOLDER_HOLD_MS = 2500;
+    let glancePlaceholderFrame = 0;
+    let glancePlaceholderTimer = 0;
+    let glancePlaceholderHoldUntil = 0;
+    let wasSearching = document.documentElement.hasAttribute(SEARCHING_ATTR);
+
+    function getAtAGlanceContainer() {
+        return document.getElementById("at-a-glance");
+    }
+
+    function getThemeGlancePlaceholder(container) {
+        return container?.querySelector(":scope > .lg-glance-placeholder") || null;
+    }
+
+    function hasCoreGlanceSkeleton(container) {
+        return [...container.children].some(
+            child =>
+                child instanceof Element &&
+                child.matches(".glance-box:not(.lg-glance-placeholder)") &&
+                !!child.querySelector(".skeleton-glance"),
+        );
+    }
+
+    function hasVisibleGlancePanel(container) {
+        return [...container.querySelectorAll(":scope > .results-slot-panel")].some(
+            panel => panel instanceof HTMLElement && !panel.hidden,
+        );
+    }
+
+    function hasMetaSpellCheckNotice() {
+        return !!getResultsMeta()?.querySelector(".spell-check-notice");
+    }
+
+    function clearGlancePlaceholderHold() {
+        glancePlaceholderHoldUntil = 0;
+        if (!glancePlaceholderTimer) return;
+        clearTimeout(glancePlaceholderTimer);
+        glancePlaceholderTimer = 0;
+    }
+
+    function scheduleGlancePlaceholderRelease() {
+        if (glancePlaceholderTimer) {
+            clearTimeout(glancePlaceholderTimer);
+        }
+        const delay = Math.max(0, glancePlaceholderHoldUntil - Date.now());
+        if (!delay) {
+            glancePlaceholderTimer = 0;
+            scheduleGlancePlaceholderSync();
+            return;
+        }
+        glancePlaceholderTimer = window.setTimeout(() => {
+            glancePlaceholderTimer = 0;
+            scheduleGlancePlaceholderSync();
+        }, delay);
+    }
+
+    function ensureThemeGlancePlaceholder(container) {
+        if (getThemeGlancePlaceholder(container)) return;
+        const placeholder = document.createElement("div");
+        placeholder.className = "glance-box lg-glance-placeholder";
+        placeholder.setAttribute("aria-hidden", "true");
+        placeholder.innerHTML = `
+            <div class="skeleton-glance">
+                <div class="skeleton-line skeleton-line--title"></div>
+                <div class="skeleton-line skeleton-line--snippet"></div>
+                <div class="skeleton-line skeleton-line--snippet"></div>
+                <div class="skeleton-line skeleton-line--snippet-short"></div>
+            </div>
+        `;
+        container.appendChild(placeholder);
+    }
+
+    function syncGlancePlaceholder() {
+        const container = getAtAGlanceContainer();
+        if (!container) {
+            clearGlancePlaceholderHold();
+            wasSearching = document.documentElement.hasAttribute(SEARCHING_ATTR);
+            return;
+        }
+
+        const searching = document.documentElement.hasAttribute(SEARCHING_ATTR);
+        const isWebSearch = getActiveSearchType() === "web";
+        const hasVisiblePanels = hasVisibleGlancePanel(container);
+        const hasNativeSkeleton = hasCoreGlanceSkeleton(container);
+        const hasSpellCheckNotice = hasMetaSpellCheckNotice();
+        const placeholder = getThemeGlancePlaceholder(container);
+
+        if (wasSearching && !searching && isWebSearch && !hasVisiblePanels && hasSpellCheckNotice) {
+            glancePlaceholderHoldUntil = Date.now() + GLANCE_PLACEHOLDER_HOLD_MS;
+            scheduleGlancePlaceholderRelease();
+        }
+        wasSearching = searching;
+
+        const holdActive = glancePlaceholderHoldUntil > Date.now();
+        const shouldShowPlaceholder =
+            isWebSearch &&
+            !hasVisiblePanels &&
+            !hasNativeSkeleton &&
+            (searching || (holdActive && hasSpellCheckNotice));
+
+        if (shouldShowPlaceholder) {
+            ensureThemeGlancePlaceholder(container);
+        } else {
+            placeholder?.remove();
+        }
+
+        if (hasVisiblePanels || !isWebSearch || (!searching && !hasSpellCheckNotice && !holdActive)) {
+            clearGlancePlaceholderHold();
+        }
+    }
+
+    function scheduleGlancePlaceholderSync() {
+        if (glancePlaceholderFrame) return;
+        glancePlaceholderFrame = requestAnimationFrame(() => {
+            glancePlaceholderFrame = 0;
+            syncGlancePlaceholder();
+        });
+    }
+
+    function observeGlancePlaceholderState() {
+        const container = getAtAGlanceContainer();
+        const meta = getResultsMeta();
+        const page = getResultsPage();
+
+        if (container) {
+            new MutationObserver(scheduleGlancePlaceholderSync).observe(container, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ["hidden", "class", "aria-hidden"],
+            });
+        }
+
+        if (meta) {
+            new MutationObserver(scheduleGlancePlaceholderSync).observe(meta, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+            });
+        }
+
+        if (page) {
+            new MutationObserver(scheduleGlancePlaceholderSync).observe(page, {
+                attributes: true,
+                attributeFilter: ["data-lg-search-type"],
+            });
+        }
+
+        new MutationObserver(scheduleGlancePlaceholderSync).observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: [SEARCHING_ATTR],
+        });
+
+        window.addEventListener("degoog-results-ready", scheduleGlancePlaceholderSync);
+        window.addEventListener("lg-sync-search-type", scheduleGlancePlaceholderSync);
+        scheduleGlancePlaceholderSync();
+    }
+
+    onReady(observeGlancePlaceholderState);
+})();
+
+/* ── 4b. Filters dropdown ──────────────────────────────────────────────── */
+(() => {
     let filtersFrame = 0;
 
     function unwrapMetaRow() {
