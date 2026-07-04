@@ -945,6 +945,37 @@ function getLgTranslation(key) {
 /* ── 4. Move spell-check notices into #results-meta ─────────────────────── */
 (() => {
     let spellCheckFrame = 0;
+    const SPELL_CHECK_META_SELECTOR = '.spell-check-notice[data-lg-spell-check-meta="1"]';
+
+    function getSpellCheckSourceNotice() {
+        return [...document.querySelectorAll(".spell-check-notice")].find(
+            notice => !notice.closest("#results-meta"),
+        );
+    }
+
+    function bindSpellCheckNotice(notice) {
+        if (!notice || notice.dataset.lgSpellCheckBound === "1") return;
+        const link = notice.querySelector("[data-spell-link]");
+        if (!link) return;
+        link.addEventListener("click", event => {
+            event.preventDefault();
+            const query = link.dataset.original || "";
+            const endpoint = link.dataset.skip || "";
+            const href = link.href;
+            if (!endpoint) {
+                window.location.assign(href);
+                return;
+            }
+            fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ q: query }),
+            }).finally(() => {
+                window.location.assign(href);
+            });
+        });
+        notice.dataset.lgSpellCheckBound = "1";
+    }
 
     function wrapResultsStats(meta) {
         if (!meta || meta.querySelector(".results-meta-stats")) return;
@@ -962,16 +993,31 @@ function getLgTranslation(key) {
     }
 
     function moveSpellCheck() {
-        const notices = document.querySelectorAll(".spell-check-notice");
         const meta = getResultsMeta();
+        const existingMetaNotice = meta?.querySelector(SPELL_CHECK_META_SELECTOR) || null;
+        const sourceNotice = getSpellCheckSourceNotice();
         wrapResultsStats(meta);
-        for (let i = 0; i < notices.length; i++) {
-            const notice = notices[i];
-            const panel = notice.closest(".results-slot-panel");
-            if (meta && notice.parentNode !== meta) {
-                meta.appendChild(notice);
-                panel?.remove();
-            }
+        if (!meta) return;
+
+        if (!sourceNotice) {
+            existingMetaNotice?.remove();
+            return;
+        }
+
+        const panel = sourceNotice.closest(".results-slot-panel");
+        if (panel) {
+            panel.hidden = true;
+            panel.setAttribute("aria-hidden", "true");
+        }
+
+        const nextMetaNotice = sourceNotice.cloneNode(true);
+        nextMetaNotice.dataset.lgSpellCheckMeta = "1";
+        bindSpellCheckNotice(nextMetaNotice);
+
+        if (existingMetaNotice) {
+            existingMetaNotice.replaceWith(nextMetaNotice);
+        } else {
+            meta.appendChild(nextMetaNotice);
         }
     }
 

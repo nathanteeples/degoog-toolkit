@@ -3113,6 +3113,7 @@ body {
 
 /* Spell check: appended dynamically to #results-meta to sit side-by-side */
 #results-meta {
+    box-sizing: border-box;
     display: flex;
     flex-direction: row;
     justify-content: flex-start;
@@ -3125,8 +3126,9 @@ body {
 
 @media (min-width: 768px) {
     #results-meta {
+        width: min(100%, var(--literallygoogle-results-layout-max));
         flex-wrap: nowrap;
-        max-width: var(--literallygoogle-results-layout-max);
+        max-width: none;
     }
 }
 
@@ -3556,12 +3558,9 @@ body {
     flex: 0 1 auto;
     min-width: 0;
     margin: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.18rem;
+    display: block;
     line-height: 1.35;
-    white-space: normal;
+    white-space: nowrap;
 }
 
 #results-meta .spell-check-notice br {
@@ -3570,6 +3569,7 @@ body {
 
 #results-meta .spell-check-notice a {
     display: block;
+    margin-top: 0.18rem;
     margin-left: 0;
     color: var(--text-link);
 }
