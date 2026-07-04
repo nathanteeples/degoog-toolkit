@@ -950,6 +950,7 @@ function getLgTranslation(key) {
         '.spell-check-notice[data-lg-spell-check-meta="1"]';
     const PRESERVED_GLANCE_SKELETON_ATTR = "data-lg-preserved-glance-skeleton";
     let nativeGlanceSkeletonHtml = "";
+    let hoistedSpellCheckNotice = null;
 
     function getAtAGlanceContainer() {
         return document.getElementById("at-a-glance");
@@ -1059,6 +1060,27 @@ function getLgTranslation(key) {
         getResultsMeta()
             ?.querySelectorAll(HOISTED_SPELL_CHECK_SELECTOR)
             .forEach(notice => notice.remove());
+        hoistedSpellCheckNotice = null;
+    }
+
+    function spellCheckMatchesCurrentQuery(notice) {
+        const originalQuery = notice
+            ?.querySelector("[data-spell-link]")
+            ?.dataset.original?.trim();
+        const currentQuery = getResultsSearchInput()?.value?.trim();
+        return !originalQuery || !currentQuery || originalQuery === currentQuery;
+    }
+
+    function restoreHoistedSpellCheckIfNeeded(meta) {
+        if (!meta || !hoistedSpellCheckNotice) return;
+        if (meta.querySelector(".spell-check-notice")) return;
+        if (!spellCheckMatchesCurrentQuery(hoistedSpellCheckNotice)) {
+            hoistedSpellCheckNotice = null;
+            return;
+        }
+
+        wrapResultsStats(meta);
+        meta.appendChild(hoistedSpellCheckNotice);
     }
 
     function wrapResultsStats(meta) {
@@ -1084,7 +1106,10 @@ function getLgTranslation(key) {
         const notices = [...document.querySelectorAll(".spell-check-notice")].filter(
             notice => !notice.closest("#results-meta"),
         );
-        if (notices.length === 0) return;
+        if (notices.length === 0) {
+            restoreHoistedSpellCheckIfNeeded(meta);
+            return;
+        }
 
         meta.querySelectorAll(HOISTED_SPELL_CHECK_SELECTOR).forEach(notice => notice.remove());
         for (const notice of notices) {
@@ -1093,6 +1118,7 @@ function getLgTranslation(key) {
             notice.dataset.lgSpellCheckMeta = "1";
             bindSpellCheckNotice(notice);
             meta.appendChild(notice);
+            hoistedSpellCheckNotice = notice;
             panel?.remove();
             if (container?.id === "at-a-glance") {
                 restoreNativeGlanceSkeletonIfNeeded(container);
@@ -1153,7 +1179,6 @@ function getLgTranslation(key) {
         if (resultsList) {
             new MutationObserver(mutations => {
                 if (mutationsStartSearch(mutations, { includeImageGrid: true })) {
-                    clearHoistedSpellCheck();
                     removePreservedGlanceSkeleton();
                     nativeGlanceSkeletonHtml = "";
                 }
