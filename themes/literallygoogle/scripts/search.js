@@ -945,12 +945,14 @@ function getLgTranslation(key) {
 /* ── 4. Move spell-check notices into #results-meta ─────────────────────── */
 (() => {
     let spellCheckFrame = 0;
-    const SPELL_CHECK_META_SELECTOR = '.spell-check-notice[data-lg-spell-check-meta="1"]';
+    const SEARCHING_ATTR = "data-lg-sidebar-searching";
+    const HOISTED_SPELL_CHECK_SELECTOR =
+        '.spell-check-notice[data-lg-spell-check-meta="1"]';
+    const PRESERVED_GLANCE_SKELETON_ATTR = "data-lg-preserved-glance-skeleton";
+    let nativeGlanceSkeletonHtml = "";
 
-    function getSpellCheckSourceNotice() {
-        return [...document.querySelectorAll(".spell-check-notice")].find(
-            notice => !notice.closest("#results-meta"),
-        );
+    function getAtAGlanceContainer() {
+        return document.getElementById("at-a-glance");
     }
 
     function bindSpellCheckNotice(notice) {
@@ -977,6 +979,88 @@ function getLgTranslation(key) {
         notice.dataset.lgSpellCheckBound = "1";
     }
 
+    function isNativeGlanceSkeleton(node) {
+        return (
+            node instanceof Element &&
+            node.matches(".glance-box") &&
+            !!node.querySelector(".skeleton-glance")
+        );
+    }
+
+    function rememberNativeGlanceSkeleton(node) {
+        if (isNativeGlanceSkeleton(node)) {
+            nativeGlanceSkeletonHtml = node.outerHTML;
+            return;
+        }
+        if (!(node instanceof Element)) return;
+        const skeleton = node
+            .querySelector(".glance-box .skeleton-glance")
+            ?.closest(".glance-box");
+        if (skeleton instanceof HTMLElement) {
+            nativeGlanceSkeletonHtml = skeleton.outerHTML;
+        }
+    }
+
+    function rememberCurrentNativeGlanceSkeleton() {
+        const container = getAtAGlanceContainer();
+        if (!container) return;
+        for (const child of container.children) {
+            rememberNativeGlanceSkeleton(child);
+        }
+    }
+
+    function hasNativeGlanceSkeleton(container) {
+        return [...container.children].some(isNativeGlanceSkeleton);
+    }
+
+    function hasVisibleNonSpellCheckGlance(container) {
+        return [...container.querySelectorAll(":scope > .results-slot-panel")].some(
+            panel =>
+                panel instanceof HTMLElement &&
+                !panel.hidden &&
+                !panel.querySelector(".spell-check-notice"),
+        );
+    }
+
+    function isSearchLoading() {
+        if (document.documentElement.hasAttribute(SEARCHING_ATTR)) return true;
+        const metaText = getResultsMeta()?.textContent || "";
+        if (
+            SEARCH_ACTIVITY_TEXT.searchingPattern.test(metaText.trim()) ||
+            SEARCH_ACTIVITY_TEXT.streamingPattern.test(metaText)
+        ) {
+            return true;
+        }
+        return Boolean(
+            getResultsList()?.querySelector(SEARCH_START_SELECTOR_WITH_IMAGE_GRID),
+        );
+    }
+
+    function restoreNativeGlanceSkeletonIfNeeded(container = getAtAGlanceContainer()) {
+        if (!container || !nativeGlanceSkeletonHtml || !isSearchLoading()) return;
+        if (hasNativeGlanceSkeleton(container) || hasVisibleNonSpellCheckGlance(container)) {
+            return;
+        }
+        const template = document.createElement("template");
+        template.innerHTML = nativeGlanceSkeletonHtml;
+        const skeleton = template.content.firstElementChild;
+        if (!(skeleton instanceof HTMLElement)) return;
+        skeleton.setAttribute(PRESERVED_GLANCE_SKELETON_ATTR, "1");
+        container.appendChild(skeleton);
+    }
+
+    function removePreservedGlanceSkeleton() {
+        getAtAGlanceContainer()
+            ?.querySelectorAll(`[${PRESERVED_GLANCE_SKELETON_ATTR}]`)
+            .forEach(node => node.remove());
+    }
+
+    function clearHoistedSpellCheck() {
+        getResultsMeta()
+            ?.querySelectorAll(HOISTED_SPELL_CHECK_SELECTOR)
+            .forEach(notice => notice.remove());
+    }
+
     function wrapResultsStats(meta) {
         if (!meta || meta.querySelector(".results-meta-stats")) return;
         for (let i = 0; i < meta.childNodes.length; i++) {
@@ -994,30 +1078,25 @@ function getLgTranslation(key) {
 
     function moveSpellCheck() {
         const meta = getResultsMeta();
-        const existingMetaNotice = meta?.querySelector(SPELL_CHECK_META_SELECTOR) || null;
-        const sourceNotice = getSpellCheckSourceNotice();
         wrapResultsStats(meta);
         if (!meta) return;
 
-        if (!sourceNotice) {
-            existingMetaNotice?.remove();
-            return;
-        }
+        const notices = [...document.querySelectorAll(".spell-check-notice")].filter(
+            notice => !notice.closest("#results-meta"),
+        );
+        if (notices.length === 0) return;
 
-        const panel = sourceNotice.closest(".results-slot-panel");
-        if (panel) {
-            panel.hidden = true;
-            panel.setAttribute("aria-hidden", "true");
-        }
-
-        const nextMetaNotice = sourceNotice.cloneNode(true);
-        nextMetaNotice.dataset.lgSpellCheckMeta = "1";
-        bindSpellCheckNotice(nextMetaNotice);
-
-        if (existingMetaNotice) {
-            existingMetaNotice.replaceWith(nextMetaNotice);
-        } else {
-            meta.appendChild(nextMetaNotice);
+        meta.querySelectorAll(HOISTED_SPELL_CHECK_SELECTOR).forEach(notice => notice.remove());
+        for (const notice of notices) {
+            const panel = notice.closest(".results-slot-panel");
+            const container = panel?.parentElement || null;
+            notice.dataset.lgSpellCheckMeta = "1";
+            bindSpellCheckNotice(notice);
+            meta.appendChild(notice);
+            panel?.remove();
+            if (container?.id === "at-a-glance") {
+                restoreNativeGlanceSkeletonIfNeeded(container);
+            }
         }
     }
 
@@ -1058,6 +1137,9 @@ function getLgTranslation(key) {
 
     const target = getResultsPage() || document.documentElement;
     new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            [...mutation.addedNodes, ...mutation.removedNodes].forEach(rememberNativeGlanceSkeleton);
+        }
         const shouldCheck = mutations.some(mutationTouchesSpellCheck);
         if (shouldCheck) scheduleSpellCheck();
     }).observe(target, {
@@ -1066,191 +1148,32 @@ function getLgTranslation(key) {
         characterData: true,
     });
 
+    function bindSearchStartCleanup() {
+        const resultsList = getResultsList();
+        if (resultsList) {
+            new MutationObserver(mutations => {
+                if (mutationsStartSearch(mutations, { includeImageGrid: true })) {
+                    clearHoistedSpellCheck();
+                    removePreservedGlanceSkeleton();
+                    nativeGlanceSkeletonHtml = "";
+                }
+                rememberCurrentNativeGlanceSkeleton();
+            }).observe(resultsList, { childList: true, subtree: true });
+        }
+
+        getResultsSearchButton()?.addEventListener("click", clearHoistedSpellCheck);
+        getResultsSearchInput()?.addEventListener("keydown", event => {
+            if (event.key === "Enter") clearHoistedSpellCheck();
+        });
+        window.addEventListener("degoog-results-ready", removePreservedGlanceSkeleton);
+    }
+
+    bindSearchStartCleanup();
+    rememberCurrentNativeGlanceSkeleton();
     moveSpellCheck();
 })();
 
 /* ── 4a. Filters dropdown ──────────────────────────────────────────────── */
-(() => {
-    const SEARCHING_ATTR = "data-lg-sidebar-searching";
-    const GLANCE_SKELETON_GRACE_MS = 3500;
-    const FALLBACK_GLANCE_SKELETON_HTML = `
-        <div class="glance-box">
-            <div class="skeleton-glance">
-                <div class="skeleton-line skeleton-line--title"></div>
-                <div class="skeleton-line skeleton-line--snippet"></div>
-                <div class="skeleton-line skeleton-line--snippet"></div>
-                <div class="skeleton-line skeleton-line--snippet-short"></div>
-            </div>
-        </div>
-    `;
-    let nativeGlanceSkeletonHtml = FALLBACK_GLANCE_SKELETON_HTML.trim();
-    let glanceSkeletonFrame = 0;
-    let glanceSkeletonTimer = 0;
-
-    function getAtAGlanceContainer() {
-        return document.getElementById("at-a-glance");
-    }
-
-    function getManagedGlanceSkeleton(container) {
-        return (
-            container?.querySelector(
-                ":scope > .lg-managed-glance-skeleton, :scope > .glance-box.lg-managed-glance-skeleton",
-            ) || null
-        );
-    }
-
-    function rememberNativeGlanceSkeleton(container) {
-        const nativeSkeleton =
-            container?.querySelector(":scope > .glance-box .skeleton-glance")?.closest(".glance-box");
-        if (!nativeSkeleton) return;
-        nativeGlanceSkeletonHtml = nativeSkeleton.outerHTML;
-    }
-
-    function hasNativeGlanceSkeleton(container) {
-        return [...container.children].some(
-            child =>
-                child instanceof Element &&
-                child.matches(".glance-box:not(.lg-managed-glance-skeleton)") &&
-                !!child.querySelector(".skeleton-glance"),
-        );
-    }
-
-    function getVisibleGlancePanels(container) {
-        return [...container.querySelectorAll(":scope > .results-slot-panel")].filter(
-            panel =>
-                panel instanceof HTMLElement &&
-                !panel.hidden &&
-                !panel.classList.contains("lg-managed-glance-skeleton"),
-        );
-    }
-
-    function hasVisibleNonSpellCheckGlance(container) {
-        return getVisibleGlancePanels(container).some(
-            panel => !panel.querySelector(".spell-check-notice"),
-        );
-    }
-
-    function hasHoistedSpellCheckNotice() {
-        return !!getResultsMeta()?.querySelector(".spell-check-notice");
-    }
-
-    function clearManagedGlanceSkeletonTimer() {
-        if (!glanceSkeletonTimer) return;
-        clearTimeout(glanceSkeletonTimer);
-        glanceSkeletonTimer = 0;
-    }
-
-    function removeManagedGlanceSkeleton(container) {
-        getManagedGlanceSkeleton(container)?.remove();
-    }
-
-    function ensureManagedGlanceSkeleton(container) {
-        if (getManagedGlanceSkeleton(container)) return;
-        const template = document.createElement("template");
-        template.innerHTML = nativeGlanceSkeletonHtml;
-        const skeleton = template.content.firstElementChild;
-        if (!(skeleton instanceof HTMLElement)) return;
-        skeleton.classList.add("lg-managed-glance-skeleton");
-        skeleton.setAttribute("aria-hidden", "true");
-        container.appendChild(skeleton);
-    }
-
-    function scheduleManagedGlanceSkeletonRemoval() {
-        clearManagedGlanceSkeletonTimer();
-        glanceSkeletonTimer = window.setTimeout(() => {
-            glanceSkeletonTimer = 0;
-            syncManagedGlanceSkeleton();
-        }, GLANCE_SKELETON_GRACE_MS);
-    }
-
-    function syncManagedGlanceSkeleton() {
-        const container = getAtAGlanceContainer();
-        if (!container) {
-            clearManagedGlanceSkeletonTimer();
-            return;
-        }
-
-        rememberNativeGlanceSkeleton(container);
-
-        const isWebSearch = getActiveSearchType() === "web";
-        const searching = document.documentElement.hasAttribute(SEARCHING_ATTR);
-        const hasSpellCheck = hasHoistedSpellCheckNotice();
-        const hasRealGlance = hasVisibleNonSpellCheckGlance(container);
-        const hasNativeSkeleton = hasNativeGlanceSkeleton(container);
-
-        if (!isWebSearch || hasRealGlance || !hasSpellCheck) {
-            clearManagedGlanceSkeletonTimer();
-            removeManagedGlanceSkeleton(container);
-            return;
-        }
-
-        if (hasNativeSkeleton) {
-            clearManagedGlanceSkeletonTimer();
-            removeManagedGlanceSkeleton(container);
-            return;
-        }
-
-        ensureManagedGlanceSkeleton(container);
-
-        if (searching) {
-            clearManagedGlanceSkeletonTimer();
-        } else if (!glanceSkeletonTimer) {
-            scheduleManagedGlanceSkeletonRemoval();
-        }
-    }
-
-    function scheduleManagedGlanceSkeletonSync() {
-        if (glanceSkeletonFrame) return;
-        glanceSkeletonFrame = requestAnimationFrame(() => {
-            glanceSkeletonFrame = 0;
-            syncManagedGlanceSkeleton();
-        });
-    }
-
-    function observeManagedGlanceSkeleton() {
-        const container = getAtAGlanceContainer();
-        const meta = getResultsMeta();
-        const page = getResultsPage();
-
-        if (container) {
-            rememberNativeGlanceSkeleton(container);
-            new MutationObserver(scheduleManagedGlanceSkeletonSync).observe(container, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ["hidden", "class", "aria-hidden"],
-            });
-        }
-
-        if (meta) {
-            new MutationObserver(scheduleManagedGlanceSkeletonSync).observe(meta, {
-                childList: true,
-                subtree: true,
-                characterData: true,
-            });
-        }
-
-        if (page) {
-            new MutationObserver(scheduleManagedGlanceSkeletonSync).observe(page, {
-                attributes: true,
-                attributeFilter: ["data-lg-search-type"],
-            });
-        }
-
-        new MutationObserver(scheduleManagedGlanceSkeletonSync).observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: [SEARCHING_ATTR],
-        });
-
-        window.addEventListener("degoog-results-ready", scheduleManagedGlanceSkeletonSync);
-        window.addEventListener("lg-sync-search-type", scheduleManagedGlanceSkeletonSync);
-        scheduleManagedGlanceSkeletonSync();
-    }
-
-    onReady(observeManagedGlanceSkeleton);
-})();
-
-/* ── 4b. Filters dropdown ──────────────────────────────────────────────── */
 (() => {
     let filtersFrame = 0;
 
