@@ -1072,132 +1072,142 @@ function getLgTranslation(key) {
 /* ── 4a. Filters dropdown ──────────────────────────────────────────────── */
 (() => {
     const SEARCHING_ATTR = "data-lg-sidebar-searching";
-    const GLANCE_PLACEHOLDER_HOLD_MS = 2500;
-    let glancePlaceholderFrame = 0;
-    let glancePlaceholderTimer = 0;
-    let glancePlaceholderHoldUntil = 0;
-    let wasSearching = document.documentElement.hasAttribute(SEARCHING_ATTR);
-
-    function getAtAGlanceContainer() {
-        return document.getElementById("at-a-glance");
-    }
-
-    function getThemeGlancePlaceholder(container) {
-        return container?.querySelector(":scope > .lg-glance-placeholder") || null;
-    }
-
-    function hasCoreGlanceSkeleton(container) {
-        return [...container.children].some(
-            child =>
-                child instanceof Element &&
-                child.matches(".glance-box:not(.lg-glance-placeholder)") &&
-                !!child.querySelector(".skeleton-glance"),
-        );
-    }
-
-    function hasVisibleGlancePanel(container) {
-        return [...container.querySelectorAll(":scope > .results-slot-panel")].some(
-            panel => panel instanceof HTMLElement && !panel.hidden,
-        );
-    }
-
-    function hasMetaSpellCheckNotice() {
-        return !!getResultsMeta()?.querySelector(".spell-check-notice");
-    }
-
-    function clearGlancePlaceholderHold() {
-        glancePlaceholderHoldUntil = 0;
-        if (!glancePlaceholderTimer) return;
-        clearTimeout(glancePlaceholderTimer);
-        glancePlaceholderTimer = 0;
-    }
-
-    function scheduleGlancePlaceholderRelease() {
-        if (glancePlaceholderTimer) {
-            clearTimeout(glancePlaceholderTimer);
-        }
-        const delay = Math.max(0, glancePlaceholderHoldUntil - Date.now());
-        if (!delay) {
-            glancePlaceholderTimer = 0;
-            scheduleGlancePlaceholderSync();
-            return;
-        }
-        glancePlaceholderTimer = window.setTimeout(() => {
-            glancePlaceholderTimer = 0;
-            scheduleGlancePlaceholderSync();
-        }, delay);
-    }
-
-    function ensureThemeGlancePlaceholder(container) {
-        if (getThemeGlancePlaceholder(container)) return;
-        const placeholder = document.createElement("div");
-        placeholder.className = "glance-box lg-glance-placeholder";
-        placeholder.setAttribute("aria-hidden", "true");
-        placeholder.innerHTML = `
+    const GLANCE_SKELETON_GRACE_MS = 3500;
+    const FALLBACK_GLANCE_SKELETON_HTML = `
+        <div class="glance-box">
             <div class="skeleton-glance">
                 <div class="skeleton-line skeleton-line--title"></div>
                 <div class="skeleton-line skeleton-line--snippet"></div>
                 <div class="skeleton-line skeleton-line--snippet"></div>
                 <div class="skeleton-line skeleton-line--snippet-short"></div>
             </div>
-        `;
-        container.appendChild(placeholder);
+        </div>
+    `;
+    let nativeGlanceSkeletonHtml = FALLBACK_GLANCE_SKELETON_HTML.trim();
+    let glanceSkeletonFrame = 0;
+    let glanceSkeletonTimer = 0;
+
+    function getAtAGlanceContainer() {
+        return document.getElementById("at-a-glance");
     }
 
-    function syncGlancePlaceholder() {
+    function getManagedGlanceSkeleton(container) {
+        return container?.querySelector(":scope > .glance-box.lg-managed-glance-skeleton") || null;
+    }
+
+    function rememberNativeGlanceSkeleton(container) {
+        const nativeSkeleton =
+            container?.querySelector(":scope > .glance-box .skeleton-glance")?.closest(".glance-box");
+        if (!nativeSkeleton) return;
+        nativeGlanceSkeletonHtml = nativeSkeleton.outerHTML;
+    }
+
+    function hasNativeGlanceSkeleton(container) {
+        return [...container.children].some(
+            child =>
+                child instanceof Element &&
+                child.matches(".glance-box:not(.lg-managed-glance-skeleton)") &&
+                !!child.querySelector(".skeleton-glance"),
+        );
+    }
+
+    function getVisibleGlancePanels(container) {
+        return [...container.querySelectorAll(":scope > .results-slot-panel")].filter(
+            panel => panel instanceof HTMLElement && !panel.hidden,
+        );
+    }
+
+    function hasVisibleNonSpellCheckGlance(container) {
+        return getVisibleGlancePanels(container).some(
+            panel => !panel.querySelector(".spell-check-notice"),
+        );
+    }
+
+    function hasHoistedSpellCheckNotice() {
+        return !!getResultsMeta()?.querySelector(".spell-check-notice");
+    }
+
+    function clearManagedGlanceSkeletonTimer() {
+        if (!glanceSkeletonTimer) return;
+        clearTimeout(glanceSkeletonTimer);
+        glanceSkeletonTimer = 0;
+    }
+
+    function removeManagedGlanceSkeleton(container) {
+        getManagedGlanceSkeleton(container)?.remove();
+    }
+
+    function ensureManagedGlanceSkeleton(container) {
+        if (getManagedGlanceSkeleton(container)) return;
+        const template = document.createElement("template");
+        template.innerHTML = nativeGlanceSkeletonHtml;
+        const skeleton = template.content.firstElementChild;
+        if (!(skeleton instanceof HTMLElement)) return;
+        skeleton.classList.add("lg-managed-glance-skeleton");
+        skeleton.setAttribute("aria-hidden", "true");
+        container.appendChild(skeleton);
+    }
+
+    function scheduleManagedGlanceSkeletonRemoval() {
+        clearManagedGlanceSkeletonTimer();
+        glanceSkeletonTimer = window.setTimeout(() => {
+            glanceSkeletonTimer = 0;
+            syncManagedGlanceSkeleton();
+        }, GLANCE_SKELETON_GRACE_MS);
+    }
+
+    function syncManagedGlanceSkeleton() {
         const container = getAtAGlanceContainer();
         if (!container) {
-            clearGlancePlaceholderHold();
-            wasSearching = document.documentElement.hasAttribute(SEARCHING_ATTR);
+            clearManagedGlanceSkeletonTimer();
             return;
         }
 
-        const searching = document.documentElement.hasAttribute(SEARCHING_ATTR);
+        rememberNativeGlanceSkeleton(container);
+
         const isWebSearch = getActiveSearchType() === "web";
-        const hasVisiblePanels = hasVisibleGlancePanel(container);
-        const hasNativeSkeleton = hasCoreGlanceSkeleton(container);
-        const hasSpellCheckNotice = hasMetaSpellCheckNotice();
-        const placeholder = getThemeGlancePlaceholder(container);
+        const searching = document.documentElement.hasAttribute(SEARCHING_ATTR);
+        const hasSpellCheck = hasHoistedSpellCheckNotice();
+        const hasRealGlance = hasVisibleNonSpellCheckGlance(container);
+        const hasNativeSkeleton = hasNativeGlanceSkeleton(container);
 
-        if (wasSearching && !searching && isWebSearch && !hasVisiblePanels && hasSpellCheckNotice) {
-            glancePlaceholderHoldUntil = Date.now() + GLANCE_PLACEHOLDER_HOLD_MS;
-            scheduleGlancePlaceholderRelease();
-        }
-        wasSearching = searching;
-
-        const holdActive = glancePlaceholderHoldUntil > Date.now();
-        const shouldShowPlaceholder =
-            isWebSearch &&
-            !hasVisiblePanels &&
-            !hasNativeSkeleton &&
-            (searching || (holdActive && hasSpellCheckNotice));
-
-        if (shouldShowPlaceholder) {
-            ensureThemeGlancePlaceholder(container);
-        } else {
-            placeholder?.remove();
+        if (!isWebSearch || hasRealGlance || !hasSpellCheck) {
+            clearManagedGlanceSkeletonTimer();
+            removeManagedGlanceSkeleton(container);
+            return;
         }
 
-        if (hasVisiblePanels || !isWebSearch || (!searching && !hasSpellCheckNotice && !holdActive)) {
-            clearGlancePlaceholderHold();
+        if (hasNativeSkeleton) {
+            clearManagedGlanceSkeletonTimer();
+            removeManagedGlanceSkeleton(container);
+            return;
+        }
+
+        ensureManagedGlanceSkeleton(container);
+
+        if (searching) {
+            clearManagedGlanceSkeletonTimer();
+        } else if (!glanceSkeletonTimer) {
+            scheduleManagedGlanceSkeletonRemoval();
         }
     }
 
-    function scheduleGlancePlaceholderSync() {
-        if (glancePlaceholderFrame) return;
-        glancePlaceholderFrame = requestAnimationFrame(() => {
-            glancePlaceholderFrame = 0;
-            syncGlancePlaceholder();
+    function scheduleManagedGlanceSkeletonSync() {
+        if (glanceSkeletonFrame) return;
+        glanceSkeletonFrame = requestAnimationFrame(() => {
+            glanceSkeletonFrame = 0;
+            syncManagedGlanceSkeleton();
         });
     }
 
-    function observeGlancePlaceholderState() {
+    function observeManagedGlanceSkeleton() {
         const container = getAtAGlanceContainer();
         const meta = getResultsMeta();
         const page = getResultsPage();
 
         if (container) {
-            new MutationObserver(scheduleGlancePlaceholderSync).observe(container, {
+            rememberNativeGlanceSkeleton(container);
+            new MutationObserver(scheduleManagedGlanceSkeletonSync).observe(container, {
                 childList: true,
                 subtree: true,
                 attributes: true,
@@ -1206,7 +1216,7 @@ function getLgTranslation(key) {
         }
 
         if (meta) {
-            new MutationObserver(scheduleGlancePlaceholderSync).observe(meta, {
+            new MutationObserver(scheduleManagedGlanceSkeletonSync).observe(meta, {
                 childList: true,
                 subtree: true,
                 characterData: true,
@@ -1214,23 +1224,23 @@ function getLgTranslation(key) {
         }
 
         if (page) {
-            new MutationObserver(scheduleGlancePlaceholderSync).observe(page, {
+            new MutationObserver(scheduleManagedGlanceSkeletonSync).observe(page, {
                 attributes: true,
                 attributeFilter: ["data-lg-search-type"],
             });
         }
 
-        new MutationObserver(scheduleGlancePlaceholderSync).observe(document.documentElement, {
+        new MutationObserver(scheduleManagedGlanceSkeletonSync).observe(document.documentElement, {
             attributes: true,
             attributeFilter: [SEARCHING_ATTR],
         });
 
-        window.addEventListener("degoog-results-ready", scheduleGlancePlaceholderSync);
-        window.addEventListener("lg-sync-search-type", scheduleGlancePlaceholderSync);
-        scheduleGlancePlaceholderSync();
+        window.addEventListener("degoog-results-ready", scheduleManagedGlanceSkeletonSync);
+        window.addEventListener("lg-sync-search-type", scheduleManagedGlanceSkeletonSync);
+        scheduleManagedGlanceSkeletonSync();
     }
 
-    onReady(observeGlancePlaceholderState);
+    onReady(observeManagedGlanceSkeleton);
 })();
 
 /* ── 4b. Filters dropdown ──────────────────────────────────────────────── */
@@ -2064,6 +2074,65 @@ function getLgTranslation(key) {
         };
     }
 
+    function ensureFiltersPanelHost(panel) {
+        const tabs = getResultsTabs();
+        if (!panel || !tabs) return;
+        if (panel.parentElement !== tabs.parentElement) {
+            tabs.after(panel);
+        }
+    }
+
+    function openFiltersDropdownFallback(panel, toggle, page) {
+        ensureFiltersPanelHost(panel);
+        panel.style.display = "flex";
+        toggle.classList.add("is-open");
+        toggle.setAttribute("aria-expanded", "true");
+        try {
+            localStorage.setItem("degoog-tools-open", "true");
+        } catch {
+            /* Persisting the transient tools-panel state is optional. */
+        }
+        positionFiltersPanel(panel, toggle, page);
+        syncCustomDateMenuState(panel);
+    }
+
+    function wireFiltersToggleFallback(panel, toggle, page) {
+        if (!markWired(toggle, "lgFiltersFallbackWired")) return;
+
+        toggle.addEventListener(
+            "click",
+            () => {
+                const currentPage = getResultsPage();
+                if (isImageDrawerMode(currentPage)) return;
+                const wasOpen =
+                    panel.style.display !== "none" ||
+                    toggle.getAttribute("aria-expanded") === "true";
+
+                requestAnimationFrame(() => {
+                    const isOpen =
+                        panel.style.display !== "none" ||
+                        toggle.getAttribute("aria-expanded") === "true";
+
+                    if (isOpen !== wasOpen) {
+                        if (isOpen) {
+                            ensureFiltersPanelHost(panel);
+                            positionFiltersPanel(panel, toggle, page);
+                            syncCustomDateMenuState(panel);
+                        }
+                        return;
+                    }
+
+                    if (wasOpen) {
+                        ensureFiltersClosed(panel, toggle);
+                    } else {
+                        openFiltersDropdownFallback(panel, toggle, page);
+                    }
+                });
+            },
+            true,
+        );
+    }
+
     function activateImageDrawerMode(page, toggle) {
         if (isDesktopImageDrawerMode(page)) {
             ensureImageDrawerHost(page);
@@ -2133,6 +2202,7 @@ function getLgTranslation(key) {
 
         relabelFiltersToggle(toggle);
         wireDrawerToggleGuard(toggle);
+        ensureFiltersPanelHost(panel);
         panel.classList.remove("lg-tools-inline");
         panel.classList.add("lg-filters-dropdown");
         toolsBar?.classList.add("lg-filters-wrap");
@@ -2156,6 +2226,7 @@ function getLgTranslation(key) {
             toggle.dataset.lgFiltersWired = "1";
             wireFiltersUiObservers(panel, toggle, page);
         }
+        wireFiltersToggleFallback(panel, toggle, page);
 
         syncFloatingFiltersLauncher(toggle, page);
         window.dispatchEvent(new Event("lg-sync-sidebar-chrome"));
