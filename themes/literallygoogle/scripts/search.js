@@ -1092,7 +1092,11 @@ function getLgTranslation(key) {
     }
 
     function getManagedGlanceSkeleton(container) {
-        return container?.querySelector(":scope > .glance-box.lg-managed-glance-skeleton") || null;
+        return (
+            container?.querySelector(
+                ":scope > .lg-managed-glance-skeleton, :scope > .glance-box.lg-managed-glance-skeleton",
+            ) || null
+        );
     }
 
     function rememberNativeGlanceSkeleton(container) {
@@ -1113,7 +1117,10 @@ function getLgTranslation(key) {
 
     function getVisibleGlancePanels(container) {
         return [...container.querySelectorAll(":scope > .results-slot-panel")].filter(
-            panel => panel instanceof HTMLElement && !panel.hidden,
+            panel =>
+                panel instanceof HTMLElement &&
+                !panel.hidden &&
+                !panel.classList.contains("lg-managed-glance-skeleton"),
         );
     }
 
