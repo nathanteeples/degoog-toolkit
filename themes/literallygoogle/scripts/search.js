@@ -1648,8 +1648,25 @@ function getLgTranslation(key) {
         if (panel.style.display === "none") return;
         const toggleRect = toggle.getBoundingClientRect();
         const pageRect = page.getBoundingClientRect();
+        const viewportGutter = 12;
+        const panelWidth = Math.min(panel.offsetWidth || 288, window.innerWidth - viewportGutter * 2);
+        const spaceRight = window.innerWidth - toggleRect.left - viewportGutter;
+        const preferRight = spaceRight >= panelWidth;
+        const preferredLeft = preferRight
+            ? toggleRect.left - pageRect.left
+            : toggleRect.right - pageRect.left - panelWidth;
+        const maxLeft = Math.max(0, pageRect.width - panelWidth);
+        const clampedLeft = Math.max(0, Math.min(preferredLeft, maxLeft));
+        const panelRight = pageRect.left + clampedLeft + panelWidth;
+        const submenuWidth = Math.min(288, window.innerWidth - viewportGutter * 2);
+        const submenuSpaceRight = window.innerWidth - panelRight - viewportGutter;
+        const submenuSpaceLeft = pageRect.left + clampedLeft - viewportGutter;
+        const openSubmenuToLeft =
+            submenuSpaceRight < submenuWidth && submenuSpaceLeft > submenuSpaceRight;
+
         panel.style.setProperty("--lg-filters-top", `${toggleRect.bottom - pageRect.top + 4}px`);
-        panel.style.setProperty("--lg-filters-left", `${toggleRect.left - pageRect.left}px`);
+        panel.style.setProperty("--lg-filters-left", `${clampedLeft}px`);
+        panel.dataset.lgSubmenuSide = openSubmenuToLeft ? "left" : "right";
     }
 
     function ensureFiltersClosed(panel, toggle) {

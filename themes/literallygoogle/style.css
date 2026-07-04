@@ -907,7 +907,7 @@ html[dir="rtl"] #image-filters-bar.open {
     font-size: 11px;
     font-weight: 500;
     color: var(--text-link);
-    background: var(--bg);
+    background: var(--lg-sidebar-row-surface);
     border: 1px solid var(--border-light);
     border-radius: var(--theme-radius-pill);
     padding: 6px 2rem 6px 12px;
@@ -916,7 +916,7 @@ html[dir="rtl"] #image-filters-bar.open {
 
 .degoog-img-filter-select-wrap .degoog-input:hover {
     color: var(--text-primary);
-    background: var(--bg-light);
+    background: var(--lg-row-hover-bg);
     border-color: var(--bg-hover);
 }
 
@@ -929,7 +929,7 @@ html[dir="rtl"] #image-filters-bar.open {
 .sidebar-accordion-body:has(.kp-title),
 .sidebar-accordion-body:has(.kp-description),
 .sidebar-accordion-body:has(.kp-image) {
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     margin: 20px;
 }
 
@@ -938,7 +938,7 @@ html[dir="rtl"] #image-filters-bar.open {
 }
 
 #results-sidebar .sidebar-accordion.lg-sidebar-knowledge.open > .sidebar-accordion-body {
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     padding: 14px 16px 16px;
     border-start-start-radius: var(--theme-radius-xs);
     border-start-end-radius: var(--theme-radius-xs);
@@ -3026,7 +3026,7 @@ body {
         width: 100%;
         min-height: 3.2rem;
         padding: 0.85rem 1rem;
-        background: var(--bg-light);
+        background: var(--lg-sidebar-row-surface);
         border: 0;
         border-start-start-radius: var(--theme-radius-lg);
         border-start-end-radius: var(--theme-radius-lg);
@@ -3245,7 +3245,7 @@ body {
     max-width: min(18rem, calc(100vw - 2rem));
     margin: 0;
     padding: 0.35rem;
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     border: 1px solid var(--border-light);
     border-radius: var(--theme-radius-lg);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
@@ -3339,10 +3339,15 @@ body {
     overflow-y: auto;
     scrollbar-width: thin;
     padding: 0.35rem;
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     border: 1px solid var(--border-light);
     border-radius: var(--theme-radius-lg);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+}
+
+#results-page > .tools-panel.lg-filters-dropdown[data-lg-submenu-side="left"] .tools-field-menu {
+    inset-inline-start: auto;
+    inset-inline-end: calc(100% + 0.35rem);
 }
 
 #results-page > .tools-panel.lg-filters-dropdown .tools-field-menu .tools-option,
@@ -3358,7 +3363,7 @@ body {
     font-size: 0.875rem;
     line-height: 1.2;
     color: var(--text-primary);
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     border: 0;
     border-radius: var(--theme-radius-xs);
     text-align: start;
@@ -3533,7 +3538,7 @@ body {
     gap: 0.5rem;
     margin-top: 0;
     padding: 14px;
-    background: var(--bg-light);
+    background: var(--lg-sidebar-row-surface);
     border-end-start-radius: calc(var(--theme-radius-lg) - 0.35rem);
     border-end-end-radius: calc(var(--theme-radius-lg) - 0.35rem);
 }
