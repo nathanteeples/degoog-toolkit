@@ -880,15 +880,46 @@ function getLgTranslation(key) {
         sidebar.style.gridRow = `${leadingFullWidthSlotRows()} / span 30`;
     }
 
-    function observeSlots() {
+    function syncAllSlots() {
+        slotContainers().forEach(dedupeFullWidthPanels);
         syncSidebarGridRow();
+    }
+
+    function mutationTouchesSlots(mutation) {
+        const target = mutation.target;
+        if (
+            target instanceof Element &&
+            target.closest?.("#slot-above-results, #slot-below-results, #slot-above-sidebar, #slot-below-sidebar, #at-a-glance")
+        ) {
+            return true;
+        }
+        if (
+            target instanceof CharacterData &&
+            target.parentElement?.closest?.(
+                "#slot-above-results, #slot-below-results, #slot-above-sidebar, #slot-below-sidebar, #at-a-glance",
+            )
+        ) {
+            return true;
+        }
+        if (mutation.type !== "childList") return false;
+        return [...mutation.addedNodes].some(
+            node =>
+                node instanceof Element &&
+                (node.matches?.(".results-slot-panel, #at-a-glance") ||
+                    !!node.querySelector?.(".results-slot-panel, #at-a-glance")),
+        );
+    }
+
+    function observeSlots() {
+        syncAllSlots();
 
         const slot = document.getElementById("slot-above-results");
         if (slot && !observedSlots.has(slot)) {
             observedSlots.add(slot);
-            new MutationObserver(() => {
-                window.requestAnimationFrame(syncSidebarGridRow);
-            }).observe(slot, { childList: true });
+            new MutationObserver(mutations => {
+                if (!mutations.some(mutationTouchesSlots)) return;
+                window.requestAnimationFrame(syncAllSlots);
+            }).observe(slot, { childList: true, subtree: true, characterData: true });
         }
 
         if (!sidebarRowResizeBound) {
@@ -902,9 +933,9 @@ function getLgTranslation(key) {
             if (observedContainers.has(container)) return;
             observedContainers.add(container);
             new MutationObserver(mutations => {
-                const shouldDedupe = mutations.some(mutation => mutation.addedNodes.length > 0);
-                if (shouldDedupe) dedupeFullWidthPanels(container);
-            }).observe(container, { childList: true });
+                if (!mutations.some(mutationTouchesSlots)) return;
+                window.requestAnimationFrame(syncAllSlots);
+            }).observe(container, { childList: true, subtree: true, characterData: true });
         });
     }
 
@@ -952,13 +983,41 @@ function getLgTranslation(key) {
         });
     }
 
+    function mutationTouchesSpellCheck(mutation) {
+        const target = mutation.target;
+        if (
+            target instanceof Element &&
+            target.closest?.("#at-a-glance, #slot-above-results, #results-meta, .spell-check-notice")
+        ) {
+            return true;
+        }
+        if (
+            target instanceof CharacterData &&
+            target.parentElement?.closest?.(
+                "#at-a-glance, #slot-above-results, #results-meta, .spell-check-notice",
+            )
+        ) {
+            return true;
+        }
+        if (mutation.type !== "childList") return false;
+        return [...mutation.addedNodes].some(
+            node =>
+                node instanceof Element &&
+                (node.matches?.(".spell-check-notice, .results-slot-panel, #at-a-glance, #slot-above-results") ||
+                    !!node.querySelector?.(
+                        ".spell-check-notice, .results-slot-panel, #at-a-glance, #slot-above-results",
+                    )),
+        );
+    }
+
     const target = getResultsPage() || document.documentElement;
     new MutationObserver(mutations => {
-        const shouldCheck = mutations.some(mutation => mutation.addedNodes.length > 0);
+        const shouldCheck = mutations.some(mutationTouchesSpellCheck);
         if (shouldCheck) scheduleSpellCheck();
     }).observe(target, {
         childList: true,
         subtree: true,
+        characterData: true,
     });
 
     moveSpellCheck();
