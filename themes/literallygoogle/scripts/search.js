@@ -3295,10 +3295,12 @@ function getLgTranslation(key) {
 
     function getMediaResultsRightEdge() {
         const previewPanel = document.getElementById("media-preview-panel");
-        if (previewPanel?.classList.contains("open")) {
+        const host = getMediaEnginePillsHost();
+        if (previewPanel?.classList.contains("open") && host) {
             const panelRect = previewPanel.getBoundingClientRect();
-            if (panelRect.width > 1) {
-                return panelRect.right;
+            const hostRect = host.getBoundingClientRect();
+            if (panelRect.top < hostRect.bottom && panelRect.width > 1) {
+                return panelRect.left;
             }
         }
 
@@ -3486,7 +3488,8 @@ function getLgTranslation(key) {
         meta.classList.add("lg-media-engine-meta--rail-stuck");
         meta.style.setProperty("--lg-engine-rail-sticky-height", `${hostRect.height}px`);
         meta.style.setProperty("--lg-media-meta-right-gap", `${contentRightGap}px`);
-        host.style.setProperty("--lg-engine-rail-top", `${stickyTop}px`);
+        const currentTop = stickyTop + (metaRect.top - stickyTop) * (1 - revealProgress);
+        host.style.setProperty("--lg-engine-rail-top", `${currentTop}px`);
         host.style.setProperty("--lg-engine-rail-left", `${stuckLeft}px`);
         host.style.setProperty("--lg-engine-rail-right", `${contentRightGap}px`);
         host.style.setProperty("--lg-engine-rail-height", `${hostRect.height}px`);
