@@ -3479,11 +3479,10 @@ function getLaTranslation(key) {
         }
 
         const stickyTop = getStickyRailTop();
-        const stats = meta.querySelector(".results-meta-stats");
         const metaRect = meta.getBoundingClientRect();
         const hostRect = host.getBoundingClientRect();
 
-        const naturalRailTop = stats ? stats.getBoundingClientRect().bottom : metaRect.top;
+        const naturalRailTop = metaRect.top;
         const targetStickyTop = stickyTop + 10;
         const isStuck = naturalRailTop <= targetStickyTop;
 
@@ -3497,16 +3496,17 @@ function getLaTranslation(key) {
         const stuckLeft = metaRect.left + paddingStart;
 
         const contentRight = Math.max(stuckLeft, getMediaResultsRightEdge());
-        const contentRightGap = Math.max(0, window.innerWidth - getMediaMetaRightEdge());
+        const railRightGap = Math.max(0, window.innerWidth - contentRight);
+        const metaRightGap = Math.max(0, window.innerWidth - getMediaMetaRightEdge());
         const currentWidth = Math.max(0, contentRight - stuckLeft);
 
         host.classList.add("lg-media-engine-rail--stuck");
         meta.classList.add("lg-media-engine-meta--rail-stuck");
         meta.style.setProperty("--lg-engine-rail-sticky-height", `${hostRect.height}px`);
-        meta.style.setProperty("--lg-media-meta-right-gap", `${contentRightGap}px`);
+        meta.style.setProperty("--lg-media-meta-right-gap", `${metaRightGap}px`);
         host.style.setProperty("--lg-engine-rail-top", `${targetStickyTop}px`);
         host.style.setProperty("--lg-engine-rail-left", `${stuckLeft}px`);
-        host.style.setProperty("--lg-engine-rail-right", `${contentRightGap}px`);
+        host.style.setProperty("--lg-engine-rail-right", `${railRightGap}px`);
         host.style.setProperty("--lg-engine-rail-height", `${hostRect.height}px`);
         host.style.setProperty("--lg-engine-rail-progress", `${revealProgress}`);
         host.style.setProperty("--lg-engine-rail-base-width", `${hostRect.width}px`);

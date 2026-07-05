@@ -5265,8 +5265,9 @@ body {
     display: none;
     flex-direction: column;
     min-width: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin !important;
     scrollbar-gutter: stable;
     background: var(--mp2-panel-bg);
     border: 1px solid var(--mp2-panel-border);
