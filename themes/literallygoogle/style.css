@@ -1858,16 +1858,16 @@ body {
 }
 
 .lg-media-engine-rail.lg-media-engine-rail--stuck {
-    position: fixed;
-    top: var(--lg-engine-rail-top, 0px);
-    left: var(--lg-engine-rail-left, 0px);
-    right: var(--lg-engine-rail-right, auto);
-    width: auto;
-    min-width: 0;
-    max-width: none;
-    height: var(--lg-engine-rail-height, auto);
-    padding: 0;
-    z-index: 119;
+    position: fixed !important;
+    top: var(--lg-engine-rail-top, 0px) !important;
+    left: var(--lg-engine-rail-left, 0px) !important;
+    right: var(--lg-engine-rail-right, auto) !important;
+    width: calc(100vw - var(--lg-engine-rail-left, 0px) - var(--lg-engine-rail-right, 0px)) !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: var(--lg-engine-rail-height, auto) !important;
+    padding: 0 !important;
+    z-index: 119 !important;
     transition: top 150ms ease, left 150ms ease;
 }
 

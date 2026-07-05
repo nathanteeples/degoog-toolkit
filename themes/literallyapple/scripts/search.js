@@ -3482,7 +3482,11 @@ function getLaTranslation(key) {
         const metaRect = meta.getBoundingClientRect();
         const hostRect = host.getBoundingClientRect();
 
-        const naturalRailTop = metaRect.top;
+        if (!host.classList.contains("lg-media-engine-rail--stuck")) {
+            host.dataset.naturalOffset = host.getBoundingClientRect().top - metaRect.top;
+        }
+        const naturalOffset = parseFloat(host.dataset.naturalOffset) || 0;
+        const naturalRailTop = metaRect.top + naturalOffset;
         const targetStickyTop = stickyTop + 10;
         const isStuck = naturalRailTop <= targetStickyTop;
 
