@@ -3059,6 +3059,7 @@ function getLgTranslation(key) {
     if (preview) {
         new MutationObserver(() => {
             scanGrids();
+            window.dispatchEvent(new CustomEvent("lg-results-layout-changed"));
             if (preview.classList.contains("open")) {
                 scheduleFold();
                 requestAnimationFrame(scrollSelectedImageIntoView);
@@ -3079,6 +3080,7 @@ function getLgTranslation(key) {
             ) {
                 return;
             }
+            window.dispatchEvent(new CustomEvent("lg-results-layout-changed"));
             scheduleFold();
             scrollSelectedImageIntoView();
         });
@@ -3272,8 +3274,6 @@ function getLgTranslation(key) {
         return document.getElementById("sidebar-col")?.classList.contains("is-sticky") ?? false;
     }
 
-    const STICKY_RAIL_TOP_GAP = 10;
-
     function getStickyRailTop() {
         const header = document.getElementById("results-header");
         const tabs = getResultsTabs();
@@ -3286,11 +3286,11 @@ function getLgTranslation(key) {
 
         const headerBottom =
             header instanceof HTMLElement ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
-        if (!(tabs instanceof HTMLElement)) return (headerBottom || fallback) + STICKY_RAIL_TOP_GAP;
+        if (!(tabs instanceof HTMLElement)) return headerBottom || fallback;
 
         const tabsRect = tabs.getBoundingClientRect();
-        if (tabsRect.bottom > 0) return Math.max(headerBottom, tabsRect.bottom) + STICKY_RAIL_TOP_GAP;
-        return (headerBottom || fallback) + STICKY_RAIL_TOP_GAP;
+        if (tabsRect.bottom > 0) return Math.max(headerBottom, tabsRect.bottom);
+        return headerBottom || fallback;
     }
 
     function getMediaResultsRightEdge() {
@@ -3357,13 +3357,13 @@ function getLgTranslation(key) {
             host.className = "lg-media-engine-rail";
             host.innerHTML =
                 `<button type="button" class="lg-media-engine-nav lg-media-engine-nav--prev" data-lg-engine-scroll="prev" aria-label="Scroll engine filters left">` +
-                `<span class="lg-media-engine-nav__icon" aria-hidden="true">‹</span>` +
+                `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>` +
                 `</button>` +
                 `<div class="lg-media-engine-pills__scroll">` +
                 `<div class="lg-media-engine-pills" role="group" aria-label="Engine filters"></div>` +
                 `</div>` +
                 `<button type="button" class="lg-media-engine-nav lg-media-engine-nav--next" data-lg-engine-scroll="next" aria-label="Scroll engine filters right">` +
-                `<span class="lg-media-engine-nav__icon" aria-hidden="true">›</span>` +
+                `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6" /></svg>` +
                 `</button>`;
         }
 
@@ -3801,6 +3801,11 @@ function getLgTranslation(key) {
         window.addEventListener("degoog-results-ready", () => {
             decorateRows();
             scheduleApply();
+            renderMediaEnginePills();
+            scheduleStickyEngineRailUpdate();
+        });
+
+        window.addEventListener("lg-results-layout-changed", () => {
             renderMediaEnginePills();
             scheduleStickyEngineRailUpdate();
         });
