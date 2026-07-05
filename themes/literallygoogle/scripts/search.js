@@ -1084,18 +1084,28 @@ function getLgTranslation(key) {
     }
 
     function wrapResultsStats(meta) {
-        if (!meta || meta.querySelector(".results-meta-stats")) return;
-        for (let i = 0; i < meta.childNodes.length; i++) {
-            const node = meta.childNodes[i];
-            if (node.nodeType !== Node.TEXT_NODE) continue;
-            const text = node.textContent.trim();
-            if (!text) continue;
-            const stats = document.createElement("span");
+        if (!meta) return;
+        const textNodes = [...meta.childNodes].filter(node => {
+            if (node.nodeType !== Node.TEXT_NODE) return false;
+            return Boolean(node.textContent.trim());
+        });
+        if (textNodes.length === 0) return;
+
+        let stats = meta.querySelector(".results-meta-stats");
+        const text = textNodes.map(node => node.textContent.trim()).join(" ").trim();
+        if (!text) return;
+
+        if (!stats) {
+            stats = document.createElement("span");
             stats.className = "results-meta-stats";
-            stats.textContent = text;
-            meta.replaceChild(stats, node);
-            return;
+            const firstTextNode = textNodes[0];
+            meta.replaceChild(stats, firstTextNode);
         }
+
+        stats.textContent = text;
+        textNodes.forEach(node => {
+            if (node.parentNode === meta) node.remove();
+        });
     }
 
     function moveSpellCheck() {
@@ -3274,8 +3284,7 @@ function getLgTranslation(key) {
         if (!(tabs instanceof HTMLElement)) return headerBottom || fallback;
 
         const tabsRect = tabs.getBoundingClientRect();
-        const tabsVisibleBelowHeader = tabsRect.bottom > headerBottom && tabsRect.top < headerBottom;
-        if (tabsVisibleBelowHeader) return Math.max(headerBottom, tabsRect.bottom);
+        if (tabsRect.bottom > 0) return Math.max(headerBottom, tabsRect.bottom);
         return headerBottom || fallback;
     }
 
@@ -3395,6 +3404,7 @@ function getLgTranslation(key) {
         host?.classList.remove("lg-media-engine-rail--stuck");
         meta?.classList.remove("lg-media-engine-meta--rail-stuck");
         meta?.style.removeProperty("--lg-engine-rail-sticky-height");
+        meta?.style.removeProperty("--lg-media-meta-right-gap");
         if (!host) return;
         host.style.removeProperty("--lg-engine-rail-top");
         host.style.removeProperty("--lg-engine-rail-left");
@@ -3437,6 +3447,7 @@ function getLgTranslation(key) {
         host.classList.add("lg-media-engine-rail--stuck");
         meta.classList.add("lg-media-engine-meta--rail-stuck");
         meta.style.setProperty("--lg-engine-rail-sticky-height", `${hostRect.height}px`);
+        meta.style.setProperty("--lg-media-meta-right-gap", `${contentRightGap}px`);
         host.style.setProperty("--lg-engine-rail-top", `${stickyTop}px`);
         host.style.setProperty("--lg-engine-rail-left", `${stuckLeft}px`);
         host.style.setProperty("--lg-engine-rail-right", `${contentRightGap}px`);
@@ -3454,6 +3465,7 @@ function getLgTranslation(key) {
 
     function renderMediaEnginePills() {
         if (!isDesktopImagePillsMode()) {
+            getResultsMeta()?.style.removeProperty("--lg-media-meta-right-gap");
             removeMediaEnginePillsHost();
             return;
         }
@@ -3461,6 +3473,11 @@ function getLgTranslation(key) {
         const rows = imageEngineRows();
         const host = ensureMediaEnginePillsHost();
         if (!host) return;
+        const meta = getResultsMeta();
+        if (meta) {
+            const contentRightGap = Math.max(0, window.innerWidth - getMediaResultsRightEdge());
+            meta.style.setProperty("--lg-media-meta-right-gap", `${contentRightGap}px`);
+        }
         const pills = host.querySelector(".lg-media-engine-pills");
         if (!pills) return;
         initPillRail(host);
