@@ -2313,13 +2313,9 @@ function getLgTranslation(key) {
             if (!nw || !nh) return;
 
             const body = wrap.closest(".mp2-body");
-            const scrollRail =
-                Number.parseFloat(
-                    getComputedStyle(panel).getPropertyValue("--mp2-scroll-rail"),
-                ) || 0;
             const maxW = Math.max(
                 120,
-                (body?.clientWidth || wrap.clientWidth || 360) - scrollRail,
+                body?.clientWidth || wrap.clientWidth || 360,
             );
             const maxH = Math.min(window.innerHeight * 0.62, 560);
             const scale = Math.min(maxW / nw, maxH / nh, 1);
@@ -3276,26 +3272,36 @@ function getLgTranslation(key) {
         return document.getElementById("sidebar-col")?.classList.contains("is-sticky") ?? false;
     }
 
+    const STICKY_RAIL_TOP_GAP = 10;
+
     function getStickyRailTop() {
         const header = document.getElementById("results-header");
         const tabs = getResultsTabs();
         const fallback =
             Number.parseFloat(
                 getComputedStyle(document.documentElement).getPropertyValue(
-                    "--literallygoogle-sticky-header-offset",
+                     "--literallygoogle-sticky-header-offset",
                 ),
             ) || 0;
 
         const headerBottom =
             header instanceof HTMLElement ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
-        if (!(tabs instanceof HTMLElement)) return headerBottom || fallback;
+        if (!(tabs instanceof HTMLElement)) return (headerBottom || fallback) + STICKY_RAIL_TOP_GAP;
 
         const tabsRect = tabs.getBoundingClientRect();
-        if (tabsRect.bottom > 0) return Math.max(headerBottom, tabsRect.bottom);
-        return headerBottom || fallback;
+        if (tabsRect.bottom > 0) return Math.max(headerBottom, tabsRect.bottom) + STICKY_RAIL_TOP_GAP;
+        return (headerBottom || fallback) + STICKY_RAIL_TOP_GAP;
     }
 
     function getMediaResultsRightEdge() {
+        const previewPanel = document.getElementById("media-preview-panel");
+        if (previewPanel?.classList.contains("open")) {
+            const panelRect = previewPanel.getBoundingClientRect();
+            if (panelRect.width > 1) {
+                return panelRect.right;
+            }
+        }
+
         const visibleColumnRects = [
             ...document.querySelectorAll(
                 "#results-list .image-grid > .image-column:not(.lg-image-col-hidden)",
@@ -3401,15 +3407,15 @@ function getLgTranslation(key) {
         const prevBtn = host?.querySelector('[data-lg-engine-scroll="prev"]');
         const nextBtn = host?.querySelector('[data-lg-engine-scroll="next"]');
         if (!scrollEl || !prevBtn || !nextBtn) return;
-        const max = scrollEl.scrollWidth - scrollEl.clientWidth;
-        if (max <= 2) {
+        if (scrollEl.scrollWidth <= scrollEl.clientWidth) {
             prevBtn.disabled = true;
             nextBtn.disabled = true;
             return;
         }
-        const left = scrollEl.scrollLeft;
-        prevBtn.disabled = left <= 2;
-        nextBtn.disabled = left >= max - 2;
+        const atStart = scrollEl.scrollLeft <= 0;
+        const atEnd = scrollEl.scrollLeft >= scrollEl.scrollWidth - scrollEl.clientWidth - 1;
+        prevBtn.disabled = atStart;
+        nextBtn.disabled = atEnd;
     }
 
     function horizontalPillScrollStep(scrollEl) {

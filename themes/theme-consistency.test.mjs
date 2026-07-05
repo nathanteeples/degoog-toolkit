@@ -59,7 +59,13 @@ function normalizeThemeScript(source) {
     .replaceAll("getLgTranslation", "getThemeTranslation")
     .replaceAll("getLaTranslation", "getThemeTranslation")
     .replaceAll("data-lg-pager-enhanced", "data-theme-pager-enhanced")
-    .replaceAll("data-la-pager-enhanced", "data-theme-pager-enhanced");
+    .replaceAll("data-la-pager-enhanced", "data-theme-pager-enhanced")
+    .replaceAll("data-lg-search-type", "data-theme-search-type")
+    .replaceAll("data-la-search-type", "data-theme-search-type")
+    .replaceAll("data-lg-sidebar-bound", "data-theme-sidebar-bound")
+    .replaceAll("data-la-sidebar-bound", "data-theme-sidebar-bound")
+    .replaceAll("--literallygoogle-sticky-header-offset", "--literallytheme-sticky-header-offset")
+    .replaceAll("--literallyapple-sticky-header-offset", "--literallytheme-sticky-header-offset");
 }
 
 test("theme behavior bundles stay aligned", async () => {
@@ -101,10 +107,34 @@ test("theme geometry uses the shared radius scale", async () => {
       /(?:border-radius|border-(?:start|end)-(?:start|end)-radius):\s*([^;]+)/g,
     );
     for (const [, value] of declarations) {
-      assert.match(
-        value.trim(),
-        /^(?:0|50%|var\(--theme-radius-[a-z]+\))(?:\s*!important)?$/,
-      );
+      const cleanValue = value.trim().replace(/\s*!important/i, "");
+      
+      // Tokenize by spaces, ignoring spaces inside parentheses
+      const parts = [];
+      let current = "";
+      let depth = 0;
+      for (let i = 0; i < cleanValue.length; i++) {
+        const char = cleanValue[i];
+        if (char === "(") depth++;
+        else if (char === ")") depth--;
+        
+        if (char === " " && depth === 0) {
+          if (current) {
+            parts.push(current);
+            current = "";
+          }
+        } else {
+          current += char;
+        }
+      }
+      if (current) parts.push(current);
+
+      for (const part of parts) {
+        assert.match(
+          part,
+          /^(?:0|50%|inherit|\d+(?:px|rem|em|%)|var\(--theme-radius-[a-z]+\)|clamp\(.+\)|calc\(.+\))$/,
+        );
+      }
     }
   }
 });

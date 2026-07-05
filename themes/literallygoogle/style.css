@@ -1867,7 +1867,10 @@ body {
     max-width: none;
     height: var(--lg-engine-rail-height, auto);
     padding: 0;
-    z-index: 121;
+    z-index: 119;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border-light);
+    transition: top 150ms ease, left 150ms ease;
 }
 
 .lg-media-engine-pills__scroll {
@@ -5264,7 +5267,6 @@ body {
    .mp2-body instead, keeping the bar as a plain flex-shrink-0 header. */
 #media-preview-panel {
     --mp2-panel-width: min(30rem, calc(100vw - 2rem));
-    --mp2-scroll-rail: 0.9rem;
     --mp2-panel-chrome: var(--lg-chrome-surface);
     --mp2-panel-bg: var(--bg);
     --mp2-panel-border: var(--border-light);
@@ -5272,7 +5274,9 @@ body {
     display: none;
     flex-direction: column;
     min-width: 0;
-    overflow: visible;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
     background: var(--mp2-panel-bg);
     border: 1px solid var(--mp2-panel-border);
     border-top: 1px solid var(--mp2-panel-border);
@@ -5425,6 +5429,8 @@ body {
 .mp2-bar {
     flex-shrink: 0;
     z-index: 10;
+    position: sticky;
+    top: 0;
     background: var(--mp2-panel-chrome);
     display: flex;
     align-items: center;
@@ -5441,19 +5447,9 @@ body {
     align-items: center;
     gap: 0.8rem;
     min-height: 0;
-    width: calc(100% + var(--mp2-scroll-rail, 0px));
-    margin-inline-end: calc(-1 * var(--mp2-scroll-rail, 0px));
-    box-sizing: border-box;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-gutter: stable;
-    padding: 0.8rem var(--mp2-scroll-rail, 0.9rem) 0.8rem 0.5rem;
+    width: 100%;
+    padding: 0.8rem 0 0.8rem 0;
     background: var(--mp2-panel-bg);
-}
-
-.mp2-body > :is(.media-preview-img-wrap, .media-preview-info, .media-preview-more) {
-    width: calc(100% - var(--mp2-scroll-rail, 0px));
-    margin-inline-end: var(--mp2-scroll-rail, 0px);
 }
 
 .mp2-site {
@@ -5641,7 +5637,7 @@ button.mp2-item[hidden] {
     gap: 0.8rem;
     width: 100%;
     align-self: stretch;
-    padding: 0.1rem 0 0.25rem;
+    padding: 0.1rem 0.5rem 0.25rem;
 }
 
 .media-preview-title {
@@ -5670,20 +5666,21 @@ button.mp2-item[hidden] {
     flex-wrap: wrap;
     gap: 0.5rem;
     margin: 0;
+    padding-inline: 0.5rem;
 }
 
 .media-preview-actions {
     display: flex;
     gap: 0.6rem;
     flex-wrap: wrap;
-    padding-top: 0.1rem;
+    padding: 0.1rem 0.5rem 0;
 }
 
 .media-preview-more {
     flex: 0 0 auto;
     width: 100%;
     align-self: stretch;
-    padding: 0.1rem 0 clamp(0.75rem, 3vw, 1.25rem);
+    padding: 0.1rem 0.5rem clamp(0.75rem, 3vw, 1.25rem);
 }
 
 .media-preview-more:empty {
