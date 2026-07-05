@@ -803,10 +803,10 @@ html[dir="rtl"] #image-filters-bar.open {
 #image-filters-bar .degoog-img-sidebar-close::before {
     content: "";
     display: block;
-    width: 1.6rem;
-    height: 0.1875rem;
+    width: 2.25rem;
+    height: 0.25rem;
     border-radius: 100px;
-    background: color-mix(in srgb, var(--text-secondary) 48%, transparent);
+    background: color-mix(in srgb, var(--text-secondary) 75%, transparent);
 }
 
 #image-filters-bar .degoog-img-sidebar-close svg {
