@@ -1,7 +1,7 @@
 const LG_LANG_DICT = {
     en: {
         settings: "Settings",
-        filters: "Tools",
+        filters: "Filter",
         tools: "Tools",
         prev: "Previous",
         prev10: "Back 10 pages",
@@ -1222,33 +1222,20 @@ function getLgTranslation(key) {
 
     function relabelFiltersToggle(toggle) {
         if (toggle.dataset.lgFiltersLabel === "1") return;
-        const filterLabel = getLgTranslation("tools");
-        let icon = toggle.querySelector(".lg-filters-icon");
-        if (!icon) {
-            toggle.querySelector("i")?.remove();
-            icon = document.createElement("span");
-            icon.className = "lg-filters-icon";
-            icon.innerHTML = LG_FILTERS_ICON;
-            toggle.prepend(icon);
-        }
-        for (const node of [...toggle.childNodes]) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                node.remove();
-            }
-        }
-        let label = toggle.querySelector(".lg-filters-label");
-        if (!label) {
-            label = document.createElement("span");
-            label.className = "lg-filters-label";
-            toggle.appendChild(label);
-        }
+        const filterLabel = getLgTranslation("filters");
+        const icon = document.createElement("span");
+        icon.className = "lg-filters-icon";
+        icon.innerHTML = LG_FILTERS_ICON;
+        const label = document.createElement("span");
+        label.className = "lg-filters-label";
         label.textContent = filterLabel;
+        toggle.replaceChildren(icon, label);
         toggle.setAttribute("aria-label", filterLabel);
         toggle.dataset.lgFiltersLabel = "1";
     }
 
     function renderFiltersButton(button, { iconOnly = false } = {}) {
-        const filterLabel = getLgTranslation("tools");
+        const filterLabel = getLgTranslation("filters");
         let icon = button.querySelector(".lg-filters-icon");
         if (!icon) {
             icon = document.createElement("span");
@@ -2624,8 +2611,10 @@ function getLgTranslation(key) {
 
 (() => {
     const PREVIEW_CLOSING_CLASS = "lg-preview-closing";
+    const PREVIEW_OPENING_CLASS = "lg-preview-opening";
     const PREVIEW_EXIT_MS = 320;
     let previewExitTimeout = 0;
+    let previewOpenFrame = 0;
 
     function cancelPreviewExit(panel) {
         window.clearTimeout(previewExitTimeout);
@@ -2633,14 +2622,36 @@ function getLgTranslation(key) {
         panel?.classList.remove(PREVIEW_CLOSING_CLASS);
     }
 
+    function cancelPreviewOpenBypass(panel) {
+        if (previewOpenFrame) {
+            cancelAnimationFrame(previewOpenFrame);
+            previewOpenFrame = 0;
+        }
+        panel?.classList.remove(PREVIEW_OPENING_CLASS);
+    }
+
     function startPreviewExit(panel) {
         if (!panel) return;
         cancelPreviewExit(panel);
+        cancelPreviewOpenBypass(panel);
         panel.classList.add(PREVIEW_CLOSING_CLASS);
         previewExitTimeout = window.setTimeout(() => {
             panel.classList.remove(PREVIEW_CLOSING_CLASS);
             previewExitTimeout = 0;
         }, PREVIEW_EXIT_MS);
+    }
+
+    function startPreviewOpen(panel) {
+        if (!panel) return;
+        cancelPreviewExit(panel);
+        cancelPreviewOpenBypass(panel);
+        panel.classList.add(PREVIEW_OPENING_CLASS);
+        previewOpenFrame = requestAnimationFrame(() => {
+            previewOpenFrame = requestAnimationFrame(() => {
+                panel.classList.remove(PREVIEW_OPENING_CLASS);
+                previewOpenFrame = 0;
+            });
+        });
     }
 
     function init() {
@@ -2653,7 +2664,7 @@ function getLgTranslation(key) {
             if (isOpen === wasOpen) return;
 
             if (isOpen) {
-                cancelPreviewExit(panel);
+                startPreviewOpen(panel);
             } else {
                 startPreviewExit(panel);
             }
@@ -2936,7 +2947,7 @@ function getLgTranslation(key) {
     function scrollSelectedImageIntoView({ block = "nearest" } = {}) {
         document
             .querySelector("#results-list .image-card.selected")
-            ?.scrollIntoView({ block, inline: "nearest", behavior: "smooth" });
+            ?.scrollIntoView({ block, inline: "nearest" });
     }
 
     let scrollSelectedFrame = 0;
@@ -3069,6 +3080,7 @@ function getLgTranslation(key) {
     const RESULT_SELECTORS = ".result-item, .image-card, .video-card";
     const PILLS_CONTAINER_ID = "lg-media-engine-pills";
     const PILLS_BUTTON_SELECTOR = ".lg-media-engine-pill";
+    const PILLS_SCROLL_SELECTOR = ".lg-media-engine-pills__scroll";
     const DESKTOP_MIN = 768;
 
     function installEngineResultLearnerEarly() {
@@ -3212,9 +3224,17 @@ function getLgTranslation(key) {
         if (!host) {
             host = document.createElement("div");
             host.id = PILLS_CONTAINER_ID;
-            host.className = "lg-media-engine-pills";
-            host.setAttribute("role", "group");
-            host.setAttribute("aria-label", "Engine filters");
+            host.className = "lg-media-engine-rail";
+            host.innerHTML =
+                `<button type="button" class="lg-media-engine-nav lg-media-engine-nav--prev" data-lg-engine-scroll="prev" aria-label="Scroll engine filters left">` +
+                `<span class="lg-media-engine-nav__icon" aria-hidden="true">‹</span>` +
+                `</button>` +
+                `<div class="lg-media-engine-pills__scroll">` +
+                `<div class="lg-media-engine-pills" role="group" aria-label="Engine filters"></div>` +
+                `</div>` +
+                `<button type="button" class="lg-media-engine-nav lg-media-engine-nav--next" data-lg-engine-scroll="next" aria-label="Scroll engine filters right">` +
+                `<span class="lg-media-engine-nav__icon" aria-hidden="true">›</span>` +
+                `</button>`;
         }
 
         const stats = meta.querySelector(".results-meta-stats");
@@ -3251,6 +3271,43 @@ function getLgTranslation(key) {
             });
     }
 
+    function updatePillNavState() {
+        const host = getMediaEnginePillsHost();
+        const scrollEl = host?.querySelector(PILLS_SCROLL_SELECTOR);
+        const prevBtn = host?.querySelector('[data-lg-engine-scroll="prev"]');
+        const nextBtn = host?.querySelector('[data-lg-engine-scroll="next"]');
+        if (!scrollEl || !prevBtn || !nextBtn) return;
+        const max = scrollEl.scrollWidth - scrollEl.clientWidth;
+        if (max <= 2) {
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            return;
+        }
+        const left = scrollEl.scrollLeft;
+        prevBtn.disabled = left <= 2;
+        nextBtn.disabled = left >= max - 2;
+    }
+
+    function horizontalPillScrollStep(scrollEl) {
+        return Math.max(120, Math.round(scrollEl.clientWidth * 0.72));
+    }
+
+    function initPillRail(host) {
+        if (!host || host.dataset.lgPillRailInit === "1") return;
+        const scrollEl = host.querySelector(PILLS_SCROLL_SELECTOR);
+        const prevBtn = host.querySelector('[data-lg-engine-scroll="prev"]');
+        const nextBtn = host.querySelector('[data-lg-engine-scroll="next"]');
+        if (!scrollEl || !prevBtn || !nextBtn) return;
+        host.dataset.lgPillRailInit = "1";
+
+        const refresh = () => updatePillNavState();
+        scrollEl.addEventListener("scroll", refresh, { passive: true });
+        const ro = new ResizeObserver(refresh);
+        ro.observe(scrollEl);
+        ro.observe(host);
+        refresh();
+    }
+
     function renderMediaEnginePills() {
         if (!isDesktopImagePillsMode()) {
             removeMediaEnginePillsHost();
@@ -3260,9 +3317,13 @@ function getLgTranslation(key) {
         const rows = imageEngineRows();
         const host = ensureMediaEnginePillsHost();
         if (!host) return;
+        const pills = host.querySelector(".lg-media-engine-pills");
+        if (!pills) return;
+        initPillRail(host);
         if (!rows.length) {
-            host.replaceChildren();
+            pills.replaceChildren();
             host.hidden = true;
+            updatePillNavState();
             return;
         }
 
@@ -3292,9 +3353,10 @@ function getLgTranslation(key) {
             fragment.appendChild(button);
         }
 
-        host.replaceChildren(fragment);
-        host.hidden = host.childElementCount === 0;
+        pills.replaceChildren(fragment);
+        host.hidden = pills.childElementCount === 0;
         syncPillHighlights(getSelectedEngines());
+        updatePillNavState();
     }
 
     function getSelectedEngines() {
@@ -3471,6 +3533,18 @@ function getLgTranslation(key) {
         const target = event.target;
         if (!target?.closest) return;
         if (target.closest(".engine-retry-link")) return;
+        const scrollNav = target.closest("[data-lg-engine-scroll]");
+        if (scrollNav) {
+            const host = scrollNav.closest(".lg-media-engine-rail");
+            const scrollEl = host?.querySelector(PILLS_SCROLL_SELECTOR);
+            if (!host || !scrollEl || scrollNav.disabled) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const dir = scrollNav.getAttribute("data-lg-engine-scroll");
+            const delta = dir === "prev" ? -horizontalPillScrollStep(scrollEl) : horizontalPillScrollStep(scrollEl);
+            scrollEl.scrollBy({ left: delta, behavior: "smooth" });
+            return;
+        }
         const pill = target.closest(PILLS_BUTTON_SELECTOR);
         if (pill) {
             event.preventDefault();
