@@ -1,12 +1,3 @@
-// ── TMDB slot: client-side in-slot navigation + image modal ─────────────────
-// Clicking a cast card with data-tmdb-nav="person" swaps the slot contents
-// for a person panel fetched from this plugin's local route.
-// A back button is injected at the top to return to the previous panel.
-// History is stored per-.tmdb-result instance on the element itself.
-//
-// Image modal: clicking an image with [data-tmdb-modal-src] opens a
-// full-screen modal. Close with X button, Esc key, or clicking the backdrop.
-
 (function () {
   "use strict";
 
@@ -58,7 +49,6 @@
     modalOverlay.appendChild(modalImg);
     document.documentElement.appendChild(modalOverlay);
 
-    // Close when clicking on backdrop (but not the image)
     modalOverlay.addEventListener("click", function (e) {
       if (e.target === modalOverlay) {
         closeModal();
@@ -238,7 +228,6 @@
     serviceModalTrigger = null;
   }
 
-  // Esc key handler
   document.addEventListener("keydown", function (e) {
     if (
       e.key === "Escape" &&
@@ -821,7 +810,6 @@
         return;
       }
 
-      // Image modal trigger
       const imgEl = target.closest("[data-tmdb-modal-src]");
       if (imgEl) {
         const src = imgEl.getAttribute("data-tmdb-modal-src");
@@ -866,7 +854,6 @@
         }
       }
 
-      // Back button
       const back = target.closest("[data-tmdb-back]");
       if (back) {
         const root = findRoot(back);
@@ -877,7 +864,6 @@
         return;
       }
 
-      // Navigation trigger (cast card, etc.)
       const navEl = target.closest("[data-tmdb-nav]");
       if (!navEl) return;
 
@@ -951,7 +937,6 @@
         return;
       }
 
-      // Image modal trigger via keyboard
       if (target.matches("[data-tmdb-modal-src]")) {
         e.preventDefault();
         const src = target.getAttribute("data-tmdb-modal-src");

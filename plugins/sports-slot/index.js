@@ -7408,7 +7408,6 @@ async function handleEspnQuery(parsed, context) {
 
   // 1. MATCHUP INTENT
   if (parsed.intent === "matchup") {
-    // Fetch scoreboard
     let scoreboardData = null;
     try {
       const isWC = league === "fifa.world";
@@ -7422,7 +7421,6 @@ async function handleEspnQuery(parsed, context) {
     const events = scoreboardData?.events || [];
     let matchEvent = findMatchInEvents(events, parsed.left.canonicalName, parsed.right.canonicalName);
 
-    // If not found in scoreboard, try to fetch schedule of left team
     if (!matchEvent) {
       try {
         const standingsData = await fetchEspnStandings(sport, league);
@@ -7433,7 +7431,6 @@ async function handleEspnQuery(parsed, context) {
           matchEvent = findMatchInEvents(scheduleData?.events || [], parsed.left.canonicalName, parsed.right.canonicalName);
         }
       } catch {
-        // Fallback silently
       }
     }
 
@@ -7445,11 +7442,9 @@ async function handleEspnQuery(parsed, context) {
       );
     }
 
-    // Normalize event
     const focusGame = normalizeEspnEvent(matchEvent, parsed.sport);
     const enrichment = await loadEspnFocusEnrichment(sport, league, focusGame);
 
-    // Fetch standings
     let standings = null;
     try {
       const standingsData = await fetchEspnStandings(sport, league);
@@ -7465,7 +7460,6 @@ async function handleEspnQuery(parsed, context) {
         });
       });
     } catch {
-      // Fallback silently
     }
 
     const tabs = buildEspnTabs({
@@ -7509,7 +7503,6 @@ async function handleEspnQuery(parsed, context) {
     try {
       standingsData = await fetchEspnStandings(sport, league);
     } catch {
-      // Fallback silently
     }
 
     const allStandings = standingsData ? normalizeEspnStandings(standingsData) : [];
@@ -7519,7 +7512,6 @@ async function handleEspnQuery(parsed, context) {
       return renderEmptyCard(parsed.sport, parsed.team.canonicalName, "Team not found in current competition.");
     }
 
-    // Fetch team schedule
     let scheduleData = null;
     try {
       scheduleData = await fetchEspnTeamSchedule(sport, league, teamId);
@@ -7630,12 +7622,10 @@ async function handleEspnQuery(parsed, context) {
     futureLimit: 4,
   });
 
-  // Fetch standings
   let standingsData = null;
   try {
     standingsData = await fetchEspnStandings(sport, league);
   } catch {
-    // Fallback silently
   }
   const allStandings = standingsData ? normalizeEspnStandings(standingsData) : [];
   const bracket = isWC ? buildEspnWorldCupBracket(scoreboardData?.events || []) : null;

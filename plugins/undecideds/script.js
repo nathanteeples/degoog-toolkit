@@ -240,7 +240,6 @@
     if (toggleD6) toggleD6.addEventListener("click", () => updateDieSelector("d6"));
     if (toggleD20) toggleD20.addEventListener("click", () => updateDieSelector("d20"));
 
-    // Initial select
     updateDieSelector(activeType);
 
     btn.addEventListener("click", () => {
@@ -253,13 +252,11 @@
       }
     });
 
-    // Initial pose for D6
     if (d6Element) {
       const initialFace = parseInt(d6Element.dataset.face || "1", 10);
       setD6Pose(d6Element, initialFace);
     }
 
-    // Initial pose for D20
     const d20Canvas = slot.querySelector("[data-d20-canvas]");
     if (d20Canvas) {
       const d20Controller = initD20(slot);
@@ -473,7 +470,6 @@
       return { u, v };
     });
 
-    // Helper: Matrix vector multiplication
     function rotateVector(v, m) {
       return {
         x: m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z,
@@ -482,7 +478,6 @@
       };
     }
 
-    // Helper: Get target rotation matrix to align normal to +z axis
     function getFaceTargetRotation(n) {
       let ux, uy, uz;
       const xyLen = Math.sqrt(n.x*n.x + n.y*n.y);
@@ -505,7 +500,6 @@
       ];
     }
 
-    // Helper: Multiply 3x3 matrices
     function multiplyMatrices(A, B) {
       const C = [[0,0,0],[0,0,0],[0,0,0]];
       for (let i = 0; i < 3; i++) {
@@ -516,7 +510,6 @@
       return C;
     }
 
-    // Helper: Rotation matrix from Euler angles
     function getSpinMatrix(rx, ry, rz) {
       const cx = Math.cos(rx), sx = Math.sin(rx);
       const cy = Math.cos(ry), sy = Math.sin(ry);
@@ -557,7 +550,6 @@
       }
     }
 
-    // Render the 3D die
     function render(matrix) {
       resize();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -726,7 +718,6 @@
 
     if (!minInput || !maxInput || !btn || !roller) return;
 
-    // Render initial boxed number
     const initialVal = roller.dataset.initialVal || "42";
     renderStaticNumber(roller, initialVal);
 
@@ -811,7 +802,6 @@
 
       const targetDigit = parseInt(digit, 10);
       const numbers = [];
-      // Populate strip: 0-9 twice, then target
       for (let i = 0; i <= 9; i++) numbers.push(i);
       for (let i = 0; i <= 9; i++) numbers.push(i);
       numbers.push(targetDigit);
@@ -826,16 +816,13 @@
       roller.appendChild(slotDiv);
 
       stripDiv.style.transform = "translateY(0px)";
-      // force repaint
       stripDiv.getBoundingClientRect();
 
       const delay = index * 100;
       stripDiv.style.transition = `transform 1s cubic-bezier(0.15, 0.85, 0.35, 1) ${delay}ms`;
-      // We want to land on the last index (index 20)
       stripDiv.style.transform = `translateY(-${20 * itemHeight}px)`;
     });
 
-    // Calculate total duration based on last digit finish
     const totalDuration = 1000 + (digits.length - 1) * 100;
     setTimeout(() => {
       renderStaticNumber(roller, paddedStr);

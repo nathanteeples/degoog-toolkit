@@ -508,7 +508,6 @@
         mapEl._placesResizeHandler = resizeHandler;
       }
 
-      // Mouse drag helpers
       function onMouseMove(e) {
         if (!state.dragging) return;
         _cancelZoomAnim(state);
@@ -563,7 +562,6 @@
         document.addEventListener("mouseup", onMouseUp);
       });
 
-      // Touch drag helpers
       function onTouchMove(e) {
         if (!state.dragging || e.touches.length !== 1) return;
         e.preventDefault();
@@ -650,7 +648,6 @@
         }
       }, { passive: false });
 
-      // Zoom buttons
       var zoomIn = mapEl.querySelector("[data-zoom-in]");
       var zoomOut = mapEl.querySelector("[data-zoom-out]");
 
@@ -893,7 +890,6 @@
       var modal = wrap.querySelector("[data-places-modal]");
       if (!modal) return;
 
-      // Open modal on Directions button click
       wrap.querySelectorAll("[data-directions-btn]").forEach(function (btn) {
         btn.addEventListener("click", function (e) {
           e.preventDefault();
@@ -920,14 +916,12 @@
         });
       });
 
-      // Close modal
       modal.querySelectorAll("[data-modal-close]").forEach(function (el) {
         el.addEventListener("click", function () {
           modal.hidden = true;
         });
       });
 
-      // Close on Escape
       document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && !modal.hidden) {
           modal.hidden = true;
@@ -1002,7 +996,6 @@
     });
   }
 
-  // Handle failed tile image retries
   document.addEventListener("error", function (e) {
     if (e.target && e.target.tagName === "IMG" && e.target.classList.contains("places-tile")) {
       var img = e.target;

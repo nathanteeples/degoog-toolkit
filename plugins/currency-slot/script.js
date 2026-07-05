@@ -521,22 +521,18 @@
     function renderPickerList(filter) {
       if (!pickerList) return;
 
-      // Get selected currency for this picker
       const selectedCode = pickerTarget === "from" ? fromCode : toCode;
       const searchIndex = currencySearchByCode || {};
 
-      // Filter currencies
       const filtered = filter
         ? CURRENCIES.filter((c) =>
             currencyMatchesFilter(c, filter, searchIndex),
           )
         : CURRENCIES;
 
-      // Split into selected and others
       const selected = filtered.filter((c) => c.code === selectedCode);
       const others = filtered.filter((c) => c.code !== selectedCode);
 
-      // Combine: selected first, then others
       const sorted = [...selected, ...others];
 
       pickerList.innerHTML = sorted
@@ -611,7 +607,6 @@
         updateCurUI("to", toCode);
         showChartLoading();
 
-        // Fetch the live rate for the new currency pair
         const newRate = await fetchRate(fromCode, toCode);
         if (newRate !== null) rate = newRate;
         updateResult(true);
@@ -632,7 +627,6 @@
         fromCode = pair.dataset.from;
         toCode = pair.dataset.to;
 
-        // Reset amount to 1
         amountEl.value = "1";
 
         updateCurUI("from", fromCode);
@@ -647,7 +641,6 @@
         if (cardRate && cardRate > 0) {
           rate = cardRate;
         }
-        // Show immediate result with the card rate
         updateResult(true);
 
         // Then fetch the live rate and update again if it differs

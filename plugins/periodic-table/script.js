@@ -156,7 +156,6 @@
     "unknown": "Unknown Properties"
   };
 
-  // Parse raw elements into full objects
   const ELEMENTS = RAW_ELEMENTS.map(arr => ({
     num: arr[0],
     sym: arr[1],
@@ -252,7 +251,6 @@
     if (!content || !emptyMsg) return;
 
     if (!el) {
-      // Show Hydrogen as default fallback
       el = ELEMENTS[0];
     }
 
@@ -277,7 +275,6 @@
     const currentTemp = slider ? parseInt(slider.value, 10) : 298;
     const simState = getSimulatedState(el, currentTemp);
 
-    // Set data-state attribute on the state badge
     const stateBadge = content.querySelector("[data-dd-state-badge]");
     if (stateBadge) {
       stateBadge.setAttribute("data-state", simState);
@@ -337,7 +334,6 @@
       }
     });
 
-    // Update active element preview stats
     const activeNum = qs("[data-dd-num]");
     if (activeNum) {
       const num = parseInt(activeNum.textContent, 10);
@@ -444,11 +440,9 @@
     const grid = w.querySelector("[data-pt-grid]");
     if (!grid) return;
 
-    // Clear element cells if any, preserving the detail panel
     const existingCells = grid.querySelectorAll(".pt-element");
     existingCells.forEach(c => c.remove());
 
-    // Inject 57-71 placeholder in row 6, col 3
     const laPlaceholder = document.createElement("div");
     laPlaceholder.className = "pt-element lanthanide pt-placeholder-cell";
     laPlaceholder.style.gridColumn = 3;
@@ -460,7 +454,6 @@
     `;
     grid.appendChild(laPlaceholder);
 
-    // Inject 89-103 placeholder in row 7, col 3
     const acPlaceholder = document.createElement("div");
     acPlaceholder.className = "pt-element actinide pt-placeholder-cell";
     acPlaceholder.style.gridColumn = 3;
@@ -472,7 +465,6 @@
     `;
     grid.appendChild(acPlaceholder);
 
-    // Dynamically inject elements
     ELEMENTS.forEach(el => {
       const cell = document.createElement("button");
       cell.type = "button";
@@ -492,10 +484,8 @@
         <div class="state-indicator state-${el.state}" data-state-dot></div>
       `;
 
-      // Hover triggers detail display update
       cell.addEventListener("mouseenter", () => updateDetailDisplay(el));
 
-      // Click opens modal details
       cell.addEventListener("click", () => showElementModal(el));
 
       grid.appendChild(cell);
@@ -517,7 +507,6 @@
     }
     updateDetailDisplay(initialElement);
 
-    // Setup Event Listeners
     const searchInput = w.querySelector("[data-pt-search]");
     if (searchInput) {
       searchInput.addEventListener("input", (e) => searchElements(e.target.value));
@@ -541,7 +530,6 @@
         const celsius = Math.round(temp - 273.15);
         tempValLabel.textContent = `${temp} K (${celsius} °C)`;
 
-        // Highlight preset button
         w.querySelectorAll(".pt-preset-btn").forEach(btn => {
           if (parseInt(btn.getAttribute("data-temp"), 10) === temp) {
             btn.classList.add("pt-preset-active");
@@ -554,19 +542,16 @@
       });
     }
 
-    // Preset buttons
     w.querySelectorAll(".pt-preset-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const temp = parseInt(btn.getAttribute("data-temp"), 10);
         if (tempSlider) {
           tempSlider.value = temp;
-          // Dispatch input event to trigger slider handler
           tempSlider.dispatchEvent(new Event("input"));
         }
       });
     });
 
-    // Filters click
     w.querySelectorAll("[data-category]").forEach(btn => {
       btn.setAttribute("aria-pressed", "false");
       btn.addEventListener("click", () => {
@@ -579,12 +564,10 @@
       });
     });
 
-    // Modal close listeners
     w.querySelectorAll("[data-pt-close-modal]").forEach(btn => {
       btn.addEventListener("click", hideModal);
     });
 
-    // Run initial sizing and attach resize listener
     handleResize();
     window.addEventListener("resize", handleResize);
   }
