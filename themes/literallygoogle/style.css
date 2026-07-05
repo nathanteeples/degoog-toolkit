@@ -5330,6 +5330,7 @@ body {
             --literallygoogle-sticky-header-offset,
             calc(50px + 1.5rem)
         );
+        align-self: start;
         left: auto;
         right: auto;
         bottom: auto;
