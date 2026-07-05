@@ -2303,18 +2303,12 @@ function getLgTranslation(key) {
             if (!nw || !nh) return;
 
             const body = wrap.closest(".mp2-body");
-            const maxW = Math.max(120, (body?.clientWidth || wrap.clientWidth || 360) - 28);
-            const maxH = Math.min(window.innerHeight * 0.56, 448);
-            let w = nw;
-            let h = nh;
-            if (h > maxH) {
-                w = (nw / nh) * maxH;
-                h = maxH;
-            }
-            if (w > maxW) {
-                h = (h / w) * maxW;
-                w = maxW;
-            }
+            const maxW = Math.max(120, body?.clientWidth || wrap.clientWidth || 360);
+            const maxH = Math.min(window.innerHeight * 0.62, 560);
+            const scale = Math.min(maxW / nw, maxH / nh, 1);
+            const w = nw * scale;
+            const h = nh * scale;
+            wrap.style.width = "100%";
             img.style.width = `${Math.max(1, Math.round(w))}px`;
             img.style.height = `${Math.max(1, Math.round(h))}px`;
         };
@@ -3265,6 +3259,26 @@ function getLgTranslation(key) {
         return document.getElementById("sidebar-col")?.classList.contains("is-sticky") ?? false;
     }
 
+    function getStickyRailTop() {
+        const header = document.getElementById("results-header");
+        const tabs = getResultsTabs();
+        const fallback =
+            Number.parseFloat(
+                getComputedStyle(document.documentElement).getPropertyValue(
+                    "--literallygoogle-sticky-header-offset",
+                ),
+            ) || 0;
+
+        const headerBottom =
+            header instanceof HTMLElement ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+        if (!(tabs instanceof HTMLElement)) return headerBottom || fallback;
+
+        const tabsRect = tabs.getBoundingClientRect();
+        const tabsVisibleBelowHeader = tabsRect.bottom > headerBottom && tabsRect.top < headerBottom;
+        if (tabsVisibleBelowHeader) return Math.max(headerBottom, tabsRect.bottom);
+        return headerBottom || fallback;
+    }
+
     function getMediaResultsRightEdge() {
         const grids = [
             ...document.querySelectorAll("#results-list .image-grid, #results-list .skeleton-image-grid"),
@@ -3400,12 +3414,7 @@ function getLgTranslation(key) {
             return;
         }
 
-        const stickyTop =
-            Number.parseFloat(
-                getComputedStyle(document.documentElement).getPropertyValue(
-                    "--literallygoogle-sticky-header-offset",
-                ),
-            ) || 0;
+        const stickyTop = getStickyRailTop();
         const metaRect = meta.getBoundingClientRect();
         const hostRect = host.getBoundingClientRect();
         const revealProgress = Math.max(

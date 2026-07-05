@@ -5543,14 +5543,14 @@ button.mp2-item[hidden] {
     flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    width: fit-content;
+    width: 100%;
     max-width: 100%;
     min-height: 0;
     margin-inline: auto;
-    padding: 0.7rem;
-    background: var(--lg-chrome-surface);
-    border: 1px solid transparent;
-    border-radius: var(--theme-radius-lg);
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
     overflow: hidden;
     box-shadow: none;
     box-sizing: border-box;
@@ -5560,12 +5560,12 @@ button.mp2-item[hidden] {
     display: block;
     width: auto;
     height: auto;
-    max-width: min(100%, calc(var(--mp2-panel-width, 26.25rem) - 2.8rem));
-    max-height: min(56vh, 28rem);
+    max-width: 100%;
+    max-height: min(62vh, 35rem);
     object-fit: contain;
     background: transparent;
     padding: 0;
-    border-radius: calc(var(--theme-radius-lg) - 2px);
+    border-radius: 0;
 }
 
 .media-preview-info {
