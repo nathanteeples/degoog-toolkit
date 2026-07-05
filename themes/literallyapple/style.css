@@ -1980,10 +1980,7 @@ body {
 }
 
 .degoog-img-filter-option.is-active::after {
-    content: "✓";
-    flex-shrink: 0;
-    font-size: 0.875rem;
-    color: var(--lg-selection-accent, #9ac1fd);
+    display: none;
 }
 
 /* Optional sticky sidebar (Settings → Themes → Configure → Sticky sidebar).
@@ -3792,7 +3789,7 @@ button.mp2-item[hidden] {
    Solid charcoal canvas, raised cards, underline tabs, flat sidebar lists.
    ══════════════════════════════════════════════════════════════════════════ */
 
-#results-page {
+:is(#results-page, #image-filters-bar, body) {
     background: var(--bg);
     --lg-selection-accent: #9ac1fd;
     --lg-selection-active-bg: color-mix(in srgb, var(--lg-selection-accent) 16%, var(--bg-light));

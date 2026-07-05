@@ -3440,8 +3440,7 @@ body {
 }
 
 /* Google-style Filters dropdown in the tab row */
-#results-page {
-    position: relative;
+:is(#results-page, #image-filters-bar, body) {
     --lg-scrollbar-gutter: 0.625rem;
     --lg-selection-accent: #9ac1fd;
     --lg-selection-active-bg: color-mix(in srgb, var(--lg-selection-accent) 16%, var(--bg-light));
@@ -3455,7 +3454,7 @@ body {
 }
 
 @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) #results-page {
+    :root:not([data-theme="dark"]) :is(#results-page, #image-filters-bar, body) {
         --lg-selection-accent: #669df6;
         --lg-selection-active-bg: #d4e2fc;
         --lg-selection-active-ring: color-mix(in srgb, #669df6 42%, #d4e2fc);
@@ -3466,7 +3465,7 @@ body {
     }
 }
 
-[data-theme="light"] #results-page {
+[data-theme="light"] :is(#results-page, #image-filters-bar, body) {
     --lg-selection-accent: #669df6;
     --lg-selection-active-bg: #d4e2fc;
     --lg-selection-active-ring: color-mix(in srgb, #669df6 42%, #d4e2fc);
@@ -4032,10 +4031,7 @@ body {
 }
 
 .degoog-img-filter-option.is-active::after {
-    content: "✓";
-    flex-shrink: 0;
-    font-size: 0.875rem;
-    color: var(--lg-selection-accent, #9ac1fd);
+    display: none;
 }
 
 .degoog-img-filter-text {

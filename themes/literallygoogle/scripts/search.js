@@ -3538,6 +3538,10 @@ function getLgTranslation(key) {
         const pills = host.querySelector(".lg-media-engine-pills");
         if (!pills) return;
         initPillRail(host);
+
+        const scrollEl = host.querySelector(PILLS_SCROLL_SELECTOR);
+        const prevScrollLeft = scrollEl ? scrollEl.scrollLeft : 0;
+
         if (!rows.length) {
             pills.replaceChildren();
             host.hidden = true;
@@ -3573,6 +3577,11 @@ function getLgTranslation(key) {
 
         pills.replaceChildren(fragment);
         host.hidden = pills.childElementCount === 0;
+
+        if (scrollEl) {
+            scrollEl.scrollLeft = prevScrollLeft;
+        }
+
         syncPillHighlights(getSelectedEngines());
         updatePillNavState();
         scheduleStickyEngineRailUpdate();
