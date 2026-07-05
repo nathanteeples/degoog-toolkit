@@ -2944,10 +2944,30 @@ function getLgTranslation(key) {
         );
     }
 
-    function scrollSelectedImageIntoView({ block = "nearest" } = {}) {
-        document
-            .querySelector("#results-list .image-card.selected")
-            ?.scrollIntoView({ block, inline: "nearest" });
+    function scrollSelectedImageIntoView() {
+        const selected = document.querySelector("#results-list .image-card.selected");
+        if (!(selected instanceof HTMLElement)) return;
+
+        const rect = selected.getBoundingClientRect();
+        const rootStyles = getComputedStyle(document.documentElement);
+        const stickyOffset =
+            Number.parseFloat(
+                rootStyles.getPropertyValue("--literallygoogle-sticky-header-offset"),
+            ) || 0;
+        const topBoundary = Math.max(0, stickyOffset);
+        const bottomBoundary = window.innerHeight;
+
+        if (rect.top < topBoundary) {
+            window.scrollBy(0, rect.top - topBoundary);
+            return;
+        }
+
+        if (rect.bottom > bottomBoundary) {
+            window.scrollBy(0, rect.bottom - bottomBoundary);
+            return;
+        }
+
+        selected.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
 
     let scrollSelectedFrame = 0;
@@ -2958,7 +2978,7 @@ function getLgTranslation(key) {
         scrollSelectedFrame = requestAnimationFrame(() => {
             scrollSelectedFrame = 0;
             requestAnimationFrame(() => {
-                scrollSelectedImageIntoView({ block: "center" });
+                scrollSelectedImageIntoView();
             });
         });
     }
