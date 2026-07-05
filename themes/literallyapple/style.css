@@ -3885,6 +3885,10 @@ button.mp2-item[hidden] {
     font-weight: 400;
 }
 
+#results-page:is([data-lg-search-type="images"], [data-lg-search-type="videos"], :has(#results-tabs .results-tab[data-type="images"].active), :has(#results-tabs .results-tab[data-type="images"][aria-selected="true"]), :has(#results-tabs .results-tab[data-type="videos"].active), :has(#results-tabs .results-tab[data-type="videos"][aria-selected="true"])) #results-tabs .tools-bar {
+    display: none !important;
+}
+
 #results-page #results-meta {
     font-size: 13px;
     color: var(--text-secondary);
@@ -3989,6 +3993,17 @@ button.mp2-item[hidden] {
     box-shadow: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+}
+
+#results-page #results-list .image-card:not(.lg-img-loaded) .image-title,
+#results-page #results-list .image-card:not(.lg-img-loaded) .image-source-row {
+    opacity: 0 !important;
+}
+
+#results-page #results-list .image-card.lg-img-loaded .image-title,
+#results-page #results-list .image-card.lg-img-loaded .image-source-row {
+    opacity: 1 !important;
+    transition: opacity 220ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {

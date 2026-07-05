@@ -3327,6 +3327,15 @@ function getLgTranslation(key) {
             return Math.max(...visibleCardRects.map(rect => rect.right));
         }
 
+        const meta = getResultsMeta();
+        if (meta) {
+            const metaRect = meta.getBoundingClientRect();
+            const paddingStart = parseFloat(getComputedStyle(meta).paddingLeft) || 150;
+            const layoutMax = 1216; // 76rem
+            const expectedRight = metaRect.left + paddingStart + layoutMax;
+            return Math.min(window.innerWidth - 32, expectedRight);
+        }
+
         const resultsListRect = getResultsList()?.getBoundingClientRect();
         if (resultsListRect?.width) return resultsListRect.right;
 
@@ -4321,10 +4330,54 @@ function getLgTranslation(key) {
         });
     }
 
+    function wireImageLoadHandlers() {
+        const page = getResultsPage();
+        if (!page || page.getAttribute("data-lg-search-type") !== "images") return;
+
+        const resultsList = getResultsList();
+        if (!resultsList) return;
+
+        function checkImage(img) {
+            const card = img.closest(".image-card");
+            if (!card) return;
+            if (img.complete && img.naturalWidth > 0) {
+                card.classList.add("lg-img-loaded");
+            } else {
+                img.addEventListener("load", () => {
+                    card.classList.add("lg-img-loaded");
+                }, { once: true });
+                img.addEventListener("error", () => {
+                    card.classList.add("lg-img-loaded");
+                }, { once: true });
+            }
+        }
+
+        resultsList.querySelectorAll(".image-card img").forEach(checkImage);
+
+        if (!resultsList.dataset.lgImgLoadObserver) {
+            resultsList.dataset.lgImgLoadObserver = "1";
+            new MutationObserver(mutations => {
+                for (const mutation of mutations) {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType !== 1) continue;
+                        if (node.classList.contains("image-card")) {
+                            const img = node.querySelector("img");
+                            if (img) checkImage(img);
+                        } else {
+                            node.querySelectorAll(".image-card img").forEach(checkImage);
+                        }
+                    }
+                }
+            }).observe(resultsList, { childList: true, subtree: true });
+        }
+    }
+
     function init() {
         if (!isThemeEnabled()) return;
         lastIsDesktop = isDesktop();
         bindRoots();
+        wireImageLoadHandlers();
+        window.addEventListener("degoog-results-ready", wireImageLoadHandlers);
         new MutationObserver(mutations => {
             const shouldRebind = mutations.some(mutation =>
                 [...mutation.addedNodes].some(

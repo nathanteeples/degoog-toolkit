@@ -2876,11 +2876,11 @@ body {
         gap: 12px;
     }
 
-    #results-page.lg-image-fab-filters #results-tabs #tools-bar {
+    #results-page:is(.lg-image-fab-filters, [data-lg-search-type="images"], [data-lg-search-type="videos"], :has(#results-tabs .results-tab[data-type="images"].active), :has(#results-tabs .results-tab[data-type="images"][aria-selected="true"]), :has(#results-tabs .results-tab[data-type="videos"].active), :has(#results-tabs .results-tab[data-type="videos"][aria-selected="true"])) #results-tabs #tools-bar {
         display: none !important;
     }
 
-    #results-page.lg-image-fab-filters .degoog-img-filter-toggle {
+    #results-page:is(.lg-image-fab-filters, [data-lg-search-type="images"], [data-lg-search-type="videos"], :has(#results-tabs .results-tab[data-type="images"].active), :has(#results-tabs .results-tab[data-type="images"][aria-selected="true"]), :has(#results-tabs .results-tab[data-type="videos"].active), :has(#results-tabs .results-tab[data-type="videos"][aria-selected="true"])) .degoog-img-filter-toggle {
         display: none !important;
     }
 
@@ -3325,7 +3325,7 @@ body {
         width: 100%;
         min-height: 3.2rem;
         padding: 0.85rem 1rem;
-        background: var(--lg-sidebar-row-surface);
+        background: var(--lg-sidebar-row-surface) !important;
         border: 0;
         border-start-start-radius: var(--theme-radius-lg);
         border-start-end-radius: var(--theme-radius-lg);
@@ -3933,7 +3933,7 @@ body {
     width: 100%;
     min-height: 3.2rem;
     padding: 0.85rem 1rem;
-    background: var(--lg-sidebar-row-surface);
+    background: var(--lg-sidebar-row-surface) !important;
     border: 0;
     border-start-start-radius: var(--theme-radius-lg);
     border-start-end-radius: var(--theme-radius-lg);
@@ -4175,7 +4175,7 @@ body {
         justify-content: space-between;
         width: 100%;
         padding: 0.85rem 1rem;
-        background: var(--bg-light);
+        background: var(--lg-sidebar-row-surface) !important;
         border: 0;
         border-start-start-radius: var(--theme-radius-lg);
         border-start-end-radius: var(--theme-radius-lg);
@@ -4791,6 +4791,17 @@ body {
 
 #results-page #results-list .image-card:hover .image-info {
     opacity: 1;
+}
+
+#results-page #results-list .image-card:not(.lg-img-loaded) .image-title,
+#results-page #results-list .image-card:not(.lg-img-loaded) .image-source-row {
+    opacity: 0 !important;
+}
+
+#results-page #results-list .image-card.lg-img-loaded .image-title,
+#results-page #results-list .image-card.lg-img-loaded .image-source-row {
+    opacity: 1 !important;
+    transition: opacity 220ms ease;
 }
 
 #results-page #results-list .image-title {
