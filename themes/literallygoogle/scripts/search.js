@@ -3265,6 +3265,22 @@ function getLgTranslation(key) {
         return document.getElementById("sidebar-col")?.classList.contains("is-sticky") ?? false;
     }
 
+    function getMediaResultsRightEdge() {
+        const grids = [
+            ...document.querySelectorAll("#results-list .image-grid, #results-list .skeleton-image-grid"),
+        ].filter(
+            grid => grid instanceof HTMLElement && grid.getBoundingClientRect().width > 0,
+        );
+        const gridRect = grids[0]?.getBoundingClientRect();
+        if (gridRect?.width) return gridRect.right;
+
+        const resultsListRect = getResultsList()?.getBoundingClientRect();
+        if (resultsListRect?.width) return resultsListRect.right;
+
+        const resultsMainRect = document.getElementById("results-main")?.getBoundingClientRect();
+        return resultsMainRect?.right ?? window.innerWidth;
+    }
+
     function getMediaEnginePillsHost() {
         return document.getElementById(PILLS_CONTAINER_ID);
     }
@@ -3397,23 +3413,24 @@ function getLgTranslation(key) {
             Math.min(1, (stickyTop - metaRect.top) / STICKY_RAIL_REVEAL_DISTANCE),
         );
 
-        if (revealProgress <= 0 || metaRect.bottom <= stickyTop) {
+        if (revealProgress <= 0) {
             clearStickyRailStyles(host, meta);
             return;
         }
 
         const metaLeft = Math.max(0, metaRect.left);
-        const metaRightGap = Math.max(0, window.innerWidth - metaRect.right);
+        const contentRight = Math.max(metaLeft, getMediaResultsRightEdge());
+        const contentRightGap = Math.max(0, window.innerWidth - contentRight);
         const normalLeft = Math.max(metaLeft, hostRect.left);
         const stuckLeft = metaLeft + (normalLeft - metaLeft) * (1 - revealProgress);
-        const currentWidth = Math.max(0, metaRect.right - stuckLeft);
+        const currentWidth = Math.max(0, contentRight - stuckLeft);
 
         host.classList.add("lg-media-engine-rail--stuck");
         meta.classList.add("lg-media-engine-meta--rail-stuck");
         meta.style.setProperty("--lg-engine-rail-sticky-height", `${hostRect.height}px`);
         host.style.setProperty("--lg-engine-rail-top", `${stickyTop}px`);
         host.style.setProperty("--lg-engine-rail-left", `${stuckLeft}px`);
-        host.style.setProperty("--lg-engine-rail-right", `${metaRightGap}px`);
+        host.style.setProperty("--lg-engine-rail-right", `${contentRightGap}px`);
         host.style.setProperty("--lg-engine-rail-height", `${hostRect.height}px`);
         host.style.setProperty("--lg-engine-rail-progress", `${revealProgress}`);
         host.style.setProperty("--lg-engine-rail-base-width", `${hostRect.width}px`);
