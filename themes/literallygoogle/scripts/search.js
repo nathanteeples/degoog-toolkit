@@ -2623,6 +2623,48 @@ function getLgTranslation(key) {
 })();
 
 (() => {
+    const PREVIEW_CLOSING_CLASS = "lg-preview-closing";
+    const PREVIEW_EXIT_MS = 320;
+    let previewExitTimeout = 0;
+
+    function cancelPreviewExit(panel) {
+        window.clearTimeout(previewExitTimeout);
+        previewExitTimeout = 0;
+        panel?.classList.remove(PREVIEW_CLOSING_CLASS);
+    }
+
+    function startPreviewExit(panel) {
+        if (!panel) return;
+        cancelPreviewExit(panel);
+        panel.classList.add(PREVIEW_CLOSING_CLASS);
+        previewExitTimeout = window.setTimeout(() => {
+            panel.classList.remove(PREVIEW_CLOSING_CLASS);
+            previewExitTimeout = 0;
+        }, PREVIEW_EXIT_MS);
+    }
+
+    function init() {
+        const panel = getMediaPreviewPanel();
+        if (!panel) return;
+
+        let wasOpen = panel.classList.contains("open");
+        new MutationObserver(() => {
+            const isOpen = panel.classList.contains("open");
+            if (isOpen === wasOpen) return;
+
+            if (isOpen) {
+                cancelPreviewExit(panel);
+            } else {
+                startPreviewExit(panel);
+            }
+            wasOpen = isOpen;
+        }).observe(panel, { attributes: true, attributeFilter: ["class"] });
+    }
+
+    onReady(init);
+})();
+
+(() => {
     function usesImageFabDrawerChrome() {
         return getResultsPage()?.classList.contains("lg-image-fab-filters");
     }
@@ -3025,6 +3067,9 @@ function getLgTranslation(key) {
     const ACTIVE_CLASS = "lg-engine-stat-row--active";
     const HIDDEN_CLASS = "lg-engine-filtered-out";
     const RESULT_SELECTORS = ".result-item, .image-card, .video-card";
+    const PILLS_CONTAINER_ID = "lg-media-engine-pills";
+    const PILLS_BUTTON_SELECTOR = ".lg-media-engine-pill";
+    const DESKTOP_MIN = 768;
 
     function installEngineResultLearnerEarly() {
         if (EventSource.prototype.__lgEngineLearner) return;
@@ -3151,6 +3196,107 @@ function getLgTranslation(key) {
         ].filter(Boolean);
     }
 
+    function isDesktopImagePillsMode() {
+        return getActiveSearchType() === "images" && window.innerWidth >= DESKTOP_MIN;
+    }
+
+    function getMediaEnginePillsHost() {
+        return document.getElementById(PILLS_CONTAINER_ID);
+    }
+
+    function ensureMediaEnginePillsHost() {
+        const meta = getResultsMeta();
+        if (!meta || !isDesktopImagePillsMode()) return null;
+
+        let host = document.getElementById(PILLS_CONTAINER_ID);
+        if (!host) {
+            host = document.createElement("div");
+            host.id = PILLS_CONTAINER_ID;
+            host.className = "lg-media-engine-pills";
+            host.setAttribute("role", "group");
+            host.setAttribute("aria-label", "Engine filters");
+        }
+
+        const stats = meta.querySelector(".results-meta-stats");
+        const spellCheck = meta.querySelector(".spell-check-notice");
+        meta.insertBefore(host, spellCheck || stats || null);
+        return host;
+    }
+
+    function removeMediaEnginePillsHost() {
+        getMediaEnginePillsHost()?.remove();
+    }
+
+    function imageEngineRows() {
+        return [
+            ...document.querySelectorAll("#image-engine-panel .engine-stat-row"),
+        ].filter(row => row instanceof HTMLElement);
+    }
+
+    function summarizeRow(row) {
+        const label = row.querySelector(".engine-stat-label")?.textContent?.trim() || "";
+        const meta = row.querySelector(".engine-stat-meta")?.textContent?.trim() || "";
+        return { label, meta };
+    }
+
+    function syncPillHighlights(selectedEngines) {
+        const active = new Set(selectedEngines.map(normalizeEngine));
+        getMediaEnginePillsHost()
+            ?.querySelectorAll(PILLS_BUTTON_SELECTOR)
+            .forEach(button => {
+                const name = normalizeEngine(button.getAttribute("data-engine-name"));
+                const isActive = active.has(name);
+                button.classList.toggle("is-active", isActive);
+                button.setAttribute("aria-pressed", isActive ? "true" : "false");
+            });
+    }
+
+    function renderMediaEnginePills() {
+        if (!isDesktopImagePillsMode()) {
+            removeMediaEnginePillsHost();
+            return;
+        }
+
+        const rows = imageEngineRows();
+        const host = ensureMediaEnginePillsHost();
+        if (!host) return;
+        if (!rows.length) {
+            host.replaceChildren();
+            host.hidden = true;
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        for (const row of rows) {
+            const { label, meta } = summarizeRow(row);
+            if (!label) continue;
+
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "lg-media-engine-pill";
+            button.setAttribute("data-engine-name", label);
+            button.setAttribute("aria-pressed", "false");
+
+            const labelSpan = document.createElement("span");
+            labelSpan.className = "lg-media-engine-pill__label";
+            labelSpan.textContent = label;
+            button.appendChild(labelSpan);
+
+            if (meta) {
+                const metaSpan = document.createElement("span");
+                metaSpan.className = "lg-media-engine-pill__meta";
+                metaSpan.textContent = meta;
+                button.appendChild(metaSpan);
+            }
+
+            fragment.appendChild(button);
+        }
+
+        host.replaceChildren(fragment);
+        host.hidden = host.childElementCount === 0;
+        syncPillHighlights(getSelectedEngines());
+    }
+
     function getSelectedEngines() {
         const raw = getPage()?.getAttribute(FILTER_ATTR);
         if (!raw) return [];
@@ -3193,6 +3339,7 @@ function getLgTranslation(key) {
             row.classList.toggle(ACTIVE_CLASS, isActive);
             row.setAttribute("aria-pressed", isActive ? "true" : "false");
         });
+        syncPillHighlights(selectedEngines);
     }
 
     function applyFilter(selectedEngines) {
@@ -3268,6 +3415,7 @@ function getLgTranslation(key) {
         new MutationObserver(() => {
             decorateRows();
             syncRowHighlights(getSelectedEngines());
+            renderMediaEnginePills();
         }).observe(root, { childList: true, subtree: true });
     }
 
@@ -3277,6 +3425,7 @@ function getLgTranslation(key) {
         }
         decorateRows();
         syncRowHighlights(getSelectedEngines());
+        renderMediaEnginePills();
     }
 
     function nodeAddsEnginePanel(node) {
@@ -3322,6 +3471,20 @@ function getLgTranslation(key) {
         const target = event.target;
         if (!target?.closest) return;
         if (target.closest(".engine-retry-link")) return;
+        const pill = target.closest(PILLS_BUTTON_SELECTOR);
+        if (pill) {
+            event.preventDefault();
+            event.stopPropagation();
+            const name = pill.getAttribute("data-engine-name") || "";
+            if (!name) return;
+            const selected = getSelectedEngines();
+            const key = normalizeEngine(name);
+            const index = selected.findIndex(engine => normalizeEngine(engine) === key);
+            if (index >= 0) selected.splice(index, 1);
+            else selected.push(name);
+            setSelectedEngines(selected);
+            return;
+        }
         const row = target.closest(".engine-stat-row");
         if (!row || !rowInEnginePanel(row)) return;
         event.preventDefault();
@@ -3363,9 +3526,13 @@ function getLgTranslation(key) {
         window.addEventListener("degoog-results-ready", () => {
             decorateRows();
             scheduleApply();
+            renderMediaEnginePills();
         });
 
+        window.addEventListener("resize", renderMediaEnginePills, { passive: true });
+
         decorateRows();
+        renderMediaEnginePills();
     }
 
     onReady(init);

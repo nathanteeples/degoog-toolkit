@@ -1811,6 +1811,85 @@ body {
     order: 2;
 }
 
+#results-page:is(
+        :has(#results-tabs .results-tab[data-type="images"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="images"][aria-selected="true"]
+        ),
+        :has(#results-tabs .results-tab[data-type="videos"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="videos"][aria-selected="true"]
+        ),
+        :has(#results-list .image-card),
+        :has(#results-list .video-card)
+    )
+    #results-meta {
+    width: 100%;
+    max-width: none;
+    padding-inline-start: var(--theme-media-inline-gutter);
+    padding-inline-end: var(--theme-media-inline-gutter);
+}
+
+.lg-media-engine-pills {
+    order: 1;
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    padding: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.lg-media-engine-pills::-webkit-scrollbar {
+    display: none;
+}
+
+.lg-media-engine-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--theme-radius-pill);
+    background: var(--bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition:
+        background-color 140ms ease,
+        border-color 140ms ease,
+        box-shadow 140ms ease,
+        color 140ms ease;
+}
+
+.lg-media-engine-pill:hover {
+    background: var(--bg-light);
+    border-color: var(--bg-hover);
+}
+
+.lg-media-engine-pill.is-active {
+    background: var(--lg-selection-active-bg);
+    border-color: color-mix(in srgb, var(--lg-selection-accent) 42%, var(--border-light));
+    box-shadow: inset 0 0 0 1px var(--lg-selection-active-ring);
+}
+
+.lg-media-engine-pill__label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.lg-media-engine-pill__meta {
+    font-size: 0.72rem;
+    white-space: nowrap;
+    color: var(--text-secondary);
+}
+
 @media (min-width: 768px) {
     #results-page:is(
             :has(#results-tabs .results-tab[data-type="images"].active),
@@ -1846,6 +1925,12 @@ body {
         #results-meta {
         flex-wrap: wrap;
         max-width: none;
+    }
+
+    #results-page[data-lg-search-type="images"].lg-image-fab-filters
+        #image-filters-bar
+        #image-engine-panel {
+        display: none;
     }
 
     #results-page:is(
@@ -2992,6 +3077,19 @@ body {
         transform: none;
         pointer-events: none;
         transition: opacity 160ms ease;
+    }
+
+    #results-page.lg-image-fab-filters
+        #image-filters-bar.lg-image-drawer-animating:not(.open)
+        .degoog-img-sidebar-body {
+        overflow: hidden !important;
+        scrollbar-width: none;
+    }
+
+    #results-page.lg-image-fab-filters
+        #image-filters-bar.lg-image-drawer-animating:not(.open)
+        .degoog-img-sidebar-body::-webkit-scrollbar {
+        display: none;
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar.open .degoog-img-sidebar-body,
@@ -4951,11 +5049,12 @@ body {
     background-color: var(--mp2-panel-bg);
 }
 
-#media-preview-panel:not(.open) {
+#media-preview-panel:not(.open):not(.lg-preview-closing) {
     display: none;
 }
 
-#media-preview-panel.open {
+#media-preview-panel.open,
+#media-preview-panel.lg-preview-closing {
     display: flex;
 }
 
@@ -4983,6 +5082,7 @@ body {
     pointer-events: auto;
     transform: translateY(0) scale(1);
     transition-delay: 0s;
+    transition: none;
 }
 
 /* Sticky preview sits below our sticky header (50px bar + 0.75rem pad × 2).
@@ -5018,7 +5118,7 @@ body {
         max-width: 0;
         margin-inline: 0;
         border-radius: var(--theme-radius-xl);
-        transform: translateX(1rem) scale(0.975);
+        transform: translateX(1.6rem) scale(0.975);
         transform-origin: right center;
         box-shadow: none;
         transition:
@@ -5035,7 +5135,7 @@ body {
     }
 
     html[dir="rtl"] #results-page:has(#results-layout.media-mode) #media-preview-panel {
-        transform: translateX(-1rem) scale(0.975);
+        transform: translateX(-1.6rem) scale(0.975);
         transform-origin: left center;
     }
 
