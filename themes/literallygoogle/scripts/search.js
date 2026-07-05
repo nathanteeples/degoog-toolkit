@@ -2313,7 +2313,14 @@ function getLgTranslation(key) {
             if (!nw || !nh) return;
 
             const body = wrap.closest(".mp2-body");
-            const maxW = Math.max(120, body?.clientWidth || wrap.clientWidth || 360);
+            const scrollRail =
+                Number.parseFloat(
+                    getComputedStyle(panel).getPropertyValue("--mp2-scroll-rail"),
+                ) || 0;
+            const maxW = Math.max(
+                120,
+                (body?.clientWidth || wrap.clientWidth || 360) - scrollRail,
+            );
             const maxH = Math.min(window.innerHeight * 0.62, 560);
             const scale = Math.min(maxW / nw, maxH / nh, 1);
             const w = nw * scale;
@@ -3289,19 +3296,44 @@ function getLgTranslation(key) {
     }
 
     function getMediaResultsRightEdge() {
-        const grids = [
-            ...document.querySelectorAll("#results-list .image-grid, #results-list .skeleton-image-grid"),
-        ].filter(
-            grid => grid instanceof HTMLElement && grid.getBoundingClientRect().width > 0,
-        );
-        const gridRect = grids[0]?.getBoundingClientRect();
-        if (gridRect?.width) return gridRect.right;
+        const visibleColumnRects = [
+            ...document.querySelectorAll(
+                "#results-list .image-grid > .image-column:not(.lg-image-col-hidden)",
+            ),
+        ]
+            .filter(column => column instanceof HTMLElement)
+            .map(column => column.getBoundingClientRect())
+            .filter(rect => rect.width > 1 && rect.height > 1);
+        if (visibleColumnRects.length) {
+            return Math.max(...visibleColumnRects.map(rect => rect.right));
+        }
+
+        const visibleCardRects = [
+            ...document.querySelectorAll("#results-list .image-card, #results-list .skeleton-image-card"),
+        ]
+            .filter(card => card instanceof HTMLElement)
+            .map(card => card.getBoundingClientRect())
+            .filter(rect => rect.width > 1 && rect.height > 1);
+        if (visibleCardRects.length) {
+            return Math.max(...visibleCardRects.map(rect => rect.right));
+        }
 
         const resultsListRect = getResultsList()?.getBoundingClientRect();
         if (resultsListRect?.width) return resultsListRect.right;
 
         const resultsMainRect = document.getElementById("results-main")?.getBoundingClientRect();
         return resultsMainRect?.right ?? window.innerWidth;
+    }
+
+    function syncMediaMetaRightGap() {
+        const meta = getResultsMeta();
+        if (!meta) return;
+        if (!isDesktopImagePillsMode()) {
+            meta.style.removeProperty("--lg-media-meta-right-gap");
+            return;
+        }
+        const contentRightGap = Math.max(0, window.innerWidth - getMediaResultsRightEdge());
+        meta.style.setProperty("--lg-media-meta-right-gap", `${contentRightGap}px`);
     }
 
     function getMediaEnginePillsHost() {
@@ -3404,7 +3436,6 @@ function getLgTranslation(key) {
         host?.classList.remove("lg-media-engine-rail--stuck");
         meta?.classList.remove("lg-media-engine-meta--rail-stuck");
         meta?.style.removeProperty("--lg-engine-rail-sticky-height");
-        meta?.style.removeProperty("--lg-media-meta-right-gap");
         if (!host) return;
         host.style.removeProperty("--lg-engine-rail-top");
         host.style.removeProperty("--lg-engine-rail-left");
@@ -3419,6 +3450,7 @@ function getLgTranslation(key) {
         stickyRailFrame = 0;
         const host = getMediaEnginePillsHost();
         const meta = getResultsMeta();
+        syncMediaMetaRightGap();
         if (!host || !meta || host.hidden || !isDesktopImagePillsMode() || !stickySidebarEnabled()) {
             clearStickyRailStyles(host, meta);
             return;
@@ -3465,6 +3497,7 @@ function getLgTranslation(key) {
 
     function renderMediaEnginePills() {
         if (!isDesktopImagePillsMode()) {
+            syncMediaMetaRightGap();
             getResultsMeta()?.style.removeProperty("--lg-media-meta-right-gap");
             removeMediaEnginePillsHost();
             return;
@@ -3473,11 +3506,7 @@ function getLgTranslation(key) {
         const rows = imageEngineRows();
         const host = ensureMediaEnginePillsHost();
         if (!host) return;
-        const meta = getResultsMeta();
-        if (meta) {
-            const contentRightGap = Math.max(0, window.innerWidth - getMediaResultsRightEdge());
-            meta.style.setProperty("--lg-media-meta-right-gap", `${contentRightGap}px`);
-        }
+        syncMediaMetaRightGap();
         const pills = host.querySelector(".lg-media-engine-pills");
         if (!pills) return;
         initPillRail(host);
