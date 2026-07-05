@@ -11,6 +11,29 @@ let template = "";
 let pluginRuntimeContext = null;
 let localeBanks = {};
 
+// Caching State & Helpers
+let tmdbCache = null;
+const CACHE_TTL_24H = 24 * 60 * 60 * 1000;
+const CACHE_TTL_1H = 60 * 60 * 1000;
+const CACHE_TTL_15M = 15 * 60 * 1000;
+
+function createExtensionCache(ctx, namespace, ttlMs) {
+  if (typeof ctx?.useCache === "function") {
+    return ctx.useCache(namespace, ttlMs);
+  }
+  return typeof ctx?.createCache === "function"
+    ? ctx.createCache(ttlMs)
+    : null;
+}
+
+async function cacheGet(cache, key) {
+  return cache ? await cache.get(key) : null;
+}
+
+async function cacheSet(cache, key, value, ttlMs) {
+  if (cache) await cache.set(key, value, ttlMs);
+}
+
 const ROUTE_FALLBACK_STRINGS = {
   overview: "Overview",
   cast: "Cast",
@@ -425,18 +448,31 @@ const _ratingStr = (vote) => {
 
 // ── TMDB API ──────────────────────────────────────────────────────────────────
 const _tmdb = async (path, ctx) => {
+  const cacheKey = `tmdb:${path}:${tmdbLanguage}`;
+  const cached = await cacheGet(tmdbCache, cacheKey);
+  if (cached) return cached;
+
   const base = "https://api.themoviedb.org/3";
   const sep = path.includes("?") ? "&" : "?";
   const url = `${base}/${path}${sep}api_key=${encodeURIComponent(tmdbApiKey)}&language=${encodeURIComponent(tmdbLanguage)}`;
   const fetchFn = _fetchFor(ctx);
   const res = await fetchFn(url);
   if (!res.ok) return null;
-  return res.json();
+  const data = await res.json();
+  if (data) {
+    const ttl = path.includes("search/") ? CACHE_TTL_1H : CACHE_TTL_24H;
+    await cacheSet(tmdbCache, cacheKey, data, ttl);
+  }
+  return data;
 };
 
 // OMDb (Open Movie Database) — optional; IMDb + Rotten Tomatoes (movies) via TMDB IMDb id.
 const _omdbFetch = async (query, ctx) => {
   if (!omdbApiKey) return null;
+  const cacheKey = `omdb:${query.i || ""}:${query.t || ""}:${query.y || ""}:${query.type || ""}`;
+  const cached = await cacheGet(tmdbCache, cacheKey);
+  if (cached) return cached;
+
   try {
     const fetchFn = _fetchFor(ctx);
     const u = new URL("https://www.omdbapi.com/");
@@ -458,6 +494,8 @@ const _omdbFetch = async (query, ctx) => {
     }
     const json = await res.json();
     if (!json || json.Response === "False") return null;
+
+    await cacheSet(tmdbCache, cacheKey, json, CACHE_TTL_24H);
     return json;
   } catch (err) {
     console.warn(`[tmdb] OMDb fetch error for ${query.i || query.t}:`, err?.message || err);
@@ -727,6 +765,10 @@ const _resolveFromQuery = async (query, ctx) => {
 const _jellyfinSearch = async (title, ctx) => {
   const apiUrl = jellyfinUrl || jellyfinExternalUrl;
   if (!apiUrl || !jellyfinApiKey || !title) return null;
+  const cacheKey = `jellyfin:${title}`;
+  const cached = await cacheGet(tmdbCache, cacheKey);
+  if (cached) return cached;
+
   try {
     const fetchFn = _fetchFor(ctx);
     const url =
@@ -741,7 +783,9 @@ const _jellyfinSearch = async (title, ctx) => {
       return null;
     }
     const data = await res.json();
-    return (data?.Items || [])[0] || null;
+    const result = (data?.Items || [])[0] || null;
+    await cacheSet(tmdbCache, cacheKey, result, CACHE_TTL_15M);
+    return result;
   } catch (err) {
     console.warn(`[tmdb] Jellyfin search error for "${title}" at ${apiUrl}:`, err?.message || err);
     return null;
@@ -759,6 +803,10 @@ const _jellyfinHrefForItem = (item) => {
 /** Fetch availability status and ratings from Seerr (Overseerr/Jellyseerr). */
 const _seerrLookup = async (mediaType, tmdbId, ctx) => {
   if (!seerrUrl || !seerrApiKey || !tmdbId) return null;
+  const cacheKey = `seerr:${mediaType}:${tmdbId}`;
+  const cached = await cacheGet(tmdbCache, cacheKey);
+  if (cached) return cached;
+
   try {
     const fetchFn = _fetchFor(ctx);
 
@@ -795,7 +843,7 @@ const _seerrLookup = async (mediaType, tmdbId, ctx) => {
     const rtUrl = ratings?.rt?.url || ratings?.rtUrl || null;
     const imdbRating = ratings?.imdb?.rating || ratings?.imdb?.score || ratings?.imdbRating || null;
 
-    return {
+    const result = {
       href: `${seerrUrl}/${mediaType}/${tmdbId}`,
       statusKey: SEERR_STATUS_KEYS[status] || "seerrRequest",
       rtCritic,
@@ -803,6 +851,8 @@ const _seerrLookup = async (mediaType, tmdbId, ctx) => {
       rtUrl,
       imdbRating,
     };
+    await cacheSet(tmdbCache, cacheKey, result, CACHE_TTL_15M);
+    return result;
   } catch (err) {
     console.warn(`[tmdb] Seerr lookup error for ${mediaType}/${tmdbId} at ${seerrUrl}:`, err?.message || err);
     return null;
@@ -2383,6 +2433,7 @@ export const slot = {
   async init(ctx) {
     pluginRuntimeContext = ctx || null;
     _setPluginRouteBase(ctx);
+    tmdbCache = createExtensionCache(ctx, "ext-tmdb", CACHE_TTL_24H);
     // Support both ctx.template (set by host) and manual readFile
     template = ctx.template || "";
     if (!template && ctx.readFile) {
