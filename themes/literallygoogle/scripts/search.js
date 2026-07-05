@@ -2040,33 +2040,22 @@ function getLgTranslation(key) {
 
         toggle.addEventListener(
             "click",
-            () => {
+            event => {
                 const currentPage = getResultsPage();
                 if (isImageDrawerMode(currentPage)) return;
-                const wasOpen =
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                const isOpen =
                     panel.style.display !== "none" ||
                     toggle.getAttribute("aria-expanded") === "true";
 
-                requestAnimationFrame(() => {
-                    const isOpen =
-                        panel.style.display !== "none" ||
-                        toggle.getAttribute("aria-expanded") === "true";
+                if (isOpen) {
+                    ensureFiltersClosed(panel, toggle);
+                    return;
+                }
 
-                    if (isOpen !== wasOpen) {
-                        if (isOpen) {
-                            ensureFiltersPanelHost(panel);
-                            positionFiltersPanel(panel, toggle, page);
-                            syncCustomDateMenuState(panel);
-                        }
-                        return;
-                    }
-
-                    if (wasOpen) {
-                        ensureFiltersClosed(panel, toggle);
-                    } else {
-                        openFiltersDropdownFallback(panel, toggle, page);
-                    }
-                });
+                openFiltersDropdownFallback(panel, toggle, page);
             },
             true,
         );
@@ -2615,6 +2604,23 @@ function getLgTranslation(key) {
     const PREVIEW_EXIT_MS = 320;
     let previewExitTimeout = 0;
     let previewOpenFrame = 0;
+    let lastOpenPreviewRect = null;
+
+    function captureOpenPreviewRect(panel) {
+        if (!panel?.classList.contains("open")) return;
+        const rect = panel.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+        lastOpenPreviewRect = {
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+        };
+        panel.style.setProperty("--lg-preview-exit-top", `${rect.top}px`);
+        panel.style.setProperty("--lg-preview-exit-left", `${rect.left}px`);
+        panel.style.setProperty("--lg-preview-exit-width", `${rect.width}px`);
+        panel.style.setProperty("--lg-preview-exit-height", `${rect.height}px`);
+    }
 
     function cancelPreviewExit(panel) {
         window.clearTimeout(previewExitTimeout);
@@ -2634,6 +2640,12 @@ function getLgTranslation(key) {
         if (!panel) return;
         cancelPreviewExit(panel);
         cancelPreviewOpenBypass(panel);
+        if (lastOpenPreviewRect) {
+            panel.style.setProperty("--lg-preview-exit-top", `${lastOpenPreviewRect.top}px`);
+            panel.style.setProperty("--lg-preview-exit-left", `${lastOpenPreviewRect.left}px`);
+            panel.style.setProperty("--lg-preview-exit-width", `${lastOpenPreviewRect.width}px`);
+            panel.style.setProperty("--lg-preview-exit-height", `${lastOpenPreviewRect.height}px`);
+        }
         panel.classList.add(PREVIEW_CLOSING_CLASS);
         previewExitTimeout = window.setTimeout(() => {
             panel.classList.remove(PREVIEW_CLOSING_CLASS);
@@ -2659,17 +2671,28 @@ function getLgTranslation(key) {
         if (!panel) return;
 
         let wasOpen = panel.classList.contains("open");
+        if (wasOpen) captureOpenPreviewRect(panel);
         new MutationObserver(() => {
             const isOpen = panel.classList.contains("open");
             if (isOpen === wasOpen) return;
 
             if (isOpen) {
                 startPreviewOpen(panel);
+                requestAnimationFrame(() => captureOpenPreviewRect(panel));
             } else {
                 startPreviewExit(panel);
             }
             wasOpen = isOpen;
         }).observe(panel, { attributes: true, attributeFilter: ["class"] });
+
+        window.addEventListener(
+            "scroll",
+            () => {
+                if (panel.classList.contains("open")) captureOpenPreviewRect(panel);
+            },
+            { passive: true },
+        );
+        window.addEventListener("resize", () => captureOpenPreviewRect(panel));
     }
 
     onReady(init);
@@ -3029,9 +3052,13 @@ function getLgTranslation(key) {
     if (preview) {
         new MutationObserver(() => {
             scanGrids();
-            scheduleFold();
             if (preview.classList.contains("open")) {
+                scheduleFold();
                 requestAnimationFrame(scrollSelectedImageIntoView);
+            } else {
+                document
+                    .querySelectorAll("#results-list .image-grid.lg-image-grid-fold")
+                    .forEach(resetGrid);
             }
         }).observe(preview, { attributes: true, attributeFilter: ["class"] });
 
@@ -3102,6 +3129,8 @@ function getLgTranslation(key) {
     const PILLS_BUTTON_SELECTOR = ".lg-media-engine-pill";
     const PILLS_SCROLL_SELECTOR = ".lg-media-engine-pills__scroll";
     const DESKTOP_MIN = 768;
+    const STICKY_RAIL_REVEAL_DISTANCE = 160;
+    let stickyRailFrame = 0;
 
     function installEngineResultLearnerEarly() {
         if (EventSource.prototype.__lgEngineLearner) return;
@@ -3232,6 +3261,10 @@ function getLgTranslation(key) {
         return getActiveSearchType() === "images" && window.innerWidth >= DESKTOP_MIN;
     }
 
+    function stickySidebarEnabled() {
+        return document.getElementById("sidebar-col")?.classList.contains("is-sticky") ?? false;
+    }
+
     function getMediaEnginePillsHost() {
         return document.getElementById(PILLS_CONTAINER_ID);
     }
@@ -3328,6 +3361,71 @@ function getLgTranslation(key) {
         refresh();
     }
 
+    function clearStickyRailStyles(host, meta) {
+        host?.classList.remove("lg-media-engine-rail--stuck");
+        meta?.classList.remove("lg-media-engine-meta--rail-stuck");
+        meta?.style.removeProperty("--lg-engine-rail-sticky-height");
+        if (!host) return;
+        host.style.removeProperty("--lg-engine-rail-top");
+        host.style.removeProperty("--lg-engine-rail-left");
+        host.style.removeProperty("--lg-engine-rail-right");
+        host.style.removeProperty("--lg-engine-rail-height");
+        host.style.removeProperty("--lg-engine-rail-progress");
+        host.style.removeProperty("--lg-engine-rail-base-width");
+        host.style.removeProperty("--lg-engine-rail-stuck-width");
+    }
+
+    function updateStickyEngineRail() {
+        stickyRailFrame = 0;
+        const host = getMediaEnginePillsHost();
+        const meta = getResultsMeta();
+        if (!host || !meta || host.hidden || !isDesktopImagePillsMode() || !stickySidebarEnabled()) {
+            clearStickyRailStyles(host, meta);
+            return;
+        }
+
+        const stickyTop =
+            Number.parseFloat(
+                getComputedStyle(document.documentElement).getPropertyValue(
+                    "--literallygoogle-sticky-header-offset",
+                ),
+            ) || 0;
+        const metaRect = meta.getBoundingClientRect();
+        const hostRect = host.getBoundingClientRect();
+        const revealProgress = Math.max(
+            0,
+            Math.min(1, (stickyTop - metaRect.top) / STICKY_RAIL_REVEAL_DISTANCE),
+        );
+
+        if (revealProgress <= 0 || metaRect.bottom <= stickyTop) {
+            clearStickyRailStyles(host, meta);
+            return;
+        }
+
+        const metaLeft = Math.max(0, metaRect.left);
+        const metaRightGap = Math.max(0, window.innerWidth - metaRect.right);
+        const normalLeft = Math.max(metaLeft, hostRect.left);
+        const stuckLeft = metaLeft + (normalLeft - metaLeft) * (1 - revealProgress);
+        const currentWidth = Math.max(0, metaRect.right - stuckLeft);
+
+        host.classList.add("lg-media-engine-rail--stuck");
+        meta.classList.add("lg-media-engine-meta--rail-stuck");
+        meta.style.setProperty("--lg-engine-rail-sticky-height", `${hostRect.height}px`);
+        host.style.setProperty("--lg-engine-rail-top", `${stickyTop}px`);
+        host.style.setProperty("--lg-engine-rail-left", `${stuckLeft}px`);
+        host.style.setProperty("--lg-engine-rail-right", `${metaRightGap}px`);
+        host.style.setProperty("--lg-engine-rail-height", `${hostRect.height}px`);
+        host.style.setProperty("--lg-engine-rail-progress", `${revealProgress}`);
+        host.style.setProperty("--lg-engine-rail-base-width", `${hostRect.width}px`);
+        host.style.setProperty("--lg-engine-rail-stuck-width", `${currentWidth}px`);
+        updatePillNavState();
+    }
+
+    function scheduleStickyEngineRailUpdate() {
+        if (stickyRailFrame) return;
+        stickyRailFrame = requestAnimationFrame(updateStickyEngineRail);
+    }
+
     function renderMediaEnginePills() {
         if (!isDesktopImagePillsMode()) {
             removeMediaEnginePillsHost();
@@ -3377,6 +3475,7 @@ function getLgTranslation(key) {
         host.hidden = pills.childElementCount === 0;
         syncPillHighlights(getSelectedEngines());
         updatePillNavState();
+        scheduleStickyEngineRailUpdate();
     }
 
     function getSelectedEngines() {
@@ -3498,6 +3597,7 @@ function getLgTranslation(key) {
             decorateRows();
             syncRowHighlights(getSelectedEngines());
             renderMediaEnginePills();
+            scheduleStickyEngineRailUpdate();
         }).observe(root, { childList: true, subtree: true });
     }
 
@@ -3508,6 +3608,7 @@ function getLgTranslation(key) {
         decorateRows();
         syncRowHighlights(getSelectedEngines());
         renderMediaEnginePills();
+        scheduleStickyEngineRailUpdate();
     }
 
     function nodeAddsEnginePanel(node) {
@@ -3547,6 +3648,7 @@ function getLgTranslation(key) {
         const engines = getSelectedEngines();
         if (!engines.length) return;
         requestAnimationFrame(() => applyFilter(engines));
+        scheduleStickyEngineRailUpdate();
     }
 
     function onClick(event) {
@@ -3606,6 +3708,7 @@ function getLgTranslation(key) {
                 if (started) clearFilter();
                 decorateRows();
                 scheduleApply();
+                scheduleStickyEngineRailUpdate();
             }).observe(resultsList, { childList: true, subtree: true });
         }
 
@@ -3621,12 +3724,26 @@ function getLgTranslation(key) {
             decorateRows();
             scheduleApply();
             renderMediaEnginePills();
+            scheduleStickyEngineRailUpdate();
         });
 
-        window.addEventListener("resize", renderMediaEnginePills, { passive: true });
+        window.addEventListener(
+            "resize",
+            () => {
+                renderMediaEnginePills();
+                scheduleStickyEngineRailUpdate();
+            },
+            { passive: true },
+        );
+        window.addEventListener("scroll", scheduleStickyEngineRailUpdate, { passive: true });
+        new MutationObserver(scheduleStickyEngineRailUpdate).observe(
+            document.getElementById("sidebar-col") || document.documentElement,
+            { attributes: true, attributeFilter: ["class"] },
+        );
 
         decorateRows();
         renderMediaEnginePills();
+        scheduleStickyEngineRailUpdate();
     }
 
     onReady(init);

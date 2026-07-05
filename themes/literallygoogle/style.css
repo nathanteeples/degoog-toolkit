@@ -1848,6 +1848,27 @@ body {
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    z-index: 6;
+}
+
+#results-meta.lg-media-engine-meta--rail-stuck {
+    padding-bottom: var(--lg-engine-rail-sticky-height, 0px);
+}
+
+.lg-media-engine-rail.lg-media-engine-rail--stuck {
+    position: fixed;
+    top: var(--lg-engine-rail-top, 0px);
+    left: var(--lg-engine-rail-left, 0px);
+    right: var(--lg-engine-rail-right, auto);
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    height: var(--lg-engine-rail-height, auto);
+    padding: 0.18rem 0 0.18rem 0.35rem;
+    background: color-mix(in srgb, var(--bg, Canvas) 94%, transparent);
+    backdrop-filter: blur(10px);
+    border-radius: var(--theme-radius-pill);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.14);
 }
 
 .lg-media-engine-pills__scroll {
@@ -2031,6 +2052,18 @@ body {
         #results-layout {
         gap: var(--literallygoogle-media-row-gap);
         min-width: 0;
+    }
+
+    #results-page:not([data-lg-search-type="images"])
+        .lg-media-engine-rail.lg-media-engine-rail--stuck,
+    #results-page:not(:has(#results-list .image-card))
+        .lg-media-engine-rail.lg-media-engine-rail--stuck {
+        position: static;
+        inset: auto;
+        padding: 0;
+        background: transparent;
+        backdrop-filter: none;
+        box-shadow: none;
     }
 
     #results-page:is(
@@ -2406,6 +2439,13 @@ body {
         max-width: 100%;
     }
 
+    #results-page:not(:has(#media-preview-panel.open))
+        #results-list
+        .image-grid.lg-image-grid-fold
+        > .image-column {
+        transition: none !important;
+    }
+
     #results-list .image-grid.lg-image-grid-fold > .image-column.lg-image-col-hidden {
         flex: 0 0 0 !important;
         width: 0 !important;
@@ -2422,17 +2462,32 @@ body {
         transition: width 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
+    #results-page:not(:has(#media-preview-panel.open))
+        #results-list
+        .image-grid.lg-image-grid-fold
+        :is(.image-thumb-wrap, .image-thumb) {
+        transition: none !important;
+    }
+
     #results-page .image-card.selected {
         outline: none;
         opacity: 1 !important;
         position: relative;
         z-index: 2;
-        border-radius: var(--theme-radius-md);
+        overflow: visible;
+    }
+
+    #results-page .image-card.selected::before {
+        content: "";
+        position: absolute;
+        inset: -0.25rem;
+        border-radius: calc(var(--theme-radius-md) + 0.25rem);
         background: color-mix(in srgb, var(--primary) 24%, var(--bg));
         box-shadow:
             inset 0 0 0 2px color-mix(in srgb, var(--primary) 88%, white 12%),
             0 1px 3px color-mix(in srgb, var(--primary) 18%, transparent);
-        padding: 0.25rem;
+        pointer-events: none;
+        z-index: -1;
     }
 
     #results-page .image-card.selected .image-thumb-wrap {
@@ -2447,10 +2502,6 @@ body {
         border-radius: inherit;
         pointer-events: none;
         z-index: 3;
-    }
-
-    #results-page .image-card.selected .image-info {
-        padding: 0.45rem 0.2rem 0.15rem;
     }
 
     #results-page .image-card.selected .image-title {
@@ -5266,6 +5317,32 @@ body {
         max-width: var(--mp2-panel-width);
         border-top: 1px solid var(--mp2-panel-border);
         box-shadow: var(--mp2-panel-shadow);
+    }
+
+    #results-page:has(#results-layout.media-mode) #media-preview-panel.lg-preview-closing {
+        position: fixed;
+        top: var(--lg-preview-exit-top, 0px);
+        left: var(--lg-preview-exit-left, 0px);
+        right: auto;
+        bottom: auto;
+        width: var(--lg-preview-exit-width, var(--mp2-panel-width));
+        min-width: 0;
+        max-width: var(--lg-preview-exit-width, var(--mp2-panel-width));
+        height: var(--lg-preview-exit-height, auto);
+        max-height: var(--lg-preview-exit-height, auto);
+        flex-basis: auto;
+        margin: 0;
+        z-index: 30;
+        pointer-events: none;
+        opacity: 0;
+        visibility: visible;
+        transform: translateX(1.6rem) scale(0.975);
+        transition:
+            transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            opacity 220ms ease,
+            box-shadow 220ms ease,
+            border-color 220ms ease,
+            background-color 220ms ease;
     }
 
     #results-page:has(#results-layout.media-mode)
