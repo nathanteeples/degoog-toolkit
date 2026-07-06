@@ -101,6 +101,14 @@ var {
         5px 6px 8px -4px rgba(0, 0, 0, 0.24),
         -5px 6px 8px -4px rgba(0, 0, 0, 0.24),
         0 8px 8px 1px rgba(0, 0, 0, 0.24);
+    /* Settings / Store surfaces (see design.md) */
+    --lg-settings-row-bg: var(--bg-light);
+    --lg-settings-chip-btn-bg: #282a2c;
+    --lg-settings-chip-btn-bg-light: #d5dff0;
+    --lg-settings-select-light: #dde3ea;
+    --lg-settings-select-light-hover: #ced3da;
+    --lg-settings-page-bg-light: #f0f4f9;
+    --lg-settings-apps-pocket-bg: #e9eef6;
 }
 
 html[data-image-mode-desktop-layout="preview-left"],
@@ -824,6 +832,30 @@ html[dir="rtl"] #image-filters-bar.open {
 #image-filters-bar.lg-image-drawer-animating:not(.open) .degoog-img-sidebar-close.lg-drawer-pull-tab,
 #image-filters-bar.lg-image-drawer-animating:not(.open) .degoog-img-sidebar-close.lg-drawer-pull-tab::before {
     opacity: 0 !important;
+}
+
+/* Hide scrollbars while the FAB drawer morphs or is dragged closed (all breakpoints). */
+#image-filters-bar.lg-image-drawer-animating:not(.open),
+#image-filters-bar.lg-drawer-dragging,
+#image-filters-bar.lg-drawer-drag-snap,
+#image-filters-bar.lg-image-drawer-animating:not(.open) .degoog-img-sidebar,
+#image-filters-bar.lg-image-drawer-animating:not(.open) .degoog-img-sidebar-body,
+#image-filters-bar.lg-drawer-dragging .degoog-img-sidebar,
+#image-filters-bar.lg-drawer-dragging .degoog-img-sidebar-body,
+#image-filters-bar.lg-drawer-drag-snap .degoog-img-sidebar,
+#image-filters-bar.lg-drawer-drag-snap .degoog-img-sidebar-body {
+    overflow: hidden !important;
+    scrollbar-width: none;
+}
+
+#image-filters-bar.lg-image-drawer-animating:not(.open)::-webkit-scrollbar,
+#image-filters-bar.lg-drawer-dragging::-webkit-scrollbar,
+#image-filters-bar.lg-drawer-drag-snap::-webkit-scrollbar,
+#image-filters-bar.lg-image-drawer-animating:not(.open)
+    .degoog-img-sidebar-body::-webkit-scrollbar,
+#image-filters-bar.lg-drawer-dragging .degoog-img-sidebar-body::-webkit-scrollbar,
+#image-filters-bar.lg-drawer-drag-snap .degoog-img-sidebar-body::-webkit-scrollbar {
+    display: none;
 }
 
 .degoog-img-sidebar-overlay {
@@ -4978,16 +5010,18 @@ body {
     border-radius: var(--theme-radius-pill);
 }
 
-.btn--secondary,
-.degoog-btn--secondary {
+/* Filled secondary buttons on settings pages — not outline/transparent. */
+.settings-page .btn--secondary:not(.ext-card-configure):not(.ext-card-apply),
+.settings-page .degoog-btn--secondary:not(.ext-card-configure):not(.ext-card-apply) {
+    background: var(--btn-bg) !important;
     border: 1px solid var(--border) !important;
-    background: transparent !important;
-    color: var(--primary) !important;
+    color: var(--btn-text) !important;
 }
 
-.btn--secondary:hover,
-.degoog-btn--secondary:hover {
-    background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+.settings-page .btn--secondary:not(.ext-card-configure):not(.ext-card-apply):hover,
+.settings-page .degoog-btn--secondary:not(.ext-card-configure):not(.ext-card-apply):hover {
+    background: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
 }
 
 /* Use ring shadows instead of border so track/knob box model matches core CSS
@@ -5007,7 +5041,13 @@ body {
 }
 
 [data-theme="light"] .settings-page-body {
-    background: #f0f4f9;
+    background: var(--lg-settings-page-bg-light);
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) .settings-page-body {
+        background: var(--lg-settings-page-bg-light);
+    }
 }
 
 .settings-section-heading:has(+ .settings-fieldset) {
@@ -5174,7 +5214,7 @@ body {
     padding: 17px;
     border: none;
     border-radius: var(--theme-radius-xs);
-    background: #37393b;
+    background: var(--lg-settings-row-bg);
 }
 
 .settings-section:not(.store-catalog-section) {
@@ -5219,7 +5259,7 @@ body {
 }
 
 .settings-toggle-wrap {
-    background: #37393b;
+    background: var(--lg-settings-row-bg);
     padding: 17px;
     border: none;
 }
@@ -5232,15 +5272,16 @@ body {
 
 .ext-card-configure,
 .ext-card-apply {
-    background: #282a2c;
+    background: var(--lg-settings-chip-btn-bg) !important;
     border-radius: var(--theme-radius-pill);
-    border: none;
+    border: none !important;
+    color: var(--btn-text) !important;
 }
 
 [data-theme="light"] .ext-card-configure,
 [data-theme="light"] .ext-card-apply {
-    color: black;
-    background: #d5dff0;
+    color: var(--text-primary) !important;
+    background: var(--lg-settings-chip-btn-bg-light) !important;
 }
 
 [data-theme="dark"] .ext-card-configure:hover,
@@ -5248,24 +5289,35 @@ body {
     color: white;
 }
 
-.theme-select {
-    background: var(--search-bar-bg);
+.theme-select,
+.settings-server-preset-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--btn-bg);
     border-radius: var(--theme-radius-pill);
     padding: 15px;
     border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.theme-select:hover {
-    background: var(--search-bar-bg-hover);
+.theme-select:hover,
+.settings-server-preset-select:hover {
+    background: var(--bg-hover);
     border: none;
 }
 
-[data-theme="light"] .theme-select {
-    background: #dde3ea;
+:root:not([data-theme="dark"]) .theme-select,
+:root:not([data-theme="dark"]) .settings-server-preset-select {
+    background: var(--lg-settings-select-light);
 }
 
-[data-theme="light"] .theme-select:hover {
-    background: #ced3da;
+:root:not([data-theme="dark"]) .theme-select:hover,
+:root:not([data-theme="dark"]) .settings-server-preset-select:hover {
+    background: var(--lg-settings-select-light-hover);
 }
 
 .store-updates-toggle {
@@ -5327,7 +5379,7 @@ body {
 }
 
 [data-theme="light"] .apps-pocket-panel {
-    background: #e9eef6;
+    background: var(--lg-settings-apps-pocket-bg);
     box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
 }
 

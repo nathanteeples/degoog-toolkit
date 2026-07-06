@@ -949,8 +949,40 @@ function getLgTranslation(key) {
     const HOISTED_SPELL_CHECK_SELECTOR =
         '.spell-check-notice[data-lg-spell-check-meta="1"]';
     const PRESERVED_GLANCE_SKELETON_ATTR = "data-lg-preserved-glance-skeleton";
+    // Match official spell-check plugin CORRECTION_TTL_MS.
+    const SPELL_CHECK_CORRECTION_TTL_MS = 15_000;
     let nativeGlanceSkeletonHtml = "";
     let hoistedSpellCheckNotice = null;
+
+    function isWebSearchTab() {
+        return getActiveSearchType() === "web";
+    }
+
+    function isHoistedSpellCheckFresh(notice) {
+        const hoistedAt = Number(notice?.dataset?.lgSpellCheckHoistedAt || 0);
+        if (!hoistedAt) return true;
+        return Date.now() - hoistedAt < SPELL_CHECK_CORRECTION_TTL_MS;
+    }
+
+    function shouldKeepHoistedSpellCheck(notice) {
+        return (
+            isWebSearchTab() &&
+            spellCheckMatchesCurrentQuery(notice) &&
+            isHoistedSpellCheckFresh(notice)
+        );
+    }
+
+    function pruneStaleSpellCheckFromMeta(meta = getResultsMeta()) {
+        if (!meta) return;
+        for (const notice of meta.querySelectorAll(HOISTED_SPELL_CHECK_SELECTOR)) {
+            if (!shouldKeepHoistedSpellCheck(notice)) {
+                notice.remove();
+                if (hoistedSpellCheckNotice === notice) {
+                    hoistedSpellCheckNotice = null;
+                }
+            }
+        }
+    }
 
     function getAtAGlanceContainer() {
         return document.getElementById("at-a-glance");
@@ -1023,9 +1055,19 @@ function getLgTranslation(key) {
         );
     }
 
+    function getMetaActivityText() {
+        const meta = getResultsMeta();
+        if (!meta) return "";
+        const stats = meta.querySelector(".results-meta-stats");
+        if (stats) return stats.textContent || "";
+        const clone = meta.cloneNode(true);
+        clone.querySelectorAll(".spell-check-notice").forEach(node => node.remove());
+        return clone.textContent || "";
+    }
+
     function isSearchLoading() {
         if (document.documentElement.hasAttribute(SEARCHING_ATTR)) return true;
-        const metaText = getResultsMeta()?.textContent || "";
+        const metaText = getMetaActivityText();
         if (
             SEARCH_ACTIVITY_TEXT.searchingPattern.test(metaText.trim()) ||
             SEARCH_ACTIVITY_TEXT.streamingPattern.test(metaText)
@@ -1074,7 +1116,7 @@ function getLgTranslation(key) {
     function restoreHoistedSpellCheckIfNeeded(meta) {
         if (!meta || !hoistedSpellCheckNotice) return;
         if (meta.querySelector(".spell-check-notice")) return;
-        if (!spellCheckMatchesCurrentQuery(hoistedSpellCheckNotice)) {
+        if (!shouldKeepHoistedSpellCheck(hoistedSpellCheckNotice)) {
             hoistedSpellCheckNotice = null;
             return;
         }
@@ -1093,7 +1135,7 @@ function getLgTranslation(key) {
 
         let stats = meta.querySelector(".results-meta-stats");
         const text = textNodes.map(node => node.textContent.trim()).join(" ").trim();
-        if (!text) return;
+        if (!text || /^Showing results for/i.test(text)) return;
 
         if (!stats) {
             stats = document.createElement("span");
@@ -1110,8 +1152,15 @@ function getLgTranslation(key) {
 
     function moveSpellCheck() {
         const meta = getResultsMeta();
-        wrapResultsStats(meta);
         if (!meta) return;
+
+        if (!isWebSearchTab()) {
+            clearHoistedSpellCheck();
+            return;
+        }
+
+        pruneStaleSpellCheckFromMeta(meta);
+        wrapResultsStats(meta);
 
         const notices = [...document.querySelectorAll(".spell-check-notice")].filter(
             notice => !notice.closest("#results-meta"),
@@ -1126,6 +1175,7 @@ function getLgTranslation(key) {
             const panel = notice.closest(".results-slot-panel");
             const container = panel?.parentElement || null;
             notice.dataset.lgSpellCheckMeta = "1";
+            notice.dataset.lgSpellCheckHoistedAt = String(Date.now());
             bindSpellCheckNotice(notice);
             meta.appendChild(notice);
             hoistedSpellCheckNotice = notice;
@@ -1201,6 +1251,13 @@ function getLgTranslation(key) {
             if (event.key === "Enter") clearHoistedSpellCheck();
         });
         window.addEventListener("degoog-results-ready", removePreservedGlanceSkeleton);
+        window.addEventListener("lg-sync-search-type", () => {
+            if (!isWebSearchTab()) {
+                clearHoistedSpellCheck();
+                return;
+            }
+            scheduleSpellCheck();
+        });
     }
 
     bindSearchStartCleanup();
