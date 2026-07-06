@@ -5779,9 +5779,16 @@ body {
 [data-theme="light"] .ext-card:not(.settings-section):not(.settings-desc),
 [data-theme="light"] .store-repo-detail,
 [data-theme="light"] .store-repo-detail .store-repo-img,
-[data-theme="light"] .store-card,
-[data-theme="light"] .store-repos-section.degoog-panel {
+[data-theme="light"] .store-card {
     background: #ffffff;
+}
+
+/* Repositories block is a settings section, not a card — match dark (no panel chrome). */
+[data-theme="light"] .store-repos-section.settings-section.degoog-panel {
+    background: none;
+    box-shadow: none;
+    border-color: transparent;
+    padding: 0;
 }
 
 @media (prefers-color-scheme: light) {
@@ -5791,9 +5798,16 @@ body {
         .ext-card:not(.settings-section):not(.settings-desc),
     :root:not([data-theme="dark"]):not([data-theme="light"]) .store-repo-detail,
     :root:not([data-theme="dark"]):not([data-theme="light"]) .store-repo-detail .store-repo-img,
-    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-card,
-    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-repos-section.degoog-panel {
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-card {
         background: #ffffff;
+    }
+
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+        .store-repos-section.settings-section.degoog-panel {
+        background: none;
+        box-shadow: none;
+        border-color: transparent;
+        padding: 0;
     }
 }
 
@@ -6077,6 +6091,61 @@ select.settings-server-preset-select:hover,
 
 .store-filter-select {
     border-radius: var(--theme-radius-pill);
+}
+
+/* Store search + filter dropdowns — light mode only (match settings extension search). */
+[data-theme="light"] .store-search-input,
+[data-theme="light"] .store-filter-bar > .degoog-search-bar.degoog-search-bar--square-advanced {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    box-shadow: var(--lg-search-shadow);
+}
+
+[data-theme="light"] .store-search-input:hover,
+[data-theme="light"]
+    .store-filter-bar
+    > .degoog-search-bar.degoog-search-bar--square-advanced:hover,
+[data-theme="light"] .store-search-input:focus,
+[data-theme="light"]
+    .store-filter-bar
+    > .degoog-search-bar.degoog-search-bar--square-advanced:focus {
+    background: var(--search-bar-focused);
+    box-shadow: var(--lg-search-shadow-hover);
+}
+
+[data-theme="light"] .store-filter-select {
+    background-color: #ffffff;
+    border: 1px solid var(--border);
+    box-shadow: var(--lg-search-shadow);
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-search-input,
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+        .store-filter-bar
+        > .degoog-search-bar.degoog-search-bar--square-advanced {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        box-shadow: var(--lg-search-shadow);
+    }
+
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-search-input:hover,
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+        .store-filter-bar
+        > .degoog-search-bar.degoog-search-bar--square-advanced:hover,
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-search-input:focus,
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+        .store-filter-bar
+        > .degoog-search-bar.degoog-search-bar--square-advanced:focus {
+        background: var(--search-bar-focused);
+        box-shadow: var(--lg-search-shadow-hover);
+    }
+
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-filter-select {
+        background-color: #ffffff;
+        border: 1px solid var(--border);
+        box-shadow: var(--lg-search-shadow);
+    }
 }
 
 .apps-pocket-panel {

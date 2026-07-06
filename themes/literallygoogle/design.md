@@ -178,7 +178,7 @@ gap: 2px;  /* between stacked rows */
 
 | State | Dark | Light |
 | --- | --- | --- |
-| Default | `--lg-settings-row-bg` (`#303134`) | `#ffffff` — `.ext-card`, `.store-card`, `.store-repos-section`, and `.store-repo-detail`; do not use `--bg-light` (`#f7f8fa`) on light-mode card surfaces |
+| Default | `--lg-settings-row-bg` (`#303134`) | `#ffffff` on `.ext-card`, `.store-card`, and `.store-repo-detail` only — not `.store-repos-section` (transparent section, same as dark). Do not use `--bg-light` (`#f7f8fa`) on light-mode card surfaces |
 | Hover (nav items) | `--bg-hover` (`#3c4043`) | `--bg-hover` (`#e8eaed`) |
 | Active nav item | default hover | `white`, no border/shadow |
 | Selected / active (filters) | Blue-tinted `--lg-selection-active-bg` + inset ring | same |
@@ -186,6 +186,10 @@ gap: 2px;  /* between stacked rows */
 ### Store update rows
 
 Use `var(--bg)` (page inset), not `--bg-light`, when nested inside the updates panel.
+
+### Store catalog filter bar (light mode only)
+
+`.store-search-input`, extension-tab `.store-filter-bar > .degoog-search-bar--square-advanced`, and `.store-filter-select` use the same white search shell as settings extension search: `background: var(--bg)` (`#ffffff`), `border: 1px solid var(--border)`, `box-shadow: var(--lg-search-shadow)`. Dark mode keeps core tokens (`--search-bar-bg`, `--bg-light`) — do not add `:root:not([data-theme="dark"])` rules without a `prefers-color-scheme: light` guard.
 
 ## Button styles
 
