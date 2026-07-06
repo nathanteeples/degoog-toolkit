@@ -51,6 +51,8 @@ var {
     --literallygoogle-results-sidebar-col: calc(
         var(--literallygoogle-results-sidebar-max) + var(--lg-sidebar-scrollbar-size)
     );
+    --literallygoogle-results-column-gap: 2rem;
+    --literallygoogle-results-main-min: 28.125rem;
     --literallygoogle-media-filter-width: 15rem;
     --literallygoogle-media-row-gap: 0.5rem;
     --literallygoogle-row-padding: 14px;
@@ -1397,12 +1399,9 @@ body {
         position: relative;
         display: grid;
         grid-template-columns:
-            minmax(0, var(--literallygoogle-results-main-col-max))
-            minmax(
-                var(--literallygoogle-results-sidebar-col),
-                var(--literallygoogle-results-sidebar-col)
-            );
-        column-gap: 2rem;
+            minmax(0, 1fr)
+            var(--literallygoogle-results-sidebar-col);
+        column-gap: var(--literallygoogle-results-column-gap);
         row-gap: 0;
         align-items: start;
         max-width: var(--literallygoogle-results-layout-max);
@@ -1539,6 +1538,43 @@ body {
 
     /* Core caps .glance-box / skeletons at 40.75rem — match main column width. */
     #results-page .glance-box {
+        max-width: var(--literallygoogle-results-main-col-max);
+        min-width: 0;
+    }
+
+    #at-a-glance .glance-box,
+    #at-a-glance .glance-ai,
+    #at-a-glance .degoog-panel,
+    #at-a-glance .skeleton-glance,
+    #at-a-glance .glance-ai-skeleton {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    /* Stack sidebar under main when the main column would drop below 450px. */
+    #results-page.lg-results-layout-single #results-layout {
+        grid-template-columns: 1fr;
+    }
+
+    #results-page.lg-results-layout-single #results-main,
+    #results-page.lg-results-layout-single #sidebar-col {
+        grid-column: 1;
+        grid-row: auto;
+        width: 100%;
+        max-width: none;
+    }
+
+    #results-page.lg-results-layout-single #sidebar-col {
+        max-width: min(100%, var(--literallygoogle-results-sidebar-max));
+    }
+
+    #results-page.lg-results-layout-single #sidebar-col > .sticky {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    #results-page.lg-results-layout-single #results-list,
+    #results-page.lg-results-layout-single .glance-box {
         max-width: var(--literallygoogle-results-main-col-max);
     }
 

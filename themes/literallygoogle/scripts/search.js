@@ -4012,20 +4012,20 @@ function getLgTranslation(key) {
                 if (!el.classList.contains(STUCK_CLASS) || !canScroll(el)) return;
 
                 const { deltaY } = event;
-                const active = el.classList.contains(ACTIVE_CLASS);
-
-                if (!active) {
-                    if (atScrollEdge(el, deltaY)) return;
-                    el.classList.add(ACTIVE_CLASS);
-                    event.preventDefault();
-                    el.scrollTop += deltaY;
-                    return;
-                }
 
                 if (atScrollEdge(el, deltaY)) {
-                    el.classList.remove(ACTIVE_CLASS);
+                    if (el.classList.contains(ACTIVE_CLASS)) {
+                        el.classList.remove(ACTIVE_CLASS);
+                    }
                     return;
                 }
+
+                if (!el.classList.contains(ACTIVE_CLASS)) {
+                    el.classList.add(ACTIVE_CLASS);
+                }
+
+                event.preventDefault();
+                el.scrollTop += deltaY;
             },
             { passive: false },
         );
@@ -4047,6 +4047,139 @@ function getLgTranslation(key) {
             document.getElementById("sidebar-col") || document.documentElement,
             { attributes: true, attributeFilter: ["class", "style"] },
         );
+    }
+
+    onReady(init);
+})();
+
+/* ── 5e. Web results layout — compress sidebar / single column at 450px main ─ */
+(() => {
+    const MAIN_MIN_PX = 450;
+    const SIDEBAR_FULL_PX = 328;
+    const SIDEBAR_COMPACT_PX = 272;
+    const SCROLLBAR_LANE_PX = 12;
+    const GAP_FULL_PX = 32;
+    const GAP_COMPACT_PX = 12;
+    const SINGLE_COL_CLASS = "lg-results-layout-single";
+    const COMPACT_CLASS = "lg-results-sidebar-compact";
+    const DESKTOP_MIN = 768;
+    let layoutFrame = 0;
+
+    function isWebResultsLayout(page) {
+        if (!page || window.innerWidth < DESKTOP_MIN) return false;
+        const type = page.getAttribute("data-lg-search-type") || "web";
+        if (type === "images" || type === "videos") return false;
+        if (page.classList.contains("lg-command-mode")) return false;
+        if (page.querySelector("#results-list .command-result, #results-list .command-help-table")) {
+            return false;
+        }
+        return true;
+    }
+
+    function getFilterTabRight() {
+        const toggle =
+            document.getElementById("tools-toggle") ||
+            document.querySelector("#results-tabs .lg-filters-wrap .tools-toggle");
+        return toggle?.getBoundingClientRect().right ?? 0;
+    }
+
+    function pxToRem(px) {
+        const rootSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        return `${px / rootSize}rem`;
+    }
+
+    function measureTwoCol(layoutWidth, sidebarPanelPx, gapPx) {
+        const sidebarColPx = sidebarPanelPx + SCROLLBAR_LANE_PX;
+        return {
+            mainPx: layoutWidth - gapPx - sidebarColPx,
+            sidebarPanelPx,
+            gapPx,
+            sidebarColPx,
+        };
+    }
+
+    function applyTwoColVars(page, { sidebarPanelPx, gapPx }) {
+        const sidebarColPx = sidebarPanelPx + SCROLLBAR_LANE_PX;
+        page.style.setProperty("--literallygoogle-results-sidebar-max", pxToRem(sidebarPanelPx));
+        page.style.setProperty("--literallygoogle-results-sidebar-col", pxToRem(sidebarColPx));
+        page.style.setProperty("--literallygoogle-results-column-gap", pxToRem(gapPx));
+    }
+
+    function clearTwoColVars(page) {
+        page.style.removeProperty("--literallygoogle-results-sidebar-max");
+        page.style.removeProperty("--literallygoogle-results-sidebar-col");
+        page.style.removeProperty("--literallygoogle-results-column-gap");
+    }
+
+    function syncWebResultsLayout() {
+        layoutFrame = 0;
+        const page = getResultsPage();
+        const layout = getResultsLayout();
+        if (!page || !layout) return;
+
+        if (!isWebResultsLayout(page)) {
+            page.classList.remove(SINGLE_COL_CLASS, COMPACT_CLASS);
+            clearTwoColVars(page);
+            return;
+        }
+
+        const layoutWidth = layout.clientWidth;
+        if (layoutWidth <= 0) return;
+
+        const layoutLeft = layout.getBoundingClientRect().left;
+        const filterRight = getFilterTabRight();
+
+        let mode = measureTwoCol(layoutWidth, SIDEBAR_FULL_PX, GAP_FULL_PX);
+
+        if (mode.mainPx < MAIN_MIN_PX) {
+            const compact = measureTwoCol(layoutWidth, SIDEBAR_COMPACT_PX, GAP_COMPACT_PX);
+            if (compact.mainPx < MAIN_MIN_PX) {
+                page.classList.add(SINGLE_COL_CLASS);
+                page.classList.remove(COMPACT_CLASS);
+                clearTwoColVars(page);
+                window.dispatchEvent(new CustomEvent("lg-results-layout-changed"));
+                return;
+            }
+            mode = compact;
+        } else {
+            const sidebarLeft = layoutLeft + mode.mainPx + mode.gapPx;
+            if (filterRight > 0 && sidebarLeft < filterRight - 0.5) {
+                const compact = measureTwoCol(layoutWidth, SIDEBAR_COMPACT_PX, GAP_COMPACT_PX);
+                if (compact.mainPx >= MAIN_MIN_PX) mode = compact;
+            }
+        }
+
+        page.classList.remove(SINGLE_COL_CLASS);
+        page.classList.toggle(COMPACT_CLASS, mode.sidebarPanelPx < SIDEBAR_FULL_PX);
+        applyTwoColVars(page, mode);
+        window.dispatchEvent(new CustomEvent("lg-results-layout-changed"));
+    }
+
+    function scheduleWebResultsLayout() {
+        if (layoutFrame) return;
+        layoutFrame = requestAnimationFrame(syncWebResultsLayout);
+    }
+
+    function init() {
+        scheduleWebResultsLayout();
+        window.addEventListener("resize", scheduleWebResultsLayout, { passive: true });
+        window.addEventListener("scroll", scheduleWebResultsLayout, { passive: true });
+        const page = getResultsPage();
+        if (!page) return;
+        new MutationObserver(scheduleWebResultsLayout).observe(page, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class", "data-lg-search-type", "hidden"],
+        });
+        const tabs = getResultsTabs();
+        if (tabs) {
+            new MutationObserver(scheduleWebResultsLayout).observe(tabs, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+            });
+        }
     }
 
     onReady(init);
