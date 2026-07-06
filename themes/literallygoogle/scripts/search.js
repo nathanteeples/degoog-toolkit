@@ -87,6 +87,19 @@ function isDockedMediaPreviewOpen() {
     return getComputedStyle(preview).position === "sticky";
 }
 
+function getMediaContentRailRightEdge() {
+    const layout = getResultsLayout();
+    if (
+        layout?.classList.contains("media-mode") &&
+        window.matchMedia("(min-width: 768px)").matches
+    ) {
+        const rect = layout.getBoundingClientRect();
+        const padEnd = parseFloat(getComputedStyle(layout).paddingInlineEnd) || 0;
+        if (rect.width > 1) return rect.right - padEnd;
+    }
+    return null;
+}
+
 function markImageThumbLoaded(img) {
     if (!(img instanceof HTMLImageElement) || !img.classList.contains("image-thumb")) return;
     const wrap = img.closest(".image-thumb-wrap");
@@ -1510,6 +1523,17 @@ function wrapResultsStats(meta) {
         launcher?.classList.toggle("lg-image-drawer-anchor-end", useEndAnchor);
     }
 
+    function closeImageFiltersDrawer(page) {
+        const sidebar = getImageFiltersBar();
+        if (!sidebar?.classList.contains("open")) return;
+        if (sidebar.classList.contains(DRAWER_ANIMATING) && !sidebar.classList.contains(DRAWER_READY)) {
+            return;
+        }
+        prepareImageDrawerAnimation(page);
+        setImageDrawerReady(page, false);
+        setImageFiltersSidebarOpen(false);
+    }
+
     function openImageFiltersDrawer(page, toggle, panel) {
         const sidebar = getImageFiltersBar();
         if (!sidebar || sidebar.classList.contains("open")) return;
@@ -1522,15 +1546,18 @@ function wrapResultsStats(meta) {
         syncImageDrawerViewport(page);
         prepareImageDrawerAnimation(page);
         setImageFiltersSidebarOpen(true);
-        setImageDrawerReady(page, true);
-        sidebar.classList.add("lg-drawer-dragging");
-        applyImageDrawerMotionProgress(sidebar, getImageDrawerMotionMetrics(page, sidebar), 1);
+        setImageDrawerReady(page, false);
         sidebar.getBoundingClientRect();
+
+        if (reducedMotionQuery.matches) {
+            setImageDrawerReady(page, true);
+            finishImageDrawerAnimation(page);
+            return;
+        }
 
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                sidebar.classList.remove("lg-drawer-dragging");
-                clearImageDrawerMotionProgress(sidebar);
+                setImageDrawerReady(page, true);
             });
         });
     }
@@ -1551,16 +1578,40 @@ function wrapResultsStats(meta) {
         overlay?.classList.toggle(DRAWER_READY, on);
     }
 
+    function getDrawerAnimDurationMs() {
+        const raw = getComputedStyle(document.documentElement)
+            .getPropertyValue("--lg-drawer-duration")
+            .trim();
+        const parsed = Number.parseInt(raw, 10);
+        return Number.isFinite(parsed) ? parsed : DRAWER_ANIM_MS;
+    }
+
     function prepareImageDrawerAnimation(page) {
         setImageDrawerReady(page, false);
         setImageDrawerAnimating(page, true);
         window.clearTimeout(drawerAnimTimeout);
-        if (!reducedMotionQuery.matches) {
-            drawerAnimTimeout = window.setTimeout(
-                () => finishImageDrawerAnimation(page),
-                DRAWER_ANIM_MS + 80,
-            );
-        }
+        const sidebar = getImageFiltersBar();
+        if (!sidebar || reducedMotionQuery.matches) return;
+
+        const finish = () => {
+            sidebar.removeEventListener("transitionend", onTransitionEnd);
+            finishImageDrawerAnimation(page);
+        };
+
+        let finishTimer = 0;
+        const onTransitionEnd = event => {
+            if (event.target !== sidebar) return;
+            if (event.propertyName !== "height" && event.propertyName !== "width") return;
+            window.clearTimeout(finishTimer);
+            finishTimer = window.setTimeout(finish, 32);
+        };
+
+        sidebar.addEventListener("transitionend", onTransitionEnd);
+        drawerAnimTimeout = window.setTimeout(() => {
+            sidebar.removeEventListener("transitionend", onTransitionEnd);
+            window.clearTimeout(finishTimer);
+            finishImageDrawerAnimation(page);
+        }, getDrawerAnimDurationMs() + 96);
     }
 
     function finishImageDrawerAnimation(page) {
@@ -1570,6 +1621,8 @@ function wrapResultsStats(meta) {
         const open = sidebar?.classList.contains("open") ?? false;
         setImageDrawerAnimating(page, false);
         setImageDrawerReady(page, open);
+        sidebar?.classList.remove("lg-drawer-dragging", "lg-drawer-drag-snap");
+        clearImageDrawerMotionProgress(sidebar);
     }
 
     function clearImageDrawerPerformance(page) {
@@ -1753,8 +1806,7 @@ function wrapResultsStats(meta) {
             if (!sidebar.classList.contains("open")) return;
             sidebar.classList.remove("lg-drawer-dragging", "lg-drawer-drag-snap");
             clearDragGeometry();
-            prepareImageDrawerAnimation(page);
-            setImageFiltersSidebarOpen(false);
+            closeImageFiltersDrawer(page);
         }
 
         function snapBack() {
@@ -1843,6 +1895,33 @@ function wrapResultsStats(meta) {
 
         sidebar.addEventListener("touchend", finishDrag, { passive: true });
         sidebar.addEventListener("touchcancel", finishDrag, { passive: true });
+    }
+
+    function wireImageDrawerDismiss(page) {
+        const sidebar = getImageFiltersBar();
+        const overlay = getImageDrawerOverlay();
+        if (!markWired(page, "lgDrawerDismissWired")) return;
+
+        overlay?.addEventListener("click", () => {
+            if (!isImageDrawerMode(page)) return;
+            closeImageFiltersDrawer(page);
+        });
+
+        sidebar?.addEventListener("click", event => {
+            if (!isImageDrawerMode(page)) return;
+            const closeBtn = event.target.closest?.(".degoog-img-sidebar-close");
+            if (!closeBtn) return;
+            event.preventDefault();
+            event.stopPropagation();
+            closeImageFiltersDrawer(page);
+        });
+
+        document.addEventListener("keydown", event => {
+            if (event.key !== "Escape") return;
+            if (!isImageDrawerMode(page) || !sidebar?.classList.contains("open")) return;
+            event.preventDefault();
+            closeImageFiltersDrawer(page);
+        });
     }
 
     function wireImageDrawerPerformance(page) {
@@ -1968,6 +2047,7 @@ function wrapResultsStats(meta) {
                 if (!isImageDrawerMode(currentPage)) return;
                 if (sidebar?.classList.contains("open")) {
                     event.preventDefault();
+                    closeImageFiltersDrawer(currentPage);
                     return;
                 }
                 openImageFiltersDrawer(currentPage, currentToggle, panel);
@@ -2205,6 +2285,7 @@ function wrapResultsStats(meta) {
         wireImageDrawerPerformance(page);
         wireImageDrawerViewport(page);
         wireImageDrawerPullDismiss(page);
+        wireImageDrawerDismiss(page);
         syncImageDrawerViewport(page);
         clearImageFabInsetBottom(page);
     }
@@ -3192,6 +3273,9 @@ function wrapResultsStats(meta) {
                 .querySelectorAll("#results-list .image-grid.lg-image-grid-fold")
                 .forEach(applyFold);
             scheduleScrollToSelected();
+            if (isDockedPreviewOpen()) {
+                window.dispatchEvent(new CustomEvent("lg-results-layout-changed"));
+            }
         });
     }
 
@@ -3209,6 +3293,7 @@ function wrapResultsStats(meta) {
                 scheduleFold();
                 requestAnimationFrame(scrollSelectedImageIntoView);
             } else {
+                preview.style.removeProperty("--mp2-panel-width");
                 document
                     .querySelectorAll("#results-list .image-grid.lg-image-grid-fold")
                     .forEach(resetGrid);
@@ -3279,7 +3364,7 @@ function wrapResultsStats(meta) {
     const PILLS_BUTTON_SELECTOR = ".lg-media-engine-pill";
     const PILLS_SCROLL_SELECTOR = ".lg-media-engine-pills__scroll";
     const DESKTOP_MIN = 768;
-    const STICKY_RAIL_REVEAL_DISTANCE = 20;
+    const STICKY_RAIL_REVEAL_DISTANCE = 50;
     let stickyRailFrame = 0;
 
     function installEngineResultLearnerEarly() {
@@ -3435,14 +3520,31 @@ function wrapResultsStats(meta) {
     }
 
     function getMediaMetaRightEdge() {
-        const previewPanel = getMediaPreviewPanel();
-        if (previewPanel?.classList.contains("open") && isDockedMediaPreviewOpen()) {
-            const panelRect = previewPanel.getBoundingClientRect();
-            if (panelRect.width > 1) {
-                return panelRect.right;
-            }
-        }
+        const railRight = getMediaContentRailRightEdge();
+        if (railRight !== null) return railRight;
         return getNormalResultsRightEdge();
+    }
+
+    function syncDockedPreviewWidth() {
+        const preview = getMediaPreviewPanel();
+        const layout = getResultsLayout();
+        const main = document.getElementById("results-main");
+        if (
+            !preview?.classList.contains("open") ||
+            !isDockedMediaPreviewOpen() ||
+            !layout ||
+            !main
+        ) {
+            preview?.style.removeProperty("--mp2-panel-width");
+            return;
+        }
+        const layoutStyles = getComputedStyle(layout);
+        const gap = parseFloat(layoutStyles.columnGap || layoutStyles.gap) || 0;
+        const padEnd = parseFloat(layoutStyles.paddingInlineEnd) || 0;
+        const railRight = layout.getBoundingClientRect().right - padEnd;
+        const mainRight = main.getBoundingClientRect().right;
+        const width = Math.max(192, railRight - mainRight - gap);
+        preview.style.setProperty("--mp2-panel-width", `${width}px`);
     }
 
     function getNormalResultsRightEdge() {
@@ -3501,6 +3603,7 @@ function wrapResultsStats(meta) {
         const meta = getResultsMeta();
         if (!meta) return;
         wrapResultsStats(meta);
+        syncDockedPreviewWidth();
         if (!isDesktopImagePillsMode()) {
             meta.style.removeProperty("--lg-media-meta-right-gap");
             return;

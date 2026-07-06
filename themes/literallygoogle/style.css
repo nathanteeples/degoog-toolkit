@@ -790,8 +790,8 @@ html[dir="rtl"] #image-filters-bar {
 }
 
 #image-filters-bar.lg-image-drawer-animating {
-    will-change: transform;
-    contain: strict;
+    will-change: width, height, border-radius, inset-inline-start, inset-inline-end, bottom;
+    contain: layout paint;
     pointer-events: none;
 }
 
@@ -3236,6 +3236,16 @@ body {
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready) {
+        width: var(--lg-fab-size) !important;
+        height: var(--lg-fab-size) !important;
+        min-height: var(--lg-fab-size) !important;
+        max-height: var(--lg-fab-size) !important;
+        max-width: var(--lg-fab-size) !important;
+        border-radius: calc(var(--lg-fab-size) / 2) !important;
+        overflow: hidden;
+        box-shadow:
+            0 12px 28px rgba(0, 0, 0, 0.22),
+            inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             height var(--lg-drawer-duration) var(--lg-drawer-ease-open),
@@ -3252,6 +3262,14 @@ body {
             box-shadow var(--lg-drawer-duration) var(--lg-drawer-ease-open),
             opacity 180ms ease,
             visibility 0s;
+    }
+
+    #results-page.lg-image-fab-filters #image-filters-bar.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready)
+        .degoog-img-sidebar-body,
+    #results-page.lg-image-fab-filters #image-filters-bar.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready)
+        .degoog-img-sidebar-head {
+        opacity: 0 !important;
+        pointer-events: none !important;
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar.open.lg-drawer-dragging {
@@ -3386,11 +3404,21 @@ body {
         opacity: var(--lg-drawer-content-opacity, 1);
         transform: none;
         pointer-events: auto;
-        transition-delay: 0s;
+        transition: opacity 200ms ease;
+        transition-delay: 0ms;
+    }
+
+    #results-page.lg-image-fab-filters
+        #image-filters-bar.open.lg-image-drawer-open-ready
+        .degoog-img-sidebar-body,
+    #results-page.lg-image-fab-filters
+        #image-filters-bar.open.lg-image-drawer-open-ready
+        .degoog-img-sidebar-head {
+        transition-delay: 90ms;
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar.open .degoog-img-sidebar-head {
-        transition-delay: 0s;
+        transition-delay: 0ms;
     }
 
     #results-page.lg-image-fab-filters #image-filters-bar .degoog-img-sidebar-body {
@@ -4494,6 +4522,35 @@ body {
         inset-inline-end: var(--lg-fab-inset-inline) !important;
     }
 
+    body > #image-filters-bar.lg-image-fab-drawer.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready),
+    #results-page.lg-image-fab-filters
+        #image-filters-bar.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready) {
+        width: var(--lg-fab-size) !important;
+        height: var(--lg-fab-size) !important;
+        min-width: var(--lg-fab-size) !important;
+        max-width: var(--lg-fab-size) !important;
+        min-height: var(--lg-fab-size) !important;
+        max-height: var(--lg-fab-size) !important;
+        border-radius: calc(var(--lg-fab-size) / 2) !important;
+        box-shadow:
+            0 12px 28px rgba(0, 0, 0, 0.22),
+            inset 0 1px 0 color-mix(in srgb, var(--text-primary) 6%, transparent);
+    }
+
+    body > #image-filters-bar.lg-image-fab-drawer.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready)
+        .degoog-img-sidebar-body,
+    body > #image-filters-bar.lg-image-fab-drawer.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready)
+        .degoog-img-sidebar-head,
+    #results-page.lg-image-fab-filters
+        #image-filters-bar.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready)
+        .degoog-img-sidebar-body,
+    #results-page.lg-image-fab-filters
+        #image-filters-bar.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready)
+        .degoog-img-sidebar-head {
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
     body > #image-filters-bar.lg-image-fab-drawer.open,
     #results-page.lg-image-fab-filters #image-filters-bar.open {
         display: block !important;
@@ -5519,7 +5576,6 @@ body {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     scrollbar-width: thin !important;
-    scrollbar-gutter: stable;
     background: var(--mp2-panel-bg);
     border: 1px solid var(--mp2-panel-border);
     border-top: 1px solid var(--mp2-panel-border);
@@ -5578,6 +5634,8 @@ body {
    sticky; clip the grid column on `#results-main` instead. */
 @media (min-width: 768px) {
     #results-page:has(#results-layout.media-mode) #media-preview-panel {
+        overflow: hidden !important;
+        scrollbar-gutter: auto;
         top: var(
             --literallygoogle-sticky-header-offset,
             calc(50px + 1.5rem)
@@ -5635,6 +5693,42 @@ body {
         max-width: var(--mp2-panel-width);
         border-top: 1px solid var(--mp2-panel-border);
         box-shadow: var(--mp2-panel-shadow);
+        transform: translateX(0) scale(1);
+        overflow: hidden;
+    }
+
+    #results-page:has(#results-layout.media-mode) #media-preview-panel.open .mp2-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--text-secondary) 45%, transparent) transparent;
+        border-end-end-radius: var(--theme-radius-xl);
+        border-end-start-radius: var(--theme-radius-xl);
+        padding-inline-end: 0.15rem;
+    }
+
+    #results-page:has(#results-layout.media-mode) #media-preview-panel.open .mp2-body::-webkit-scrollbar {
+        width: 0.5rem;
+    }
+
+    #results-page:has(#results-layout.media-mode) #media-preview-panel.open .mp2-body::-webkit-scrollbar-track {
+        margin-block: 0.35rem;
+        margin-inline-end: 0.2rem;
+        background: transparent;
+    }
+
+    #results-page:has(#results-layout.media-mode) #media-preview-panel.open .mp2-body::-webkit-scrollbar-thumb {
+        border: 0.125rem solid transparent;
+        border-radius: 100px;
+        background: color-mix(in srgb, var(--text-secondary) 42%, transparent);
+        background-clip: padding-box;
+    }
+
+    #results-page:has(#results-layout.media-mode) #media-preview-panel.open .mp2-bar {
+        border-start-start-radius: var(--theme-radius-xl);
+        border-start-end-radius: var(--theme-radius-xl);
     }
 
     #results-page:has(#results-layout.media-mode) #media-preview-panel.lg-preview-closing {
