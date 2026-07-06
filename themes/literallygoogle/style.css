@@ -1390,6 +1390,10 @@ body {
 
     #results-page {
         --literallygoogle-sticky-header-offset: calc(50px + 1.5rem);
+        /* Bottom sidebar inset: rail padding only — not the 50px header bar. */
+        --literallygoogle-sidebar-bottom-inset: calc(
+            var(--literallygoogle-sticky-header-offset) - 50px
+        );
         overflow-x: clip;
         max-width: 100%;
     }
@@ -4813,9 +4817,8 @@ body {
 
 /* Core sticky sidebar setting.
    Grid column = panel width + scroll lane. Internal scroll only after the column
-   has physically stuck (lg-sidebar-is-stuck). Top/bottom viewport inset matches
-   via max-height: 100vh minus twice --literallygoogle-sticky-header-offset; bottom
-   breathing room inside the scroll track uses the same token on .sticky padding. */
+   has physically stuck (lg-sidebar-is-stuck). Top inset clears the sticky header
+   bar; bottom inset is rail padding only (--literallygoogle-sidebar-bottom-inset). */
 
 @media (min-width: 768px) {
     #sidebar-col.is-sticky {
@@ -4842,10 +4845,11 @@ body {
         min-height: 0;
         max-height: calc(
             100vh -
-                (2 * var(
+                var(
                     --literallygoogle-sticky-header-offset,
                     calc(50px + 1.5rem)
-                ))
+                ) -
+                var(--literallygoogle-sidebar-bottom-inset, 1.5rem)
         );
         overflow-x: hidden;
         overflow-y: hidden;
@@ -4882,10 +4886,7 @@ body {
     }
 
     #sidebar-col.is-sticky.lg-sidebar-is-stuck > .sticky {
-        padding-bottom: var(
-            --literallygoogle-sticky-header-offset,
-            calc(50px + 1.5rem)
-        );
+        padding-bottom: var(--literallygoogle-sidebar-bottom-inset, 1.5rem);
     }
 }
 
