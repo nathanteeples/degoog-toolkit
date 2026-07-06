@@ -5433,14 +5433,12 @@ body {
 }
 
 .store-updates-body > div:first-child,
-.settings-toggle-wrap:first-child,
 .ext-cards > div:first-child {
     border-start-start-radius: var(--theme-radius-xl);
     border-start-end-radius: var(--theme-radius-xl);
 }
 
 .store-updates-body > div:last-child,
-.settings-toggle-wrap:last-child,
 .ext-cards > div:last-child {
     border-end-start-radius: var(--theme-radius-xl);
     border-end-end-radius: var(--theme-radius-xl);
@@ -5448,11 +5446,74 @@ body {
 
 .store-updates-row:not(:has(+ .store-updates-row)):not(
         .store-updates-row + .store-updates-row
-    ),
-.settings-toggle-wrap:not(:has(+ .settings-toggle-wrap)):not(
-        .settings-toggle-wrap + .settings-toggle-wrap
     ) {
     border-radius: var(--theme-radius-xl);
+}
+
+/* Stacked toggle rows in settings fieldsets (rate limit, bot control, etc.).
+   Use :first-of-type/:last-of-type so option panels between toggles do not
+   break the stack; drop the old adjacent-sibling rule that rounded every row. */
+.settings-fieldset > .settings-toggle-wrap {
+    border-radius: var(--theme-radius-xs);
+}
+
+.settings-fieldset > .settings-toggle-wrap:first-of-type {
+    border-start-start-radius: var(--theme-radius-xl);
+    border-start-end-radius: var(--theme-radius-xl);
+}
+
+.settings-fieldset > .settings-toggle-wrap:last-of-type {
+    border-end-start-radius: var(--theme-radius-xl);
+    border-end-end-radius: var(--theme-radius-xl);
+}
+
+.settings-fieldset > .settings-toggle-wrap:only-of-type {
+    border-radius: var(--theme-radius-xl);
+}
+
+/* General tab checkbox list — same 2px stack + row fill as toggle rows */
+.settings-fieldset.settings-toggle-grid {
+    gap: 2px;
+}
+
+.settings-fieldset.settings-toggle-grid > .degoog-checkbox-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 17px;
+    border: none;
+    border-radius: var(--theme-radius-xs);
+    background: var(--lg-settings-row-bg);
+    cursor: pointer;
+}
+
+.settings-fieldset.settings-toggle-grid > .degoog-checkbox-wrap:first-of-type {
+    border-start-start-radius: var(--theme-radius-xl);
+    border-start-end-radius: var(--theme-radius-xl);
+}
+
+.settings-fieldset.settings-toggle-grid > .degoog-checkbox-wrap:last-of-type {
+    border-end-start-radius: var(--theme-radius-xl);
+    border-end-end-radius: var(--theme-radius-xl);
+}
+
+.settings-fieldset.settings-toggle-grid > .degoog-checkbox-wrap:only-of-type {
+    border-radius: var(--theme-radius-xl);
+}
+
+.settings-fieldset.settings-toggle-grid > .degoog-checkbox-wrap:hover {
+    background: var(--bg-hover);
+}
+
+[data-theme="light"]
+    .settings-fieldset.settings-toggle-grid
+    > .degoog-checkbox-wrap {
+    background: white;
+}
+
+.settings-fieldset-inverse {
+    padding: 0;
 }
 
 .settings-toggle-wrap:not(.settings-desc) {
