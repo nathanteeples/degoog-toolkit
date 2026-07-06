@@ -1390,10 +1390,8 @@ body {
 
     #results-page {
         --literallygoogle-sticky-header-offset: calc(50px + 1.5rem);
-        /* Bottom sidebar inset: rail padding only — not the 50px header bar. */
-        --literallygoogle-sidebar-bottom-inset: calc(
-            var(--literallygoogle-sticky-header-offset) - 50px
-        );
+        /* Set at runtime when stuck: header bottom → sidebar top (~3px). */
+        --literallygoogle-sidebar-bottom-inset: 0px;
         overflow-x: clip;
         max-width: 100%;
     }
@@ -4818,7 +4816,7 @@ body {
 /* Core sticky sidebar setting.
    Grid column = panel width + scroll lane. Internal scroll only after the column
    has physically stuck (lg-sidebar-is-stuck). Top inset clears the sticky header
-   bar; bottom inset is rail padding only (--literallygoogle-sidebar-bottom-inset). */
+   stack; bottom inset mirrors the live header-bottom → sidebar-top gap (~3px). */
 
 @media (min-width: 768px) {
     #sidebar-col.is-sticky {

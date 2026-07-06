@@ -4467,6 +4467,25 @@ function wrapResultsStats(meta) {
         if (sticky instanceof HTMLElement) sticky.scrollTop = 0;
     }
 
+    function syncSidebarRailInset(sidebar = sidebarCol()) {
+        const page = getResultsPage();
+        if (!(page instanceof HTMLElement) || !(sidebar instanceof HTMLElement)) return;
+
+        if (!sidebar.classList.contains(STUCK_CLASS)) {
+            page.style.removeProperty("--literallygoogle-sidebar-bottom-inset");
+            return;
+        }
+
+        const header = document.getElementById("results-header");
+        if (!(header instanceof HTMLElement)) return;
+
+        const gap = Math.max(
+            0,
+            Math.round(sidebar.getBoundingClientRect().top - header.getBoundingClientRect().bottom),
+        );
+        page.style.setProperty("--literallygoogle-sidebar-bottom-inset", `${gap}px`);
+    }
+
     function syncSidebarStuckState() {
         stuckFrame = 0;
         const sidebar = document.getElementById("sidebar-col");
@@ -4475,13 +4494,19 @@ function wrapResultsStats(meta) {
         const wasStuck = sidebar.classList.contains(STUCK_CLASS);
         const stuck = isSidebarColStuck(sidebar);
         sidebar.classList.toggle(STUCK_CLASS, stuck);
+        syncSidebarRailInset(sidebar);
 
         if (stuck !== wasStuck) {
             resetSidebarScroll(sidebar);
             sidebar.style.removeProperty("max-height");
             if (stuck) {
-                requestAnimationFrame(() => resetSidebarScroll(sidebar));
+                requestAnimationFrame(() => {
+                    resetSidebarScroll(sidebar);
+                    syncSidebarRailInset(sidebar);
+                });
             }
+        } else if (stuck) {
+            syncSidebarRailInset(sidebar);
         }
     }
 
