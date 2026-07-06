@@ -5516,6 +5516,222 @@ body {
     padding: 0;
 }
 
+/* ── Indexer settings tab ───────────────────────────────────────────────── */
+#indexer-tab-section .settings-fieldset > .settings-fieldset-inverse,
+#indexer-tab-section .settings-fieldset > .degoog-indexer-stats {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 17px;
+    border: none;
+    border-radius: var(--theme-radius-xs);
+    background: var(--bg);
+}
+
+#indexer-tab-section .settings-fieldset > :first-child {
+    border-start-start-radius: var(--theme-radius-xl);
+    border-start-end-radius: var(--theme-radius-xl);
+}
+
+#indexer-tab-section .settings-fieldset > :last-child {
+    border-end-start-radius: var(--theme-radius-xl);
+    border-end-end-radius: var(--theme-radius-xl);
+}
+
+[data-theme="light"]
+    #indexer-tab-section
+    .settings-fieldset
+    > :is(.settings-fieldset-inverse, .degoog-indexer-stats) {
+    background: white;
+}
+
+#indexer-tab-section .settings-rate-limit-defaults {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* Toggle rows nested in indexer inverse blocks (public export, prune, fuzzy). */
+#indexer-tab-section .settings-fieldset-inverse > .settings-toggle-wrap.degoog-toggle-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row-reverse;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 17px;
+    border: none;
+    border-radius: var(--theme-radius-xl);
+    background: var(--lg-settings-row-bg);
+    cursor: pointer;
+}
+
+#indexer-tab-section
+    .settings-fieldset-inverse
+    > .settings-toggle-wrap.degoog-toggle-wrap
+    + .settings-desc {
+    margin: 0;
+}
+
+#indexer-tab-section
+    .settings-fieldset-inverse
+    > .settings-desc
+    + .settings-toggle-wrap.degoog-toggle-wrap {
+    margin-top: 0.5rem;
+}
+
+[data-theme="light"]
+    #indexer-tab-section
+    .settings-fieldset-inverse
+    > .settings-toggle-wrap.degoog-toggle-wrap {
+    background: white;
+}
+
+/* Google-like settings inputs inside indexer panels. */
+#indexer-tab-section textarea.degoog-input,
+#indexer-tab-section input.degoog-input.settings-rate-limit-input,
+#indexer-tab-section input.degoog-input.settings-proxy-urls,
+#indexer-tab-section .settings-proxy-urls.degoog-input {
+    appearance: none;
+    -webkit-appearance: none;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 15px;
+    border: 1px solid var(--border);
+    border-radius: var(--theme-radius-lg);
+    background: var(--btn-bg);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    outline: none;
+}
+
+#indexer-tab-section input.degoog-input.settings-rate-limit-input,
+#indexer-tab-section input[type="number"].degoog-input {
+    min-height: 3rem;
+    border-radius: var(--theme-radius-pill);
+}
+
+#indexer-tab-section textarea.degoog-input {
+    min-height: 6.5rem;
+    resize: vertical;
+    line-height: 1.45;
+}
+
+#indexer-tab-section textarea.degoog-input:hover,
+#indexer-tab-section input.degoog-input.settings-rate-limit-input:hover,
+#indexer-tab-section input.degoog-input.settings-proxy-urls:hover,
+#indexer-tab-section .settings-proxy-urls.degoog-input:hover {
+    background: var(--bg-hover);
+    border-color: var(--border);
+}
+
+#indexer-tab-section textarea.degoog-input:focus,
+#indexer-tab-section input.degoog-input.settings-rate-limit-input:focus,
+#indexer-tab-section input.degoog-input.settings-proxy-urls:focus,
+#indexer-tab-section .settings-proxy-urls.degoog-input:focus {
+    border-color: var(--primary);
+    outline: 2px solid color-mix(in srgb, var(--primary) 22%, transparent);
+    outline-offset: 0;
+}
+
+:root:not([data-theme="dark"])
+    #indexer-tab-section
+    :is(
+        textarea.degoog-input,
+        input.degoog-input.settings-rate-limit-input,
+        input.degoog-input.settings-proxy-urls,
+        .settings-proxy-urls.degoog-input
+    ) {
+    background: var(--lg-settings-select-light);
+}
+
+:root:not([data-theme="dark"])
+    #indexer-tab-section
+    :is(
+        textarea.degoog-input,
+        input.degoog-input.settings-rate-limit-input,
+        input.degoog-input.settings-proxy-urls,
+        .settings-proxy-urls.degoog-input
+    ):hover {
+    background: var(--lg-settings-select-light-hover);
+}
+
+/* Index stats — 2×2 summary grid + per-type breakdown. */
+#indexer-tab-section #indexer-stats-wrap.degoog-indexer-stats {
+    gap: 1rem;
+}
+
+#indexer-tab-section .degoog-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+}
+
+#indexer-tab-section .degoog-stat-grid--types {
+    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+}
+
+#indexer-tab-section .degoog-stat-grid > div {
+    margin: 0;
+    padding: 17px;
+    border-radius: var(--theme-radius-xs);
+    background: var(--lg-settings-row-bg);
+}
+
+#indexer-tab-section .degoog-stat-grid:not(.degoog-stat-grid--types) > div:nth-child(1) {
+    border-start-start-radius: var(--theme-radius-xl);
+}
+
+#indexer-tab-section .degoog-stat-grid:not(.degoog-stat-grid--types) > div:nth-child(2) {
+    border-start-end-radius: var(--theme-radius-xl);
+}
+
+#indexer-tab-section .degoog-stat-grid:not(.degoog-stat-grid--types) > div:nth-child(3) {
+    border-end-start-radius: var(--theme-radius-xl);
+}
+
+#indexer-tab-section .degoog-stat-grid:not(.degoog-stat-grid--types) > div:nth-child(4) {
+    border-end-end-radius: var(--theme-radius-xl);
+}
+
+#indexer-tab-section .degoog-stat-grid dt {
+    margin: 0 0 0.35rem;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+#indexer-tab-section .degoog-stat-grid dd {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+#indexer-tab-section .degoog-stat-grid--types:empty {
+    display: none;
+}
+
+[data-theme="light"] #indexer-tab-section .degoog-stat-grid > div {
+    background: white;
+}
+
+#indexer-tab-section .degoog-action-row--buttons {
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+#indexer-tab-section #indexer-action-status.settings-desc {
+    margin: 0;
+}
+
 .settings-toggle-wrap:not(.settings-desc) {
     flex-direction: row-reverse;
     justify-content: space-between;
@@ -5525,6 +5741,15 @@ body {
     background: var(--lg-settings-row-bg);
     padding: 17px;
     border: none;
+}
+
+.settings-toggle-wrap.settings-desc {
+    border-radius: var(--theme-radius-xl);
+    cursor: default;
+}
+
+.settings-toggle-wrap.settings-desc .settings-desc {
+    margin-bottom: 0;
 }
 
 [data-theme="light"] .store-updates-row,
@@ -5537,7 +5762,7 @@ body {
 .ext-card-apply {
     background: var(--lg-settings-chip-btn-bg) !important;
     border-radius: var(--theme-radius-pill);
-    border: none !important;
+    border: 1px solid var(--border) !important;
     color: var(--text-secondary) !important;
 }
 
@@ -5552,13 +5777,188 @@ body {
     color: white;
 }
 
+/* Configure modal — engines, plugins, transports, themes. */
+.ext-modal {
+    border-radius: var(--theme-radius-xl);
+    background: var(--bg-light);
+}
+
+[data-theme="light"] .ext-modal {
+    background: white;
+}
+
+.ext-modal-title {
+    font-weight: 500;
+}
+
+.ext-modal-footer .settings-save {
+    border-radius: var(--theme-radius-pill);
+    padding: 0.625rem 1.75rem;
+}
+
+.ext-modal-footer .btn--secondary,
+.ext-modal-footer .degoog-btn--secondary {
+    background: var(--btn-bg) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--theme-radius-pill);
+    color: var(--text-secondary) !important;
+}
+
+.ext-modal-footer .btn--secondary:hover,
+.ext-modal-footer .degoog-btn--secondary:hover {
+    background: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+}
+
+.ext-modal-body input.ext-field-input.degoog-input:not([type="checkbox"]),
+.ext-modal-body textarea.ext-field-input.degoog-input,
+.ext-modal-body select.ext-field-input.degoog-input,
+.ext-modal-body .ext-field-urllist-input.degoog-input {
+    appearance: none;
+    -webkit-appearance: none;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 15px;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--theme-radius-lg);
+    background: var(--btn-bg) !important;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    outline: none;
+    box-shadow: none !important;
+}
+
+.ext-modal-body input.ext-field-input.degoog-input[type="number"],
+.ext-modal-body input.ext-field-input.degoog-input[type="text"],
+.ext-modal-body input.ext-field-input.degoog-input[type="url"],
+.ext-modal-body input.ext-field-input.degoog-input[type="password"],
+.ext-modal-body select.ext-field-input.degoog-input {
+    min-height: 3rem;
+    border-radius: var(--theme-radius-pill);
+}
+
+.ext-modal-body textarea.ext-field-input.degoog-input {
+    min-height: 6.5rem;
+    resize: vertical;
+    line-height: 1.45;
+}
+
+.ext-modal-body input.ext-field-input.degoog-input:not([type="checkbox"]):hover,
+.ext-modal-body textarea.ext-field-input.degoog-input:hover,
+.ext-modal-body select.ext-field-input.degoog-input:hover,
+.ext-modal-body .ext-field-urllist-input.degoog-input:hover {
+    background: var(--bg-hover) !important;
+    border-color: var(--border) !important;
+}
+
+.ext-modal-body input.ext-field-input.degoog-input:not([type="checkbox"]):focus,
+.ext-modal-body textarea.ext-field-input.degoog-input:focus,
+.ext-modal-body select.ext-field-input.degoog-input:focus,
+.ext-modal-body .ext-field-urllist-input.degoog-input:focus {
+    border-color: var(--primary) !important;
+    outline: 2px solid color-mix(in srgb, var(--primary) 22%, transparent);
+    outline-offset: 0;
+}
+
+:root:not([data-theme="dark"])
+    .ext-modal-body
+    :is(
+        input.ext-field-input.degoog-input:not([type="checkbox"]),
+        textarea.ext-field-input.degoog-input,
+        select.ext-field-input.degoog-input,
+        .ext-field-urllist-input.degoog-input
+    ) {
+    background: var(--lg-settings-select-light) !important;
+}
+
+:root:not([data-theme="dark"])
+    .ext-modal-body
+    :is(
+        input.ext-field-input.degoog-input:not([type="checkbox"]),
+        textarea.ext-field-input.degoog-input,
+        select.ext-field-input.degoog-input,
+        .ext-field-urllist-input.degoog-input
+    ):hover {
+    background: var(--lg-settings-select-light-hover) !important;
+}
+
+.ext-modal-body .ext-field-toggle-row {
+    background: var(--lg-settings-row-bg);
+    padding: 17px;
+    border-radius: var(--theme-radius-xl);
+}
+
+.ext-modal-body .ext-field-toggle-row .ext-field-label {
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+[data-theme="light"] .ext-modal-body .ext-field-toggle-row {
+    background: white;
+}
+
+.ext-modal-body .ext-field[data-type="toggle"] .ext-field-desc {
+    margin-top: 0.5rem;
+    padding-inline: 2px;
+}
+
+.ext-modal-body .ext-advanced-section {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.ext-modal-body .ext-advanced-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 0.75rem;
+}
+
+.ext-modal-body .ext-advanced-body .ext-field {
+    margin-bottom: 0;
+}
+
+.ext-modal-body .ext-list-row {
+    background: var(--lg-settings-row-bg);
+    border-radius: var(--theme-radius-lg);
+    padding: 0.75rem 1rem;
+}
+
+[data-theme="light"] .ext-modal-body .ext-list-row {
+    background: white;
+}
+
+.ext-modal-body .ext-test-btn {
+    border-radius: var(--theme-radius-pill);
+    background: var(--btn-bg);
+    padding: 0.5rem 1rem;
+}
+
+.ext-modal-body .ext-test-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--border);
+    color: var(--text-primary);
+}
+
+.ext-modal-body .ext-field-urllist-add-btn {
+    border-radius: var(--theme-radius-pill);
+}
+
 .theme-select,
-.settings-server-preset-select {
+select.settings-server-preset-select,
+.settings-server-preset-select.degoog-input {
     appearance: none;
     -webkit-appearance: none;
     background: var(--btn-bg);
     border-radius: var(--theme-radius-pill);
     padding: 15px;
+    padding-inline-end: 2.5rem;
     border: 1px solid var(--border);
     color: var(--text-primary);
     cursor: pointer;
@@ -5568,18 +5968,21 @@ body {
 }
 
 .theme-select:hover,
-.settings-server-preset-select:hover {
+select.settings-server-preset-select:hover,
+.settings-server-preset-select.degoog-input:hover {
     background: var(--bg-hover);
     border-color: var(--border);
 }
 
 :root:not([data-theme="dark"]) .theme-select,
-:root:not([data-theme="dark"]) .settings-server-preset-select {
+:root:not([data-theme="dark"]) select.settings-server-preset-select,
+:root:not([data-theme="dark"]) .settings-server-preset-select.degoog-input {
     background: var(--lg-settings-select-light);
 }
 
 :root:not([data-theme="dark"]) .theme-select:hover,
-:root:not([data-theme="dark"]) .settings-server-preset-select:hover {
+:root:not([data-theme="dark"]) select.settings-server-preset-select:hover,
+:root:not([data-theme="dark"]) .settings-server-preset-select.degoog-input:hover {
     background: var(--lg-settings-select-light-hover);
 }
 
