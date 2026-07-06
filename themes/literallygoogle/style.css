@@ -4978,6 +4978,18 @@ body {
     border-radius: var(--theme-radius-pill);
 }
 
+.btn--secondary,
+.degoog-btn--secondary {
+    border: 1px solid var(--border) !important;
+    background: transparent !important;
+    color: var(--primary) !important;
+}
+
+.btn--secondary:hover,
+.degoog-btn--secondary:hover {
+    background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+}
+
 /* Use ring shadows instead of border so track/knob box model matches core CSS
    (borders on ::after shift “off” position and leave a visible left gap). */
 .toggle-slider {
@@ -5271,7 +5283,7 @@ body {
 /* Store catalog: same as degoog core (style_002) — use semantic vars only, no theme-local store-* tokens. */
 .store-repo-detail {
     border-radius: var(--theme-radius-xl);
-    background: var(--bg-hover);
+    background: var(--bg-light);
     color: var(--text-primary);
 }
 
