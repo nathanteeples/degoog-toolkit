@@ -117,7 +117,7 @@ On the Web tab, `scripts/search.js` sets fluid `--literallygoogle-results-sideba
 1. **Wide:** sidebar panel `20rem`, main column up to `48rem`.
 2. **Tighten:** shrink the **sidebar first** from `20rem` down to `16rem` while main stays at `48rem`.
 3. **Tighter:** sidebar holds at `16rem`; main column (glance, URLs, results) shrinks below `48rem`.
-4. **Stack:** switch to single-column before smush using a hysteresis band (enter at `480px`, exit at `520px`) so placeholders/sidebar never collapse into a transient squeezed state.
+4. **Stack:** switch to single-column before smush using a hysteresis band on **stable page inner width** (not `#results-layout` width — flex mode inflates layout width and causes sidebar/stack flapping). Enter when inner width cannot fit sidebar min + gap + 450px main; stay stacked until ~48px wider.
 
 Do not reintroduce filter-tab overlap snapping (`lg-results-sidebar-compact`) or abrupt sidebar jumps — the fluid vars are the only width mechanism.
 

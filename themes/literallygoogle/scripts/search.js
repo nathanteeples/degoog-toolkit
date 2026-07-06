@@ -119,6 +119,44 @@ function getLgTranslation(key) {
     return el?.getAttribute(attrName) || LG_LANG_DICT.en[key] || key;
 }
 
+function wrapResultsStats(meta) {
+    if (!meta) return;
+    const nodes = [...meta.childNodes].filter(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = /** @type {Element} */ (node);
+            if (el.classList.contains("spell-check-notice")) return false;
+            if (el.classList.contains("results-meta-stats")) return false;
+            if (el.id === "lg-media-engine-pills" || el.classList.contains("lg-media-engine-rail")) {
+                return false;
+            }
+            return Boolean(el.textContent?.trim());
+        }
+        if (node.nodeType === Node.TEXT_NODE) {
+            return Boolean(node.textContent?.trim());
+        }
+        return false;
+    });
+    if (nodes.length === 0) return;
+
+    let stats = meta.querySelector(".results-meta-stats");
+    const text = nodes
+        .map(node => node.textContent?.trim() ?? "")
+        .join(" ")
+        .trim();
+    if (!text || /^Showing results for/i.test(text)) return;
+
+    if (!stats) {
+        stats = document.createElement("span");
+        stats.className = "results-meta-stats";
+        meta.replaceChild(stats, nodes[0]);
+    }
+
+    stats.textContent = text;
+    nodes.forEach(node => {
+        if (node.parentNode === meta) node.remove();
+    });
+}
+
 /* ── 1. Sticky header scroll shadow ─────────────────────────────────────── */
 (() => {
     const header = document.getElementById("results-header");
@@ -1127,41 +1165,6 @@ function getLgTranslation(key) {
 
         wrapResultsStats(meta);
         meta.appendChild(hoistedSpellCheckNotice);
-    }
-
-    function wrapResultsStats(meta) {
-        if (!meta) return;
-        const nodes = [...meta.childNodes].filter(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                const el = /** @type {Element} */ (node);
-                if (el.classList.contains("spell-check-notice")) return false;
-                if (el.classList.contains("results-meta-stats")) return false;
-                return Boolean(el.textContent?.trim());
-            }
-            if (node.nodeType === Node.TEXT_NODE) {
-                return Boolean(node.textContent?.trim());
-            }
-            return false;
-        });
-        if (nodes.length === 0) return;
-
-        let stats = meta.querySelector(".results-meta-stats");
-        const text = nodes
-            .map(node => node.textContent?.trim() ?? "")
-            .join(" ")
-            .trim();
-        if (!text || /^Showing results for/i.test(text)) return;
-
-        if (!stats) {
-            stats = document.createElement("span");
-            stats.className = "results-meta-stats";
-            meta.replaceChild(stats, nodes[0]);
-        }
-
-        stats.textContent = text;
-        nodes.forEach(node => {
-            if (node.parentNode === meta) node.remove();
-        });
     }
 
     function moveSpellCheck() {
@@ -3507,7 +3510,9 @@ function getLgTranslation(key) {
 
     function imageEngineRows() {
         return [
-            ...document.querySelectorAll("#image-engine-panel .engine-stat-row"),
+            ...document.querySelectorAll(
+                "#image-engine-panel .engine-stat-row, #image-filters-bar .engine-stat-row",
+            ),
         ].filter(row => row instanceof HTMLElement);
     }
 
@@ -3773,7 +3778,6 @@ function getLgTranslation(key) {
         }
         syncRowHighlights(unique);
         applyFilter(unique);
-        window.dispatchEvent(new CustomEvent("lg-results-layout-changed"));
     }
 
     function engineNameFromRow(row) {
@@ -3923,6 +3927,16 @@ function getLgTranslation(key) {
         bindEnginePanelDelegation();
         wrapResultsStats(getResultsMeta());
 
+        const resultsMeta = getResultsMeta();
+        if (resultsMeta && !resultsMeta.dataset.lgMetaStatsObserver) {
+            resultsMeta.dataset.lgMetaStatsObserver = "1";
+            new MutationObserver(() => wrapResultsStats(resultsMeta)).observe(resultsMeta, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+        }
+
         const resultsList = getResultsList();
         if (resultsList) {
             new MutationObserver(mutations => {
@@ -3947,6 +3961,13 @@ function getLgTranslation(key) {
             wrapResultsStats(getResultsMeta());
             decorateRows();
             scheduleApply();
+            renderMediaEnginePills();
+            scheduleStickyEngineRailUpdate();
+        });
+
+        window.addEventListener("lg-sync-search-type", () => {
+            wrapResultsStats(getResultsMeta());
+            refreshEnginePanels();
             renderMediaEnginePills();
             scheduleStickyEngineRailUpdate();
         });
@@ -4107,8 +4128,7 @@ function getLgTranslation(key) {
 /* ── 5e. Web results layout: fluid sidebar, then fluid main ─────────────── */
 (() => {
     const MAIN_MIN_PX = 450;
-    const STACK_ENTER_PX = 480;
-    const STACK_EXIT_PX = 520;
+    const STACK_HYSTERESIS_PX = 48;
     const SINGLE_CLASS = "lg-results-layout-single";
     const DESKTOP_MIN = 768;
     const SIDEBAR_MAX_REM = 20;
@@ -4175,6 +4195,36 @@ function getLgTranslation(key) {
         return Math.max(0, outerMax - padStart - padEnd);
     }
 
+    /** Width for stack decisions — based on page chrome, not #results-layout (flex vs grid changes layout width). */
+    function stableStackInnerWidth(page) {
+        const px = remPx();
+        const style = getComputedStyle(page);
+        const padStart = parseFloat(style.paddingInlineStart) || parseFloat(style.paddingLeft) || 0;
+        const padEnd = parseFloat(style.paddingInlineEnd) || parseFloat(style.paddingRight) || 0;
+        const pageWidth = page.getBoundingClientRect().width;
+        const layoutMax = 76 * px;
+        return Math.max(0, Math.min(layoutMax, pageWidth - padStart - padEnd));
+    }
+
+    function minTwoColumnInnerWidth() {
+        const px = remPx();
+        return (
+            SIDEBAR_MIN_REM * px +
+            COLUMN_GAP_REM * px +
+            SCROLLBAR_REM * px +
+            MAIN_MIN_PX
+        );
+    }
+
+    function shouldUseSingleColumn(page, innerWidth) {
+        const minTwoCol = minTwoColumnInnerWidth();
+        const isSingle = page.classList.contains(SINGLE_CLASS);
+        if (isSingle) {
+            return innerWidth < minTwoCol + STACK_HYSTERESIS_PX;
+        }
+        return innerWidth < minTwoCol;
+    }
+
     function computeFluidColumns(innerWidth) {
         const px = remPx();
         const sidebarMax = SIDEBAR_MAX_REM * px;
@@ -4233,11 +4283,10 @@ function getLgTranslation(key) {
         }
 
         const innerWidth = targetGridInnerWidth(layout);
+        const stackInnerWidth = stableStackInnerWidth(page);
         const { sidebarPanel, mainCol } = computeFluidColumns(innerWidth);
-        const isSingle = page.classList.contains(SINGLE_CLASS);
-        const stackThreshold = isSingle ? STACK_EXIT_PX : STACK_ENTER_PX;
 
-        if (mainCol > 0 && mainCol < stackThreshold) {
+        if (shouldUseSingleColumn(page, stackInnerWidth)) {
             page.classList.add(SINGLE_CLASS);
             clearFluidLayoutVars(page);
             resetSingleColumnGridState(page, layout, { entering: true });
@@ -4268,14 +4317,13 @@ function getLgTranslation(key) {
         // Two RAFs so we don't smush on first paint.
         requestAnimationFrame(() => requestAnimationFrame(schedule));
         window.addEventListener("resize", schedule, { passive: true });
-        window.addEventListener("scroll", schedule, { passive: true });
         const page = getResultsPage();
         if (!page) return;
         new MutationObserver(schedule).observe(page, {
             childList: true,
             subtree: true,
             attributes: true,
-            attributeFilter: ["class", "data-lg-search-type", "hidden"],
+            attributeFilter: ["data-lg-search-type", "hidden"],
         });
         const tabs = getResultsTabs();
         if (tabs) {
@@ -4688,7 +4736,7 @@ function getLgTranslation(key) {
 
     function wireImageLoadHandlers() {
         const resultsList = getResultsList();
-        if (!resultsList || !resultsList.querySelector(".image-card")) return;
+        if (!resultsList) return;
 
         function checkImage(img) {
             const card = img.closest(".image-card");
@@ -4725,12 +4773,18 @@ function getLgTranslation(key) {
         }
     }
 
+    function onSearchTypeOrResultsChange() {
+        wireImageLoadHandlers();
+        wrapResultsStats(getResultsMeta());
+    }
+
     function init() {
         if (!isThemeEnabled()) return;
         lastIsDesktop = isDesktop();
         bindRoots();
         wireImageLoadHandlers();
-        window.addEventListener("degoog-results-ready", wireImageLoadHandlers);
+        window.addEventListener("degoog-results-ready", onSearchTypeOrResultsChange);
+        window.addEventListener("lg-sync-search-type", onSearchTypeOrResultsChange);
         new MutationObserver(mutations => {
             const shouldRebind = mutations.some(mutation =>
                 [...mutation.addedNodes].some(
