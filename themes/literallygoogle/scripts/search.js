@@ -3962,9 +3962,13 @@ function getLgTranslation(key) {
         const sidebar = document.getElementById("sidebar-col");
         if (!(sidebar instanceof HTMLElement)) return;
 
+        const wasStuck = sidebar.classList.contains(STUCK_CLASS);
         const stuck = isSidebarColStuck(sidebar);
         sidebar.classList.toggle(STUCK_CLASS, stuck);
-        if (!stuck) sidebar.classList.remove(ACTIVE_CLASS);
+        if (!stuck) {
+            sidebar.classList.remove(ACTIVE_CLASS);
+            if (wasStuck) sidebar.scrollTop = 0;
+        }
     }
 
     function scheduleSidebarStuckSync() {
