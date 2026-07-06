@@ -119,8 +119,7 @@ html[data-image-mode-desktop-layout="fab-right"] {
         --warning: #fbbc05;
         --success: #34a853;
         --bg: #fff;
-        --bg-light: #f8f9fa;
-        --lg-sidebar-row-surface: #f7f8fa;
+        --bg-light: #f7f8fa;
         --bg-hover: #e8eaed;
         --border: #dadce0;
         --border-light: #d2d2d2;
@@ -155,8 +154,7 @@ html[data-image-mode-desktop-layout="fab-right"] {
     --warning: #fbbc05;
     --success: #34a853;
     --bg: #fff;
-    --bg-light: #f8f9fa;
-    --lg-sidebar-row-surface: #f7f8fa;
+    --bg-light: #f7f8fa;
     --bg-hover: #e8eaed;
     --border: #dadce0;
     --border-light: #d2d2d2;
@@ -692,7 +690,7 @@ html[data-image-mode-desktop-layout="fab-right"] {
 #results-page .glance-ai,
 #results-page .skeleton-sidebar-panel {
     border-radius: var(--theme-radius-lg) !important;
-    background: var(--lg-sidebar-row-surface) !important;
+    background: var(--bg-light) !important;
 }
 
 .results-tab {
@@ -746,7 +744,7 @@ html[data-image-mode-desktop-layout="fab-right"] {
     max-width: min(23.5rem, calc(100vw - 1.5rem));
     height: min(44rem, var(--lg-drawer-max-height, calc(100dvh - 1.5rem - env(safe-area-inset-bottom, 0px))));
     max-height: var(--lg-drawer-max-height, calc(100dvh - 1.5rem - env(safe-area-inset-bottom, 0px)));
-    background: var(--lg-sidebar-row-surface);
+    background: var(--bg-light);
     border: 1px solid var(--border-light);
     border-radius: clamp(1.5rem, 5vw, 2rem);
     overflow: hidden;
@@ -2706,7 +2704,7 @@ body {
 
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
         #image-filters-bar.lg-image-drawer-animating:not(.open) {
-        background: var(--lg-sidebar-row-surface);
+        background: var(--bg-light);
         border-color: color-mix(in srgb, var(--border-light) 82%, transparent);
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
@@ -2714,7 +2712,7 @@ body {
 
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
         #image-filters-bar.open {
-        background: var(--lg-sidebar-row-surface);
+        background: var(--bg-light);
         border-color: var(--border-light);
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
