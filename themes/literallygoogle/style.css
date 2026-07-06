@@ -1399,10 +1399,7 @@ body {
         grid-template-columns:
             minmax(0, var(--literallygoogle-results-main-col-max))
             minmax(
-                calc(
-                    var(--literallygoogle-results-sidebar-min) +
-                        var(--lg-sidebar-scrollbar-size)
-                ),
+                var(--literallygoogle-results-sidebar-col),
                 var(--literallygoogle-results-sidebar-col)
             );
         column-gap: 2rem;
@@ -4511,8 +4508,8 @@ body {
 }
 
 /* Core sticky sidebar setting.
-   degoog toggles #sidebar-col.is-sticky. Scroll the column; keep .sticky at panel
-   width so the track uses the extra grid lane, not the card width. */
+   Grid column = panel width + scroll lane. #sidebar-col scrolls; .sticky stays a
+   fixed panel width so the lane absorbs the track (never width: calc(100% - …)). */
 
 @media (min-width: 768px) {
     #sidebar-col.is-sticky {
@@ -4552,7 +4549,7 @@ body {
 
     #sidebar-col.is-sticky > .sticky {
         width: var(--literallygoogle-results-sidebar-max);
-        max-width: calc(100% - var(--lg-sidebar-scrollbar-size));
+        max-width: 100%;
         max-height: none;
         overflow: visible;
         box-sizing: border-box;
