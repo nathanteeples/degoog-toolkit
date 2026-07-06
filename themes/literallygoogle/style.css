@@ -4815,8 +4815,8 @@ body {
    Grid column = panel width + scroll lane. Internal scroll only after the column
    has physically stuck (lg-sidebar-is-stuck); until then the page scrolls.
    Top gap = `top` (--literallygoogle-sticky-header-offset, ~74px). Bottom gap
-   matches via max-height: 100vh minus twice that offset. Panel width is fixed
-   on .sticky; the scroll track uses the extra grid lane (never max-width: 100%). */
+   matches via max-height: 100vh minus twice that offset when content overflows;
+   `height: fit-content` keeps short sidebars from stretching below their panels. */
 
 @media (min-width: 768px) {
     #sidebar-col.is-sticky {
@@ -4826,6 +4826,7 @@ body {
             calc(50px + 1.5rem)
         );
         align-self: start;
+        height: fit-content;
         overflow: visible;
         max-height: none;
     }
@@ -4837,6 +4838,7 @@ body {
 
     #sidebar-col.is-sticky.lg-sidebar-is-stuck {
         min-height: 0;
+        height: fit-content;
         max-height: calc(
             100vh -
                 (2 * var(
@@ -4854,6 +4856,10 @@ body {
         overflow-x: hidden;
         overflow-y: auto;
         scrollbar-width: thin;
+        scroll-padding-bottom: var(
+            --literallygoogle-sticky-header-offset,
+            calc(50px + 1.5rem)
+        );
     }
 
     #sidebar-col.is-sticky.lg-sidebar-is-stuck.lg-sidebar-scroll-active::-webkit-scrollbar {
@@ -6565,12 +6571,34 @@ select.settings-server-preset-select:hover,
     display: flex;
 }
 
+@keyframes lg-preview-panel-fade-out {
+    from {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    to {
+        opacity: 0;
+        visibility: visible;
+    }
+}
+
+@keyframes lg-preview-content-fade-out {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(0.5rem) scale(0.99);
+    }
+}
+
 #results-page:has(#results-layout.media-mode) #media-preview-panel {
     display: flex;
     width: 100%;
     max-height: min(78vh, 48rem);
-    opacity: 0;
-    visibility: hidden;
     pointer-events: none;
     transform: translateY(calc(100% + 1rem)) scale(0.985);
     transform-origin: center bottom;
@@ -6581,6 +6609,12 @@ select.settings-server-preset-select:hover,
         box-shadow 220ms ease,
         border-color 220ms ease,
         background-color 220ms ease;
+}
+
+#results-page:has(#results-layout.media-mode)
+    #media-preview-panel:not(.open):not(.lg-preview-closing) {
+    opacity: 0;
+    visibility: hidden;
 }
 
 #results-page:has(#results-layout.media-mode) #media-preview-panel.open {
@@ -6659,6 +6693,9 @@ select.settings-server-preset-select:hover,
         max-width: var(--mp2-panel-width);
         border-top: 1px solid var(--mp2-panel-border);
         box-shadow: var(--mp2-panel-shadow);
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
         transform: translateX(0) scale(1);
         overflow: hidden;
     }
@@ -6712,12 +6749,12 @@ select.settings-server-preset-select:hover,
         margin: 0;
         z-index: 30;
         pointer-events: none;
-        opacity: 0;
+        opacity: 1;
         visibility: visible;
         transform: translateX(1.6rem) scale(0.975);
+        animation: lg-preview-panel-fade-out 280ms ease forwards;
         transition:
             transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
-            opacity 220ms ease,
             box-shadow 220ms ease,
             border-color 220ms ease,
             background-color 220ms ease;
@@ -7097,6 +7134,17 @@ button.mp2-item[hidden] {
     transition-delay: 90ms;
 }
 
+#results-page:has(#results-layout.media-mode) #media-preview-panel.lg-preview-closing {
+    animation: lg-preview-panel-fade-out 280ms ease forwards;
+    visibility: visible;
+    pointer-events: none;
+}
+
+#results-page:has(#results-layout.media-mode) #media-preview-panel.lg-preview-closing .mp2-bar,
+#results-page:has(#results-layout.media-mode) #media-preview-panel.lg-preview-closing .mp2-body {
+    animation: lg-preview-content-fade-out 240ms ease forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
     #results-page:has(#results-layout.media-mode) #media-preview-panel,
     #results-page:has(#results-layout.media-mode) #media-preview-panel .mp2-bar,
@@ -7105,6 +7153,7 @@ button.mp2-item[hidden] {
     .mp2-item {
         transition: none !important;
         transform: none !important;
+        animation: none !important;
     }
 }
 .mp2-toast {
