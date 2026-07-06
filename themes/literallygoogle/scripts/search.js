@@ -218,6 +218,7 @@ function wrapResultsStats(meta) {
     nodes.forEach(node => {
         if (node.parentNode === meta) node.remove();
     });
+    scheduleWebMetaStatsGap();
 }
 
 /* ── 1. Sticky header scroll shadow ─────────────────────────────────────── */
@@ -2397,7 +2398,10 @@ function wrapResultsStats(meta) {
         positionFiltersPanel(panel, toggle, page);
         wireCustomDateMenuState(panel);
         if (!drawerMode) {
-            ensureFiltersClosedAfterCore(panel, toggle);
+            if (toggle.dataset.lgFiltersInitClosed !== "1") {
+                toggle.dataset.lgFiltersInitClosed = "1";
+                ensureFiltersClosedAfterCore(panel, toggle);
+            }
             wireFiltersDismiss(panel, toggle);
             wireFiltersHover(panel);
         }
@@ -4409,19 +4413,14 @@ function wrapResultsStats(meta) {
         );
     }
 
-    function shouldUseSingleColumn(page, innerWidth, mainCol) {
+    function shouldUseSingleColumn(page, innerWidth) {
         const minTwoCol = minTwoColumnInnerWidth();
         const isSingle = page.classList.contains(SINGLE_CLASS);
-        const mainTooNarrow = mainCol < MAIN_MIN_PX;
 
         if (isSingle) {
-            if (innerWidth < minTwoCol + STACK_HYSTERESIS_PX) return true;
-            if (mainTooNarrow) return true;
-            return false;
+            return innerWidth < minTwoCol + STACK_HYSTERESIS_PX;
         }
-        if (innerWidth < minTwoCol) return true;
-        if (mainTooNarrow) return true;
-        return false;
+        return innerWidth < minTwoCol;
     }
 
     function computeFluidColumns(innerWidth) {
@@ -4481,12 +4480,10 @@ function wrapResultsStats(meta) {
             return;
         }
 
-        const layoutInnerWidth = targetGridInnerWidth(layout);
-        const stackInnerWidth = stableStackInnerWidth(page);
-        const stackWidth = Math.min(stackInnerWidth, layoutInnerWidth);
-        const { sidebarPanel, mainCol } = computeFluidColumns(stackWidth);
+        const decisionWidth = stableStackInnerWidth(page);
+        const { sidebarPanel, mainCol } = computeFluidColumns(decisionWidth);
 
-        if (shouldUseSingleColumn(page, stackWidth, mainCol)) {
+        if (shouldUseSingleColumn(page, decisionWidth)) {
             page.classList.add(SINGLE_CLASS);
             clearFluidLayoutVars(page);
             resetSingleColumnGridState(page, layout, { entering: true });

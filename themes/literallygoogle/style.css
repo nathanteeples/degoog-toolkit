@@ -1567,9 +1567,14 @@ body {
         flex-direction: column;
         gap: 0.5rem;
         max-width: none;
+        margin-top: 0;
         margin-inline: 0;
         padding-inline: 0.75rem;
         grid-template-columns: none !important;
+    }
+
+    #results-page.lg-results-layout-single #slot-above-results:empty {
+        display: none !important;
     }
 
     #results-page.lg-results-layout-single #results-layout > #slot-above-results {
@@ -1647,13 +1652,6 @@ body {
 
     #results-page.lg-results-layout-single #results-sidebar {
         gap: 0.5rem;
-    }
-
-    /* Match inter-panel sidebar gap before the stacked glance column. */
-    #results-page.lg-results-layout-single
-        #results-sidebar
-        .sidebar-accordion:has(.related-search-link) {
-        margin-bottom: 0.5rem;
     }
 
     #results-page.lg-results-layout-single #sidebar-col + #results-main {
@@ -3638,11 +3636,29 @@ body {
 }
 
 #results-tabs .lg-filters-wrap {
-    position: relative;
+    position: sticky;
+    inset-inline-end: 0;
+    z-index: 2;
+    background: var(--bg);
     flex: 0 0 auto;
     width: auto;
     min-width: 0;
     max-width: max-content;
+    padding-inline-start: 0.35rem;
+}
+
+#results-tabs .tools-toggle .lg-filters-icon {
+    display: none;
+}
+
+#results-tabs .tools-toggle .lg-filters-label {
+    display: inline;
+}
+
+@media (min-width: 768px) {
+    #results-tabs .tools-toggle > .lg-filters-label {
+        display: inline !important;
+    }
 }
 
 #results-page #results-tabs {
