@@ -4543,36 +4543,23 @@ body {
         margin-inline: 0;
     }
 
-    /* Widen the column into the grid gap for the scroll track; keep .sticky at
-       the original panel width so rows never shrink when overflow starts. */
-    #sidebar-col.is-sticky:has(> .sticky.lg-sidebar-scroll-active) {
+    /* Scroll track sits in inline-end padding that extends into the grid gap so
+       panel rows keep their full width when overflow-y starts. */
+    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        box-sizing: border-box;
         width: calc(100% + var(--lg-sidebar-scrollbar-size));
         max-width: calc(
             var(--literallygoogle-results-sidebar-max) +
                 var(--lg-sidebar-scrollbar-size)
         );
         margin-inline-end: calc(-1 * var(--lg-sidebar-scrollbar-size));
-    }
-
-    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active {
-        overflow-y: auto;
-        overflow-y: overlay;
-        overscroll-behavior: contain;
-        box-sizing: border-box;
-        width: calc(100% - var(--lg-sidebar-scrollbar-size));
-        max-width: var(--literallygoogle-results-sidebar-max);
+        padding-inline-end: var(--lg-sidebar-scrollbar-size);
     }
 
     #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active::-webkit-scrollbar {
         width: var(--lg-sidebar-scrollbar-size);
-    }
-
-    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active #results-sidebar,
-    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active #slot-above-sidebar,
-    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active #slot-below-sidebar {
-        width: 100%;
-        max-width: none;
-        flex-shrink: 0;
     }
 }
 
