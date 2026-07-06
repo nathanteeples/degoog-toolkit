@@ -1384,6 +1384,25 @@ body {
         );
         padding-inline-end: var(--literallygoogle-results-content-inline-end);
     }
+
+    /* Override core #results-meta shorthand padding — keep theme gutters only. */
+    #results-page #results-meta {
+        padding-block: 0.75rem;
+    }
+
+    /* Web two-column: shrink-wrap to the same grid tracks as #results-layout. */
+    #results-page[data-lg-search-type="web"]:not(.lg-results-layout-single):not(
+            .lg-command-mode
+        )
+        #results-meta,
+    #results-page[data-lg-search-type="web"]:not(.lg-results-layout-single):not(
+            .lg-command-mode
+        )
+        #results-layout {
+        width: fit-content;
+        max-width: min(100%, var(--literallygoogle-results-layout-max));
+        margin-inline-end: auto;
+    }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -3614,20 +3633,13 @@ body {
         max-width: none;
     }
 
-    /* Keep stats aligned with the right edge of the two-column layout rail. */
-    #results-page:not(.lg-results-layout-single) #results-meta {
-        width: 100%;
-        max-width: var(--literallygoogle-results-layout-max);
-        margin-inline-end: auto;
-        box-sizing: border-box;
-    }
-
-    /* Web: stats share the results grid — column 2 lines up with the sidebar rail. */
+    /* Web: stats row mirrors the results grid (must reset flex-end from base #results-meta). */
     #results-page[data-lg-search-type="web"]:not(.lg-results-layout-single):not(
             .lg-command-mode
         )
         #results-meta {
         display: grid;
+        justify-content: start;
         grid-template-columns: var(
             --lg-results-grid-columns,
             minmax(0, var(--literallygoogle-results-main-col-max))
@@ -3639,6 +3651,7 @@ body {
         column-gap: var(--literallygoogle-results-column-gap);
         align-items: center;
         flex-wrap: nowrap;
+        box-sizing: border-box;
     }
 
     #results-page[data-lg-search-type="web"]:not(.lg-results-layout-single):not(
@@ -3655,10 +3668,10 @@ body {
         )
         #results-meta
         .results-meta-stats {
-        grid-column: 2;
+        grid-column: 1 / -1;
         justify-self: end;
         margin-inline-start: 0;
-        margin-inline-end: 0;
+        margin-inline-end: var(--lg-web-meta-stats-inset-end, 0px);
     }
 
     #results-page.lg-results-layout-single[data-lg-search-type="web"]:not(.lg-command-mode)
@@ -3817,6 +3830,7 @@ body {
     gap: 0.35rem;
     padding: 0.75rem 1rem;
     font-size: 0.8125rem;
+    font-weight: 500;
     color: var(--text-secondary);
     background: none;
     border: 0;

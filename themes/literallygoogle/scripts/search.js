@@ -1085,6 +1085,75 @@ function wrapResultsStats(meta) {
     onReady(observeSlots);
 })();
 
+/* ── 4. Web meta stats — align with sidebar panel right edge (desktop) ───── */
+(() => {
+    let frame = 0;
+
+    function shouldAlignWebMetaStats() {
+        const page = getResultsPage();
+        if (!page || window.innerWidth < 768) return false;
+        if (page.classList.contains("lg-results-layout-single")) return false;
+        if (page.classList.contains("lg-command-mode")) return false;
+        const type = (page.getAttribute("data-lg-search-type") || "web").toLowerCase();
+        return type !== "images" && type !== "videos";
+    }
+
+    function getSidebarPanelRight() {
+        const sidebar = document.getElementById("sidebar-col");
+        const panel = sidebar?.querySelector(":scope > .sticky");
+        if (!(panel instanceof HTMLElement)) return null;
+        const rect = panel.getBoundingClientRect();
+        if (rect.width < 1) return null;
+        return rect.right;
+    }
+
+    function syncWebMetaStatsRail() {
+        frame = 0;
+        const meta = getResultsMeta();
+        if (!(meta instanceof HTMLElement)) return;
+
+        if (!shouldAlignWebMetaStats()) {
+            meta.style.removeProperty("--lg-web-meta-stats-inset-end");
+            return;
+        }
+
+        const stats = meta.querySelector(".results-meta-stats");
+        const panelRight = getSidebarPanelRight();
+        if (!stats || panelRight === null) return;
+
+        const metaStyle = getComputedStyle(meta);
+        const padEnd =
+            parseFloat(metaStyle.paddingInlineEnd) || parseFloat(metaStyle.paddingRight) || 0;
+        const metaContentRight = meta.getBoundingClientRect().right - padEnd;
+        const insetEnd = Math.round(Math.max(0, metaContentRight - panelRight));
+        meta.style.setProperty("--lg-web-meta-stats-inset-end", `${insetEnd}px`);
+    }
+
+    function scheduleWebMetaStatsRail() {
+        if (frame) return;
+        frame = requestAnimationFrame(syncWebMetaStatsRail);
+    }
+
+    function initWebMetaStatsRail() {
+        scheduleWebMetaStatsRail();
+        window.addEventListener("resize", scheduleWebMetaStatsRail, { passive: true });
+        window.addEventListener("degoog-results-ready", scheduleWebMetaStatsRail);
+        window.addEventListener("lg-results-layout-changed", scheduleWebMetaStatsRail);
+        window.addEventListener("lg-sync-search-type", scheduleWebMetaStatsRail);
+        const meta = getResultsMeta();
+        if (meta) {
+            new MutationObserver(scheduleWebMetaStatsRail).observe(meta, {
+                childList: true,
+                characterData: true,
+                subtree: true,
+            });
+        }
+    }
+
+    onReady(initWebMetaStatsRail);
+    window.scheduleWebMetaStatsRail = scheduleWebMetaStatsRail;
+})();
+
 /* ── 4. Move spell-check notices into #results-meta ─────────────────────── */
 (() => {
     let spellCheckFrame = 0;
@@ -4414,16 +4483,18 @@ function wrapResultsStats(meta) {
 /* ── 5e. Web results layout: fluid sidebar, then fluid main ─────────────── */
 (() => {
     const MAIN_MIN_PX = 450;
-    const STACK_HYSTERESIS_PX = 48;
+    const STACK_HYSTERESIS_PX = 80;
     const SINGLE_CLASS = "lg-results-layout-single";
     const DESKTOP_MIN = 768;
+    const SEARCHING_ATTR = "data-lg-sidebar-searching";
     const SIDEBAR_MAX_REM = 20;
     const SIDEBAR_MIN_REM = 16;
     const MAIN_MAX_REM = 48;
     const COLUMN_GAP_REM = 2;
     const SCROLLBAR_REM = 0.75;
     let frame = 0;
-    let wasSingleColumn = false;
+    let stackIsSingle = false;
+    let fluidVarsKey = "";
 
     function isWebResultsPage(page) {
         if (!page || window.innerWidth < DESKTOP_MIN) return false;
@@ -4445,6 +4516,7 @@ function wrapResultsStats(meta) {
         page.style.removeProperty("--literallygoogle-results-main-col-max");
         page.style.removeProperty("--literallygoogle-results-sidebar-col");
         page.style.removeProperty("--lg-results-grid-columns");
+        fluidVarsKey = "";
     }
 
     function resetSingleColumnGridState(page, layout, { entering }) {
@@ -4481,15 +4553,12 @@ function wrapResultsStats(meta) {
         return Math.max(0, outerMax - padStart - padEnd);
     }
 
-    /** Width for stack decisions — based on page chrome, not #results-layout (flex vs grid changes layout width). */
-    function stableStackInnerWidth(page) {
+    /** Viewport-only width for stack decisions — no layout/page DOM reads. */
+    function stableStackInnerWidth() {
         const px = remPx();
-        const style = getComputedStyle(page);
-        const padStart = parseFloat(style.paddingInlineStart) || parseFloat(style.paddingLeft) || 0;
-        const padEnd = parseFloat(style.paddingInlineEnd) || parseFloat(style.paddingRight) || 0;
-        const pageWidth = page.getBoundingClientRect().width;
         const layoutMax = 76 * px;
-        return Math.max(0, Math.min(layoutMax, pageWidth - padStart - padEnd));
+        const viewport = document.documentElement.clientWidth;
+        return Math.max(0, Math.min(layoutMax, viewport));
     }
 
     function minTwoColumnInnerWidth() {
@@ -4502,19 +4571,14 @@ function wrapResultsStats(meta) {
         );
     }
 
-    function shouldUseSingleColumn(page, innerWidth, mainCol) {
+    function shouldUseSingleColumn(stableInnerWidth) {
         const minTwoCol = minTwoColumnInnerWidth();
-        const isSingle = page.classList.contains(SINGLE_CLASS);
-        const mainTooNarrow = mainCol < MAIN_MIN_PX;
+        const { mainCol } = computeFluidColumns(stableInnerWidth);
 
-        if (isSingle) {
-            if (innerWidth < minTwoCol + STACK_HYSTERESIS_PX) return true;
-            if (mainTooNarrow) return true;
-            return false;
+        if (stackIsSingle) {
+            return stableInnerWidth < minTwoCol + STACK_HYSTERESIS_PX;
         }
-        if (innerWidth < minTwoCol) return true;
-        if (mainTooNarrow) return true;
-        return false;
+        return stableInnerWidth < minTwoCol || mainCol < MAIN_MIN_PX;
     }
 
     function computeFluidColumns(innerWidth) {
@@ -4547,14 +4611,22 @@ function wrapResultsStats(meta) {
         const px = remPx();
         const sidebarRem = sidebarPanel / px;
         const mainRem = mainCol / px;
-        const sidebarColRem = sidebarRem + SCROLLBAR_REM;
+        const key = `${sidebarRem.toFixed(3)}|${mainRem.toFixed(3)}`;
+        if (key === fluidVarsKey) return false;
+
+        fluidVarsKey = key;
         page.style.setProperty("--literallygoogle-results-sidebar-max", `${sidebarRem}rem`);
         page.style.setProperty("--literallygoogle-results-main-col-max", `${mainRem}rem`);
         page.style.setProperty(
             "--literallygoogle-results-sidebar-col",
             `calc(${sidebarRem}rem + var(--lg-sidebar-scrollbar-size))`,
         );
-        page.style.setProperty("--lg-results-grid-columns", `${mainRem}rem ${sidebarColRem}rem`);
+        page.style.setProperty("--lg-results-grid-columns", `${mainRem}rem ${sidebarColRem(sidebarRem)}`);
+        return true;
+    }
+
+    function sidebarColRem(sidebarRem) {
+        return `${(sidebarRem + SCROLLBAR_REM).toFixed(3)}rem`;
     }
 
     function sync() {
@@ -4564,41 +4636,51 @@ function wrapResultsStats(meta) {
         if (!page || !layout) return;
 
         if (!isWebResultsPage(page)) {
+            const hadStack = stackIsSingle;
+            stackIsSingle = false;
             page.classList.remove(SINGLE_CLASS);
             clearFluidLayoutVars(page);
-            if (wasSingleColumn) {
-                wasSingleColumn = false;
+            resetSingleColumnGridState(page, layout, { entering: false });
+            if (hadStack) {
                 window.dispatchEvent(new Event("lg-results-layout-changed"));
             }
             window.dispatchEvent(new Event("lg-sync-sidebar-row"));
+            window.scheduleWebMetaStatsRail?.();
             return;
         }
 
-        const decisionWidth = stableStackInnerWidth(page);
-        const layoutWidth = targetGridInnerWidth(layout);
-        const innerWidth = Math.min(decisionWidth, layoutWidth);
-        const { sidebarPanel, mainCol } = computeFluidColumns(innerWidth);
+        const decisionWidth = stableStackInnerWidth();
+        const searching = document.documentElement.hasAttribute(SEARCHING_ATTR);
+        const wantSingle = searching ? stackIsSingle : shouldUseSingleColumn(decisionWidth);
+        const modeChanged = wantSingle !== stackIsSingle;
 
-        if (shouldUseSingleColumn(page, decisionWidth, mainCol)) {
-            page.classList.add(SINGLE_CLASS);
-            clearFluidLayoutVars(page);
-            resetSingleColumnGridState(page, layout, { entering: true });
+        if (wantSingle) {
+            if (modeChanged) {
+                stackIsSingle = true;
+                page.classList.add(SINGLE_CLASS);
+                clearFluidLayoutVars(page);
+                resetSingleColumnGridState(page, layout, { entering: true });
+            }
         } else {
-            const exiting = page.classList.contains(SINGLE_CLASS);
-            page.classList.remove(SINGLE_CLASS);
-            applyFluidLayout(page, { sidebarPanel, mainCol });
-            if (exiting) {
+            const layoutWidth = targetGridInnerWidth(layout);
+            const applyWidth = Math.min(decisionWidth, layoutWidth);
+            const fluid = computeFluidColumns(applyWidth);
+
+            if (modeChanged) {
+                stackIsSingle = false;
+                page.classList.remove(SINGLE_CLASS);
                 resetSingleColumnGridState(page, layout, { entering: false });
             }
+
+            applyFluidLayout(page, fluid);
         }
 
-        const isSingleColumn = page.classList.contains(SINGLE_CLASS);
-        if (isSingleColumn !== wasSingleColumn) {
-            wasSingleColumn = isSingleColumn;
+        if (modeChanged) {
             window.dispatchEvent(new Event("lg-results-layout-changed"));
+            window.dispatchEvent(new Event("lg-sync-sidebar-row"));
         }
 
-        window.dispatchEvent(new Event("lg-sync-sidebar-row"));
+        window.scheduleWebMetaStatsRail?.();
     }
 
     function schedule() {
@@ -4607,25 +4689,29 @@ function wrapResultsStats(meta) {
     }
 
     function init() {
-        // Two RAFs so we don't smush on first paint.
+        const page = getResultsPage();
+        stackIsSingle = page?.classList.contains(SINGLE_CLASS) ?? false;
+
         requestAnimationFrame(() => requestAnimationFrame(schedule));
         window.addEventListener("resize", schedule, { passive: true });
-        const page = getResultsPage();
+        window.addEventListener("degoog-results-ready", schedule, { passive: true });
+        window.addEventListener("lg-sync-search-type", schedule, { passive: true });
         if (!page) return;
-        new MutationObserver(schedule).observe(page, {
-            childList: true,
-            subtree: true,
+        new MutationObserver(mutations => {
+            if (
+                mutations.some(
+                    mutation =>
+                        mutation.type === "attributes" &&
+                        (mutation.attributeName === "data-lg-search-type" ||
+                            mutation.attributeName === "hidden"),
+                )
+            ) {
+                schedule();
+            }
+        }).observe(page, {
             attributes: true,
             attributeFilter: ["data-lg-search-type", "hidden"],
         });
-        const tabs = getResultsTabs();
-        if (tabs) {
-            new MutationObserver(schedule).observe(tabs, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-            });
-        }
     }
 
     onReady(init);
