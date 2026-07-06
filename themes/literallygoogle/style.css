@@ -1179,6 +1179,22 @@ html[dir="rtl"] #image-filters-bar.open {
     box-shadow: none !important;
 }
 
+/* Core `.degoog-panel--stack-item` adds 1rem between panels — match 2px row stack. */
+#results-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+#results-sidebar > .sidebar-panel.degoog-panel--stack-item {
+    margin-bottom: 0 !important;
+}
+
+/* No placeholder chrome while related queries are still loading. */
+#results-sidebar .sidebar-accordion.related-searches-panel:not(:has(.related-search-link)) {
+    display: none;
+}
+
 #results-sidebar .sidebar-accordion.lg-sidebar-knowledge {
     gap: 0;
 }
@@ -3774,6 +3790,13 @@ body {
     padding-inline-start: 0.35rem;
 }
 
+/* Docked filter (desktop tabs rail): hide core tab|filter divider. */
+@media (min-width: 768px) {
+    #results-page #results-tabs:has(.lg-results-tabs-rail) .tools-wrap::before {
+        display: none;
+    }
+}
+
 #results-tabs .tools-toggle .lg-filters-icon {
     display: none;
 }
@@ -4806,10 +4829,6 @@ body {
    has physically stuck (lg-sidebar-is-stuck); until then the page scrolls. */
 
 @media (min-width: 768px) {
-    #sidebar-col > .sticky {
-        padding-bottom: var(--lg-sidebar-rail-inset);
-    }
-
     #sidebar-col.is-sticky {
         position: sticky;
         top: var(
@@ -4817,6 +4836,7 @@ body {
             calc(50px + 1.5rem)
         );
         align-self: start;
+        height: fit-content;
         overflow: visible;
         max-height: none;
     }
