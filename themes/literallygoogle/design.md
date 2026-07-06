@@ -112,7 +112,7 @@ Semantic tokens are set on `:root` (dark default), `[data-theme="dark"]`, `[data
 
 ### Web two-column shrink order (desktop)
 
-On the Web tab, `scripts/search.js` §5e sets fluid `--literallygoogle-results-sidebar-max` and `--literallygoogle-results-main-col-max` on `#results-page`:
+On the Web tab, `scripts/search-web-layout.js` sets fluid `--literallygoogle-results-sidebar-max` and `--literallygoogle-results-main-col-max` on `#results-page`:
 
 1. **Wide:** sidebar panel `20rem`, main column up to `48rem`.
 2. **Tighten:** shrink the **sidebar first** from `20rem` down to `16rem` while main stays at `48rem`.
@@ -219,10 +219,67 @@ Theme JS (`scripts/search.js`) hoists the notice into `#results-meta` **only on 
 ## Scrolling
 
 - Results layout: `scrollbar-gutter: stable` where chrome needs it.
-- Drawers / preview panel: `overflow-y: auto`, thin scrollbar when open and idle.
+- Drawers / preview panel: thin scrollbar only while actively scrolling inside a stuck pane (see scroll chaining below).
 - **FAB drawer close:** while morphing closed (`lg-image-drawer-animating`), dragging (`lg-drawer-dragging`), or snap-back (`lg-drawer-drag-snap`), hide **both** horizontal and vertical scrollbars on `#image-filters-bar` and its sidebar body.
 - **FAB drawer close icon + layering:** during `#image-filters-bar.lg-image-drawer-animating:not(.open)` keep the pull-tab handle visible immediately (no “icon appears at end” delay). On desktop, the shrinking drawer “shrunk FAB” layer must stay below `#lg-image-tools-fab` (z-index lower than the FAB).
 - Skeleton / loading rows: no scroll hijacking.
+
+### Sticky panel scroll chaining (`scripts/search-scroll-chaining.js`)
+
+Some results chrome is `position: sticky` and taller than the viewport. Without care, wheel events over that pane trap scroll momentum inside it and the page feels “stuck” until the pointer moves. §5d implements the same pattern for both targets below.
+
+**Shared rules (do not regress):**
+
+1. **No internal scroll until physically stuck.** JS toggles a `*-is-stuck` class when the element’s `getBoundingClientRect().top` has reached its sticky `top` offset. Until then, `overflow` stays visible and the document scrolls normally.
+2. **Wheel handler only when stuck + overflow.** If content fits, never `preventDefault` — page scroll always wins.
+3. **Edge chaining.** At `scrollTop === 0` and scrolling up, or at the bottom edge and scrolling down, do **not** `preventDefault`. Remove the `*-scroll-active` class and let the event bubble so page scroll continues without moving the mouse.
+4. **Mid-range capture.** Between edges, `preventDefault` and apply `deltaY` to the pane’s `scrollTop` so trackpad momentum over the pane scrolls the pane, not the page.
+5. **Scrollbar visibility.** CSS keeps `overflow-y: hidden` while stuck but idle; `*-scroll-active` (set on wheel, cleared on `pointerleave`) enables `overflow-y: auto` + thin scrollbar. Use `overscroll-behavior: auto` — not `contain` — so browser chaining still works at edges.
+6. **Reset on stick/unstick.** When `*-is-stuck` toggles, reset `scrollTop` to `0` (sidebar also clears its inner `.sticky` child).
+7. **Disabled contexts.** Sidebar chaining is off below `768px` and in `lg-results-layout-single`. Preview chaining is off below `768px`, when the panel is closed/closing, and outside Images + `media-mode`.
+
+| Target | Stuck class | Active class | Scroll element |
+| --- | --- | --- | --- |
+| Web sidebar `#sidebar-col.is-sticky` | `lg-sidebar-is-stuck` | `lg-sidebar-scroll-active` | `#sidebar-col` |
+| Images preview `#media-preview-panel.open` | `lg-preview-is-stuck` | `lg-preview-scroll-active` | `#media-preview-panel` |
+
+When adding a new sticky rail/preview, copy this contract — do not rely on `overscroll-behavior: contain` alone.
+
+### Images tab: selection ring + grid dimming (`style.css` + core `.selected`)
+
+When the desktop preview pane is open, degoog core adds `.selected` to the active `.image-card` and opens `#media-preview-panel`. LiterallyGoogle layers Google-like chrome on top.
+
+**Intention**
+
+- **Selected card** should read as “this result is driving the preview pane” — blue ring around the thumb, full-opacity metadata below (not overlaid on the image).
+- **Non-selected cards** stay at normal brightness; core’s hover opacity still applies on hover only.
+- The ring must not be clipped on the first/last grid columns (left/right edge of the results column).
+
+**How it works**
+
+| Layer | Mechanism |
+| --- | --- |
+| Selection state | Core toggles `.image-card.selected` when a thumb is clicked / preview navigates (`data-idx` on each card). |
+| Blue ring | `.image-card.selected::before` — padded halo (`inset: -0.25rem`, primary-tinted fill + inset 2px stroke). `.image-thumb-wrap::after` — 2px primary border on the thumb. Theme sets `outline: none` (core uses a thick outline). |
+| Metadata tint | Selected `.image-title` / `.image-source` use a slight primary mix so the caption matches the ring. |
+| Thumb brightness | Core applies `filter: brightness(0.5)` on `.image-card.selected .image-thumb` for overlay-style UIs. **Override to `filter: none`** — metadata sits below the image in this theme. |
+| Edge clipping | `.image-grid` gets `padding-inline: var(--lg-image-selection-ring)` (0.375rem). `.image-column { overflow: visible }`. Selected card uses `overflow: visible` + `z-index: 2` so the halo paints outside the column box without being cut by `#results-main { overflow-x: clip }`. |
+
+**Do not**
+
+- Re-enable core thumb dimming without moving metadata back onto the image.
+- Remove grid inline padding without replacing it (edge cards will lose half the ring).
+- Put the ring on `.image-thumb-wrap` alone — the `::before` halo on the card is what matches Google’s selection affordance.
+
+Grid fold behaviour when the preview opens lives in `scripts/search-image-grid.js` (`lg-image-grid-fold`).
+
+Desktop image-grid folding must only happen while the preview is truly **side-docked**. When the preview falls back to the bottom-sheet/modal presentation, the grid should immediately reclaim the full `#results-main` width even if `#media-preview-panel` still has `.open`. `scripts/search-image-grid.js` therefore:
+
+- gates folding on `isDockedPreviewOpen()` (desktop width + `media-mode` + computed `position: sticky`), not just `.open`
+- recomputes `data-lg-grid-base-cols` from the current viewport breakpoint on resize
+- resets `data-lg-visible-cols` back to the base count whenever the preview is open but no longer side-docked
+
+If you see a state like `data-lg-grid-base-cols="6"` / `data-lg-visible-cols="4"` after the preview has become a bottom modal, that is a regression.
 
 ## Motion
 
