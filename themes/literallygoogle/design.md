@@ -117,7 +117,9 @@ On the Web tab, `scripts/search.js` sets fluid `--literallygoogle-results-sideba
 1. **Wide:** sidebar panel `20rem`, main column up to `48rem`.
 2. **Tighten:** shrink the **sidebar first** from `20rem` down to `16rem` while main stays at `48rem`.
 3. **Tighter:** sidebar holds at `16rem`; main column (glance, URLs, results) shrinks below `48rem`.
-4. **Stack:** switch to single-column before smush using a hysteresis band on **stable page inner width** (not `#results-layout` width — flex mode inflates layout width and causes sidebar/stack flapping). Enter when `min(page inner, layout inner)` cannot fit sidebar min + gap + 450px main, or when the computed main column would drop below 450px; stay stacked until ~48px wider and main column ≥ 450px.
+4. **Stack:** switch to single-column before smush using a hysteresis band on **stable page inner width** (not `#results-layout` width — flex mode inflates layout width and causes sidebar/stack flapping). Enter when page inner width cannot fit sidebar min + gap + 450px main, or when the computed main column would drop below 450px; stay stacked until ~48px wider and main column ≥ 450px.
+
+**Viewport fit:** column sizes are computed from `min(stable page inner width, layout inner width)` so the sidebar’s right edge never extends past the viewport when the window is narrowed. The sidebar shrinks fluidly (20rem → 16rem) before the main column gives way; do not lock the sidebar at 20rem.
 
 Do not reintroduce filter-tab overlap snapping (`lg-results-sidebar-compact`) or abrupt sidebar jumps — the fluid vars are the only width mechanism.
 
@@ -131,7 +133,9 @@ JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so 
 ### Results meta row (`#results-meta`)
 
 - The meta row is a **shared skeleton** across Web, Images, and Videos. Keep its horizontal alignment rules **simple and global**.
-- Default behavior (Web): `#results-meta` uses the same `--literallygoogle-results-content-inline-*` paddings as the tabs row; `.results-meta-stats` sits on the **right via `margin-inline-start: auto`**. On desktop two-column Web, `syncWebMetaStatsGap()` sets `--lg-web-meta-stats-right-inset` so stats align with `#results-main`’s right edge (not the sidebar / full layout rail).
+- Default behavior (Web): `#results-meta` uses the same `--literallygoogle-results-content-inline-*` paddings as the tabs row; `.results-meta-stats` sits on the **right via `margin-inline-start: auto`**. On desktop Web, `syncWebMetaStatsGap()` sets `--lg-web-meta-stats-right-inset` so “About X results” aligns with the **right edge of the content rail below it**:
+  - **Two-column:** right edge of `#sidebar-col` (the sidebar panel track).
+  - **Single-column (`lg-results-layout-single`):** right edge of the stacked sidebar / layout content (e.g. Engine Performance panel), via `#sidebar-col` or `#results-layout` padding box — not `#results-main`’s narrower column.
 - **Images/Videos (desktop):** `scripts/search.js` sets `--lg-media-meta-right-gap` so `.results-meta-stats` aligns to a **stable content rail** — the right edge of `#results-layout`’s content box (`getMediaContentRailRightEdge()`), not the preview panel’s bounding box (which includes scrollbar overflow and caused “About X results” to jump when the preview opened).
 - Engine pills live in `#lg-media-engine-pills` inside the meta row; stats stay pinned to the rail right edge via flex + the gap variable above.
 - If you need media-specific chrome (engine pills, filters, spell-check), prefer **separate elements inside `#results-meta`** instead of redefining paddings or widths on `#results-meta` itself.
@@ -174,7 +178,7 @@ gap: 2px;  /* between stacked rows */
 
 | State | Dark | Light |
 | --- | --- | --- |
-| Default | `--lg-settings-row-bg` (`#303134`) | `white` |
+| Default | `--lg-settings-row-bg` (`#303134`) | `#ffffff` — `.ext-card`, `.store-card`, `.store-repos-section`, and `.store-repo-detail`; do not use `--bg-light` (`#f7f8fa`) on light-mode card surfaces |
 | Hover (nav items) | `--bg-hover` (`#3c4043`) | `--bg-hover` (`#e8eaed`) |
 | Active nav item | default hover | `white`, no border/shadow |
 | Selected / active (filters) | Blue-tinted `--lg-selection-active-bg` + inset ring | same |

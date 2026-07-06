@@ -4128,9 +4128,7 @@ body {
 }
 
 @media (min-width: 768px) {
-    #results-page[data-lg-search-type="web"]:not(.lg-results-layout-single)
-        #results-meta
-        .results-meta-stats {
+    #results-page[data-lg-search-type="web"] #results-meta .results-meta-stats {
         margin-inline-end: var(--lg-web-meta-stats-right-inset, 0px);
     }
 }
@@ -5778,8 +5776,25 @@ body {
 
 [data-theme="light"] .store-updates-row,
 [data-theme="light"] .settings-toggle-wrap,
-[data-theme="light"] .ext-card:not(.settings-section):not(.settings-desc) {
-    background: white;
+[data-theme="light"] .ext-card:not(.settings-section):not(.settings-desc),
+[data-theme="light"] .store-repo-detail,
+[data-theme="light"] .store-repo-detail .store-repo-img,
+[data-theme="light"] .store-card,
+[data-theme="light"] .store-repos-section.degoog-panel {
+    background: #ffffff;
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-updates-row,
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .settings-toggle-wrap,
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+        .ext-card:not(.settings-section):not(.settings-desc),
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-repo-detail,
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-repo-detail .store-repo-img,
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-card,
+    :root:not([data-theme="dark"]):not([data-theme="light"]) .store-repos-section.degoog-panel {
+        background: #ffffff;
+    }
 }
 
 .ext-card-configure,

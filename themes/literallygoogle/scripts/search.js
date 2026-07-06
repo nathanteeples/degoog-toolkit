@@ -134,11 +134,29 @@ function getMediaResultsLeftEdge() {
     return getMediaContentRailLeftEdge();
 }
 
+function getWebMetaStatsRightEdge() {
+    const layout = getResultsLayout();
+    const page = getResultsPage();
+    const sidebar = document.getElementById("sidebar-col");
+    if (!layout || !page) return null;
+
+    if (sidebar && getComputedStyle(sidebar).display !== "none") {
+        const sidebarRect = sidebar.getBoundingClientRect();
+        if (sidebarRect.width > 1) return sidebarRect.right;
+    }
+
+    const rect = layout.getBoundingClientRect();
+    const padEnd = parseFloat(getComputedStyle(layout).paddingInlineEnd) || 0;
+    if (rect.width > 1) return rect.right - padEnd;
+
+    return null;
+}
+
 function syncWebMetaStatsGap() {
     const meta = getResultsMeta();
     const page = getResultsPage();
     if (!meta || !page) return;
-    if (getActiveSearchType() !== "web" || page.classList.contains("lg-results-layout-single")) {
+    if (getActiveSearchType() !== "web" || page.classList.contains("lg-command-mode")) {
         meta.style.removeProperty("--lg-web-meta-stats-right-inset");
         return;
     }
@@ -146,27 +164,15 @@ function syncWebMetaStatsGap() {
         meta.style.removeProperty("--lg-web-meta-stats-right-inset");
         return;
     }
-    const main = document.getElementById("results-main");
-    if (!main) {
+
+    const statsRight = getWebMetaStatsRightEdge();
+    if (statsRight === null) {
         meta.style.removeProperty("--lg-web-meta-stats-right-inset");
         return;
     }
+
     const metaRect = meta.getBoundingClientRect();
-    const mainRect = main.getBoundingClientRect();
-    let inset = Math.max(0, metaRect.right - mainRect.right);
-
-    // Bang-command layout spans #results-main full-width briefly; if layout has not
-    // reflowed yet, fall back to sidebar track width + inter-column gap.
-    if (inset < 4) {
-        const sidebar = document.getElementById("sidebar-col");
-        if (sidebar && getComputedStyle(sidebar).display !== "none") {
-            const sidebarRect = sidebar.getBoundingClientRect();
-            const gap = Math.max(0, sidebarRect.left - mainRect.right);
-            const trackInset = gap + sidebarRect.width;
-            if (trackInset > inset) inset = trackInset;
-        }
-    }
-
+    const inset = Math.max(0, metaRect.right - statsRight);
     meta.style.setProperty("--lg-web-meta-stats-right-inset", `${inset}px`);
 }
 
@@ -1435,6 +1441,19 @@ function wrapResultsStats(meta) {
     window.addEventListener("degoog-results-ready", scheduleWebMetaStatsGap);
     window.addEventListener("lg-results-layout-changed", scheduleWebMetaStatsGap);
     window.addEventListener("resize", scheduleWebMetaStatsGap, { passive: true });
+
+    if (typeof ResizeObserver !== "undefined") {
+        const layout = getResultsLayout();
+        const sidebar = document.getElementById("sidebar-col");
+        if (layout && !layout.dataset.lgWebMetaStatsObserved) {
+            layout.dataset.lgWebMetaStatsObserved = "1";
+            new ResizeObserver(scheduleWebMetaStatsGap).observe(layout);
+        }
+        if (sidebar && !sidebar.dataset.lgWebMetaStatsObserved) {
+            sidebar.dataset.lgWebMetaStatsObserved = "1";
+            new ResizeObserver(scheduleWebMetaStatsGap).observe(sidebar);
+        }
+    }
 })();
 
 /* ── 4a. Filters dropdown ──────────────────────────────────────────────── */
@@ -2338,6 +2357,7 @@ function wrapResultsStats(meta) {
         page.classList.toggle("lg-command-mode", commandMode);
         if (commandMode) {
             closeFiltersDropdown(panel, toggle);
+            scheduleWebMetaStatsGap();
             return;
         }
         restoreBangHiddenTabs();
@@ -4505,14 +4525,19 @@ function wrapResultsStats(meta) {
         );
     }
 
-    function shouldUseSingleColumn(page, innerWidth) {
+    function shouldUseSingleColumn(page, innerWidth, mainCol) {
         const minTwoCol = minTwoColumnInnerWidth();
         const isSingle = page.classList.contains(SINGLE_CLASS);
+        const mainTooNarrow = mainCol < MAIN_MIN_PX;
 
         if (isSingle) {
-            return innerWidth < minTwoCol + STACK_HYSTERESIS_PX;
+            if (innerWidth < minTwoCol + STACK_HYSTERESIS_PX) return true;
+            if (mainTooNarrow) return true;
+            return false;
         }
-        return innerWidth < minTwoCol;
+        if (innerWidth < minTwoCol) return true;
+        if (mainTooNarrow) return true;
+        return false;
     }
 
     function computeFluidColumns(innerWidth) {
@@ -4573,9 +4598,11 @@ function wrapResultsStats(meta) {
         }
 
         const decisionWidth = stableStackInnerWidth(page);
-        const { sidebarPanel, mainCol } = computeFluidColumns(decisionWidth);
+        const layoutWidth = targetGridInnerWidth(layout);
+        const innerWidth = Math.min(decisionWidth, layoutWidth);
+        const { sidebarPanel, mainCol } = computeFluidColumns(innerWidth);
 
-        if (shouldUseSingleColumn(page, decisionWidth)) {
+        if (shouldUseSingleColumn(page, decisionWidth, mainCol)) {
             page.classList.add(SINGLE_CLASS);
             clearFluidLayoutVars(page);
             resetSingleColumnGridState(page, layout, { entering: true });
