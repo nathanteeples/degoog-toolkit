@@ -4552,8 +4552,9 @@ function wrapResultsStats(meta) {
 
 /* ── 5e. Web results layout: fluid sidebar, then fluid main ─────────────── */
 (() => {
-    const SEARCH_BAR_STACK_MAX_PX = 680;
+    const MAIN_MIN_PX = 450;
     const STACK_HYSTERESIS_PX = 80;
+    const STACK_VIEWPORT_ENTER_PX = 990;
     const SINGLE_CLASS = "lg-results-layout-single";
     const DESKTOP_MIN = 768;
     const SEARCHING_ATTR = "data-lg-sidebar-searching";
@@ -4625,15 +4626,7 @@ function wrapResultsStats(meta) {
         return Math.max(0, outerMax - padStart - padEnd);
     }
 
-    /** Measured width of `#results-search-bar` — stack trigger only, not fluid columns. */
-    function measureSearchBarWidth() {
-        const bar = document.getElementById("results-search-bar");
-        if (!(bar instanceof HTMLElement)) return Number.POSITIVE_INFINITY;
-        const width = bar.getBoundingClientRect().width;
-        return width > 0 ? width : Number.POSITIVE_INFINITY;
-    }
-
-    /** Viewport cap for two-column fluid column sizing — not used for stack mode. */
+    /** Viewport-only width for stack decisions — no layout/page DOM reads. */
     function stableStackInnerWidth() {
         const px = remPx();
         const layoutMax = 76 * px;
@@ -4641,11 +4634,25 @@ function wrapResultsStats(meta) {
         return Math.max(0, Math.min(layoutMax, viewport));
     }
 
-    function shouldUseSingleColumn(searchBarWidth) {
+    function minTwoColumnInnerWidth() {
+        const px = remPx();
+        return (
+            SIDEBAR_MIN_REM * px +
+            SIDEBAR_BONUS_PX +
+            COLUMN_GAP_REM * px +
+            SCROLLBAR_REM * px +
+            MAIN_MIN_PX
+        );
+    }
+
+    function shouldUseSingleColumn(stableInnerWidth) {
+        const minTwoCol = Math.max(minTwoColumnInnerWidth(), STACK_VIEWPORT_ENTER_PX);
+        const { mainCol } = computeFluidColumns(stableInnerWidth);
+
         if (stackIsSingle) {
-            return searchBarWidth < SEARCH_BAR_STACK_MAX_PX + STACK_HYSTERESIS_PX;
+            return stableInnerWidth < minTwoCol + STACK_HYSTERESIS_PX;
         }
-        return searchBarWidth < SEARCH_BAR_STACK_MAX_PX;
+        return stableInnerWidth < minTwoCol || mainCol < MAIN_MIN_PX;
     }
 
     function computeFluidColumns(innerWidth) {
@@ -4718,9 +4725,9 @@ function wrapResultsStats(meta) {
             return;
         }
 
-        const searchBarWidth = measureSearchBarWidth();
+        const decisionWidth = stableStackInnerWidth();
         const searching = document.documentElement.hasAttribute(SEARCHING_ATTR);
-        const wantSingle = searching ? stackIsSingle : shouldUseSingleColumn(searchBarWidth);
+        const wantSingle = searching ? stackIsSingle : shouldUseSingleColumn(decisionWidth);
         const modeChanged = wantSingle !== stackIsSingle;
 
         if (wantSingle) {
@@ -4731,7 +4738,6 @@ function wrapResultsStats(meta) {
                 resetSingleColumnGridState(page, layout, { entering: true });
             }
         } else {
-            const decisionWidth = stableStackInnerWidth();
             const layoutWidth = targetGridInnerWidth(layout);
             const applyWidth = Math.min(decisionWidth, layoutWidth);
             const fluid = computeFluidColumns(applyWidth);
@@ -4764,17 +4770,6 @@ function wrapResultsStats(meta) {
         window.addEventListener("resize", schedule, { passive: true });
         window.addEventListener("degoog-results-ready", schedule, { passive: true });
         window.addEventListener("lg-sync-search-type", schedule, { passive: true });
-
-        const searchBar = document.getElementById("results-search-bar");
-        const resultsHeader = document.getElementById("results-header");
-        if (searchBar && !searchBar.dataset.lgStackWidthObserver) {
-            searchBar.dataset.lgStackWidthObserver = "1";
-            new ResizeObserver(schedule).observe(searchBar);
-        }
-        if (resultsHeader && !resultsHeader.dataset.lgStackWidthObserver) {
-            resultsHeader.dataset.lgStackWidthObserver = "1";
-            new ResizeObserver(schedule).observe(resultsHeader);
-        }
 
         if (!page) return;
         new MutationObserver(mutations => {
