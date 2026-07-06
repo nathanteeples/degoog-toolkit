@@ -6603,6 +6603,21 @@ select.settings-server-preset-select:hover,
         border-color: transparent;
         box-shadow: none;
     }
+
+    /* Closed docked preview must leave the flex row entirely — width:0 still
+       consumes --literallygoogle-media-row-gap and nudges the grid inward. */
+    #results-page:has(#results-layout.media-mode)
+        #media-preview-panel:not(.open):not(.lg-preview-closing) {
+        display: none;
+        flex: 0 0 0;
+        width: 0;
+        min-width: 0;
+        max-width: 0;
+        margin: 0;
+        padding: 0;
+        border-width: 0;
+        overflow: hidden;
+    }
 }
 
 .mp2-bar {

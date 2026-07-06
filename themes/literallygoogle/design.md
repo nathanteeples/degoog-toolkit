@@ -148,7 +148,7 @@ On Images (desktop, sticky sidebar enabled), engine stat rows are mirrored as sc
 | Behaviour | Detail |
 | --- | --- |
 | Sticky detach | Pills use `position: fixed` once the meta row scrolls past the header/tabs stack. An in-flow **placeholder** (`lg-media-engine-rail-placeholder`) preserves meta row height so the grid does not jump (no `padding-bottom` on `#results-meta`). |
-| Width expansion | On stick, pills start at their natural flex width/position. Over the next **50px** of document scroll (`STICKY_RAIL_REVEAL_DISTANCE`), width and `left` interpolate toward the full grid span (`getMediaResultsRightEdge()`). At progress `0`, nothing changes visually. When the docked preview pane is open, skip the reveal animation (`revealProgress = 1`) and constrain width to the preview’s left edge immediately. |
+| Width animation | On stick, pills keep their in-flow width/position at progress `0`. Over the next **50px** of scroll (`STICKY_RAIL_REVEAL_DISTANCE`), width and `left` interpolate toward `getMediaResultsRightEdge()` — **expand** toward the full grid rail when the preview is closed, **shrink** toward the preview’s left edge when it is open. Same easing curve both ways; only the target width changes. |
 | Placeholders | Only one in-flow `lg-media-engine-rail-placeholder` may follow `#lg-media-engine-pills`. `ensureMediaEnginePillsHost()` must not re-`insertBefore` an already-mounted host — duplicate placeholders steal flex space and leave the meta row shrunk after scroll/preview. |
 | Stats | Images/Videos: `--lg-media-meta-right-gap` from meta border right to layout rail; Web: CSS grid column 2 — no JS inset. |
 
@@ -324,6 +324,8 @@ Desktop image-grid folding must only happen while the preview is truly **side-do
 - gates folding on `isDockedPreviewOpen()` (desktop width + `media-mode` + computed `position: sticky`), not just `.open`
 - recomputes `data-lg-grid-base-cols` from the current viewport breakpoint on resize
 - resets `data-lg-visible-cols` back to the base count whenever the preview is open but no longer side-docked
+
+**Closed docked preview:** on desktop `media-mode`, `#media-preview-panel:not(.open):not(.lg-preview-closing)` must be `display: none` — not `display: flex` with `width: 0`. A zero-width flex item still consumes `--literallygoogle-media-row-gap` (~0.5rem) and shifts the grid inward after close. Exit animation uses `.lg-preview-closing` (`position: fixed`) so the panel is out of the flex row while animating.
 
 If you see a state like `data-lg-grid-base-cols="6"` / `data-lg-visible-cols="4"` after the preview has become a bottom modal, that is a regression.
 

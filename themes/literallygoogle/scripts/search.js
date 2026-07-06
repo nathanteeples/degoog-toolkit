@@ -3882,12 +3882,10 @@ function wrapResultsStats(meta) {
             host.dataset.stickBaseHeight = String(hostRect.height);
         }
 
-        const revealProgress = dockedPreviewOpen
-            ? 1
-            : Math.min(
-                  1,
-                  Math.max(0, (targetStickyTop - naturalRailTop) / STICKY_RAIL_REVEAL_DISTANCE),
-              );
+        const revealProgress = Math.min(
+            1,
+            Math.max(0, (targetStickyTop - naturalRailTop) / STICKY_RAIL_REVEAL_DISTANCE),
+        );
         const paddingStart = parseFloat(getComputedStyle(meta).paddingLeft) || 0;
         const stuckLeft = getMediaResultsLeftEdge() ?? metaRect.left + paddingStart;
         const contentRight = Math.max(stuckLeft, getMediaResultsRightEdge());
