@@ -836,6 +836,34 @@ function wrapResultsStats(meta) {
             window.requestAnimationFrame(syncPagination);
         });
 
+        window.addEventListener("lg-engine-filter-change", () => {
+            const resultCount = getResultCount();
+            if (clientPager.enabled || shouldEnableClientPagination(resultCount)) {
+                applyClientPage(1);
+                return;
+            }
+
+            const pagination = document.getElementById("pagination");
+            let activePage = getUrlPage();
+            const pager = pagination?.querySelector(":scope > .lg-pager");
+            if (pager) {
+                activePage =
+                    parseInt(pager.dataset.lgActivePage || String(activePage), 10) || activePage;
+            } else if (pagination) {
+                const coreWrapper = pagination.querySelector(":scope > .pagination");
+                const pageNodes = coreWrapper ? getPageNodes(coreWrapper) : getPageNodes(pagination);
+                if (pageNodes.length) {
+                    activePage = classifyControls(pageNodes).activePage;
+                }
+            }
+
+            if (getUrlPage() > 1 || activePage > 1) {
+                navigateToPage(1);
+            } else {
+                window.requestAnimationFrame(syncPagination);
+            }
+        });
+
         syncPagination();
     }
 
@@ -3799,6 +3827,7 @@ function wrapResultsStats(meta) {
     function setSelectedEngines(engines) {
         const page = getPage();
         if (!page) return;
+        const previousEngines = getSelectedEngines();
         const unique = [];
         const seen = new Set();
         for (const engine of engines) {
@@ -3809,6 +3838,10 @@ function wrapResultsStats(meta) {
             seen.add(key);
             unique.push(name);
         }
+        const previousKey = previousEngines.map(normalizeEngine).sort().join("\0");
+        const nextKey = unique.map(normalizeEngine).sort().join("\0");
+        const filterChanged = previousKey !== nextKey;
+
         if (unique.length === 0) {
             page.removeAttribute(FILTER_ATTR);
         } else {
@@ -3816,6 +3849,10 @@ function wrapResultsStats(meta) {
         }
         syncRowHighlights(unique);
         applyFilter(unique);
+
+        if (filterChanged && unique.length > 0) {
+            window.dispatchEvent(new CustomEvent("lg-engine-filter-change"));
+        }
     }
 
     function engineNameFromRow(row) {
