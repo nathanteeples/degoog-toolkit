@@ -5070,7 +5070,7 @@ body {
 .settings-page .degoog-btn--secondary:not(.ext-card-configure):not(.ext-card-apply) {
     background: var(--btn-bg) !important;
     border: 1px solid var(--border) !important;
-    color: var(--btn-text) !important;
+    color: var(--text-secondary) !important;
 }
 
 .settings-page .btn--secondary:not(.ext-card-configure):not(.ext-card-apply):hover,
@@ -5330,12 +5330,12 @@ body {
     background: var(--lg-settings-chip-btn-bg) !important;
     border-radius: var(--theme-radius-pill);
     border: none !important;
-    color: var(--btn-text) !important;
+    color: var(--text-secondary) !important;
 }
 
 [data-theme="light"] .ext-card-configure,
 [data-theme="light"] .ext-card-apply {
-    color: var(--text-primary) !important;
+    color: var(--text-secondary) !important;
     background: var(--lg-settings-chip-btn-bg-light) !important;
 }
 
@@ -5351,7 +5351,7 @@ body {
     background: var(--btn-bg);
     border-radius: var(--theme-radius-pill);
     padding: 15px;
-    border: none;
+    border: 1px solid var(--border);
     color: var(--text-primary);
     cursor: pointer;
     outline: none;
@@ -5362,7 +5362,7 @@ body {
 .theme-select:hover,
 .settings-server-preset-select:hover {
     background: var(--bg-hover);
-    border: none;
+    border-color: var(--border);
 }
 
 :root:not([data-theme="dark"]) .theme-select,

@@ -350,6 +350,17 @@ function fetchAndShowHistory(input, dropdown) {
   }
 }
 
+/** Defer until after auto-bang clears its dropdown on the same input event. */
+function scheduleHistoryDropdown(input, dropdown) {
+  if (!input || !dropdown) return;
+  if (input.value.trim() !== "") return;
+  queueMicrotask(() => {
+    if (input.value.trim() !== "") return;
+    paintCachedHistoryIfAny(input, dropdown);
+    fetchAndShowHistory(input, dropdown);
+  });
+}
+
 function paintCachedHistoryIfAny(input, dropdown) {
   if (!input || !dropdown) return;
   if (input.value.trim() !== "") return;
@@ -489,8 +500,7 @@ function initSearchHistory() {
     const dropdown = getDropdownForInput(input);
     if (!input || !dropdown) return;
     if (!searchBarEngaged) return;
-    paintCachedHistoryIfAny(input, dropdown);
-    fetchAndShowHistory(input, dropdown);
+    scheduleHistoryDropdown(input, dropdown);
   });
 
   document.addEventListener(
@@ -538,8 +548,7 @@ function initSearchHistory() {
     const dropdown = getDropdownForInput(input);
     if (!input || !dropdown) return;
     if (input.value.trim() !== "") return;
-    paintCachedHistoryIfAny(input, dropdown);
-    fetchAndShowHistory(input, dropdown);
+    scheduleHistoryDropdown(input, dropdown);
   });
 
   document.addEventListener(
