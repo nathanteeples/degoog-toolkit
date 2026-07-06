@@ -3932,11 +3932,48 @@ function getLgTranslation(key) {
 /* ── 5d. Results sidebar scroll — don't cancel document momentum on hover ─ */
 (() => {
     const ACTIVE_CLASS = "lg-sidebar-scroll-active";
+    const STUCK_CLASS = "lg-sidebar-is-stuck";
     const SCROLL_TARGETS = "#sidebar-col.is-sticky";
     const wired = new WeakSet();
+    let stuckFrame = 0;
+
+    function sidebarStickyTop(sidebar) {
+        const parsed = Number.parseFloat(getComputedStyle(sidebar).top);
+        if (Number.isFinite(parsed)) return parsed;
+
+        const root = getComputedStyle(document.documentElement);
+        const fallback = Number.parseFloat(
+            root.getPropertyValue("--literallygoogle-sticky-header-offset"),
+        );
+        return Number.isFinite(fallback) ? fallback : 0;
+    }
+
+    function isSidebarColStuck(sidebar) {
+        if (!(sidebar instanceof HTMLElement) || !sidebar.classList.contains("is-sticky")) {
+            return false;
+        }
+        if (window.matchMedia("(max-width: 767px)").matches) return false;
+        if (getComputedStyle(sidebar).position !== "sticky") return false;
+        return sidebar.getBoundingClientRect().top <= sidebarStickyTop(sidebar) + 1;
+    }
+
+    function syncSidebarStuckState() {
+        stuckFrame = 0;
+        const sidebar = document.getElementById("sidebar-col");
+        if (!(sidebar instanceof HTMLElement)) return;
+
+        const stuck = isSidebarColStuck(sidebar);
+        sidebar.classList.toggle(STUCK_CLASS, stuck);
+        if (!stuck) sidebar.classList.remove(ACTIVE_CLASS);
+    }
+
+    function scheduleSidebarStuckSync() {
+        if (stuckFrame) return;
+        stuckFrame = requestAnimationFrame(syncSidebarStuckState);
+    }
 
     function canScroll(el) {
-        return el.scrollHeight > el.clientHeight + 1;
+        return el.classList.contains(STUCK_CLASS) && el.scrollHeight > el.clientHeight + 1;
     }
 
     function atScrollEdge(el, deltaY) {
@@ -3958,7 +3995,7 @@ function getLgTranslation(key) {
         el.addEventListener(
             "wheel",
             event => {
-                if (!canScroll(el)) return;
+                if (!el.classList.contains(STUCK_CLASS) || !canScroll(el)) return;
 
                 const { deltaY } = event;
                 const active = el.classList.contains(ACTIVE_CLASS);
@@ -3982,6 +4019,7 @@ function getLgTranslation(key) {
 
     function scan() {
         document.querySelectorAll(SCROLL_TARGETS).forEach(bindScrollTarget);
+        scheduleSidebarStuckSync();
     }
 
     function init() {
@@ -3989,6 +4027,12 @@ function getLgTranslation(key) {
         const page = getResultsPage();
         if (!page) return;
         new MutationObserver(scan).observe(page, { childList: true, subtree: true });
+        window.addEventListener("scroll", scheduleSidebarStuckSync, { passive: true });
+        window.addEventListener("resize", scheduleSidebarStuckSync, { passive: true });
+        new MutationObserver(scheduleSidebarStuckSync).observe(
+            document.getElementById("sidebar-col") || document.documentElement,
+            { attributes: true, attributeFilter: ["class", "style"] },
+        );
     }
 
     onReady(init);

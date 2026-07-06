@@ -4508,8 +4508,8 @@ body {
 }
 
 /* Core sticky sidebar setting.
-   Grid column = panel width + scroll lane. #sidebar-col scrolls; .sticky stays a
-   fixed panel width so the lane absorbs the track (never width: calc(100% - …)). */
+   Grid column = panel width + scroll lane. Internal scroll only after the column
+   has physically stuck (lg-sidebar-is-stuck); until then the page scrolls. */
 
 @media (min-width: 768px) {
     #sidebar-col.is-sticky {
@@ -4519,6 +4519,16 @@ body {
             calc(50px + 1.5rem)
         );
         align-self: start;
+        overflow: visible;
+        max-height: none;
+    }
+
+    #sidebar-col.is-sticky:not(.lg-sidebar-is-stuck) {
+        overflow: visible !important;
+        max-height: none !important;
+    }
+
+    #sidebar-col.is-sticky.lg-sidebar-is-stuck {
         min-height: 0;
         max-height: calc(
             100vh -
@@ -4533,17 +4543,17 @@ body {
         scrollbar-width: none;
     }
 
-    #sidebar-col.is-sticky.lg-sidebar-scroll-active {
+    #sidebar-col.is-sticky.lg-sidebar-is-stuck.lg-sidebar-scroll-active {
         overflow-y: auto;
         scrollbar-width: thin;
     }
 
-    #sidebar-col.is-sticky.lg-sidebar-scroll-active::-webkit-scrollbar {
+    #sidebar-col.is-sticky.lg-sidebar-is-stuck.lg-sidebar-scroll-active::-webkit-scrollbar {
         display: block;
         width: var(--lg-sidebar-scrollbar-size);
     }
 
-    #sidebar-col.is-sticky.lg-sidebar-scroll-active::-webkit-scrollbar-track {
+    #sidebar-col.is-sticky.lg-sidebar-is-stuck.lg-sidebar-scroll-active::-webkit-scrollbar-track {
         background: transparent;
     }
 
