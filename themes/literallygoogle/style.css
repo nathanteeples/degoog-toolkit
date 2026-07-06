@@ -1833,14 +1833,33 @@ body {
         :has(#results-list .video-card)
     )
     #results-meta {
-    --lg-media-meta-left-gap: calc(var(--theme-media-inline-gutter) + var(--literallygoogle-media-filter-width) + var(--literallygoogle-media-row-gap));
-    --lg-media-meta-right-gap-fallback: max(2rem, calc(100% - var(--theme-media-inline-gutter) - var(--literallygoogle-media-filter-width) - var(--literallygoogle-media-row-gap) - 76rem));
+    --lg-media-meta-left-gap: var(--theme-media-inline-gutter);
+    --lg-media-meta-right-gap-fallback: max(2rem, calc(100% - var(--theme-media-inline-gutter) - 76rem));
 
     width: 100%;
     max-width: none;
     box-sizing: border-box;
     padding-inline-start: var(--lg-media-meta-left-gap);
     padding-inline-end: var(--lg-media-meta-right-gap, var(--lg-media-meta-right-gap-fallback));
+}
+
+#results-page:is(
+        :has(#results-tabs .results-tab[data-type="images"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="images"][aria-selected="true"]
+        ),
+        :has(#results-tabs .results-tab[data-type="videos"].active),
+        :has(
+            #results-tabs
+                .results-tab[data-type="videos"][aria-selected="true"]
+        ),
+        :has(#results-list .image-card),
+        :has(#results-list .video-card)
+    ):has(#image-filters-bar.open)
+    #results-meta {
+    --lg-media-meta-left-gap: calc(var(--theme-media-inline-gutter) + var(--literallygoogle-media-filter-width) + var(--literallygoogle-media-row-gap));
+    --lg-media-meta-right-gap-fallback: max(2rem, calc(100% - var(--theme-media-inline-gutter) - var(--literallygoogle-media-filter-width) - var(--literallygoogle-media-row-gap) - 76rem));
 }
 
 .lg-media-engine-pills {
