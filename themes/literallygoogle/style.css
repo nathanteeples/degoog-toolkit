@@ -46,6 +46,8 @@ var {
     --lg-sidebar-row-surface: var(--bg-light);
     --literallygoogle-results-sidebar-min: 17rem;
     --literallygoogle-results-sidebar-max: 20.5rem;
+    /* Sidebar scroll track sits outside panel width (see #sidebar-col.is-sticky). */
+    --lg-sidebar-scrollbar-size: 0.75rem;
     --literallygoogle-media-filter-width: 15rem;
     --literallygoogle-media-row-gap: 0.5rem;
     --literallygoogle-row-padding: 14px;
@@ -4522,6 +4524,8 @@ body {
                     calc(50px + 1.5rem)
                 )
         );
+        /* Let the scroll track paint outside the sidebar column width. */
+        overflow: visible;
     }
 
     #sidebar-col.is-sticky > .sticky {
@@ -4539,9 +4543,18 @@ body {
         margin-inline: 0;
     }
 
+    /* Scrollbar track lives in padding outside the panel content box so rows
+       keep full sidebar width when scrolling starts. */
     #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active {
         overflow-y: auto;
         overscroll-behavior: contain;
+        box-sizing: content-box;
+        padding-inline-end: var(--lg-sidebar-scrollbar-size);
+        margin-inline-end: calc(-1 * var(--lg-sidebar-scrollbar-size));
+    }
+
+    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active::-webkit-scrollbar {
+        width: var(--lg-sidebar-scrollbar-size);
     }
 }
 
