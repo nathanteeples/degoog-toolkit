@@ -4628,6 +4628,7 @@ function wrapResultsStats(meta) {
         }
         if (main) {
             main.style.removeProperty("grid-column");
+            main.style.removeProperty("grid-row");
         }
         if (sidebar) {
             sidebar.style.removeProperty("grid-column");
