@@ -4500,6 +4500,12 @@ function wrapResultsStats(meta) {
         if (!el || wired.has(el)) return;
         wired.add(el);
 
+        el.addEventListener("pointerenter", () => {
+            if (el.classList.contains(STUCK_CLASS) && canScroll(el)) {
+                el.classList.add(ACTIVE_CLASS);
+            }
+        });
+
         el.addEventListener("pointerleave", () => {
             el.classList.remove(ACTIVE_CLASS);
         });
