@@ -195,7 +195,7 @@ Use `var(--bg)` (page inset), not `--bg-light`, when nested inside the updates p
 
 Core `.settings-fieldset-inverse` paints nested inset panels (`background: var(--bg)`, padding). On Server/General tabs, flatten those blocks — no extra panel chrome; only toggle rows use the stacked white row fill.
 
-Inputs and textareas in `.settings-section` (except `#indexer-tab-section`) use square LiterallyGoogle fields: `border: 1px solid var(--border)`, `border-radius: var(--theme-radius-xs)`, `#ffffff` background in light mode. `.degoog-btn` in those sections uses `var(--theme-radius-xs)` (not pills).
+Inputs and textareas in `.settings-section` (except `#indexer-tab-section`) match the Indexer tab pattern: pill single-line fields (`--theme-radius-pill`), `--theme-radius-lg` textareas, bordered shells, `#ffffff` background in light mode. Do not override `.degoog-btn` radius — settings buttons stay pill-shaped per the button table below.
 
 ## Button styles
 

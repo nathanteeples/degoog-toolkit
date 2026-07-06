@@ -5570,16 +5570,32 @@ body {
     ) {
     appearance: none;
     -webkit-appearance: none;
+    display: block;
     box-sizing: border-box;
     width: 100%;
     margin: 0;
-    padding: 0.75rem 1rem;
+    padding: 15px;
     border: 1px solid var(--border);
-    border-radius: var(--theme-radius-xs);
+    border-radius: var(--theme-radius-lg);
     background: var(--bg-light);
     color: var(--text-primary);
     font-size: 0.875rem;
     outline: none;
+}
+
+.settings-page
+    .settings-section:not(#indexer-tab-section)
+    input.degoog-input:not([type="checkbox"]) {
+    min-height: 3rem;
+    border-radius: var(--theme-radius-pill);
+}
+
+.settings-page
+    .settings-section:not(#indexer-tab-section)
+    textarea.degoog-input {
+    min-height: 6.5rem;
+    resize: vertical;
+    line-height: 1.45;
 }
 
 .settings-page
@@ -5634,10 +5650,6 @@ body {
         select.degoog-input
     ):hover {
     background: #ffffff;
-}
-
-.settings-page .settings-section:not(#indexer-tab-section) .degoog-btn {
-    border-radius: var(--theme-radius-xs);
 }
 
 @media (prefers-color-scheme: light) {
