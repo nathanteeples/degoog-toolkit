@@ -4813,8 +4813,7 @@ body {
 
 /* Core sticky sidebar setting.
    Grid column = panel width + scroll lane. Internal scroll only after the column
-   has physically stuck (lg-sidebar-is-stuck); until then the page scrolls.
-   .sticky stays at panel width — never max-width: 100% or the track steals row width. */
+   has physically stuck (lg-sidebar-is-stuck); until then the page scrolls. */
 
 @media (min-width: 768px) {
     #sidebar-col.is-sticky {
@@ -4824,6 +4823,7 @@ body {
             calc(50px + 1.5rem)
         );
         align-self: start;
+        height: fit-content;
         overflow: visible;
         max-height: none;
     }
@@ -4846,7 +4846,6 @@ body {
         overflow-y: hidden;
         overscroll-behavior: auto;
         scrollbar-width: none;
-        scrollbar-gutter: stable;
     }
 
     #sidebar-col.is-sticky.lg-sidebar-is-stuck.lg-sidebar-scroll-active {
@@ -4865,17 +4864,11 @@ body {
 
     #sidebar-col.is-sticky > .sticky {
         width: var(--literallygoogle-results-sidebar-max);
-        max-width: var(--literallygoogle-results-sidebar-max);
-        min-width: var(--literallygoogle-results-sidebar-max);
+        max-width: 100%;
         max-height: none;
         overflow: visible;
         box-sizing: border-box;
         margin-inline: 0;
-        flex-shrink: 0;
-        padding-bottom: var(
-            --literallygoogle-sticky-header-offset,
-            calc(50px + 1.5rem)
-        );
     }
 }
 
