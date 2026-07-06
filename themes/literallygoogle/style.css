@@ -687,7 +687,10 @@ html[data-image-mode-desktop-layout="fab-right"] {
 
 .sidebar-panel,
 .results-slot-panel,
-.degoog-panel {
+.degoog-panel,
+.glance-box,
+.glance-ai,
+.skeleton-sidebar-panel {
     border-radius: var(--theme-radius-lg) !important;
     background: var(--lg-sidebar-row-surface) !important;
 }
