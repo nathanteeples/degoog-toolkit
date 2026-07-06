@@ -1085,75 +1085,6 @@ function wrapResultsStats(meta) {
     onReady(observeSlots);
 })();
 
-/* ── 4. Web meta stats — align with sidebar panel right edge (desktop) ───── */
-(() => {
-    let frame = 0;
-
-    function shouldAlignWebMetaStats() {
-        const page = getResultsPage();
-        if (!page || window.innerWidth < 768) return false;
-        if (page.classList.contains("lg-results-layout-single")) return false;
-        if (page.classList.contains("lg-command-mode")) return false;
-        const type = (page.getAttribute("data-lg-search-type") || "web").toLowerCase();
-        return type !== "images" && type !== "videos";
-    }
-
-    function getSidebarPanelRight() {
-        const sidebar = document.getElementById("sidebar-col");
-        const panel = sidebar?.querySelector(":scope > .sticky");
-        if (!(panel instanceof HTMLElement)) return null;
-        const rect = panel.getBoundingClientRect();
-        if (rect.width < 1) return null;
-        return rect.right;
-    }
-
-    function syncWebMetaStatsRail() {
-        frame = 0;
-        const meta = getResultsMeta();
-        if (!(meta instanceof HTMLElement)) return;
-
-        if (!shouldAlignWebMetaStats()) {
-            meta.style.removeProperty("--lg-web-meta-stats-inset-end");
-            return;
-        }
-
-        const stats = meta.querySelector(".results-meta-stats");
-        const panelRight = getSidebarPanelRight();
-        if (!stats || panelRight === null) return;
-
-        const metaStyle = getComputedStyle(meta);
-        const padEnd =
-            parseFloat(metaStyle.paddingInlineEnd) || parseFloat(metaStyle.paddingRight) || 0;
-        const metaContentRight = meta.getBoundingClientRect().right - padEnd;
-        const insetEnd = Math.round(Math.max(0, metaContentRight - panelRight));
-        meta.style.setProperty("--lg-web-meta-stats-inset-end", `${insetEnd}px`);
-    }
-
-    function scheduleWebMetaStatsRail() {
-        if (frame) return;
-        frame = requestAnimationFrame(syncWebMetaStatsRail);
-    }
-
-    function initWebMetaStatsRail() {
-        scheduleWebMetaStatsRail();
-        window.addEventListener("resize", scheduleWebMetaStatsRail, { passive: true });
-        window.addEventListener("degoog-results-ready", scheduleWebMetaStatsRail);
-        window.addEventListener("lg-results-layout-changed", scheduleWebMetaStatsRail);
-        window.addEventListener("lg-sync-search-type", scheduleWebMetaStatsRail);
-        const meta = getResultsMeta();
-        if (meta) {
-            new MutationObserver(scheduleWebMetaStatsRail).observe(meta, {
-                childList: true,
-                characterData: true,
-                subtree: true,
-            });
-        }
-    }
-
-    onReady(initWebMetaStatsRail);
-    window.scheduleWebMetaStatsRail = scheduleWebMetaStatsRail;
-})();
-
 /* ── 4. Move spell-check notices into #results-meta ─────────────────────── */
 (() => {
     let spellCheckFrame = 0;
@@ -2602,6 +2533,145 @@ function wrapResultsStats(meta) {
             attributeFilter: ["class", "aria-selected", "data-lg-search-type"],
         });
     }
+})();
+
+/* ── 4b. Results tabs scroll rail (desktop) ─────────────────────────────── */
+(() => {
+    const TABS_SCROLL_SELECTOR = ".lg-results-tabs__scroll";
+    const TABS_RAIL_CLASS = "lg-results-tabs-rail";
+    const desktopQuery = window.matchMedia("(min-width: 768px)");
+    const NAV_ICON_PREV =
+        `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>`;
+    const NAV_ICON_NEXT =
+        `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6" /></svg>`;
+
+    function horizontalTabsScrollStep(scrollEl) {
+        return Math.max(120, Math.round(scrollEl.clientWidth * 0.72));
+    }
+
+    function updateTabsNavState() {
+        const tabs = getResultsTabs();
+        const rail = tabs?.querySelector(`.${TABS_RAIL_CLASS}`);
+        const scrollEl = rail?.querySelector(TABS_SCROLL_SELECTOR);
+        const prevBtn = rail?.querySelector('[data-lg-tabs-scroll="prev"]');
+        const nextBtn = rail?.querySelector('[data-lg-tabs-scroll="next"]');
+        if (!scrollEl || !prevBtn || !nextBtn) return;
+        if (scrollEl.scrollWidth <= scrollEl.clientWidth) {
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            return;
+        }
+        const atStart = scrollEl.scrollLeft <= 0;
+        const atEnd = scrollEl.scrollLeft >= scrollEl.scrollWidth - scrollEl.clientWidth - 1;
+        prevBtn.disabled = atStart;
+        nextBtn.disabled = atEnd;
+    }
+
+    function initTabsRail(rail) {
+        if (!rail || rail.dataset.lgTabsRailInit === "1") return;
+        const scrollEl = rail.querySelector(TABS_SCROLL_SELECTOR);
+        const prevBtn = rail.querySelector('[data-lg-tabs-scroll="prev"]');
+        const nextBtn = rail.querySelector('[data-lg-tabs-scroll="next"]');
+        if (!scrollEl || !prevBtn || !nextBtn) return;
+        rail.dataset.lgTabsRailInit = "1";
+
+        const refresh = () => updateTabsNavState();
+        scrollEl.addEventListener("scroll", refresh, { passive: true });
+        const ro = new ResizeObserver(refresh);
+        ro.observe(scrollEl);
+        ro.observe(rail);
+        refresh();
+    }
+
+    function createTabsRail() {
+        const rail = document.createElement("div");
+        rail.className = TABS_RAIL_CLASS;
+        rail.innerHTML =
+            `<button type="button" class="lg-media-engine-nav lg-media-engine-nav--prev" data-lg-tabs-scroll="prev" aria-label="Scroll tabs left">` +
+            NAV_ICON_PREV +
+            `</button>` +
+            `<div class="lg-results-tabs__scroll"></div>` +
+            `<button type="button" class="lg-media-engine-nav lg-media-engine-nav--next" data-lg-tabs-scroll="next" aria-label="Scroll tabs right">` +
+            NAV_ICON_NEXT +
+            `</button>`;
+        return rail;
+    }
+
+    function collectTabNodes(tabs) {
+        return [...tabs.children].filter(
+            child => child instanceof HTMLElement && child.classList.contains("results-tab"),
+        );
+    }
+
+    function syncTabsRail() {
+        const tabs = getResultsTabs();
+        if (!tabs) return;
+
+        if (!desktopQuery.matches) {
+            const rail = tabs.querySelector(`.${TABS_RAIL_CLASS}`);
+            if (!rail) return;
+            const scrollEl = rail.querySelector(TABS_SCROLL_SELECTOR);
+            if (scrollEl) {
+                [...scrollEl.querySelectorAll(":scope > .results-tab")].forEach(tab =>
+                    tabs.insertBefore(tab, rail),
+                );
+            }
+            rail.remove();
+            return;
+        }
+
+        let rail = tabs.querySelector(`.${TABS_RAIL_CLASS}`);
+        if (!rail) {
+            rail = createTabsRail();
+            tabs.insertBefore(rail, tabs.firstChild);
+        }
+
+        const scrollEl = rail.querySelector(TABS_SCROLL_SELECTOR);
+        if (!scrollEl) return;
+
+        const toolsBar = tabs.querySelector("#tools-bar");
+        collectTabNodes(tabs).forEach(tab => scrollEl.appendChild(tab));
+        if (toolsBar && toolsBar.parentElement !== tabs) {
+            tabs.appendChild(toolsBar);
+        }
+
+        initTabsRail(rail);
+        updateTabsNavState();
+    }
+
+    function onTabsRailClick(event) {
+        const scrollNav = event.target?.closest?.("[data-lg-tabs-scroll]");
+        if (!scrollNav || scrollNav.disabled) return;
+        const rail = scrollNav.closest(`.${TABS_RAIL_CLASS}`);
+        const scrollEl = rail?.querySelector(TABS_SCROLL_SELECTOR);
+        if (!rail || !scrollEl) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const dir = scrollNav.getAttribute("data-lg-tabs-scroll");
+        const delta = dir === "prev" ? -horizontalTabsScrollStep(scrollEl) : horizontalTabsScrollStep(scrollEl);
+        scrollEl.scrollBy({ left: delta, behavior: "smooth" });
+    }
+
+    function init() {
+        const tabs = getResultsTabs();
+        if (!tabs) return;
+        syncTabsRail();
+        if (!tabs.dataset.lgTabsRailClickWired) {
+            tabs.dataset.lgTabsRailClickWired = "1";
+            tabs.addEventListener("click", onTabsRailClick);
+        }
+        if (!tabs.dataset.lgTabsRailObserver) {
+            tabs.dataset.lgTabsRailObserver = "1";
+            new MutationObserver(() => syncTabsRail()).observe(tabs, {
+                childList: true,
+            });
+        }
+        desktopQuery.addEventListener?.("change", syncTabsRail);
+        window.addEventListener("resize", () => updateTabsNavState(), { passive: true });
+    }
+
+    onReady(init);
+    window.addEventListener("degoog-results-ready", syncTabsRail);
 })();
 
 /* ── 5. Media-preview (mp2) bar enhancements ────────────────────────────── */
@@ -4482,13 +4552,14 @@ function wrapResultsStats(meta) {
 
 /* ── 5e. Web results layout: fluid sidebar, then fluid main ─────────────── */
 (() => {
-    const MAIN_MIN_PX = 450;
+    const SEARCH_BAR_STACK_MAX_PX = 680;
     const STACK_HYSTERESIS_PX = 80;
     const SINGLE_CLASS = "lg-results-layout-single";
     const DESKTOP_MIN = 768;
     const SEARCHING_ATTR = "data-lg-sidebar-searching";
     const SIDEBAR_MAX_REM = 20;
     const SIDEBAR_MIN_REM = 16;
+    const SIDEBAR_BONUS_PX = 5;
     const MAIN_MAX_REM = 48;
     const COLUMN_GAP_REM = 2;
     const SCROLLBAR_REM = 0.75;
@@ -4516,6 +4587,7 @@ function wrapResultsStats(meta) {
         page.style.removeProperty("--literallygoogle-results-main-col-max");
         page.style.removeProperty("--literallygoogle-results-sidebar-col");
         page.style.removeProperty("--lg-results-grid-columns");
+        page.style.removeProperty("--lg-results-meta-grid-columns");
         fluidVarsKey = "";
     }
 
@@ -4553,7 +4625,15 @@ function wrapResultsStats(meta) {
         return Math.max(0, outerMax - padStart - padEnd);
     }
 
-    /** Viewport-only width for stack decisions — no layout/page DOM reads. */
+    /** Measured width of `#results-search-bar` — stack trigger only, not fluid columns. */
+    function measureSearchBarWidth() {
+        const bar = document.getElementById("results-search-bar");
+        if (!(bar instanceof HTMLElement)) return Number.POSITIVE_INFINITY;
+        const width = bar.getBoundingClientRect().width;
+        return width > 0 ? width : Number.POSITIVE_INFINITY;
+    }
+
+    /** Viewport cap for two-column fluid column sizing — not used for stack mode. */
     function stableStackInnerWidth() {
         const px = remPx();
         const layoutMax = 76 * px;
@@ -4561,30 +4641,17 @@ function wrapResultsStats(meta) {
         return Math.max(0, Math.min(layoutMax, viewport));
     }
 
-    function minTwoColumnInnerWidth() {
-        const px = remPx();
-        return (
-            SIDEBAR_MIN_REM * px +
-            COLUMN_GAP_REM * px +
-            SCROLLBAR_REM * px +
-            MAIN_MIN_PX
-        );
-    }
-
-    function shouldUseSingleColumn(stableInnerWidth) {
-        const minTwoCol = minTwoColumnInnerWidth();
-        const { mainCol } = computeFluidColumns(stableInnerWidth);
-
+    function shouldUseSingleColumn(searchBarWidth) {
         if (stackIsSingle) {
-            return stableInnerWidth < minTwoCol + STACK_HYSTERESIS_PX;
+            return searchBarWidth < SEARCH_BAR_STACK_MAX_PX + STACK_HYSTERESIS_PX;
         }
-        return stableInnerWidth < minTwoCol || mainCol < MAIN_MIN_PX;
+        return searchBarWidth < SEARCH_BAR_STACK_MAX_PX;
     }
 
     function computeFluidColumns(innerWidth) {
         const px = remPx();
-        const sidebarMax = SIDEBAR_MAX_REM * px;
-        const sidebarMin = SIDEBAR_MIN_REM * px;
+        const sidebarMax = SIDEBAR_MAX_REM * px + SIDEBAR_BONUS_PX;
+        const sidebarMin = SIDEBAR_MIN_REM * px + SIDEBAR_BONUS_PX;
         const mainMax = MAIN_MAX_REM * px;
         const gap = COLUMN_GAP_REM * px;
         const scrollbar = SCROLLBAR_REM * px;
@@ -4615,13 +4682,16 @@ function wrapResultsStats(meta) {
         if (key === fluidVarsKey) return false;
 
         fluidVarsKey = key;
-        page.style.setProperty("--literallygoogle-results-sidebar-max", `${sidebarRem}rem`);
+        const panelRem = (sidebarPanel - SIDEBAR_BONUS_PX) / px;
+        const panelSize = `calc(${panelRem}rem + ${SIDEBAR_BONUS_PX}px)`;
+        page.style.setProperty("--literallygoogle-results-sidebar-max", panelSize);
         page.style.setProperty("--literallygoogle-results-main-col-max", `${mainRem}rem`);
         page.style.setProperty(
             "--literallygoogle-results-sidebar-col",
-            `calc(${sidebarRem}rem + var(--lg-sidebar-scrollbar-size))`,
+            `calc(${panelSize} + var(--lg-sidebar-scrollbar-size))`,
         );
-        page.style.setProperty("--lg-results-grid-columns", `${mainRem}rem ${sidebarColRem(sidebarRem)}`);
+        page.style.setProperty("--lg-results-grid-columns", `${mainRem}rem ${sidebarColRem(panelRem)}`);
+        page.style.setProperty("--lg-results-meta-grid-columns", `${mainRem}rem ${panelSize}`);
         return true;
     }
 
@@ -4645,13 +4715,12 @@ function wrapResultsStats(meta) {
                 window.dispatchEvent(new Event("lg-results-layout-changed"));
             }
             window.dispatchEvent(new Event("lg-sync-sidebar-row"));
-            window.scheduleWebMetaStatsRail?.();
             return;
         }
 
-        const decisionWidth = stableStackInnerWidth();
+        const searchBarWidth = measureSearchBarWidth();
         const searching = document.documentElement.hasAttribute(SEARCHING_ATTR);
-        const wantSingle = searching ? stackIsSingle : shouldUseSingleColumn(decisionWidth);
+        const wantSingle = searching ? stackIsSingle : shouldUseSingleColumn(searchBarWidth);
         const modeChanged = wantSingle !== stackIsSingle;
 
         if (wantSingle) {
@@ -4662,6 +4731,7 @@ function wrapResultsStats(meta) {
                 resetSingleColumnGridState(page, layout, { entering: true });
             }
         } else {
+            const decisionWidth = stableStackInnerWidth();
             const layoutWidth = targetGridInnerWidth(layout);
             const applyWidth = Math.min(decisionWidth, layoutWidth);
             const fluid = computeFluidColumns(applyWidth);
@@ -4679,8 +4749,6 @@ function wrapResultsStats(meta) {
             window.dispatchEvent(new Event("lg-results-layout-changed"));
             window.dispatchEvent(new Event("lg-sync-sidebar-row"));
         }
-
-        window.scheduleWebMetaStatsRail?.();
     }
 
     function schedule() {
@@ -4696,6 +4764,18 @@ function wrapResultsStats(meta) {
         window.addEventListener("resize", schedule, { passive: true });
         window.addEventListener("degoog-results-ready", schedule, { passive: true });
         window.addEventListener("lg-sync-search-type", schedule, { passive: true });
+
+        const searchBar = document.getElementById("results-search-bar");
+        const resultsHeader = document.getElementById("results-header");
+        if (searchBar && !searchBar.dataset.lgStackWidthObserver) {
+            searchBar.dataset.lgStackWidthObserver = "1";
+            new ResizeObserver(schedule).observe(searchBar);
+        }
+        if (resultsHeader && !resultsHeader.dataset.lgStackWidthObserver) {
+            resultsHeader.dataset.lgStackWidthObserver = "1";
+            new ResizeObserver(schedule).observe(resultsHeader);
+        }
+
         if (!page) return;
         new MutationObserver(mutations => {
             if (

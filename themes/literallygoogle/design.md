@@ -114,8 +114,8 @@ Semantic tokens are set on `:root` (dark default), `[data-theme="dark"]`, `[data
 
 On the Web tab, `scripts/search.js` sets fluid `--literallygoogle-results-sidebar-max` and `--literallygoogle-results-main-col-max` on `#results-page`:
 
-1. **Wide:** sidebar panel `20rem`, main column up to `48rem`.
-2. **Tighten:** shrink the **sidebar first** from `20rem` down to `16rem` while main stays at `48rem`.
+1. **Wide:** sidebar panel `calc(20rem + 5px)`, main column up to `48rem`.
+2. **Tighten:** shrink the **sidebar first** from max down to `calc(16rem + 5px)` while main stays at `48rem`.
 3. **Tighter:** sidebar holds at `16rem`; main column (glance, URLs, results) shrinks below `48rem`.
 4. **Stack:** switch to single-column before smush using a hysteresis band on **`document.documentElement.clientWidth`** (capped at 76rem) — no `#results-page` / `#results-layout` reads, so glance loading, sidebar paint, or flex↔grid switches cannot change the decision. Enter when that width cannot fit sidebar min + gap + 450px main, or when main at that width would drop below 450px; exit only when ~80px past the two-column minimum. **Freeze** the stack mode while `data-lg-sidebar-searching` is set so streaming results / skeleton swaps do not toggle layout mid-search. Layout sync runs on **resize**, **degoog-results-ready**, and **search-type** changes only — not on every subtree mutation.
 
@@ -133,7 +133,7 @@ JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so 
 ### Results meta row (`#results-meta`)
 
 - The meta row is a **shared skeleton** across Web, Images, and Videos. Keep its horizontal alignment rules **simple and global**.
-- **Web (desktop, two-column):** `#results-meta` and `#results-layout` both **shrink-wrap** to the same `--lg-results-grid-columns` tracks (`width: fit-content`; reset `justify-content: start` on meta — the base flex `flex-end` rule was packing the meta grid away from the layout). `.results-meta-stats` spans the row with `justify-self: end` and `margin-inline-end: var(--lg-web-meta-stats-inset-end)`. `scheduleWebMetaStatsRail()` sets that inset once per layout/resize from `#sidebar-col > .sticky`’s right edge (the visible panel, not the scrollbar lane). **Never** run this on scroll or from `.results-meta-stats.getBoundingClientRect()` — that caused jitter.
+- **Web (desktop, two-column):** `#results-meta` shrink-wraps to `--lg-results-meta-grid-columns` (main + **panel only** — no scrollbar lane). `#results-layout` keeps `--lg-results-grid-columns` (main + panel + scrollbar). `.results-meta-stats` sits in **meta grid column 2** with `justify-self: end` so the line ends at `#sidebar-col > .sticky`, not `#sidebar-col`. No runtime inset JS.
 - **Web (single-column, `lg-results-layout-single`):** stats span the row with `text-align: end` so they align with the stacked sidebar below (same horizontal padding).
 - Default padding uses `--literallygoogle-results-content-inline-*` like the tabs row; spell-check and engine chrome stay in column 1 on two-column Web.
 - **Images/Videos (desktop):** `scheduleMediaMetaRightGap()` sets `--lg-media-meta-right-gap` from `#results-meta`’s **border-box right** to `getMediaContentRailRightEdge()` — never from `.results-meta-stats.getBoundingClientRect()` (that moved the text you were measuring). Updates run on layout/resize/tab change only, **not** on scroll or sticky pill frames.
