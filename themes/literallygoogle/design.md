@@ -121,7 +121,12 @@ On the Web tab, `scripts/search.js` §5e sets fluid `--literallygoogle-results-s
 
 Do not reintroduce filter-tab overlap snapping (`lg-results-sidebar-compact`) or abrupt sidebar jumps — the fluid vars are the only width mechanism.
 
-JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so CSS grid cannot shrink the main column before the sidebar. When stacking (`lg-results-layout-single`), clear inline `grid-row` on `#sidebar-col` and use flex column layout (mobile-like padding/gaps) — never leave `grid-row: 1 / span 30` active in single-column mode.
+JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so CSS grid cannot shrink the main column before the sidebar. When stacking (`lg-results-layout-single`):
+
+- Clear inline `grid-row` / `grid-column` on `#sidebar-col` and `#results-main`; force `#results-layout` to `display: flex` (column) with `grid-template-columns: none`.
+- Disable sticky sidebar behaviour (`position: static`, no `lg-sidebar-is-stuck` internal scroll).
+- Reset content gutters to the mobile `0.75rem` inset — do not keep the wide logo-based `--literallygoogle-results-content-inline-start` padding in this mode.
+- Never leave `grid-row: 1 / span 30` or a two-column grid active; that produces the smushed side-by-side columns users report at ~791px viewport widths.
 
 ### Results meta row (`#results-meta`)
 

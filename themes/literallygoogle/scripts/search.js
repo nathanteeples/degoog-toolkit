@@ -3964,7 +3964,12 @@ function getLgTranslation(key) {
         if (!(sidebar instanceof HTMLElement) || !sidebar.classList.contains("is-sticky")) {
             return false;
         }
-        if (window.matchMedia("(max-width: 767px)").matches) return false;
+        if (
+            window.matchMedia("(max-width: 767px)").matches ||
+            getResultsPage()?.classList.contains("lg-results-layout-single")
+        ) {
+            return false;
+        }
         if (getComputedStyle(sidebar).position !== "sticky") return false;
         return sidebar.getBoundingClientRect().top <= sidebarStickyTop(sidebar) + 1;
     }
@@ -4075,6 +4080,7 @@ function getLgTranslation(key) {
     const COLUMN_GAP_REM = 2;
     const SCROLLBAR_REM = 0.75;
     let frame = 0;
+    let wasSingleColumn = false;
 
     function isWebResultsPage(page) {
         if (!page || window.innerWidth < DESKTOP_MIN) return false;
@@ -4096,6 +4102,27 @@ function getLgTranslation(key) {
         page.style.removeProperty("--literallygoogle-results-main-col-max");
         page.style.removeProperty("--literallygoogle-results-sidebar-col");
         page.style.removeProperty("--lg-results-grid-columns");
+    }
+
+    function resetSingleColumnGridState(page, layout, { entering }) {
+        const sidebar = document.getElementById("sidebar-col");
+        const main = document.getElementById("results-main");
+        if (layout) {
+            layout.style.removeProperty("grid-template-columns");
+        }
+        if (main) {
+            main.style.removeProperty("grid-column");
+        }
+        if (sidebar) {
+            sidebar.style.removeProperty("grid-column");
+            sidebar.style.removeProperty("grid-row");
+            if (entering) {
+                sidebar.classList.remove("lg-sidebar-is-stuck", "lg-sidebar-scroll-active");
+            }
+        }
+        if (entering) {
+            page?.classList.remove("lg-results-sidebar-compact");
+        }
     }
 
     function targetGridInnerWidth(layout) {
@@ -4160,6 +4187,10 @@ function getLgTranslation(key) {
         if (!isWebResultsPage(page)) {
             page.classList.remove(SINGLE_CLASS);
             clearFluidLayoutVars(page);
+            if (wasSingleColumn) {
+                wasSingleColumn = false;
+                window.dispatchEvent(new Event("lg-results-layout-changed"));
+            }
             window.dispatchEvent(new Event("lg-sync-sidebar-row"));
             return;
         }
@@ -4172,9 +4203,20 @@ function getLgTranslation(key) {
         if (mainCol > 0 && mainCol < stackThreshold) {
             page.classList.add(SINGLE_CLASS);
             clearFluidLayoutVars(page);
+            resetSingleColumnGridState(page, layout, { entering: true });
         } else {
+            const exiting = page.classList.contains(SINGLE_CLASS);
             page.classList.remove(SINGLE_CLASS);
             applyFluidLayout(page, { sidebarPanel, mainCol });
+            if (exiting) {
+                resetSingleColumnGridState(page, layout, { entering: false });
+            }
+        }
+
+        const isSingleColumn = page.classList.contains(SINGLE_CLASS);
+        if (isSingleColumn !== wasSingleColumn) {
+            wasSingleColumn = isSingleColumn;
+            window.dispatchEvent(new Event("lg-results-layout-changed"));
         }
 
         window.dispatchEvent(new Event("lg-sync-sidebar-row"));
@@ -4310,7 +4352,10 @@ function getLgTranslation(key) {
     let lastIsDesktop = null;
 
     function isDesktop() {
-        return window.innerWidth >= DESKTOP_MIN;
+        return (
+            window.innerWidth >= DESKTOP_MIN &&
+            !getResultsPage()?.classList.contains("lg-results-layout-single")
+        );
     }
 
     function sidebarRoots() {
@@ -4672,6 +4717,14 @@ function getLgTranslation(key) {
             if (nowDesktop === lastIsDesktop) return;
             lastIsDesktop = nowDesktop;
             clearUserOverrides();
+            scheduleSync();
+        });
+        window.addEventListener("lg-results-layout-changed", () => {
+            const nowDesktop = isDesktop();
+            if (nowDesktop !== lastIsDesktop) {
+                lastIsDesktop = nowDesktop;
+                clearUserOverrides();
+            }
             scheduleSync();
         });
         scheduleSync();
