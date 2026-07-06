@@ -4813,7 +4813,10 @@ body {
 
 /* Core sticky sidebar setting.
    Grid column = panel width + scroll lane. Internal scroll only after the column
-   has physically stuck (lg-sidebar-is-stuck); until then the page scrolls. */
+   has physically stuck (lg-sidebar-is-stuck); until then the page scrolls.
+   Top gap = `top` (--literallygoogle-sticky-header-offset, ~74px). Bottom gap
+   matches via max-height: 100vh minus twice that offset. Panel width is fixed
+   on .sticky; the scroll track uses the extra grid lane (never max-width: 100%). */
 
 @media (min-width: 768px) {
     #sidebar-col.is-sticky {
@@ -4823,7 +4826,6 @@ body {
             calc(50px + 1.5rem)
         );
         align-self: start;
-        height: fit-content;
         overflow: visible;
         max-height: none;
     }
@@ -4837,18 +4839,19 @@ body {
         min-height: 0;
         max-height: calc(
             100vh -
-                var(
+                (2 * var(
                     --literallygoogle-sticky-header-offset,
                     calc(50px + 1.5rem)
-                )
+                ))
         );
-        overflow-x: visible;
+        overflow-x: hidden;
         overflow-y: hidden;
         overscroll-behavior: auto;
         scrollbar-width: none;
     }
 
     #sidebar-col.is-sticky.lg-sidebar-is-stuck.lg-sidebar-scroll-active {
+        overflow-x: hidden;
         overflow-y: auto;
         scrollbar-width: thin;
     }
@@ -4864,7 +4867,7 @@ body {
 
     #sidebar-col.is-sticky > .sticky {
         width: var(--literallygoogle-results-sidebar-max);
-        max-width: 100%;
+        max-width: var(--literallygoogle-results-sidebar-max);
         max-height: none;
         overflow: visible;
         box-sizing: border-box;
