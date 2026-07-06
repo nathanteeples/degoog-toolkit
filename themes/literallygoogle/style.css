@@ -5575,32 +5575,6 @@ body {
         box-shadow: var(--mp2-panel-shadow);
     }
 
-    /* Image preview scroll chaining (scripts/search.js §5d): internal scroll only
-       after the pane has physically stuck; chain to page at top/bottom edges. */
-    #results-page:has(#results-layout.media-mode) #media-preview-panel.open:not(.lg-preview-is-stuck) {
-        overflow-y: visible !important;
-        scrollbar-width: none;
-    }
-
-    #results-page:has(#results-layout.media-mode) #media-preview-panel.open.lg-preview-is-stuck {
-        overflow-x: hidden !important;
-        overflow-y: hidden !important;
-        overscroll-behavior: auto;
-        scrollbar-width: none;
-    }
-
-    #results-page:has(#results-layout.media-mode)
-        #media-preview-panel.open.lg-preview-is-stuck.lg-preview-scroll-active {
-        overflow-y: auto !important;
-        scrollbar-width: thin !important;
-    }
-
-    #results-page:has(#results-layout.media-mode)
-        #media-preview-panel.open.lg-preview-is-stuck.lg-preview-scroll-active::-webkit-scrollbar {
-        display: block;
-        width: thin;
-    }
-
     #results-page:has(#results-layout.media-mode) #media-preview-panel.lg-preview-closing {
         position: fixed;
         top: var(--lg-preview-exit-top, 0px);
