@@ -1,34 +1,22 @@
 /* ── 4play status command ────────────────────────────────────────────── */
-#results-page:has(#fourplay-status) {
-    --lg-fourplay-surface: color-mix(in srgb, var(--lg-chrome-surface) 88%, var(--bg) 12%);
-    --lg-fourplay-surface-strong: color-mix(in srgb, var(--lg-chrome-surface) 72%, var(--bg) 28%);
-    --lg-fourplay-border: color-mix(in srgb, var(--border-light) 78%, transparent);
-    --lg-fourplay-shadow: 0 1px 2px rgba(60, 64, 67, 0.12), 0 2px 6px rgba(60, 64, 67, 0.08);
-}
-
-#results-page:has(#fourplay-status) #results-layout {
-    grid-template-columns: 1fr;
-    max-width: none;
-}
-
-#results-page:has(#fourplay-status) #results-main {
-    max-width: none;
-}
-
 #results-page #fourplay-status.fourplay-command {
     gap: 1rem;
     max-width: none;
+    width: 100%;
     padding: 0.25rem 0 1.5rem;
+    box-sizing: border-box;
 }
 
 #results-page #fourplay-status .fourplay-header,
 #results-page #fourplay-status .fourplay-tile.degoog-panel,
 #results-page #fourplay-status .fourplay-session.degoog-panel,
 #results-page #fourplay-status .fourplay-hero.degoog-panel {
-    background: var(--lg-fourplay-surface);
-    border: 1px solid var(--lg-fourplay-border);
+    background: var(--bg-light);
+    border: 1px solid transparent;
     border-radius: var(--theme-radius-lg);
-    box-shadow: var(--lg-fourplay-shadow);
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent),
+        0 1px 2px color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 #results-page #fourplay-status .fourplay-header {
@@ -88,8 +76,8 @@
 #results-page #fourplay-status .fourplay-conn {
     min-height: 2.25rem;
     padding: 0.35rem 0.8rem;
-    background: var(--lg-fourplay-surface-strong);
-    border: 1px solid var(--lg-fourplay-border);
+    background: var(--lg-settings-chip-btn-bg, var(--bg-hover));
+    border: 1px solid transparent;
 }
 
 #results-page #fourplay-status .fourplay-dot {
@@ -97,8 +85,8 @@
 }
 
 #results-page #fourplay-status .fourplay-refresh {
-    background: var(--lg-fourplay-surface-strong);
-    border: 1px solid var(--lg-fourplay-border);
+    background: var(--lg-settings-chip-btn-bg, var(--bg-hover));
+    border: 1px solid transparent;
     color: var(--text-secondary);
 }
 
@@ -109,8 +97,8 @@
 
 #results-page #fourplay-status .fourplay-btn {
     min-height: 2.25rem;
-    border: 1px solid var(--lg-fourplay-border);
-    background: var(--lg-fourplay-surface-strong);
+    border: 1px solid transparent;
+    background: var(--lg-settings-chip-btn-bg, var(--bg-hover));
     color: var(--text-primary);
     text-decoration: none;
 }
@@ -176,8 +164,8 @@
 
 #results-page #fourplay-status .fourplay-session-state.degoog-badge,
 #results-page #fourplay-status .degoog-badge {
-    background: var(--lg-fourplay-surface-strong);
-    border: 1px solid var(--lg-fourplay-border);
+    background: var(--lg-settings-chip-btn-bg, var(--bg-hover));
+    border: 1px solid transparent;
     color: var(--text-secondary);
 }
 

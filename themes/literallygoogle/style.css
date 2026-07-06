@@ -3600,6 +3600,61 @@ body {
     display: none !important;
 }
 
+/* Bang command pages use the full layout width, not the narrow main column. */
+@media (min-width: 768px) {
+    #results-page:is(
+            .lg-command-mode,
+            :has(#results-list .command-result),
+            :has(#results-list .command-help-table)
+        )
+        #results-layout {
+        grid-template-columns: 1fr;
+        max-width: var(--literallygoogle-results-layout-max);
+    }
+
+    #results-page:is(
+            .lg-command-mode,
+            :has(#results-list .command-result),
+            :has(#results-list .command-help-table)
+        )
+        #results-main {
+        grid-column: 1 / -1;
+        max-width: none;
+        width: 100%;
+    }
+
+    #results-page:is(
+            .lg-command-mode,
+            :has(#results-list .command-result),
+            :has(#results-list .command-help-table)
+        )
+        #results-list {
+        max-width: none;
+        width: 100%;
+    }
+
+    #results-page:is(
+            .lg-command-mode,
+            :has(#results-list .command-result),
+            :has(#results-list .command-help-table)
+        )
+        #sidebar-col {
+        display: none;
+    }
+
+    #results-page:is(
+            .lg-command-mode,
+            :has(#results-list .command-result),
+            :has(#results-list .command-help-table)
+        )
+        #results-list
+        :is(.command-result, .command-help-table) {
+        max-width: none;
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
 #results-tabs .tools-toggle {
     display: inline-flex;
     align-items: center;
