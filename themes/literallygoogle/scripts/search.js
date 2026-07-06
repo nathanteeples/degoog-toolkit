@@ -2853,6 +2853,16 @@ function getLgTranslation(key) {
         return document.getElementById("media-preview-panel")?.classList.contains("open") ?? false;
     }
 
+    function isDockedPreviewOpen() {
+        const preview = getMediaPreviewPanel();
+        if (!(preview instanceof HTMLElement) || !preview.classList.contains("open")) {
+            return false;
+        }
+        if (!window.matchMedia("(min-width: 768px)").matches) return false;
+        if (!getResultsLayout()?.classList.contains("media-mode")) return false;
+        return getComputedStyle(preview).position === "sticky";
+    }
+
     function measureWidth(grid) {
         const main = grid.closest("#results-main");
         if (main?.clientWidth) return main.clientWidth;
@@ -3009,15 +3019,32 @@ function getLgTranslation(key) {
         grid.dataset.lgVisibleCols = String(baseCols);
     }
 
+    function syncBaseGrid(grid) {
+        const desiredBaseCols = baseColumnsForWidth(window.innerWidth);
+        const currentBaseCols =
+            Number.parseInt(grid.dataset.lgGridBaseCols, 10) || desiredBaseCols;
+
+        if (currentBaseCols === desiredBaseCols) return desiredBaseCols;
+
+        const columns = ensureColumnCount(grid, desiredBaseCols);
+        showAllColumns(columns);
+        const items = collectGridItems(grid);
+        items.forEach((item, index) => {
+            columns[index % columns.length].appendChild(item);
+        });
+        grid.dataset.lgGridBaseCols = String(desiredBaseCols);
+        grid.dataset.lgVisibleCols = String(desiredBaseCols);
+        return desiredBaseCols;
+    }
+
     function applyFold(grid) {
         if (!grid?.isConnected || !grid.classList.contains("lg-image-grid-fold")) return;
 
-        const baseCols =
-            Number.parseInt(grid.dataset.lgGridBaseCols, 10) ||
-            baseColumnsForWidth(window.innerWidth);
+        const baseCols = syncBaseGrid(grid);
         const available = measureWidth(grid);
+        const dockedPreviewOpen = isDockedPreviewOpen();
 
-        if (!isPreviewOpen()) {
+        if (!dockedPreviewOpen) {
             const visibleCols =
                 Number.parseInt(grid.dataset.lgVisibleCols, 10) || baseCols;
             if (visibleCols !== baseCols) resetGrid(grid);
@@ -3034,7 +3061,7 @@ function getLgTranslation(key) {
         const visibleCols =
             Number.parseInt(grid.dataset.lgVisibleCols, 10) || columns.length;
 
-        if (cols < visibleCols) {
+        if (cols !== visibleCols) {
             columns = ensureColumnCount(grid, baseCols);
             showAllColumns(columns);
             for (let i = columns.length - 1; i >= cols; i--) {
@@ -3077,7 +3104,7 @@ function getLgTranslation(key) {
 
     let scrollSelectedFrame = 0;
     function scheduleScrollToSelected() {
-        if (!isPreviewOpen()) return;
+        if (!isDockedPreviewOpen()) return;
         if (!document.querySelector("#results-list .image-card.selected")) return;
         if (scrollSelectedFrame) return;
         scrollSelectedFrame = requestAnimationFrame(() => {
