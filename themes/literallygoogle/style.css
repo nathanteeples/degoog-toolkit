@@ -120,7 +120,7 @@ html[data-image-mode-desktop-layout="fab-right"] {
         --success: #34a853;
         --bg: #fff;
         --bg-light: #f8f9fa;
-        --lg-sidebar-row-surface: #e9ebf0;
+        --lg-sidebar-row-surface: #f7f8fa;
         --bg-hover: #e8eaed;
         --border: #dadce0;
         --border-light: #d2d2d2;
@@ -156,7 +156,7 @@ html[data-image-mode-desktop-layout="fab-right"] {
     --success: #34a853;
     --bg: #fff;
     --bg-light: #f8f9fa;
-    --lg-sidebar-row-surface: #e9ebf0;
+    --lg-sidebar-row-surface: #f7f8fa;
     --bg-hover: #e8eaed;
     --border: #dadce0;
     --border-light: #d2d2d2;
