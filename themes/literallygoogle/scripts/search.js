@@ -100,6 +100,40 @@ function getMediaContentRailRightEdge() {
     return null;
 }
 
+function getMediaContentRailLeftEdge() {
+    const layout = getResultsLayout();
+    if (
+        layout?.classList.contains("media-mode") &&
+        window.matchMedia("(min-width: 768px)").matches
+    ) {
+        const rect = layout.getBoundingClientRect();
+        const padStart = parseFloat(getComputedStyle(layout).paddingInlineStart) || 0;
+        if (rect.width > 1) return rect.left + padStart;
+    }
+    return null;
+}
+
+function getMediaResultsLeftEdge() {
+    const firstColumn = document.querySelector(
+        "#results-list .image-grid > .image-column:not(.lg-image-col-hidden)",
+    );
+    if (firstColumn instanceof HTMLElement) {
+        const rect = firstColumn.getBoundingClientRect();
+        if (rect.width > 1) return rect.left;
+    }
+
+    const grid = document.querySelector(
+        "#results-list .image-grid, #results-list .skeleton-image-grid",
+    );
+    if (grid instanceof HTMLElement) {
+        const rect = grid.getBoundingClientRect();
+        const padStart = parseFloat(getComputedStyle(grid).paddingInlineStart) || 0;
+        if (rect.width > 1) return rect.left + padStart;
+    }
+
+    return getMediaContentRailLeftEdge();
+}
+
 function syncWebMetaStatsGap() {
     const meta = getResultsMeta();
     const page = getResultsPage();
@@ -119,8 +153,31 @@ function syncWebMetaStatsGap() {
     }
     const metaRect = meta.getBoundingClientRect();
     const mainRect = main.getBoundingClientRect();
-    const inset = Math.max(0, metaRect.right - mainRect.right);
+    let inset = Math.max(0, metaRect.right - mainRect.right);
+
+    // Bang-command layout spans #results-main full-width briefly; if layout has not
+    // reflowed yet, fall back to sidebar track width + inter-column gap.
+    if (inset < 4) {
+        const sidebar = document.getElementById("sidebar-col");
+        if (sidebar && getComputedStyle(sidebar).display !== "none") {
+            const sidebarRect = sidebar.getBoundingClientRect();
+            const gap = Math.max(0, sidebarRect.left - mainRect.right);
+            const trackInset = gap + sidebarRect.width;
+            if (trackInset > inset) inset = trackInset;
+        }
+    }
+
     meta.style.setProperty("--lg-web-meta-stats-right-inset", `${inset}px`);
+}
+
+/** Re-measure meta + grid after leaving bang-command layout (tabs/stats/sidebar). */
+function scheduleCommandExitLayoutResync() {
+    scheduleWebMetaStatsGap();
+    requestAnimationFrame(() => {
+        scheduleWebMetaStatsGap();
+        window.dispatchEvent(new Event("lg-results-layout-changed"));
+        window.dispatchEvent(new Event("lg-sync-sidebar-row"));
+    });
 }
 
 let webMetaStatsFrame = 0;
@@ -2247,13 +2304,45 @@ function wrapResultsStats(meta) {
         return false;
     }
 
+    /** Core hides tabs during bang commands (`data-bang-hidden` + inline display) but can leave them stuck after a normal search. */
+    function restoreBangHiddenTabs() {
+        const tabs = getResultsTabs();
+        if (!tabs) return false;
+
+        let restored = false;
+        tabs.querySelectorAll(".results-tab[data-bang-hidden]").forEach(tab => {
+            tab.style.removeProperty("display");
+            tab.removeAttribute("data-bang-hidden");
+            tab.removeAttribute("hidden");
+            restored = true;
+        });
+        return restored;
+    }
+
+    function wireBangTabRestore() {
+        const input = getResultsSearchInput();
+        if (!input || input.dataset.lgBangTabRestoreWired === "1") return;
+        input.dataset.lgBangTabRestoreWired = "1";
+        input.addEventListener("input", () => {
+            if (isBangCommandQuery(input.value)) return;
+            if (restoreBangHiddenTabs()) {
+                syncFiltersVisibilityFromDom();
+            }
+        });
+    }
+
     function syncFiltersVisibility(toolsBar, panel, toggle, page) {
         if (!toolsBar || !page) return;
+        const wasCommandMode = page.classList.contains("lg-command-mode");
         const commandMode = isCommandMode();
         page.classList.toggle("lg-command-mode", commandMode);
         if (commandMode) {
             closeFiltersDropdown(panel, toggle);
             return;
+        }
+        restoreBangHiddenTabs();
+        if (wasCommandMode) {
+            scheduleCommandExitLayoutResync();
         }
     }
 
@@ -2406,6 +2495,7 @@ function wrapResultsStats(meta) {
             wireFiltersHover(panel);
         }
         syncFiltersVisibility(toolsBar, panel, toggle, page);
+        wireBangTabRestore();
 
         if (toggle.dataset.lgFiltersWired !== "1") {
             toggle.dataset.lgFiltersWired = "1";
@@ -3804,7 +3894,7 @@ function wrapResultsStats(meta) {
             Math.max(0, (targetStickyTop - naturalRailTop) / STICKY_RAIL_REVEAL_DISTANCE),
         );
         const paddingStart = parseFloat(getComputedStyle(meta).paddingLeft) || 0;
-        const stuckLeft = metaRect.left + paddingStart;
+        const stuckLeft = getMediaResultsLeftEdge() ?? metaRect.left + paddingStart;
         const contentRight = Math.max(stuckLeft, getMediaResultsRightEdge());
         const targetWidth = Math.max(0, contentRight - stuckLeft);
         const baseLeft = parseFloat(host.dataset.stickBaseLeft) || hostRect.left;
@@ -4313,6 +4403,8 @@ function wrapResultsStats(meta) {
         new MutationObserver(scan).observe(page, { childList: true, subtree: true });
         window.addEventListener("scroll", scheduleSidebarStuckSync, { passive: true });
         window.addEventListener("resize", scheduleSidebarStuckSync, { passive: true });
+        window.addEventListener("lg-results-layout-changed", scheduleSidebarStuckSync);
+        window.addEventListener("degoog-results-ready", scheduleSidebarStuckSync);
         new MutationObserver(scheduleSidebarStuckSync).observe(
             document.getElementById("sidebar-col") || document.documentElement,
             { attributes: true, attributeFilter: ["class", "style"] },
