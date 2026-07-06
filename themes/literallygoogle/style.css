@@ -4543,23 +4543,24 @@ body {
         margin-inline: 0;
     }
 
-    /* Scroll track sits in inline-end padding that extends into the grid gap so
-       panel rows keep their full width when overflow-y starts. */
+    /* Scroll track lives in inline-end padding (content-box) that extends into the
+       grid gap — border-box width+padding still lets the scrollbar eat row width. */
     #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active {
         overflow-y: auto;
         overscroll-behavior: contain;
-        box-sizing: border-box;
-        width: calc(100% + var(--lg-sidebar-scrollbar-size));
-        max-width: calc(
-            var(--literallygoogle-results-sidebar-max) +
-                var(--lg-sidebar-scrollbar-size)
-        );
-        margin-inline-end: calc(-1 * var(--lg-sidebar-scrollbar-size));
+        box-sizing: content-box;
+        width: 100%;
+        max-width: var(--literallygoogle-results-sidebar-max);
         padding-inline-end: var(--lg-sidebar-scrollbar-size);
+        margin-inline-end: calc(-1 * var(--lg-sidebar-scrollbar-size));
     }
 
     #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active::-webkit-scrollbar {
         width: var(--lg-sidebar-scrollbar-size);
+    }
+
+    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active::-webkit-scrollbar-track {
+        background: transparent;
     }
 }
 

@@ -3951,6 +3951,10 @@ function getLgTranslation(key) {
         if (!el || wired.has(el)) return;
         wired.add(el);
 
+        el.addEventListener("pointerenter", () => {
+            if (canScroll(el)) el.classList.add(ACTIVE_CLASS);
+        });
+
         el.addEventListener("pointerleave", () => {
             el.classList.remove(ACTIVE_CLASS);
         });
