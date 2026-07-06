@@ -3621,6 +3621,54 @@ body {
         margin-inline-end: auto;
         box-sizing: border-box;
     }
+
+    /* Web: stats share the results grid — column 2 lines up with the sidebar rail. */
+    #results-page[data-lg-search-type="web"]:not(.lg-results-layout-single):not(
+            .lg-command-mode
+        )
+        #results-meta {
+        display: grid;
+        grid-template-columns: var(
+            --lg-results-grid-columns,
+            minmax(0, var(--literallygoogle-results-main-col-max))
+                minmax(
+                    var(--literallygoogle-results-sidebar-col),
+                    var(--literallygoogle-results-sidebar-col)
+                )
+        );
+        column-gap: var(--literallygoogle-results-column-gap);
+        align-items: center;
+        flex-wrap: nowrap;
+    }
+
+    #results-page[data-lg-search-type="web"]:not(.lg-results-layout-single):not(
+            .lg-command-mode
+        )
+        #results-meta
+        :is(.spell-check-notice, #lg-media-engine-pills) {
+        grid-column: 1;
+        margin-inline-end: 0;
+    }
+
+    #results-page[data-lg-search-type="web"]:not(.lg-results-layout-single):not(
+            .lg-command-mode
+        )
+        #results-meta
+        .results-meta-stats {
+        grid-column: 2;
+        justify-self: end;
+        margin-inline-start: 0;
+        margin-inline-end: 0;
+    }
+
+    #results-page.lg-results-layout-single[data-lg-search-type="web"]:not(.lg-command-mode)
+        #results-meta
+        .results-meta-stats {
+        flex: 1 1 auto;
+        width: 100%;
+        margin-inline-start: 0;
+        text-align: end;
+    }
 }
 
 /* Google-style Filters dropdown in the tab row */
@@ -4125,12 +4173,6 @@ body {
     margin-inline-end: 0;
     text-align: end;
     white-space: nowrap;
-}
-
-@media (min-width: 768px) {
-    #results-page[data-lg-search-type="web"] #results-meta .results-meta-stats {
-        margin-inline-end: var(--lg-web-meta-stats-right-inset, 0px);
-    }
 }
 
 #results-meta .spell-check-notice {

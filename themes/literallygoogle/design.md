@@ -133,10 +133,10 @@ JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so 
 ### Results meta row (`#results-meta`)
 
 - The meta row is a **shared skeleton** across Web, Images, and Videos. Keep its horizontal alignment rules **simple and global**.
-- Default behavior (Web): `#results-meta` uses the same `--literallygoogle-results-content-inline-*` paddings as the tabs row; `.results-meta-stats` sits on the **right via `margin-inline-start: auto`**. On desktop Web, `syncWebMetaStatsGap()` measures **`.results-meta-stats`’s right edge** (not `#results-meta`’s border — padding left inset at `0`) and sets `--lg-web-meta-stats-right-inset` so “About X results” aligns with the **right edge of the content rail below it**:
-  - **Two-column:** right edge of `#sidebar-col > .sticky` (the visible sidebar panel, excluding the scroll lane).
-  - **Single-column (`lg-results-layout-single`):** right edge of the stacked sidebar / layout content (e.g. Engine Performance panel), via `#sidebar-col` or `#results-layout` padding box — not `#results-main`’s narrower column.
-- **Images/Videos (desktop):** `scripts/search.js` sets `--lg-media-meta-right-gap` so `.results-meta-stats` aligns to a **stable content rail** — the right edge of `#results-layout`’s content box (`getMediaContentRailRightEdge()`), not the preview panel’s bounding box (which includes scrollbar overflow and caused “About X results” to jump when the preview opened).
+- **Web (desktop, two-column):** `#results-meta` uses the **same CSS grid columns** as `#results-layout` (`--lg-results-grid-columns`). `.results-meta-stats` sits in **grid column 2** with `justify-self: end` so “About X results” lines up with the sidebar rail. **No JavaScript** measures or nudges stats — runtime inset caused feedback loops and scroll jitter.
+- **Web (single-column, `lg-results-layout-single`):** stats span the row with `text-align: end` so they align with the stacked sidebar below (same horizontal padding).
+- Default padding uses `--literallygoogle-results-content-inline-*` like the tabs row; spell-check and engine chrome stay in column 1 on two-column Web.
+- **Images/Videos (desktop):** `scheduleMediaMetaRightGap()` sets `--lg-media-meta-right-gap` from `#results-meta`’s **border-box right** to `getMediaContentRailRightEdge()` — never from `.results-meta-stats.getBoundingClientRect()` (that moved the text you were measuring). Updates run on layout/resize/tab change only, **not** on scroll or sticky pill frames.
 - Engine pills live in `#lg-media-engine-pills` inside the meta row; stats stay pinned to the rail right edge via flex + the gap variable above.
 - If you need media-specific chrome (engine pills, filters, spell-check), prefer **separate elements inside `#results-meta`** instead of redefining paddings or widths on `#results-meta` itself.
 - When adjusting Images/Videos behavior, verify that the **right edge of the stats text** stays aligned with the layout rail at common widths (preview open and closed).
@@ -150,7 +150,7 @@ On Images (desktop, sticky sidebar enabled), engine stat rows are mirrored as sc
 | Sticky detach | Pills use `position: fixed` once the meta row scrolls past the header/tabs stack. An in-flow **placeholder** (`lg-media-engine-rail-placeholder`) preserves meta row height so the grid does not jump (no `padding-bottom` on `#results-meta`). |
 | Width expansion | On stick, pills start at their natural flex width/position. Over the next **50px** of document scroll (`STICKY_RAIL_REVEAL_DISTANCE`), width and `left` interpolate toward the full grid span (`getMediaResultsRightEdge()`). At progress `0`, nothing changes visually. When the docked preview pane is open, skip the reveal animation (`revealProgress = 1`) and constrain width to the preview’s left edge immediately. |
 | Placeholders | Only one in-flow `lg-media-engine-rail-placeholder` may follow `#lg-media-engine-pills`. `ensureMediaEnginePillsHost()` must not re-`insertBefore` an already-mounted host — duplicate placeholders steal flex space and leave the meta row shrunk after scroll/preview. |
-| Stats | Always aligned via `--lg-media-meta-right-gap` to the layout rail — independent of pill width animation. |
+| Stats | Images/Videos: `--lg-media-meta-right-gap` from meta border right to layout rail; Web: CSS grid column 2 — no JS inset. |
 
 Do not snap pills to full viewport width on stick, and do not add meta `padding-bottom` to reserve sticky height.
 
