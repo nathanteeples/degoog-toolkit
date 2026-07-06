@@ -77,6 +77,24 @@ function getMediaPreviewPanel() {
     return document.getElementById("media-preview-panel");
 }
 
+function isDockedMediaPreviewOpen() {
+    const preview = getMediaPreviewPanel();
+    if (!(preview instanceof HTMLElement) || !preview.classList.contains("open")) {
+        return false;
+    }
+    if (!window.matchMedia("(min-width: 768px)").matches) return false;
+    if (!getResultsLayout()?.classList.contains("media-mode")) return false;
+    return getComputedStyle(preview).position === "sticky";
+}
+
+function markImageThumbLoaded(img) {
+    if (!(img instanceof HTMLImageElement) || !img.classList.contains("image-thumb")) return;
+    const wrap = img.closest(".image-thumb-wrap");
+    const card = img.closest(".image-card");
+    wrap?.classList.add("loaded");
+    card?.classList.add("lg-img-loaded");
+}
+
 function getResultsSearchInput() {
     return document.getElementById("results-search-input");
 }
@@ -2857,13 +2875,7 @@ function wrapResultsStats(meta) {
     }
 
     function isDockedPreviewOpen() {
-        const preview = getMediaPreviewPanel();
-        if (!(preview instanceof HTMLElement) || !preview.classList.contains("open")) {
-            return false;
-        }
-        if (!window.matchMedia("(min-width: 768px)").matches) return false;
-        if (!getResultsLayout()?.classList.contains("media-mode")) return false;
-        return getComputedStyle(preview).position === "sticky";
+        return isDockedMediaPreviewOpen();
     }
 
     function measureWidth(grid) {
@@ -3221,12 +3233,8 @@ function wrapResultsStats(meta) {
     }
 
     document.addEventListener("load", (event) => {
-        const target = event.target;
-        if (target instanceof HTMLImageElement && target.classList.contains("image-thumb")) {
-            const wrap = target.closest(".image-thumb-wrap");
-            if (wrap) {
-                wrap.classList.add("loaded");
-            }
+        if (event.target instanceof HTMLImageElement) {
+            markImageThumbLoaded(event.target);
         }
     }, true);
 
@@ -3243,7 +3251,7 @@ function wrapResultsStats(meta) {
     const PILLS_BUTTON_SELECTOR = ".lg-media-engine-pill";
     const PILLS_SCROLL_SELECTOR = ".lg-media-engine-pills__scroll";
     const DESKTOP_MIN = 768;
-    const STICKY_RAIL_REVEAL_DISTANCE = 160;
+    const STICKY_RAIL_REVEAL_DISTANCE = 20;
     let stickyRailFrame = 0;
 
     function installEngineResultLearnerEarly() {
@@ -3399,8 +3407,8 @@ function wrapResultsStats(meta) {
     }
 
     function getMediaMetaRightEdge() {
-        const previewPanel = document.getElementById("media-preview-panel");
-        if (previewPanel?.classList.contains("open")) {
+        const previewPanel = getMediaPreviewPanel();
+        if (previewPanel?.classList.contains("open") && isDockedMediaPreviewOpen()) {
             const panelRect = previewPanel.getBoundingClientRect();
             if (panelRect.width > 1) {
                 return panelRect.right;
@@ -3469,7 +3477,8 @@ function wrapResultsStats(meta) {
             meta.style.removeProperty("--lg-media-meta-right-gap");
             return;
         }
-        const contentRightGap = Math.max(0, window.innerWidth - getMediaMetaRightEdge());
+        const metaRect = meta.getBoundingClientRect();
+        const contentRightGap = Math.max(0, metaRect.right - getMediaMetaRightEdge());
         meta.style.setProperty("--lg-media-meta-right-gap", `${contentRightGap}px`);
     }
 
@@ -3505,7 +3514,12 @@ function wrapResultsStats(meta) {
     }
 
     function removeMediaEnginePillsHost() {
-        getMediaEnginePillsHost()?.remove();
+        const host = getMediaEnginePillsHost();
+        const placeholder = host?.nextElementSibling;
+        if (placeholder instanceof HTMLElement && placeholder.classList.contains("lg-media-engine-rail-placeholder")) {
+            placeholder.remove();
+        }
+        host?.remove();
     }
 
     function imageEngineRows() {
@@ -3571,18 +3585,35 @@ function wrapResultsStats(meta) {
         refresh();
     }
 
+    function ensureRailPlaceholder(host) {
+        let placeholder = host.nextElementSibling;
+        if (!(placeholder instanceof HTMLElement) || !placeholder.classList.contains("lg-media-engine-rail-placeholder")) {
+            placeholder = document.createElement("div");
+            placeholder.className = "lg-media-engine-rail-placeholder";
+            placeholder.setAttribute("aria-hidden", "true");
+            host.after(placeholder);
+        }
+        return placeholder;
+    }
+
     function clearStickyRailStyles(host, meta) {
         host?.classList.remove("lg-media-engine-rail--stuck");
         meta?.classList.remove("lg-media-engine-meta--rail-stuck");
-        meta?.style.removeProperty("--lg-engine-rail-sticky-height");
         if (!host) return;
+        delete host.dataset.stickBaseWidth;
+        delete host.dataset.stickBaseLeft;
+        delete host.dataset.stickBaseHeight;
         host.style.removeProperty("--lg-engine-rail-top");
-        host.style.removeProperty("--lg-engine-rail-left");
-        host.style.removeProperty("--lg-engine-rail-right");
-        host.style.removeProperty("--lg-engine-rail-height");
-        host.style.removeProperty("--lg-engine-rail-progress");
-        host.style.removeProperty("--lg-engine-rail-base-width");
-        host.style.removeProperty("--lg-engine-rail-stuck-width");
+        host.style.removeProperty("position");
+        host.style.removeProperty("top");
+        host.style.removeProperty("left");
+        host.style.removeProperty("width");
+        host.style.removeProperty("margin-inline-start");
+        const placeholder = host.nextElementSibling;
+        if (placeholder instanceof HTMLElement && placeholder.classList.contains("lg-media-engine-rail-placeholder")) {
+            placeholder.hidden = true;
+            placeholder.style.removeProperty("min-height");
+        }
     }
 
     function updateStickyEngineRail() {
@@ -3600,7 +3631,7 @@ function wrapResultsStats(meta) {
         const hostRect = host.getBoundingClientRect();
 
         if (!host.classList.contains("lg-media-engine-rail--stuck")) {
-            host.dataset.naturalOffset = host.getBoundingClientRect().top - metaRect.top;
+            host.dataset.naturalOffset = String(hostRect.top - metaRect.top);
         }
         const naturalOffset = parseFloat(host.dataset.naturalOffset) || 0;
         const naturalRailTop = metaRect.top + naturalOffset;
@@ -3612,26 +3643,33 @@ function wrapResultsStats(meta) {
             return;
         }
 
-        const revealProgress = Math.min(1, (targetStickyTop - naturalRailTop) / STICKY_RAIL_REVEAL_DISTANCE);
+        if (!host.dataset.stickBaseWidth) {
+            host.dataset.stickBaseWidth = String(hostRect.width);
+            host.dataset.stickBaseLeft = String(hostRect.left);
+            host.dataset.stickBaseHeight = String(hostRect.height);
+        }
+
+        const revealProgress = Math.min(
+            1,
+            Math.max(0, (targetStickyTop - naturalRailTop) / STICKY_RAIL_REVEAL_DISTANCE),
+        );
         const paddingStart = parseFloat(getComputedStyle(meta).paddingLeft) || 0;
         const stuckLeft = metaRect.left + paddingStart;
-
         const contentRight = Math.max(stuckLeft, getMediaResultsRightEdge());
-        const railRightGap = Math.max(0, window.innerWidth - contentRight);
-        const metaRightGap = Math.max(0, window.innerWidth - getMediaMetaRightEdge());
-        const currentWidth = Math.max(0, contentRight - stuckLeft);
+        const targetWidth = Math.max(0, contentRight - stuckLeft);
+        const baseLeft = parseFloat(host.dataset.stickBaseLeft) || hostRect.left;
+        const baseWidth = parseFloat(host.dataset.stickBaseWidth) || hostRect.width;
+        const width = baseWidth + (targetWidth - baseWidth) * revealProgress;
+        const left = baseLeft + (stuckLeft - baseLeft) * revealProgress;
+
+        const placeholder = ensureRailPlaceholder(host);
+        placeholder.hidden = false;
+        placeholder.style.minHeight = `${host.dataset.stickBaseHeight || hostRect.height}px`;
 
         host.classList.add("lg-media-engine-rail--stuck");
-        meta.classList.add("lg-media-engine-meta--rail-stuck");
-        meta.style.setProperty("--lg-engine-rail-sticky-height", `${hostRect.height}px`);
-        meta.style.setProperty("--lg-media-meta-right-gap", `${metaRightGap}px`);
         host.style.setProperty("--lg-engine-rail-top", `${targetStickyTop}px`);
-        host.style.setProperty("--lg-engine-rail-left", `${stuckLeft}px`);
-        host.style.setProperty("--lg-engine-rail-right", `${railRightGap}px`);
-        host.style.setProperty("--lg-engine-rail-height", `${hostRect.height}px`);
-        host.style.setProperty("--lg-engine-rail-progress", `${revealProgress}`);
-        host.style.setProperty("--lg-engine-rail-base-width", `${hostRect.width}px`);
-        host.style.setProperty("--lg-engine-rail-stuck-width", `${currentWidth}px`);
+        host.style.left = `${left}px`;
+        host.style.width = `${width}px`;
         updatePillNavState();
     }
 
@@ -4738,22 +4776,21 @@ function wrapResultsStats(meta) {
         const resultsList = getResultsList();
         if (!resultsList) return;
 
-        function checkImage(img) {
+        function checkThumb(img) {
+            if (!img.classList.contains("image-thumb")) return;
             const card = img.closest(".image-card");
             if (!card) return;
             if (img.complete && img.naturalWidth > 0) {
-                card.classList.add("lg-img-loaded");
+                markImageThumbLoaded(img);
             } else {
-                img.addEventListener("load", () => {
-                    card.classList.add("lg-img-loaded");
-                }, { once: true });
-                img.addEventListener("error", () => {
-                    card.classList.add("lg-img-loaded");
-                }, { once: true });
+                card.classList.remove("lg-img-loaded");
+                img.closest(".image-thumb-wrap")?.classList.remove("loaded");
+                img.addEventListener("load", () => markImageThumbLoaded(img), { once: true });
+                img.addEventListener("error", () => markImageThumbLoaded(img), { once: true });
             }
         }
 
-        resultsList.querySelectorAll(".image-card img").forEach(checkImage);
+        resultsList.querySelectorAll(".image-card .image-thumb").forEach(checkThumb);
 
         if (!resultsList.dataset.lgImgLoadObserver) {
             resultsList.dataset.lgImgLoadObserver = "1";
@@ -4762,10 +4799,10 @@ function wrapResultsStats(meta) {
                     for (const node of mutation.addedNodes) {
                         if (node.nodeType !== 1) continue;
                         if (node.classList.contains("image-card")) {
-                            const img = node.querySelector("img");
-                            if (img) checkImage(img);
+                            const img = node.querySelector(".image-thumb");
+                            if (img) checkThumb(img);
                         } else {
-                            node.querySelectorAll(".image-card img").forEach(checkImage);
+                            node.querySelectorAll(".image-card .image-thumb").forEach(checkThumb);
                         }
                     }
                 }

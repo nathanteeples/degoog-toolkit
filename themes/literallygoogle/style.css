@@ -1933,22 +1933,23 @@ body {
     z-index: 6;
 }
 
-#results-meta.lg-media-engine-meta--rail-stuck {
-    padding-bottom: var(--lg-engine-rail-sticky-height, 0px);
+.lg-media-engine-rail-placeholder {
+    flex: 1 1 auto;
+    min-width: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.lg-media-engine-rail-placeholder[hidden] {
+    display: none;
 }
 
 .lg-media-engine-rail.lg-media-engine-rail--stuck {
-    position: fixed !important;
-    top: var(--lg-engine-rail-top, 0px) !important;
-    left: var(--lg-engine-rail-left, 0px) !important;
-    right: var(--lg-engine-rail-right, auto) !important;
-    width: calc(100vw - var(--lg-engine-rail-left, 0px) - var(--lg-engine-rail-right, 0px)) !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    height: var(--lg-engine-rail-height, auto) !important;
-    padding: 0 !important;
-    z-index: 119 !important;
-    transition: top 150ms ease, left 150ms ease;
+    position: fixed;
+    top: var(--lg-engine-rail-top, 0px);
+    z-index: 119;
+    min-width: 0;
+    max-width: none;
 }
 
 .lg-media-engine-pills__scroll {
@@ -4994,18 +4995,24 @@ body {
     box-sizing: border-box;
 }
 
-#results-page #results-list .image-card:hover .image-info {
+#results-page #results-list .image-card.lg-img-loaded:hover .image-info {
     opacity: 1;
 }
 
-#results-page #results-list .image-card:not(.lg-img-loaded) .image-title,
-#results-page #results-list .image-card:not(.lg-img-loaded) .image-source-row {
+#results-page #results-list .image-card:not(.lg-img-loaded) .image-info {
     opacity: 0 !important;
+    visibility: hidden !important;
+    max-height: 0;
+    padding: 0 !important;
+    margin: 0;
+    overflow: hidden;
+    pointer-events: none;
 }
 
-#results-page #results-list .image-card.lg-img-loaded .image-title,
-#results-page #results-list .image-card.lg-img-loaded .image-source-row {
+#results-page #results-list .image-card.lg-img-loaded .image-info {
     opacity: 1 !important;
+    visibility: visible !important;
+    max-height: none;
     transition: opacity 220ms ease;
 }
 
