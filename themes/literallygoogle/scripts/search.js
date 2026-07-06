@@ -1010,25 +1010,35 @@
 
     function wrapResultsStats(meta) {
         if (!meta) return;
-        const textNodes = [...meta.childNodes].filter(node => {
-            if (node.nodeType !== Node.TEXT_NODE) return false;
-            return Boolean(node.textContent.trim());
+        const nodes = [...meta.childNodes].filter(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const el = /** @type {Element} */ (node);
+                if (el.classList.contains("spell-check-notice")) return false;
+                if (el.classList.contains("results-meta-stats")) return false;
+                return Boolean(el.textContent?.trim());
+            }
+            if (node.nodeType === Node.TEXT_NODE) {
+                return Boolean(node.textContent?.trim());
+            }
+            return false;
         });
-        if (textNodes.length === 0) return;
+        if (nodes.length === 0) return;
 
-        let stats = meta.querySelector(".results-meta-stats");
-        const text = textNodes.map(node => node.textContent.trim()).join(" ").trim();
+        const text = nodes
+            .map(node => node.textContent?.trim() ?? "")
+            .join(" ")
+            .trim();
         if (!text || /^Showing results for/i.test(text)) return;
 
+        let stats = meta.querySelector(".results-meta-stats");
         if (!stats) {
             stats = document.createElement("span");
             stats.className = "results-meta-stats";
-            const firstTextNode = textNodes[0];
-            meta.replaceChild(stats, firstTextNode);
+            meta.replaceChild(stats, nodes[0]);
         }
 
         stats.textContent = text;
-        textNodes.forEach(node => {
+        nodes.forEach(node => {
             if (node.parentNode === meta) node.remove();
         });
     }
