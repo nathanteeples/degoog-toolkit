@@ -685,12 +685,12 @@ html[data-image-mode-desktop-layout="fab-right"] {
     text-transform: none !important;
 }
 
-.sidebar-panel,
-.results-slot-panel,
-.degoog-panel,
-.glance-box,
-.glance-ai,
-.skeleton-sidebar-panel {
+#results-page .sidebar-panel,
+#results-page .results-slot-panel,
+#results-page .degoog-panel,
+#results-page .glance-box,
+#results-page .glance-ai,
+#results-page .skeleton-sidebar-panel {
     border-radius: var(--theme-radius-lg) !important;
     background: var(--lg-sidebar-row-surface) !important;
 }
@@ -746,7 +746,7 @@ html[data-image-mode-desktop-layout="fab-right"] {
     max-width: min(23.5rem, calc(100vw - 1.5rem));
     height: min(44rem, var(--lg-drawer-max-height, calc(100dvh - 1.5rem - env(safe-area-inset-bottom, 0px))));
     max-height: var(--lg-drawer-max-height, calc(100dvh - 1.5rem - env(safe-area-inset-bottom, 0px)));
-    background: var(--bg);
+    background: var(--lg-sidebar-row-surface);
     border: 1px solid var(--border-light);
     border-radius: clamp(1.5rem, 5vw, 2rem);
     overflow: hidden;
@@ -2706,7 +2706,7 @@ body {
 
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
         #image-filters-bar.lg-image-drawer-animating:not(.open) {
-        background: var(--bg-light);
+        background: var(--lg-sidebar-row-surface);
         border-color: color-mix(in srgb, var(--border-light) 82%, transparent);
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
@@ -2714,7 +2714,7 @@ body {
 
     #results-page[data-lg-search-type="images"].lg-image-fab-filters
         #image-filters-bar.open {
-        background: var(--bg);
+        background: var(--lg-sidebar-row-surface);
         border-color: var(--border-light);
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
