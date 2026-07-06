@@ -12,6 +12,24 @@
      data-t-image-copied="{{ t:theme-literallygoogle.imageCopied }}"
      data-t-link-copied="{{ t:theme-literallygoogle.linkCopied }}"
 >
+    <script>
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            var type = params.get("type") || params.get("categories") || "web";
+            if (type.startsWith("tab:engine:")) type = type.slice(11);
+            else if (type.startsWith("engine:")) type = type.slice(7);
+            else if (type.startsWith("tab:")) type = type.slice(4);
+            if (type === "images" || type.indexOf("images") !== -1) type = "images";
+            else if (type === "videos" || type.indexOf("videos") !== -1) type = "videos";
+            else if (type === "news" || type.indexOf("news") !== -1) type = "news";
+            else if (type === "maps" || type.indexOf("maps") !== -1) type = "maps";
+            else if (type === "files" || type.indexOf("files") !== -1) type = "files";
+            else if (type === "music" || type.indexOf("music") !== -1) type = "music";
+            else if (type === "it" || type.indexOf("it") !== -1) type = "it";
+            else type = "web";
+            document.getElementById("results-page").setAttribute("data-lg-search-type", type);
+        })();
+    </script>
     <div id="results-header"></div>
     <div id="results-tabs"></div>
     <div id="results-meta"></div>
