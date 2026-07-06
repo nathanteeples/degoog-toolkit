@@ -5538,6 +5538,140 @@ body {
     padding: 0;
 }
 
+/* Server / General settings: drop core inverse inset panels; use flat rows + bordered inputs. */
+.settings-page .settings-section:not(#indexer-tab-section) .settings-fieldset-inverse {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    cursor: default;
+}
+
+.settings-page
+    .settings-section:not(#indexer-tab-section)
+    .settings-fieldset-inverse
+    .settings-toggle-wrap {
+    background: var(--lg-settings-row-bg);
+}
+
+[data-theme="light"]
+    .settings-page
+    .settings-section:not(#indexer-tab-section)
+    .settings-fieldset-inverse
+    .settings-toggle-wrap {
+    background: #ffffff;
+}
+
+.settings-page
+    .settings-section:not(#indexer-tab-section)
+    :is(
+        input.degoog-input:not([type="checkbox"]),
+        textarea.degoog-input,
+        select.degoog-input
+    ) {
+    appearance: none;
+    -webkit-appearance: none;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--theme-radius-xs);
+    background: var(--bg-light);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    outline: none;
+}
+
+.settings-page
+    .settings-section:not(#indexer-tab-section)
+    .settings-honeypot-ban-row
+    .degoog-input {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-page
+    .settings-section:not(#indexer-tab-section)
+    :is(
+        input.degoog-input:not([type="checkbox"]),
+        textarea.degoog-input,
+        select.degoog-input
+    ):hover {
+    border-color: var(--border);
+    background: var(--bg-hover);
+}
+
+.settings-page
+    .settings-section:not(#indexer-tab-section)
+    :is(
+        input.degoog-input:not([type="checkbox"]),
+        textarea.degoog-input,
+        select.degoog-input
+    ):focus {
+    border-color: var(--primary);
+    outline: 2px solid color-mix(in srgb, var(--primary) 22%, transparent);
+    outline-offset: 0;
+}
+
+[data-theme="light"]
+    .settings-page
+    .settings-section:not(#indexer-tab-section)
+    :is(
+        input.degoog-input:not([type="checkbox"]),
+        textarea.degoog-input,
+        select.degoog-input
+    ) {
+    background: #ffffff;
+}
+
+[data-theme="light"]
+    .settings-page
+    .settings-section:not(#indexer-tab-section)
+    :is(
+        input.degoog-input:not([type="checkbox"]),
+        textarea.degoog-input,
+        select.degoog-input
+    ):hover {
+    background: #ffffff;
+}
+
+.settings-page .settings-section:not(#indexer-tab-section) .degoog-btn {
+    border-radius: var(--theme-radius-xs);
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+        .settings-page
+        .settings-section:not(#indexer-tab-section)
+        .settings-fieldset-inverse
+        .settings-toggle-wrap {
+        background: #ffffff;
+    }
+
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+        .settings-page
+        .settings-section:not(#indexer-tab-section)
+        :is(
+            input.degoog-input:not([type="checkbox"]),
+            textarea.degoog-input,
+            select.degoog-input
+        ) {
+        background: #ffffff;
+    }
+
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+        .settings-page
+        .settings-section:not(#indexer-tab-section)
+        :is(
+            input.degoog-input:not([type="checkbox"]),
+            textarea.degoog-input,
+            select.degoog-input
+        ):hover {
+        background: #ffffff;
+    }
+}
+
 /* ── Indexer settings tab ───────────────────────────────────────────────── */
 #indexer-tab-section .settings-fieldset > .settings-fieldset-inverse,
 #indexer-tab-section .settings-fieldset > .degoog-indexer-stats {

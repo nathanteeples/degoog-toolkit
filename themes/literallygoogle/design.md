@@ -191,6 +191,12 @@ Use `var(--bg)` (page inset), not `--bg-light`, when nested inside the updates p
 
 `.store-search-input`, extension-tab `.store-filter-bar > .degoog-search-bar--square-advanced`, and `.store-filter-select` use the same white search shell as settings extension search: `background: var(--bg)` (`#ffffff`), `border: 1px solid var(--border)`, `box-shadow: var(--lg-search-shadow)`. Dark mode keeps core tokens (`--search-bar-bg`, `--bg-light`) — do not add `:root:not([data-theme="dark"])` rules without a `prefers-color-scheme: light` guard.
 
+### Server / General settings inputs (not Indexer tab)
+
+Core `.settings-fieldset-inverse` paints nested inset panels (`background: var(--bg)`, padding). On Server/General tabs, flatten those blocks — no extra panel chrome; only toggle rows use the stacked white row fill.
+
+Inputs and textareas in `.settings-section` (except `#indexer-tab-section`) use square LiterallyGoogle fields: `border: 1px solid var(--border)`, `border-radius: var(--theme-radius-xs)`, `#ffffff` background in light mode. `.degoog-btn` in those sections uses `var(--theme-radius-xs)` (not pills).
+
 ## Button styles
 
 | Variant | Dark | Light | Notes |
