@@ -52,6 +52,8 @@ var {
         var(--literallygoogle-results-sidebar-max) + var(--lg-sidebar-scrollbar-size)
     );
     --literallygoogle-results-column-gap: 2rem;
+    /* Space below #results-meta + above #results-layout — mirror on sidebar bottom. */
+    --lg-sidebar-rail-inset: calc(0.75rem + 0.5rem);
     --literallygoogle-media-filter-width: 15rem;
     --literallygoogle-media-row-gap: 0.5rem;
     --literallygoogle-row-padding: 14px;
@@ -1080,13 +1082,16 @@ html[dir="rtl"] #image-filters-bar.open {
 
     html[data-related-searches-mobile]
         #results-sidebar
-        .sidebar-accordion.related-searches-panel.open
-        > .sidebar-accordion-body,
-    html[data-related-searches-mobile]
-        #results-sidebar
         .sidebar-accordion:has(.related-search-link).open
         > .sidebar-accordion-body {
         display: block;
+    }
+
+    html[data-related-searches-mobile]
+        #results-sidebar
+        .sidebar-accordion.related-searches-panel.open
+        > .sidebar-accordion-body:not(:has(.related-search-link)) {
+        display: none;
     }
 }
 
@@ -1115,13 +1120,16 @@ html[dir="rtl"] #image-filters-bar.open {
 
     html[data-related-searches-desktop]
         #results-sidebar
-        .sidebar-accordion.related-searches-panel.open
-        > .sidebar-accordion-body,
-    html[data-related-searches-desktop]
-        #results-sidebar
         .sidebar-accordion:has(.related-search-link).open
         > .sidebar-accordion-body {
         display: block;
+    }
+
+    html[data-related-searches-desktop]
+        #results-sidebar
+        .sidebar-accordion.related-searches-panel.open
+        > .sidebar-accordion-body:not(:has(.related-search-link)) {
+        display: none;
     }
 }
 
@@ -1707,14 +1715,6 @@ body {
 
     #results-page.lg-results-layout-single #at-a-glance:not(:empty) {
         margin-bottom: 0 !important;
-    }
-
-    /* Reserve related-search body height while links stream in (open panel, empty body). */
-    #results-page.lg-results-layout-single
-        #results-sidebar
-        .sidebar-accordion.related-searches-panel.open
-        > .sidebar-accordion-body:not(:has(.related-search-link)) {
-        min-height: 20rem;
     }
 
     #results-page.lg-results-layout-single #sidebar-col + #results-main {
@@ -4806,6 +4806,10 @@ body {
    has physically stuck (lg-sidebar-is-stuck); until then the page scrolls. */
 
 @media (min-width: 768px) {
+    #sidebar-col > .sticky {
+        padding-bottom: var(--lg-sidebar-rail-inset);
+    }
+
     #sidebar-col.is-sticky {
         position: sticky;
         top: var(
@@ -4826,10 +4830,11 @@ body {
         min-height: 0;
         max-height: calc(
             100vh -
-                (2 * var(
-                        --literallygoogle-sticky-header-offset,
-                        calc(50px + 1.5rem)
-                    ))
+                var(
+                    --literallygoogle-sticky-header-offset,
+                    calc(50px + 1.5rem)
+                ) -
+                var(--lg-sidebar-rail-inset)
         );
         overflow-x: visible;
         overflow-y: hidden;
