@@ -3957,6 +3957,13 @@ function getLgTranslation(key) {
         return sidebar.getBoundingClientRect().top <= sidebarStickyTop(sidebar) + 1;
     }
 
+    function resetSidebarScroll(sidebar) {
+        sidebar.classList.remove(ACTIVE_CLASS);
+        sidebar.scrollTop = 0;
+        const sticky = sidebar.querySelector(":scope > .sticky");
+        if (sticky instanceof HTMLElement) sticky.scrollTop = 0;
+    }
+
     function syncSidebarStuckState() {
         stuckFrame = 0;
         const sidebar = document.getElementById("sidebar-col");
@@ -3965,9 +3972,12 @@ function getLgTranslation(key) {
         const wasStuck = sidebar.classList.contains(STUCK_CLASS);
         const stuck = isSidebarColStuck(sidebar);
         sidebar.classList.toggle(STUCK_CLASS, stuck);
-        if (!stuck) {
-            sidebar.classList.remove(ACTIVE_CLASS);
-            if (wasStuck) sidebar.scrollTop = 0;
+
+        if (stuck !== wasStuck) {
+            resetSidebarScroll(sidebar);
+            if (stuck) {
+                requestAnimationFrame(() => resetSidebarScroll(sidebar));
+            }
         }
     }
 
