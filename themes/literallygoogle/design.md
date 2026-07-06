@@ -110,6 +110,25 @@ Semantic tokens are set on `:root` (dark default), `[data-theme="dark"]`, `[data
 - Desktop side content should read as a rail of stacked cards, not floating boxes with mixed spacing.
 - Mobile panels should become drawers or stacked blocks. Do not keep desktop popovers on phone widths when the content is important.
 
+### Web two-column shrink order (desktop)
+
+On the Web tab, `scripts/search.js` §5e sets fluid `--literallygoogle-results-sidebar-max` and `--literallygoogle-results-main-col-max` on `#results-page`:
+
+1. **Wide:** sidebar panel `20rem`, main column up to `48rem`.
+2. **Tighten:** shrink the **sidebar first** from `20rem` down to `16rem` while main stays at `48rem`.
+3. **Tighter:** sidebar holds at `16rem`; main column (glance, URLs, results) shrinks below `48rem`.
+4. **Stack:** if main would drop below `450px`, switch to single-column (`lg-results-layout-single`).
+
+Do not reintroduce filter-tab overlap snapping (`lg-results-sidebar-compact`) or abrupt sidebar jumps — the fluid vars are the only width mechanism.
+
+### Results meta row (`#results-meta`)
+
+- The meta row is a **shared skeleton** across Web, Images, and Videos. Keep its horizontal alignment rules **simple and global**.
+- Default behavior: `#results-meta` uses the same `--literallygoogle-results-content-inline-*` paddings as the tabs row; `.results-meta-stats` sits on the **right via `margin-inline-start: auto`**.
+- Avoid per-tab JS or CSS that continuously recomputes left/right gaps for the meta row (for example, trying to dynamically align it to the media preview panel or image grid). These tweaks are fragile and can cause the “About X results” text to jump or drift between reloads.
+- If you need media-specific chrome (engine pills, filters, spell-check), prefer **separate elements inside `#results-meta`** (like `.media-engine-bar`) that inherit the existing flex layout, instead of redefining paddings or widths on `#results-meta` itself.
+- When adjusting Images/Videos behavior, verify that the **right edge of the stats text** remains visually aligned with the main content column / preview rail at common widths, and document any deliberate deviation here before shipping.
+
 ## List styles
 
 ### Settings / store / engine rows
@@ -195,6 +214,7 @@ Theme JS (`scripts/search.js`) hoists the notice into `#results-meta` **only on 
 - Results layout: `scrollbar-gutter: stable` where chrome needs it.
 - Drawers / preview panel: `overflow-y: auto`, thin scrollbar when open and idle.
 - **FAB drawer close:** while morphing closed (`lg-image-drawer-animating`), dragging (`lg-drawer-dragging`), or snap-back (`lg-drawer-drag-snap`), hide **both** horizontal and vertical scrollbars on `#image-filters-bar` and its sidebar body.
+- **FAB drawer close icon + layering:** during `#image-filters-bar.lg-image-drawer-animating:not(.open)` keep the pull-tab handle visible immediately (no “icon appears at end” delay). On desktop, the shrinking drawer “shrunk FAB” layer must stay below `#lg-image-tools-fab` (z-index lower than the FAB).
 - Skeleton / loading rows: no scroll hijacking.
 
 ## Motion

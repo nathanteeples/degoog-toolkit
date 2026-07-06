@@ -3416,6 +3416,7 @@ function getLgTranslation(key) {
     function syncMediaMetaRightGap() {
         const meta = getResultsMeta();
         if (!meta) return;
+        wrapResultsStats(meta);
         if (!isDesktopImagePillsMode()) {
             meta.style.removeProperty("--lg-media-meta-right-gap");
             return;
@@ -3875,12 +3876,14 @@ function getLgTranslation(key) {
         if (!getPage()) return;
 
         bindEnginePanelDelegation();
+        wrapResultsStats(getResultsMeta());
 
         const resultsList = getResultsList();
         if (resultsList) {
             new MutationObserver(mutations => {
                 const started = mutationsStartSearch(mutations, { includeImageGrid: true });
                 if (started) clearFilter();
+                wrapResultsStats(getResultsMeta());
                 decorateRows();
                 scheduleApply();
                 scheduleStickyEngineRailUpdate();
@@ -3896,6 +3899,7 @@ function getLgTranslation(key) {
         });
 
         window.addEventListener("degoog-results-ready", () => {
+            wrapResultsStats(getResultsMeta());
             decorateRows();
             scheduleApply();
             renderMediaEnginePills();
@@ -4050,12 +4054,16 @@ function getLgTranslation(key) {
     onReady(init);
 })();
 
-/* ── 5e. Web results layout: compact sidebar + earlier single-column ────── */
+/* ── 5e. Web results layout: fluid sidebar, then fluid main ─────────────── */
 (() => {
     const MAIN_MIN_PX = 450;
-    const COMPACT_CLASS = "lg-results-sidebar-compact";
     const SINGLE_CLASS = "lg-results-layout-single";
     const DESKTOP_MIN = 768;
+    const SIDEBAR_MAX_REM = 20;
+    const SIDEBAR_MIN_REM = 16;
+    const MAIN_MAX_REM = 48;
+    const COLUMN_GAP_REM = 2;
+    const SCROLLBAR_REM = 0.75;
     let frame = 0;
 
     function isWebResultsPage(page) {
@@ -4069,12 +4077,51 @@ function getLgTranslation(key) {
         return true;
     }
 
-    function getFilterRight() {
-        const toggle =
-            document.getElementById("tools-toggle") ||
-            document.querySelector("#results-tabs .tools-toggle") ||
-            document.querySelector("#results-tabs .lg-filters-wrap .tools-toggle");
-        return toggle?.getBoundingClientRect().right ?? 0;
+    function remPx() {
+        return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    }
+
+    function clearFluidLayoutVars(page) {
+        page.style.removeProperty("--literallygoogle-results-sidebar-max");
+        page.style.removeProperty("--literallygoogle-results-main-col-max");
+        page.style.removeProperty("--literallygoogle-results-sidebar-col");
+    }
+
+    function applyFluidLayout(page, layout) {
+        const px = remPx();
+        const sidebarMax = SIDEBAR_MAX_REM * px;
+        const sidebarMin = SIDEBAR_MIN_REM * px;
+        const mainMax = MAIN_MAX_REM * px;
+        const gap = COLUMN_GAP_REM * px;
+        const scrollbar = SCROLLBAR_REM * px;
+
+        const layoutWidth = layout.getBoundingClientRect().width;
+        if (layoutWidth <= 0) return;
+
+        const fullNeeded = mainMax + gap + sidebarMax + scrollbar;
+        let sidebarPanel = sidebarMax;
+        let mainCol = mainMax;
+
+        if (layoutWidth < fullNeeded) {
+            const sidebarPanelIfMainFull =
+                layoutWidth - mainMax - gap - scrollbar;
+            if (sidebarPanelIfMainFull >= sidebarMin) {
+                sidebarPanel = Math.min(sidebarMax, sidebarPanelIfMainFull);
+                mainCol = mainMax;
+            } else {
+                sidebarPanel = sidebarMin;
+                mainCol = Math.max(0, layoutWidth - gap - sidebarMin - scrollbar);
+            }
+        }
+
+        const sidebarRem = sidebarPanel / px;
+        const mainRem = mainCol / px;
+        page.style.setProperty("--literallygoogle-results-sidebar-max", `${sidebarRem}rem`);
+        page.style.setProperty("--literallygoogle-results-main-col-max", `${mainRem}rem`);
+        page.style.setProperty(
+            "--literallygoogle-results-sidebar-col",
+            `calc(${sidebarRem}rem + var(--lg-sidebar-scrollbar-size))`,
+        );
     }
 
     function measureMainWidth(page) {
@@ -4095,28 +4142,21 @@ function getLgTranslation(key) {
         frame = 0;
         const page = getResultsPage();
         const layout = getResultsLayout();
-        const sidebar = document.getElementById("sidebar-col");
-        if (!page || !layout || !(sidebar instanceof HTMLElement)) return;
+        if (!page || !layout) return;
 
         if (!isWebResultsPage(page)) {
-            page.classList.remove(COMPACT_CLASS, SINGLE_CLASS);
+            page.classList.remove(SINGLE_CLASS);
+            clearFluidLayoutVars(page);
             return;
         }
 
-        // Always prefer two-column unless main would be < 450px.
         page.classList.remove(SINGLE_CLASS);
+        applyFluidLayout(page, layout);
 
-        // Decide compact based on overlap with filters tab.
-        const filterRight = getFilterRight();
-        const sidebarLeft = sidebar.getBoundingClientRect().left;
-        const shouldCompact = filterRight > 0 && sidebarLeft < filterRight + 8;
-        page.classList.toggle(COMPACT_CLASS, shouldCompact);
-
-        // After compact toggle, if main is still too narrow, stack to single column.
         const mainW = measureMainWidth(page);
         if (mainW > 0 && mainW < MAIN_MIN_PX) {
             page.classList.add(SINGLE_CLASS);
-            page.classList.remove(COMPACT_CLASS);
+            clearFluidLayoutVars(page);
         }
     }
 

@@ -44,8 +44,8 @@ var {
     --literallygoogle-results-main-col-max: 48rem;
     --lg-chrome-surface: var(--bg-light);
     --lg-sidebar-row-surface: var(--bg-light);
-    --literallygoogle-results-sidebar-min: 17rem;
-    --literallygoogle-results-sidebar-max: 20.5rem;
+    --literallygoogle-results-sidebar-min: 16rem;
+    --literallygoogle-results-sidebar-max: 20rem;
     /* Sidebar scroll track sits outside panel width (see #sidebar-col.is-sticky). */
     --lg-sidebar-scrollbar-size: 0.75rem;
     --literallygoogle-results-sidebar-col: calc(
@@ -837,7 +837,8 @@ html[dir="rtl"] #image-filters-bar.open {
 
 #image-filters-bar.lg-image-drawer-animating:not(.open) .degoog-img-sidebar-close.lg-drawer-pull-tab,
 #image-filters-bar.lg-image-drawer-animating:not(.open) .degoog-img-sidebar-close.lg-drawer-pull-tab::before {
-    opacity: 0 !important;
+    /* Show the pull-tab handle immediately on close (not only at animation end). */
+    opacity: 1 !important;
 }
 
 /* Hide scrollbars while the FAB drawer morphs or is dragged closed (all breakpoints). */
@@ -1390,15 +1391,6 @@ body {
    ══════════════════════════════════════════════════════════════════════════ */
 
 @media (min-width: 768px) {
-    /* Compact sidebar mode (set by JS): tighter gap + narrower sidebar. */
-    #results-page.lg-results-sidebar-compact {
-        --literallygoogle-results-sidebar-max: 17rem;
-        --literallygoogle-results-sidebar-col: calc(
-            var(--literallygoogle-results-sidebar-max) + var(--lg-sidebar-scrollbar-size)
-        );
-        --literallygoogle-results-column-gap: 0.75rem;
-    }
-
     /*
      * Two-column grid: main column (slot + results) never shares width with the
      * sidebar. Absolute sidebar overlap is avoided — column 2 is reserved.
@@ -1838,98 +1830,6 @@ body {
 #results-page:has(#results-list .skeleton-image-grid) #results-layout {
     padding-inline-start: var(--theme-media-inline-gutter);
     padding-inline-end: var(--theme-media-inline-gutter);
-}
-
-#results-page[data-lg-search-type="images"] #results-layout {
-    padding-inline-start: var(--theme-media-inline-gutter);
-    padding-inline-end: var(--theme-media-inline-gutter);
-}
-
-#results-page:is(
-        :has(#results-tabs .results-tab[data-type="images"].active),
-        :has(
-            #results-tabs
-                .results-tab[data-type="images"][aria-selected="true"]
-        ),
-        :has(#results-tabs .results-tab[data-type="videos"].active),
-        :has(
-            #results-tabs
-                .results-tab[data-type="videos"][aria-selected="true"]
-        ),
-        :has(#results-list .image-card),
-        :has(#results-list .video-card)
-    )
-    #results-meta
-    .media-engine-bar {
-    flex: 1 1 auto;
-    flex-basis: auto;
-    justify-content: flex-start;
-    order: 1;
-    min-width: 0;
-    padding-top: 0;
-}
-
-#results-page:is(
-        :has(#results-tabs .results-tab[data-type="images"].active),
-        :has(
-            #results-tabs
-                .results-tab[data-type="images"][aria-selected="true"]
-        ),
-        :has(#results-tabs .results-tab[data-type="videos"].active),
-        :has(
-            #results-tabs
-                .results-tab[data-type="videos"][aria-selected="true"]
-        ),
-        :has(#results-list .image-card),
-        :has(#results-list .video-card)
-    )
-    #results-meta
-    .results-meta-stats {
-    order: 2;
-}
-
-#results-page:is(
-        :has(#results-tabs .results-tab[data-type="images"].active),
-        :has(
-            #results-tabs
-                .results-tab[data-type="images"][aria-selected="true"]
-        ),
-        :has(#results-tabs .results-tab[data-type="videos"].active),
-        :has(
-            #results-tabs
-                .results-tab[data-type="videos"][aria-selected="true"]
-        ),
-        :has(#results-list .image-card),
-        :has(#results-list .video-card)
-    )
-    #results-meta {
-    --lg-media-meta-left-gap: var(--theme-media-inline-gutter);
-    --lg-media-meta-right-gap-fallback: max(2rem, calc(100% - var(--theme-media-inline-gutter) - 76rem));
-
-    width: 100%;
-    max-width: none;
-    box-sizing: border-box;
-    padding-inline-start: var(--lg-media-meta-left-gap);
-    padding-inline-end: var(--lg-media-meta-right-gap, var(--lg-media-meta-right-gap-fallback));
-}
-
-#results-page:is(
-        :has(#results-tabs .results-tab[data-type="images"].active),
-        :has(
-            #results-tabs
-                .results-tab[data-type="images"][aria-selected="true"]
-        ),
-        :has(#results-tabs .results-tab[data-type="videos"].active),
-        :has(
-            #results-tabs
-                .results-tab[data-type="videos"][aria-selected="true"]
-        ),
-        :has(#results-list .image-card),
-        :has(#results-list .video-card)
-    ):has(#image-filters-bar.open)
-    #results-meta {
-    --lg-media-meta-left-gap: calc(var(--theme-media-inline-gutter) + var(--literallygoogle-media-filter-width) + var(--literallygoogle-media-row-gap));
-    --lg-media-meta-right-gap-fallback: max(2rem, calc(100% - var(--theme-media-inline-gutter) - var(--literallygoogle-media-filter-width) - var(--literallygoogle-media-row-gap) - 76rem));
 }
 
 .lg-media-engine-pills {
@@ -2899,45 +2799,6 @@ body {
 @media (max-width: 767px) {
     #results-meta {
         padding-inline: 0.75rem;
-    }
-
-    #results-page:is(
-        [data-lg-search-type="images"],
-        [data-lg-search-type="videos"],
-        :has(#results-tabs .results-tab[data-type="images"].active),
-        :has(#results-tabs .results-tab[data-type="images"][aria-selected="true"]),
-        :has(#results-tabs .results-tab[data-type="videos"].active),
-        :has(#results-tabs .results-tab[data-type="videos"][aria-selected="true"]),
-        :has(#results-list .image-card),
-        :has(#results-list .video-card)
-    ) #results-meta {
-        --lg-media-meta-left-gap: var(--theme-media-inline-gutter) !important;
-        --lg-media-meta-right-gap-fallback: 2rem !important;
-    }
-
-    #results-page:not(
-            :is(
-                [data-lg-search-type="images"],
-                [data-lg-search-type="videos"],
-                :has(#results-tabs .results-tab[data-type="images"].active),
-                :has(
-                    #results-tabs
-                        .results-tab[data-type="images"][aria-selected="true"]
-                ),
-                :has(#results-tabs .results-tab[data-type="videos"].active),
-                :has(
-                    #results-tabs
-                        .results-tab[data-type="videos"][aria-selected="true"]
-                ),
-                :has(#results-list .image-card),
-                :has(#results-list .video-card)
-            )
-        )
-        #results-meta
-        .results-meta-stats {
-        width: 100%;
-        margin-inline-start: 0;
-        text-align: start;
     }
 
     /* Never show the legacy scale(0.18) miniature sidebar on image search. */
@@ -4470,7 +4331,8 @@ body {
         visibility: visible;
         opacity: 1;
         pointer-events: none;
-        z-index: 99999;
+        /* Keep the shrinking "modal" below the FAB while closing. */
+        z-index: 9999;
         transition:
             width var(--lg-drawer-duration) var(--lg-drawer-ease-close),
             height var(--lg-drawer-duration) var(--lg-drawer-ease-close),
