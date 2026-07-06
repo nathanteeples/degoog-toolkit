@@ -4815,8 +4815,8 @@ body {
    Grid column = panel width + scroll lane. Internal scroll only after the column
    has physically stuck (lg-sidebar-is-stuck); until then the page scrolls.
    Top gap = `top` (--literallygoogle-sticky-header-offset, ~74px). Bottom gap
-   matches via max-height: 100vh minus twice that offset when content overflows;
-   `height: fit-content` keeps short sidebars from stretching below their panels. */
+   matches when content overflows: JS sets max-height to 100vh minus twice that
+   offset only when scrollHeight exceeds the available viewport band. */
 
 @media (min-width: 768px) {
     #sidebar-col.is-sticky {
@@ -4838,14 +4838,6 @@ body {
 
     #sidebar-col.is-sticky.lg-sidebar-is-stuck {
         min-height: 0;
-        height: fit-content;
-        max-height: calc(
-            100vh -
-                (2 * var(
-                    --literallygoogle-sticky-header-offset,
-                    calc(50px + 1.5rem)
-                ))
-        );
         overflow-x: hidden;
         overflow-y: hidden;
         overscroll-behavior: auto;
@@ -4856,10 +4848,6 @@ body {
         overflow-x: hidden;
         overflow-y: auto;
         scrollbar-width: thin;
-        scroll-padding-bottom: var(
-            --literallygoogle-sticky-header-offset,
-            calc(50px + 1.5rem)
-        );
     }
 
     #sidebar-col.is-sticky.lg-sidebar-is-stuck.lg-sidebar-scroll-active::-webkit-scrollbar {

@@ -4441,6 +4441,28 @@ function wrapResultsStats(meta) {
         return Number.isFinite(fallback) ? fallback : 0;
     }
 
+    function sidebarAvailableHeight(sidebar) {
+        const offset = sidebarStickyTop(sidebar);
+        return Math.max(0, window.innerHeight - 2 * offset);
+    }
+
+    function syncSidebarScrollHeight(sidebar) {
+        if (!(sidebar instanceof HTMLElement)) return;
+
+        if (!sidebar.classList.contains(STUCK_CLASS)) {
+            sidebar.style.removeProperty("max-height");
+            return;
+        }
+
+        const available = sidebarAvailableHeight(sidebar);
+        const contentHeight = sidebar.scrollHeight;
+        if (contentHeight > available + 1) {
+            sidebar.style.maxHeight = `${Math.round(available)}px`;
+        } else {
+            sidebar.style.removeProperty("max-height");
+        }
+    }
+
     function isSidebarColStuck(sidebar) {
         if (!(sidebar instanceof HTMLElement) || !sidebar.classList.contains("is-sticky")) {
             return false;
@@ -4474,8 +4496,15 @@ function wrapResultsStats(meta) {
         if (stuck !== wasStuck) {
             resetSidebarScroll(sidebar);
             if (stuck) {
-                requestAnimationFrame(() => resetSidebarScroll(sidebar));
+                requestAnimationFrame(() => {
+                    resetSidebarScroll(sidebar);
+                    syncSidebarScrollHeight(sidebar);
+                });
+            } else {
+                sidebar.style.removeProperty("max-height");
             }
+        } else if (stuck) {
+            syncSidebarScrollHeight(sidebar);
         }
     }
 
@@ -4540,8 +4569,16 @@ function wrapResultsStats(meta) {
         window.addEventListener("scroll", scheduleSidebarStuckSync, { passive: true });
         window.addEventListener("resize", scheduleSidebarStuckSync, { passive: true });
         window.addEventListener("lg-results-layout-changed", scheduleSidebarStuckSync);
-        window.addEventListener("degoog-results-ready", scheduleSidebarStuckSync);
-        new MutationObserver(scheduleSidebarStuckSync).observe(
+        window.addEventListener("degoog-results-ready", () => {
+            scheduleSidebarStuckSync();
+            const sidebar = document.getElementById("sidebar-col");
+            if (sidebar instanceof HTMLElement) syncSidebarScrollHeight(sidebar);
+        });
+        new MutationObserver(() => {
+            scheduleSidebarStuckSync();
+            const sidebar = document.getElementById("sidebar-col");
+            if (sidebar instanceof HTMLElement) syncSidebarScrollHeight(sidebar);
+        }).observe(
             document.getElementById("sidebar-col") || document.documentElement,
             { attributes: true, attributeFilter: ["class", "style"] },
         );
