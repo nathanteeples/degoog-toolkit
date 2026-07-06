@@ -51,6 +51,7 @@ var {
     --literallygoogle-results-sidebar-col: calc(
         var(--literallygoogle-results-sidebar-max) + var(--lg-sidebar-scrollbar-size)
     );
+    --literallygoogle-results-column-gap: 2rem;
     --literallygoogle-media-filter-width: 15rem;
     --literallygoogle-media-row-gap: 0.5rem;
     --literallygoogle-row-padding: 14px;
@@ -1389,6 +1390,15 @@ body {
    ══════════════════════════════════════════════════════════════════════════ */
 
 @media (min-width: 768px) {
+    /* Compact sidebar mode (set by JS): tighter gap + narrower sidebar. */
+    #results-page.lg-results-sidebar-compact {
+        --literallygoogle-results-sidebar-max: 17rem;
+        --literallygoogle-results-sidebar-col: calc(
+            var(--literallygoogle-results-sidebar-max) + var(--lg-sidebar-scrollbar-size)
+        );
+        --literallygoogle-results-column-gap: 0.75rem;
+    }
+
     /*
      * Two-column grid: main column (slot + results) never shares width with the
      * sidebar. Absolute sidebar overlap is avoided — column 2 is reserved.
@@ -1402,7 +1412,7 @@ body {
                 var(--literallygoogle-results-sidebar-col),
                 var(--literallygoogle-results-sidebar-col)
             );
-        column-gap: 2rem;
+        column-gap: var(--literallygoogle-results-column-gap);
         row-gap: 0;
         align-items: start;
         max-width: var(--literallygoogle-results-layout-max);
@@ -1544,6 +1554,30 @@ body {
 
     #results-page .skeleton-card {
         max-width: var(--literallygoogle-results-main-col-max);
+    }
+
+    /* Web tab responsive: when the main column would shrink too far, stack sidebar
+       below results to keep at-a-glance usable. */
+    #results-page.lg-results-layout-single #results-layout {
+        grid-template-columns: 1fr;
+        column-gap: 0;
+    }
+
+    #results-page.lg-results-layout-single #results-main,
+    #results-page.lg-results-layout-single #sidebar-col {
+        grid-column: 1;
+        grid-row: auto;
+        width: 100%;
+        max-width: none;
+    }
+
+    #results-page.lg-results-layout-single #sidebar-col {
+        max-width: min(100%, var(--literallygoogle-results-sidebar-max));
+    }
+
+    #results-page.lg-results-layout-single #sidebar-col > .sticky {
+        width: 100%;
+        max-width: 100%;
     }
 
     /* Images/videos: flex row for media-preview (core .media-mode). Padding/gap
@@ -4539,7 +4573,7 @@ body {
         );
         overflow-x: visible;
         overflow-y: hidden;
-        overscroll-behavior: contain;
+        overscroll-behavior: auto;
         scrollbar-width: none;
     }
 

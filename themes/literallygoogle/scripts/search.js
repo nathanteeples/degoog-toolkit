@@ -4012,20 +4012,18 @@ function getLgTranslation(key) {
                 if (!el.classList.contains(STUCK_CLASS) || !canScroll(el)) return;
 
                 const { deltaY } = event;
-                const active = el.classList.contains(ACTIVE_CLASS);
 
-                if (!active) {
-                    if (atScrollEdge(el, deltaY)) return;
-                    el.classList.add(ACTIVE_CLASS);
-                    event.preventDefault();
-                    el.scrollTop += deltaY;
-                    return;
-                }
-
+                // At the top/bottom edge, allow normal page scroll chaining.
                 if (atScrollEdge(el, deltaY)) {
                     el.classList.remove(ACTIVE_CLASS);
                     return;
                 }
+
+                // Otherwise we take over so the sidebar scroll doesn't cancel
+                // page momentum and doesn't require moving the pointer.
+                el.classList.add(ACTIVE_CLASS);
+                event.preventDefault();
+                el.scrollTop += deltaY;
             },
             { passive: false },
         );
@@ -4047,6 +4045,107 @@ function getLgTranslation(key) {
             document.getElementById("sidebar-col") || document.documentElement,
             { attributes: true, attributeFilter: ["class", "style"] },
         );
+    }
+
+    onReady(init);
+})();
+
+/* ── 5e. Web results layout: compact sidebar + earlier single-column ────── */
+(() => {
+    const MAIN_MIN_PX = 450;
+    const COMPACT_CLASS = "lg-results-sidebar-compact";
+    const SINGLE_CLASS = "lg-results-layout-single";
+    const DESKTOP_MIN = 768;
+    let frame = 0;
+
+    function isWebResultsPage(page) {
+        if (!page || window.innerWidth < DESKTOP_MIN) return false;
+        const type = (page.getAttribute("data-lg-search-type") || "web").toLowerCase();
+        if (type === "images" || type === "videos") return false;
+        if (page.classList.contains("lg-command-mode")) return false;
+        if (page.querySelector("#results-list .command-result, #results-list .command-help-table")) {
+            return false;
+        }
+        return true;
+    }
+
+    function getFilterRight() {
+        const toggle =
+            document.getElementById("tools-toggle") ||
+            document.querySelector("#results-tabs .tools-toggle") ||
+            document.querySelector("#results-tabs .lg-filters-wrap .tools-toggle");
+        return toggle?.getBoundingClientRect().right ?? 0;
+    }
+
+    function measureMainWidth(page) {
+        const main = document.getElementById("results-main");
+        if (main instanceof HTMLElement) {
+            const w = main.getBoundingClientRect().width;
+            if (w > 0) return w;
+        }
+        const glance = page.querySelector("#at-a-glance .glance-box");
+        if (glance instanceof HTMLElement) {
+            const w = glance.getBoundingClientRect().width;
+            if (w > 0) return w;
+        }
+        return 0;
+    }
+
+    function sync() {
+        frame = 0;
+        const page = getResultsPage();
+        const layout = getResultsLayout();
+        const sidebar = document.getElementById("sidebar-col");
+        if (!page || !layout || !(sidebar instanceof HTMLElement)) return;
+
+        if (!isWebResultsPage(page)) {
+            page.classList.remove(COMPACT_CLASS, SINGLE_CLASS);
+            return;
+        }
+
+        // Always prefer two-column unless main would be < 450px.
+        page.classList.remove(SINGLE_CLASS);
+
+        // Decide compact based on overlap with filters tab.
+        const filterRight = getFilterRight();
+        const sidebarLeft = sidebar.getBoundingClientRect().left;
+        const shouldCompact = filterRight > 0 && sidebarLeft < filterRight + 8;
+        page.classList.toggle(COMPACT_CLASS, shouldCompact);
+
+        // After compact toggle, if main is still too narrow, stack to single column.
+        const mainW = measureMainWidth(page);
+        if (mainW > 0 && mainW < MAIN_MIN_PX) {
+            page.classList.add(SINGLE_CLASS);
+            page.classList.remove(COMPACT_CLASS);
+        }
+    }
+
+    function schedule() {
+        if (frame) return;
+        frame = requestAnimationFrame(sync);
+    }
+
+    function init() {
+        // Two RAFs so we don't smush on first paint.
+        requestAnimationFrame(() => requestAnimationFrame(schedule));
+        window.addEventListener("resize", schedule, { passive: true });
+        window.addEventListener("scroll", schedule, { passive: true });
+        const page = getResultsPage();
+        if (!page) return;
+        new MutationObserver(schedule).observe(page, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["class", "data-lg-search-type", "hidden"],
+        });
+        const tabs = getResultsTabs();
+        if (tabs) {
+            new MutationObserver(schedule).observe(tabs, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+            });
+        }
     }
 
     onReady(init);
