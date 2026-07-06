@@ -5755,21 +5755,50 @@ body {
 }
 
 #indexer-tab-section .settings-fieldset-inverse > .settings-toggle-wrap.degoog-toggle-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row-reverse;
+    gap: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
     margin: 0;
+    padding: 17px;
+    border: none;
+    border-radius: var(--theme-radius-xl);
+    background: var(--lg-settings-row-bg);
+    cursor: pointer;
 }
 
 #indexer-tab-section
     .settings-fieldset-inverse
     > .settings-toggle-wrap.degoog-toggle-wrap
     + .settings-desc {
-    margin: 0;
+    margin: 0.35rem 0 0;
+    padding-inline: 0.15rem;
 }
 
 #indexer-tab-section
     .settings-fieldset-inverse
     > .settings-desc
     + .settings-toggle-wrap.degoog-toggle-wrap {
-    margin-top: 0.25rem;
+    margin-top: 0.75rem;
+}
+
+[data-theme="light"]
+    #indexer-tab-section
+    .settings-fieldset-inverse
+    > .settings-toggle-wrap.degoog-toggle-wrap {
+    background: #ffffff;
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]):not([data-theme="light"])
+        #indexer-tab-section
+        .settings-fieldset-inverse
+        > .settings-toggle-wrap.degoog-toggle-wrap {
+        background: #ffffff;
+    }
 }
 
 /* Google-like settings inputs inside indexer panels. */

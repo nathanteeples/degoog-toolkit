@@ -196,6 +196,8 @@ Use `var(--bg)` (page inset), not `--bg-light`, when nested inside the updates p
 
 Indexer **forms** stay flat: section fieldsets with pill/rounded inputs only — do not wrap filters, storage limits, or toggles in stacked row panels like Server/General.
 
+**Toggle rows** inside `.settings-fieldset-inverse` (public export, prune, fuzzy recall) use the same filled pill row as Server settings: `display: flex`, `row-reverse`, `17px` padding, `--theme-radius-xl`, white/`--lg-settings-row-bg` fill. Helper `.settings-desc` lines sit directly under their toggle with tight spacing — not inside the row.
+
 **Index stats** (`#indexer-stats-wrap` only): summary metrics use a compact bordered pill-table (label column + right-aligned values); per-type counts use lowercase chips in a flex wrap. Do not apply stats chrome to `#indexer-storage-wrap` (core shares `degoog-indexer-stats` class name).
 
 ### Server / General settings inputs (not Indexer tab)
