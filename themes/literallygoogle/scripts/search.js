@@ -3932,7 +3932,7 @@ function getLgTranslation(key) {
 /* ── 5d. Results sidebar scroll — don't cancel document momentum on hover ─ */
 (() => {
     const ACTIVE_CLASS = "lg-sidebar-scroll-active";
-    const SCROLL_TARGETS = "#sidebar-col.is-sticky > .sticky";
+    const SCROLL_TARGETS = "#sidebar-col.is-sticky";
     const wired = new WeakSet();
 
     function canScroll(el) {

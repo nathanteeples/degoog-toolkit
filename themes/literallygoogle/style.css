@@ -48,6 +48,9 @@ var {
     --literallygoogle-results-sidebar-max: 20.5rem;
     /* Sidebar scroll track sits outside panel width (see #sidebar-col.is-sticky). */
     --lg-sidebar-scrollbar-size: 0.75rem;
+    --literallygoogle-results-sidebar-col: calc(
+        var(--literallygoogle-results-sidebar-max) + var(--lg-sidebar-scrollbar-size)
+    );
     --literallygoogle-media-filter-width: 15rem;
     --literallygoogle-media-row-gap: 0.5rem;
     --literallygoogle-row-padding: 14px;
@@ -1396,8 +1399,11 @@ body {
         grid-template-columns:
             minmax(0, var(--literallygoogle-results-main-col-max))
             minmax(
-                var(--literallygoogle-results-sidebar-min),
-                var(--literallygoogle-results-sidebar-max)
+                calc(
+                    var(--literallygoogle-results-sidebar-min) +
+                        var(--lg-sidebar-scrollbar-size)
+                ),
+                var(--literallygoogle-results-sidebar-col)
             );
         column-gap: 2rem;
         row-gap: 0;
@@ -1439,7 +1445,7 @@ body {
         grid-row: 1 / span 30;
         align-self: start;
         width: 100%;
-        max-width: var(--literallygoogle-results-sidebar-max);
+        max-width: var(--literallygoogle-results-sidebar-col);
         justify-self: stretch;
     }
 
@@ -4505,8 +4511,8 @@ body {
 }
 
 /* Core sticky sidebar setting.
-   degoog toggles #sidebar-col.is-sticky; the theme only supplies the Google-like
-   offset and inner scroll behavior. */
+   degoog toggles #sidebar-col.is-sticky. Scroll the column; keep .sticky at panel
+   width so the track uses the extra grid lane, not the card width. */
 
 @media (min-width: 768px) {
     #sidebar-col.is-sticky {
@@ -4524,43 +4530,33 @@ body {
                     calc(50px + 1.5rem)
                 )
         );
-        /* Let the scroll track paint outside the sidebar column width. */
-        overflow: visible;
-    }
-
-    #sidebar-col.is-sticky > .sticky {
-        max-height: calc(
-            100vh -
-                var(
-                    --literallygoogle-sticky-header-offset,
-                    calc(50px + 1.5rem)
-                )
-        );
+        overflow-x: visible;
         overflow-y: hidden;
-        scrollbar-width: thin;
-        box-sizing: border-box;
-        width: 100%;
-        margin-inline: 0;
-    }
-
-    /* Scroll track lives in inline-end padding (content-box) that extends into the
-       grid gap — border-box width+padding still lets the scrollbar eat row width. */
-    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active {
-        overflow-y: auto;
         overscroll-behavior: contain;
-        box-sizing: content-box;
-        width: 100%;
-        max-width: var(--literallygoogle-results-sidebar-max);
-        padding-inline-end: var(--lg-sidebar-scrollbar-size);
-        margin-inline-end: calc(-1 * var(--lg-sidebar-scrollbar-size));
+        scrollbar-width: none;
     }
 
-    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active::-webkit-scrollbar {
+    #sidebar-col.is-sticky.lg-sidebar-scroll-active {
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+
+    #sidebar-col.is-sticky.lg-sidebar-scroll-active::-webkit-scrollbar {
+        display: block;
         width: var(--lg-sidebar-scrollbar-size);
     }
 
-    #sidebar-col.is-sticky > .sticky.lg-sidebar-scroll-active::-webkit-scrollbar-track {
+    #sidebar-col.is-sticky.lg-sidebar-scroll-active::-webkit-scrollbar-track {
         background: transparent;
+    }
+
+    #sidebar-col.is-sticky > .sticky {
+        width: var(--literallygoogle-results-sidebar-max);
+        max-width: calc(100% - var(--lg-sidebar-scrollbar-size));
+        max-height: none;
+        overflow: visible;
+        box-sizing: border-box;
+        margin-inline: 0;
     }
 }
 
