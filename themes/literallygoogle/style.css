@@ -686,23 +686,16 @@ html[data-image-mode-desktop-layout="fab-right"] {
 }
 
 .sidebar-panel,
-.results-slot-panel {
+.results-slot-panel,
+.degoog-panel {
     border-radius: var(--theme-radius-lg) !important;
+    background: var(--lg-sidebar-row-surface) !important;
 }
 
 .results-tab {
     font-weight: 500;
 }
 
-.glance-box,
-.glance-ai,
-#at-a-glance .degoog-panel,
-#at-a-glance .results-slot-panel,
-#at-a-glance .results-slot-panel-body,
-#at-a-glance .glance-box,
-#at-a-glance .glance-ai {
-    background: var(--lg-sidebar-row-surface) !important;
-}
 
 .glance-box {
     margin: 0;
