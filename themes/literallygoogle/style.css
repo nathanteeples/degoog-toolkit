@@ -1398,12 +1398,14 @@ body {
     #results-layout {
         position: relative;
         display: grid;
-        grid-template-columns:
+        grid-template-columns: var(
+            --lg-results-grid-columns,
             minmax(0, var(--literallygoogle-results-main-col-max))
-            minmax(
-                var(--literallygoogle-results-sidebar-col),
-                var(--literallygoogle-results-sidebar-col)
-            );
+                minmax(
+                    var(--literallygoogle-results-sidebar-col),
+                    var(--literallygoogle-results-sidebar-col)
+                )
+        );
         column-gap: var(--literallygoogle-results-column-gap);
         row-gap: 0;
         align-items: start;
@@ -1548,23 +1550,38 @@ body {
         max-width: var(--literallygoogle-results-main-col-max);
     }
 
-    /* Web tab responsive: when the main column would shrink too far, stack sidebar
-       below results to keep at-a-glance usable. */
+    /* Web tab responsive: when the main column would shrink too far, stack like mobile. */
+    #results-page.lg-results-layout-single #results-tabs,
+    #results-page.lg-results-layout-single #results-meta {
+        padding-inline: 0.75rem;
+    }
+
     #results-page.lg-results-layout-single #results-layout {
-        grid-template-columns: 1fr;
-        column-gap: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-width: none;
+        margin-inline: 0;
+        padding-inline: 0.75rem;
+    }
+
+    #results-page.lg-results-layout-single #results-layout > #slot-above-results {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
 
     #results-page.lg-results-layout-single #results-main,
     #results-page.lg-results-layout-single #sidebar-col {
-        grid-column: 1;
-        grid-row: auto;
         width: 100%;
         max-width: none;
     }
 
-    #results-page.lg-results-layout-single #sidebar-col {
-        max-width: min(100%, var(--literallygoogle-results-sidebar-max));
+    #results-page.lg-results-layout-single #results-main .glance-box,
+    #results-page.lg-results-layout-single #results-main .skeleton-card,
+    #results-page.lg-results-layout-single #results-list {
+        max-width: none;
+        width: 100%;
     }
 
     #results-page.lg-results-layout-single #sidebar-col > .sticky {
@@ -2025,9 +2042,15 @@ body {
             :has(#results-list .video-card)
         )
         #results-meta {
+        --lg-media-meta-left-gap: var(--theme-media-inline-gutter);
+        --lg-media-meta-right-gap-fallback: var(--theme-media-inline-gutter);
         flex-wrap: nowrap;
         max-width: none;
         align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding-inline-start: var(--lg-media-meta-left-gap);
+        padding-inline-end: var(--lg-media-meta-right-gap, var(--lg-media-meta-right-gap-fallback));
     }
 
     #results-page[data-lg-search-type="images"].lg-image-fab-filters

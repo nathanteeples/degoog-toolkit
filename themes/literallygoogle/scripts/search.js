@@ -872,7 +872,10 @@ function getLgTranslation(key) {
         const sidebar = document.getElementById("sidebar-col");
         if (!sidebar) return;
 
-        if (window.matchMedia("(max-width: 767px)").matches) {
+        if (
+            window.matchMedia("(max-width: 767px)").matches ||
+            getResultsPage()?.classList.contains("lg-results-layout-single")
+        ) {
             sidebar.style.removeProperty("grid-row");
             return;
         }
@@ -926,6 +929,7 @@ function getLgTranslation(key) {
             sidebarRowResizeBound = true;
             window.addEventListener("resize", syncSidebarGridRow, { passive: true });
             window.addEventListener("degoog-results-ready", syncSidebarGridRow);
+            window.addEventListener("lg-sync-sidebar-row", syncSidebarGridRow);
         }
 
         slotContainers().forEach(container => {
@@ -1857,8 +1861,12 @@ function getLgTranslation(key) {
                       toggle.getAttribute("aria-expanded") === "true",
               );
 
-        page.classList.add("lg-image-fab-filters");
-        page.classList.toggle("lg-image-fab-open", Boolean(isOpen));
+        if (drawerMode) {
+            page.classList.add("lg-image-fab-filters");
+        } else {
+            page.classList.remove("lg-image-fab-filters", "lg-image-fab-open");
+        }
+        page.classList.toggle("lg-image-fab-open", drawerMode && Boolean(isOpen));
         syncImageDrawerInlineAnchor(page);
         launcher.classList.toggle("is-open", Boolean(isOpen));
         launcher.classList.toggle("active", Boolean(isOpen));
@@ -4057,6 +4065,8 @@ function getLgTranslation(key) {
 /* ── 5e. Web results layout: fluid sidebar, then fluid main ─────────────── */
 (() => {
     const MAIN_MIN_PX = 450;
+    const STACK_ENTER_PX = 480;
+    const STACK_EXIT_PX = 520;
     const SINGLE_CLASS = "lg-results-layout-single";
     const DESKTOP_MIN = 768;
     const SIDEBAR_MAX_REM = 20;
@@ -4085,9 +4095,23 @@ function getLgTranslation(key) {
         page.style.removeProperty("--literallygoogle-results-sidebar-max");
         page.style.removeProperty("--literallygoogle-results-main-col-max");
         page.style.removeProperty("--literallygoogle-results-sidebar-col");
+        page.style.removeProperty("--lg-results-grid-columns");
     }
 
-    function applyFluidLayout(page, layout) {
+    function targetGridInnerWidth(layout) {
+        const px = remPx();
+        const style = getComputedStyle(layout);
+        const padStart = parseFloat(style.paddingInlineStart) || parseFloat(style.paddingLeft) || 0;
+        const padEnd = parseFloat(style.paddingInlineEnd) || parseFloat(style.paddingRight) || 0;
+        const rect = layout.getBoundingClientRect();
+        const outerMax = Math.min(
+            76 * px + padStart + padEnd,
+            Math.max(0, window.innerWidth - rect.left - padEnd),
+        );
+        return Math.max(0, outerMax - padStart - padEnd);
+    }
+
+    function computeFluidColumns(innerWidth) {
         const px = remPx();
         const sidebarMax = SIDEBAR_MAX_REM * px;
         const sidebarMin = SIDEBAR_MIN_REM * px;
@@ -4095,47 +4119,36 @@ function getLgTranslation(key) {
         const gap = COLUMN_GAP_REM * px;
         const scrollbar = SCROLLBAR_REM * px;
 
-        const layoutWidth = layout.getBoundingClientRect().width;
-        if (layoutWidth <= 0) return;
-
         const fullNeeded = mainMax + gap + sidebarMax + scrollbar;
         let sidebarPanel = sidebarMax;
         let mainCol = mainMax;
 
-        if (layoutWidth < fullNeeded) {
-            const sidebarPanelIfMainFull =
-                layoutWidth - mainMax - gap - scrollbar;
+        if (innerWidth < fullNeeded) {
+            const sidebarPanelIfMainFull = innerWidth - mainMax - gap - scrollbar;
             if (sidebarPanelIfMainFull >= sidebarMin) {
                 sidebarPanel = Math.min(sidebarMax, sidebarPanelIfMainFull);
                 mainCol = mainMax;
             } else {
                 sidebarPanel = sidebarMin;
-                mainCol = Math.max(0, layoutWidth - gap - sidebarMin - scrollbar);
+                mainCol = Math.max(0, innerWidth - gap - sidebarMin - scrollbar);
             }
         }
 
+        return { sidebarPanel, mainCol };
+    }
+
+    function applyFluidLayout(page, { sidebarPanel, mainCol }) {
+        const px = remPx();
         const sidebarRem = sidebarPanel / px;
         const mainRem = mainCol / px;
+        const sidebarColRem = sidebarRem + SCROLLBAR_REM;
         page.style.setProperty("--literallygoogle-results-sidebar-max", `${sidebarRem}rem`);
         page.style.setProperty("--literallygoogle-results-main-col-max", `${mainRem}rem`);
         page.style.setProperty(
             "--literallygoogle-results-sidebar-col",
             `calc(${sidebarRem}rem + var(--lg-sidebar-scrollbar-size))`,
         );
-    }
-
-    function measureMainWidth(page) {
-        const main = document.getElementById("results-main");
-        if (main instanceof HTMLElement) {
-            const w = main.getBoundingClientRect().width;
-            if (w > 0) return w;
-        }
-        const glance = page.querySelector("#at-a-glance .glance-box");
-        if (glance instanceof HTMLElement) {
-            const w = glance.getBoundingClientRect().width;
-            if (w > 0) return w;
-        }
-        return 0;
+        page.style.setProperty("--lg-results-grid-columns", `${mainRem}rem ${sidebarColRem}rem`);
     }
 
     function sync() {
@@ -4147,17 +4160,24 @@ function getLgTranslation(key) {
         if (!isWebResultsPage(page)) {
             page.classList.remove(SINGLE_CLASS);
             clearFluidLayoutVars(page);
+            window.dispatchEvent(new Event("lg-sync-sidebar-row"));
             return;
         }
 
-        page.classList.remove(SINGLE_CLASS);
-        applyFluidLayout(page, layout);
+        const innerWidth = targetGridInnerWidth(layout);
+        const { sidebarPanel, mainCol } = computeFluidColumns(innerWidth);
+        const isSingle = page.classList.contains(SINGLE_CLASS);
+        const stackThreshold = isSingle ? STACK_EXIT_PX : STACK_ENTER_PX;
 
-        const mainW = measureMainWidth(page);
-        if (mainW > 0 && mainW < MAIN_MIN_PX) {
+        if (mainCol > 0 && mainCol < stackThreshold) {
             page.classList.add(SINGLE_CLASS);
             clearFluidLayoutVars(page);
+        } else {
+            page.classList.remove(SINGLE_CLASS);
+            applyFluidLayout(page, { sidebarPanel, mainCol });
         }
+
+        window.dispatchEvent(new Event("lg-sync-sidebar-row"));
     }
 
     function schedule() {
@@ -4585,11 +4605,8 @@ function getLgTranslation(key) {
     }
 
     function wireImageLoadHandlers() {
-        const page = getResultsPage();
-        if (!page || page.getAttribute("data-lg-search-type") !== "images") return;
-
         const resultsList = getResultsList();
-        if (!resultsList) return;
+        if (!resultsList || !resultsList.querySelector(".image-card")) return;
 
         function checkImage(img) {
             const card = img.closest(".image-card");

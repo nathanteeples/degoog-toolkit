@@ -117,9 +117,11 @@ On the Web tab, `scripts/search.js` §5e sets fluid `--literallygoogle-results-s
 1. **Wide:** sidebar panel `20rem`, main column up to `48rem`.
 2. **Tighten:** shrink the **sidebar first** from `20rem` down to `16rem` while main stays at `48rem`.
 3. **Tighter:** sidebar holds at `16rem`; main column (glance, URLs, results) shrinks below `48rem`.
-4. **Stack:** if main would drop below `450px`, switch to single-column (`lg-results-layout-single`).
+4. **Stack:** switch to single-column before smush using a hysteresis band (enter at `480px`, exit at `520px`) so placeholders/sidebar never collapse into a transient squeezed state.
 
 Do not reintroduce filter-tab overlap snapping (`lg-results-sidebar-compact`) or abrupt sidebar jumps — the fluid vars are the only width mechanism.
+
+JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so CSS grid cannot shrink the main column before the sidebar. When stacking (`lg-results-layout-single`), clear inline `grid-row` on `#sidebar-col` and use flex column layout (mobile-like padding/gaps) — never leave `grid-row: 1 / span 30` active in single-column mode.
 
 ### Results meta row (`#results-meta`)
 
