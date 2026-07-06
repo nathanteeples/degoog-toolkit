@@ -117,7 +117,7 @@ On the Web tab, `scripts/search.js` sets fluid `--literallygoogle-results-sideba
 1. **Wide:** sidebar panel `20rem`, main column up to `48rem`.
 2. **Tighten:** shrink the **sidebar first** from `20rem` down to `16rem` while main stays at `48rem`.
 3. **Tighter:** sidebar holds at `16rem`; main column (glance, URLs, results) shrinks below `48rem`.
-4. **Stack:** switch to single-column before smush using a hysteresis band on **stable page inner width** (not `#results-layout` width — flex mode inflates layout width and causes sidebar/stack flapping). Enter when inner width cannot fit sidebar min + gap + 450px main; stay stacked until ~48px wider.
+4. **Stack:** switch to single-column before smush using a hysteresis band on **stable page inner width** (not `#results-layout` width — flex mode inflates layout width and causes sidebar/stack flapping). Enter when `min(page inner, layout inner)` cannot fit sidebar min + gap + 450px main, or when the computed main column would drop below 450px; stay stacked until ~48px wider and main column ≥ 450px.
 
 Do not reintroduce filter-tab overlap snapping (`lg-results-sidebar-compact`) or abrupt sidebar jumps — the fluid vars are the only width mechanism.
 
@@ -131,10 +131,34 @@ JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so 
 ### Results meta row (`#results-meta`)
 
 - The meta row is a **shared skeleton** across Web, Images, and Videos. Keep its horizontal alignment rules **simple and global**.
-- Default behavior: `#results-meta` uses the same `--literallygoogle-results-content-inline-*` paddings as the tabs row; `.results-meta-stats` sits on the **right via `margin-inline-start: auto`**.
-- Avoid per-tab JS or CSS that continuously recomputes left/right gaps for the meta row (for example, trying to dynamically align it to the media preview panel or image grid). These tweaks are fragile and can cause the “About X results” text to jump or drift between reloads.
-- If you need media-specific chrome (engine pills, filters, spell-check), prefer **separate elements inside `#results-meta`** (like `.media-engine-bar`) that inherit the existing flex layout, instead of redefining paddings or widths on `#results-meta` itself.
-- When adjusting Images/Videos behavior, verify that the **right edge of the stats text** remains visually aligned with the main content column / preview rail at common widths, and document any deliberate deviation here before shipping.
+- Default behavior (Web): `#results-meta` uses the same `--literallygoogle-results-content-inline-*` paddings as the tabs row; `.results-meta-stats` sits on the **right via `margin-inline-start: auto`**. On desktop two-column Web, `syncWebMetaStatsGap()` sets `--lg-web-meta-stats-right-inset` so stats align with `#results-main`’s right edge (not the sidebar / full layout rail).
+- **Images/Videos (desktop):** `scripts/search.js` sets `--lg-media-meta-right-gap` so `.results-meta-stats` aligns to a **stable content rail** — the right edge of `#results-layout`’s content box (`getMediaContentRailRightEdge()`), not the preview panel’s bounding box (which includes scrollbar overflow and caused “About X results” to jump when the preview opened).
+- Engine pills live in `#lg-media-engine-pills` inside the meta row; stats stay pinned to the rail right edge via flex + the gap variable above.
+- If you need media-specific chrome (engine pills, filters, spell-check), prefer **separate elements inside `#results-meta`** instead of redefining paddings or widths on `#results-meta` itself.
+- When adjusting Images/Videos behavior, verify that the **right edge of the stats text** stays aligned with the layout rail at common widths (preview open and closed).
+
+### Desktop engine pills rail (`#lg-media-engine-pills`)
+
+On Images (desktop, sticky sidebar enabled), engine stat rows are mirrored as scrollable pills in `#results-meta`.
+
+| Behaviour | Detail |
+| --- | --- |
+| Sticky detach | Pills use `position: fixed` once the meta row scrolls past the header/tabs stack. An in-flow **placeholder** (`lg-media-engine-rail-placeholder`) preserves meta row height so the grid does not jump (no `padding-bottom` on `#results-meta`). |
+| Width expansion | On stick, pills start at their natural flex width/position. Over the next **50px** of document scroll (`STICKY_RAIL_REVEAL_DISTANCE`), width and `left` interpolate toward the full grid span (`getMediaResultsRightEdge()`). At progress `0`, nothing changes visually. |
+| Stats | Always aligned via `--lg-media-meta-right-gap` to the layout rail — independent of pill width animation. |
+
+Do not snap pills to full viewport width on stick, and do not add meta `padding-bottom` to reserve sticky height.
+
+### Engine filter + pagination
+
+Selecting an engine (pills or sidebar stat row) sets `data-lg-engine-filter` on `#results-page` and hides non-matching cards via `.lg-engine-filtered-out`.
+
+When the filter **changes** and at least one engine remains selected, the theme dispatches `lg-engine-filter-change`:
+
+- **Web client pagination:** reset to page 1 and rebuild the pager from the filtered set.
+- **Server pagination (Images, etc.):** navigate to page 1 if URL or pager shows page &gt; 1; filter re-applies on `degoog-results-ready`.
+
+Clearing all engine filters does **not** reset the page (user keeps their place).
 
 ## List styles
 
@@ -212,9 +236,9 @@ Theme JS (`scripts/search.js`) hoists the notice into `#results-meta` **only on 
 ## Sticky behavior
 
 - `#results-header`: `position: relative`, `z-index: 120`, `background: var(--bg)`.
-- Image filter FAB / drawer: fixed positioning with morph transitions (`--lg-drawer-duration` 400ms).
-- Engine performance rail: sticky with width calc when preview overlaps.
-- Media preview bar: panel scroll moved to body; header stays pinned via flex layout.
+- Image filter FAB / drawer: fixed positioning with FAB ↔ panel morph (`--lg-drawer-duration` 400ms). See **FAB (image filters)** below.
+- Engine performance pills rail: fixed sticky morph with 50px scroll expansion (see **Desktop engine pills rail**).
+- Media preview panel (desktop docked): `position: sticky`; outer shell `overflow: hidden` with full `border-radius`; scroll on `.mp2-body` so the scrollbar stays inside the rounded card. Panel width stays at CSS `--mp2-panel-width: min(30rem, calc(100vw - 2rem))` — do not shrink it dynamically to the grid gap.
 
 ## Scrolling
 
@@ -280,6 +304,16 @@ Desktop image-grid folding must only happen while the preview is truly **side-do
 
 If you see a state like `data-lg-grid-base-cols="6"` / `data-lg-visible-cols="4"` after the preview has become a bottom modal, that is a regression.
 
+### Image card load sequencing (`scripts/search.js` + `style.css`)
+
+Thumbnails and metadata must appear together — not title/source before the image.
+
+| Layer | Mechanism |
+| --- | --- |
+| Thumb shimmer | `.image-thumb-wrap::before` animation until `.image-thumb-wrap.loaded` |
+| Metadata gate | `.image-card.lg-img-loaded` — only set when **`.image-thumb`** fires `load` / `error` (`markImageThumbLoaded()`). **Do not** watch favicon `img` inside `.image-source-row` (favicons load first and used to flash metadata early). |
+| Hidden until ready | `.image-info` is `opacity: 0`, `max-height: 0` until `.lg-img-loaded` |
+
 ## Motion
 
 | Duration | Easing | Use |
@@ -287,10 +321,13 @@ If you see a state like `data-lg-grid-base-cols="6"` / `data-lg-visible-cols="4"
 | `120ms` | ease | Hover, toggle, pill state |
 | `180ms` | ease | Toasts |
 | `220–250ms` | ease / custom cubic | Drawer open |
-| `320ms` | `--lg-drawer-ease-open` | FAB morph |
-| `400ms` | `--lg-drawer-ease-open/close` | Full drawer slide |
+| `320ms` | `--lg-drawer-ease-open` | FAB morph (drag snap-back) |
+| `400ms` | `--lg-drawer-ease-open/close` | Full drawer open/close shell |
+| `90ms` delay | ease | Filter content fade-in after shell reaches `.lg-image-drawer-open-ready` |
 
 Philosophy: quick feedback on controls; slower only for spatial hierarchy (drawers, FAB morph). Motion should support hierarchy, not call attention to itself.
+
+**FAB / drawer timing:** `prepareImageDrawerAnimation()` listens for `transitionend` on width/height (debounced) with a `--lg-drawer-duration` + 96ms fallback timeout. Read duration from CSS via `getDrawerAnimDurationMs()` — do not hard-code a divergent ms value in JS.
 
 ## Spacing
 
@@ -316,10 +353,31 @@ Philosophy: quick feedback on controls; slower only for spatial hierarchy (drawe
 ## FAB (image filters)
 
 - Size: `--lg-fab-size` (`3.5rem`).
-- Shape: circle → morphs to drawer corner radius (`clamp(1.5rem, 5vw, 2rem)`).
-- Surface: `--lg-sidebar-row-surface` / `--bg-light`.
-- Pull tab: `--lg-drawer-handle-width` × `--lg-drawer-handle-height`, high contrast in light mode.
+- Shape: circle → morphs to drawer corner radius (`clamp(1.5rem, 5vw, 2rem)` / `clamp(1.5rem, 2.25vw, 2rem)` desktop).
+- Surface: `--bg-light` when collapsed; full panel surface when open.
+- Pull tab: `--lg-drawer-handle-width` × `--lg-drawer-handle-height`, pill-shaped `::before` handle on `.degoog-img-sidebar-close.lg-drawer-pull-tab`.
 - No visible scrollbars during handle drag or shrink animation (desktop and mobile).
+
+### Open / close morph (`scripts/search.js`)
+
+| Phase | Classes / behaviour |
+| --- | --- |
+| **Closed (idle)** | `#image-filters-bar` hidden; only `#lg-image-tools-fab` visible. |
+| **Open start** | `.open.lg-image-drawer-animating:not(.lg-image-drawer-open-ready)` — shell at FAB size/position (matches close end-state). |
+| **Open end** | `.lg-image-drawer-open-ready` added on next frame → CSS transitions shell to full drawer dimensions; filter content fades in ~90ms later. |
+| **Close** | Remove `.open`, keep `.lg-image-drawer-animating` → CSS morphs back to FAB size; placeholder preserves layout height. |
+
+**Do not** jump to full size via inline JS on open (old `applyImageDrawerMotionProgress(..., 1)` hack). Drag-to-dismiss on close still uses `applyImageDrawerMotionProgress()` for finger tracking.
+
+### Dismiss paths
+
+- Overlay tap (mobile)
+- Pull-tab / close control click
+- `Escape`
+- FAB toggle (second click while open)
+- Pull-down gesture on the drawer handle (touch)
+
+Desktop: drawer host may be reparented to `document.body` (`lg-image-fab-drawer`) for correct fixed stacking.
 
 ## Results page panels
 

@@ -100,6 +100,38 @@ function getMediaContentRailRightEdge() {
     return null;
 }
 
+function syncWebMetaStatsGap() {
+    const meta = getResultsMeta();
+    const page = getResultsPage();
+    if (!meta || !page) return;
+    if (getActiveSearchType() !== "web" || page.classList.contains("lg-results-layout-single")) {
+        meta.style.removeProperty("--lg-web-meta-stats-right-inset");
+        return;
+    }
+    if (!window.matchMedia("(min-width: 768px)").matches) {
+        meta.style.removeProperty("--lg-web-meta-stats-right-inset");
+        return;
+    }
+    const main = document.getElementById("results-main");
+    if (!main) {
+        meta.style.removeProperty("--lg-web-meta-stats-right-inset");
+        return;
+    }
+    const metaRect = meta.getBoundingClientRect();
+    const mainRect = main.getBoundingClientRect();
+    const inset = Math.max(0, metaRect.right - mainRect.right);
+    meta.style.setProperty("--lg-web-meta-stats-right-inset", `${inset}px`);
+}
+
+let webMetaStatsFrame = 0;
+function scheduleWebMetaStatsGap() {
+    if (webMetaStatsFrame) return;
+    webMetaStatsFrame = requestAnimationFrame(() => {
+        webMetaStatsFrame = 0;
+        syncWebMetaStatsGap();
+    });
+}
+
 function markImageThumbLoaded(img) {
     if (!(img instanceof HTMLImageElement) || !img.classList.contains("image-thumb")) return;
     const wrap = img.closest(".image-thumb-wrap");
@@ -1232,6 +1264,7 @@ function wrapResultsStats(meta) {
 
         if (!isWebSearchTab()) {
             clearHoistedSpellCheck();
+            scheduleWebMetaStatsGap();
             return;
         }
 
@@ -1243,6 +1276,7 @@ function wrapResultsStats(meta) {
         );
         if (notices.length === 0) {
             restoreHoistedSpellCheckIfNeeded(meta);
+            scheduleWebMetaStatsGap();
             return;
         }
 
@@ -1260,6 +1294,7 @@ function wrapResultsStats(meta) {
                 restoreNativeGlanceSkeletonIfNeeded(container);
             }
         }
+        scheduleWebMetaStatsGap();
     }
 
     function scheduleSpellCheck() {
@@ -1339,6 +1374,9 @@ function wrapResultsStats(meta) {
     bindSearchStartCleanup();
     rememberCurrentNativeGlanceSkeleton();
     moveSpellCheck();
+    window.addEventListener("degoog-results-ready", scheduleWebMetaStatsGap);
+    window.addEventListener("lg-results-layout-changed", scheduleWebMetaStatsGap);
+    window.addEventListener("resize", scheduleWebMetaStatsGap, { passive: true });
 })();
 
 /* ── 4a. Filters dropdown ──────────────────────────────────────────────── */
@@ -3293,7 +3331,6 @@ function wrapResultsStats(meta) {
                 scheduleFold();
                 requestAnimationFrame(scrollSelectedImageIntoView);
             } else {
-                preview.style.removeProperty("--mp2-panel-width");
                 document
                     .querySelectorAll("#results-list .image-grid.lg-image-grid-fold")
                     .forEach(resetGrid);
@@ -3525,26 +3562,18 @@ function wrapResultsStats(meta) {
         return getNormalResultsRightEdge();
     }
 
-    function syncDockedPreviewWidth() {
-        const preview = getMediaPreviewPanel();
-        const layout = getResultsLayout();
-        const main = document.getElementById("results-main");
-        if (
-            !preview?.classList.contains("open") ||
-            !isDockedMediaPreviewOpen() ||
-            !layout ||
-            !main
-        ) {
-            preview?.style.removeProperty("--mp2-panel-width");
+    function syncMediaMetaRightGap() {
+        const meta = getResultsMeta();
+        if (!meta) return;
+        wrapResultsStats(meta);
+        syncWebMetaStatsGap();
+        if (!isDesktopImagePillsMode()) {
+            meta.style.removeProperty("--lg-media-meta-right-gap");
             return;
         }
-        const layoutStyles = getComputedStyle(layout);
-        const gap = parseFloat(layoutStyles.columnGap || layoutStyles.gap) || 0;
-        const padEnd = parseFloat(layoutStyles.paddingInlineEnd) || 0;
-        const railRight = layout.getBoundingClientRect().right - padEnd;
-        const mainRight = main.getBoundingClientRect().right;
-        const width = Math.max(192, railRight - mainRight - gap);
-        preview.style.setProperty("--mp2-panel-width", `${width}px`);
+        const metaRect = meta.getBoundingClientRect();
+        const contentRightGap = Math.max(0, metaRect.right - getMediaMetaRightEdge());
+        meta.style.setProperty("--lg-media-meta-right-gap", `${contentRightGap}px`);
     }
 
     function getNormalResultsRightEdge() {
@@ -3597,20 +3626,6 @@ function wrapResultsStats(meta) {
             }
         }
         return getMediaMetaRightEdge();
-    }
-
-    function syncMediaMetaRightGap() {
-        const meta = getResultsMeta();
-        if (!meta) return;
-        wrapResultsStats(meta);
-        syncDockedPreviewWidth();
-        if (!isDesktopImagePillsMode()) {
-            meta.style.removeProperty("--lg-media-meta-right-gap");
-            return;
-        }
-        const metaRect = meta.getBoundingClientRect();
-        const contentRightGap = Math.max(0, metaRect.right - getMediaMetaRightEdge());
-        meta.style.setProperty("--lg-media-meta-right-gap", `${contentRightGap}px`);
     }
 
     function getMediaEnginePillsHost() {
@@ -4394,13 +4409,19 @@ function wrapResultsStats(meta) {
         );
     }
 
-    function shouldUseSingleColumn(page, innerWidth) {
+    function shouldUseSingleColumn(page, innerWidth, mainCol) {
         const minTwoCol = minTwoColumnInnerWidth();
         const isSingle = page.classList.contains(SINGLE_CLASS);
+        const mainTooNarrow = mainCol < MAIN_MIN_PX;
+
         if (isSingle) {
-            return innerWidth < minTwoCol + STACK_HYSTERESIS_PX;
+            if (innerWidth < minTwoCol + STACK_HYSTERESIS_PX) return true;
+            if (mainTooNarrow) return true;
+            return false;
         }
-        return innerWidth < minTwoCol;
+        if (innerWidth < minTwoCol) return true;
+        if (mainTooNarrow) return true;
+        return false;
     }
 
     function computeFluidColumns(innerWidth) {
@@ -4460,11 +4481,12 @@ function wrapResultsStats(meta) {
             return;
         }
 
-        const innerWidth = targetGridInnerWidth(layout);
+        const layoutInnerWidth = targetGridInnerWidth(layout);
         const stackInnerWidth = stableStackInnerWidth(page);
-        const { sidebarPanel, mainCol } = computeFluidColumns(innerWidth);
+        const stackWidth = Math.min(stackInnerWidth, layoutInnerWidth);
+        const { sidebarPanel, mainCol } = computeFluidColumns(stackWidth);
 
-        if (shouldUseSingleColumn(page, stackInnerWidth)) {
+        if (shouldUseSingleColumn(page, stackWidth, mainCol)) {
             page.classList.add(SINGLE_CLASS);
             clearFluidLayoutVars(page);
             resetSingleColumnGridState(page, layout, { entering: true });
