@@ -137,12 +137,38 @@ function getMediaResultsLeftEdge() {
 function getWebMetaStatsRightEdge() {
     const layout = getResultsLayout();
     const page = getResultsPage();
-    const sidebar = document.getElementById("sidebar-col");
     if (!layout || !page) return null;
 
-    if (sidebar && getComputedStyle(sidebar).display !== "none") {
+    const isSingle = page.classList.contains("lg-results-layout-single");
+    const sidebar = document.getElementById("sidebar-col");
+
+    if (!isSingle && sidebar && getComputedStyle(sidebar).display !== "none") {
+        const sticky = sidebar.querySelector(":scope > .sticky");
+        if (sticky) {
+            const stickyRect = sticky.getBoundingClientRect();
+            if (stickyRect.width > 1) return stickyRect.right;
+        }
+
         const sidebarRect = sidebar.getBoundingClientRect();
-        if (sidebarRect.width > 1) return sidebarRect.right;
+        if (sidebarRect.width > 1) {
+            const px = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+            const scrollbar =
+                parseFloat(
+                    getComputedStyle(document.documentElement).getPropertyValue(
+                        "--lg-sidebar-scrollbar-size",
+                    ),
+                ) || 0.75 * px;
+            return sidebarRect.right - scrollbar;
+        }
+    }
+
+    if (sidebar && getComputedStyle(sidebar).display !== "none") {
+        const rail =
+            sidebar.querySelector("#results-sidebar") ||
+            sidebar.querySelector(":scope > .sticky") ||
+            sidebar;
+        const railRect = rail.getBoundingClientRect();
+        if (railRect.width > 1) return railRect.right;
     }
 
     const rect = layout.getBoundingClientRect();
@@ -165,14 +191,15 @@ function syncWebMetaStatsGap() {
         return;
     }
 
-    const statsRight = getWebMetaStatsRightEdge();
-    if (statsRight === null) {
+    const stats = meta.querySelector(".results-meta-stats");
+    const targetRight = getWebMetaStatsRightEdge();
+    if (!stats || targetRight === null) {
         meta.style.removeProperty("--lg-web-meta-stats-right-inset");
         return;
     }
 
-    const metaRect = meta.getBoundingClientRect();
-    const inset = Math.max(0, metaRect.right - statsRight);
+    const statsRect = stats.getBoundingClientRect();
+    const inset = Math.max(0, statsRect.right - targetRight);
     meta.style.setProperty("--lg-web-meta-stats-right-inset", `${inset}px`);
 }
 
@@ -3517,6 +3544,7 @@ function wrapResultsStats(meta) {
     const DESKTOP_MIN = 768;
     const STICKY_RAIL_REVEAL_DISTANCE = 50;
     let stickyRailFrame = 0;
+    let lastDockedPreviewOpen = null;
 
     function installEngineResultLearnerEarly() {
         if (EventSource.prototype.__lgEngineLearner) return;
@@ -3685,8 +3713,11 @@ function wrapResultsStats(meta) {
             meta.style.removeProperty("--lg-media-meta-right-gap");
             return;
         }
-        const metaRect = meta.getBoundingClientRect();
-        const contentRightGap = Math.max(0, metaRect.right - getMediaMetaRightEdge());
+        const stats = meta.querySelector(".results-meta-stats");
+        const statsRect = stats?.getBoundingClientRect();
+        const refRight =
+            statsRect && statsRect.width > 0 ? statsRect.right : meta.getBoundingClientRect().right;
+        const contentRightGap = Math.max(0, refRight - getMediaMetaRightEdge());
         meta.style.setProperty("--lg-media-meta-right-gap", `${contentRightGap}px`);
     }
 
@@ -3730,16 +3761,33 @@ function wrapResultsStats(meta) {
     }
 
     function getMediaResultsRightEdge() {
-        const previewPanel = document.getElementById("media-preview-panel");
-        const host = getMediaEnginePillsHost();
-        if (previewPanel?.classList.contains("open") && host) {
-            const panelRect = previewPanel.getBoundingClientRect();
-            const hostRect = host.getBoundingClientRect();
-            if (panelRect.top < hostRect.bottom && panelRect.width > 1) {
+        if (isDockedMediaPreviewOpen()) {
+            const panel = getMediaPreviewPanel();
+            const panelRect = panel?.getBoundingClientRect();
+            if (panelRect && panelRect.width > 1) {
                 return panelRect.left - 10;
             }
         }
         return getMediaMetaRightEdge();
+    }
+
+    function pruneMediaEngineRailPlaceholders(meta, host) {
+        if (!(meta instanceof HTMLElement)) return;
+        const keeper =
+            host?.nextElementSibling instanceof HTMLElement &&
+            host.nextElementSibling.classList.contains("lg-media-engine-rail-placeholder")
+                ? host.nextElementSibling
+                : null;
+        meta.querySelectorAll(":scope > .lg-media-engine-rail-placeholder").forEach(placeholder => {
+            if (placeholder !== keeper) placeholder.remove();
+        });
+    }
+
+    function resetStickyRailMetrics(host) {
+        if (!host) return;
+        delete host.dataset.stickBaseWidth;
+        delete host.dataset.stickBaseLeft;
+        delete host.dataset.stickBaseHeight;
     }
 
     function getMediaEnginePillsHost() {
@@ -3769,17 +3817,23 @@ function wrapResultsStats(meta) {
 
         const stats = meta.querySelector(".results-meta-stats");
         const spellCheck = meta.querySelector(".spell-check-notice");
-        meta.insertBefore(host, spellCheck || stats || null);
+        const anchor = spellCheck || stats || null;
+        if (host.parentElement !== meta) {
+            meta.insertBefore(host, anchor);
+        }
+        pruneMediaEngineRailPlaceholders(meta, host);
         return host;
     }
 
     function removeMediaEnginePillsHost() {
+        const meta = getResultsMeta();
         const host = getMediaEnginePillsHost();
         const placeholder = host?.nextElementSibling;
         if (placeholder instanceof HTMLElement && placeholder.classList.contains("lg-media-engine-rail-placeholder")) {
             placeholder.remove();
         }
         host?.remove();
+        pruneMediaEngineRailPlaceholders(meta, null);
     }
 
     function imageEngineRows() {
@@ -3859,10 +3913,8 @@ function wrapResultsStats(meta) {
     function clearStickyRailStyles(host, meta) {
         host?.classList.remove("lg-media-engine-rail--stuck");
         meta?.classList.remove("lg-media-engine-meta--rail-stuck");
+        resetStickyRailMetrics(host);
         if (!host) return;
-        delete host.dataset.stickBaseWidth;
-        delete host.dataset.stickBaseLeft;
-        delete host.dataset.stickBaseHeight;
         host.style.removeProperty("--lg-engine-rail-top");
         host.style.removeProperty("position");
         host.style.removeProperty("top");
@@ -3874,6 +3926,7 @@ function wrapResultsStats(meta) {
             placeholder.hidden = true;
             placeholder.style.removeProperty("min-height");
         }
+        pruneMediaEngineRailPlaceholders(meta, host);
     }
 
     function updateStickyEngineRail() {
@@ -3883,7 +3936,14 @@ function wrapResultsStats(meta) {
         syncMediaMetaRightGap();
         if (!host || !meta || host.hidden || !isDesktopImagePillsMode() || !stickySidebarEnabled()) {
             clearStickyRailStyles(host, meta);
+            lastDockedPreviewOpen = null;
             return;
+        }
+
+        const dockedPreviewOpen = isDockedMediaPreviewOpen();
+        if (dockedPreviewOpen !== lastDockedPreviewOpen) {
+            resetStickyRailMetrics(host);
+            lastDockedPreviewOpen = dockedPreviewOpen;
         }
 
         const stickyTop = getStickyRailTop();
@@ -3909,10 +3969,12 @@ function wrapResultsStats(meta) {
             host.dataset.stickBaseHeight = String(hostRect.height);
         }
 
-        const revealProgress = Math.min(
-            1,
-            Math.max(0, (targetStickyTop - naturalRailTop) / STICKY_RAIL_REVEAL_DISTANCE),
-        );
+        const revealProgress = dockedPreviewOpen
+            ? 1
+            : Math.min(
+                  1,
+                  Math.max(0, (targetStickyTop - naturalRailTop) / STICKY_RAIL_REVEAL_DISTANCE),
+              );
         const paddingStart = parseFloat(getComputedStyle(meta).paddingLeft) || 0;
         const stuckLeft = getMediaResultsLeftEdge() ?? metaRect.left + paddingStart;
         const contentRight = Math.max(stuckLeft, getMediaResultsRightEdge());

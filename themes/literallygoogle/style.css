@@ -5685,32 +5685,24 @@ body {
 }
 
 /* ── Indexer settings tab ───────────────────────────────────────────────── */
-#indexer-tab-section .settings-fieldset > .settings-fieldset-inverse,
-#indexer-tab-section .settings-fieldset > .degoog-indexer-stats {
-    display: grid;
+#indexer-tab-section > .settings-fieldset,
+#indexer-tab-section .settings-fieldset.settings-fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+#indexer-tab-section .settings-fieldset-inverse {
+    display: flex;
+    flex-direction: column;
     gap: 0.75rem;
     margin: 0;
-    padding: 17px;
+    padding: 0;
     border: none;
-    border-radius: var(--theme-radius-xs);
-    background: var(--bg);
-}
-
-#indexer-tab-section .settings-fieldset > :first-child {
-    border-start-start-radius: var(--theme-radius-xl);
-    border-start-end-radius: var(--theme-radius-xl);
-}
-
-#indexer-tab-section .settings-fieldset > :last-child {
-    border-end-start-radius: var(--theme-radius-xl);
-    border-end-end-radius: var(--theme-radius-xl);
-}
-
-[data-theme="light"]
-    #indexer-tab-section
-    .settings-fieldset
-    > :is(.settings-fieldset-inverse, .degoog-indexer-stats) {
-    background: white;
+    background: transparent;
 }
 
 #indexer-tab-section .settings-rate-limit-defaults {
@@ -5720,19 +5712,8 @@ body {
     color: var(--text-secondary);
 }
 
-/* Toggle rows nested in indexer inverse blocks (public export, prune, fuzzy). */
 #indexer-tab-section .settings-fieldset-inverse > .settings-toggle-wrap.degoog-toggle-wrap {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-direction: row-reverse;
-    gap: 0.75rem;
     margin: 0;
-    padding: 17px;
-    border: none;
-    border-radius: var(--theme-radius-xl);
-    background: var(--lg-settings-row-bg);
-    cursor: pointer;
 }
 
 #indexer-tab-section
@@ -5746,14 +5727,7 @@ body {
     .settings-fieldset-inverse
     > .settings-desc
     + .settings-toggle-wrap.degoog-toggle-wrap {
-    margin-top: 0.5rem;
-}
-
-[data-theme="light"]
-    #indexer-tab-section
-    .settings-fieldset-inverse
-    > .settings-toggle-wrap.degoog-toggle-wrap {
-    background: white;
+    margin-top: 0.25rem;
 }
 
 /* Google-like settings inputs inside indexer panels. */
@@ -5827,68 +5801,115 @@ body {
     background: var(--lg-settings-select-light-hover);
 }
 
-/* Index stats — 2×2 summary grid + per-type breakdown. */
+/* Index stats — compact pill table + per-type chips (stats block only). */
 #indexer-tab-section #indexer-stats-wrap.degoog-indexer-stats {
-    gap: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
 }
 
-#indexer-tab-section .degoog-stat-grid {
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid:not(.degoog-stat-grid--types) {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0;
+    width: min(100%, 22rem);
+    margin: 0;
+    padding: 0.35rem 0;
+    border: 1px solid var(--border-light);
+    border-radius: var(--theme-radius-lg);
+    background: var(--lg-sidebar-row-surface);
+    overflow: hidden;
+}
+
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid:not(.degoog-stat-grid--types) > div {
+    display: contents;
+}
+
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid:not(.degoog-stat-grid--types) dt,
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid:not(.degoog-stat-grid--types) dd {
+    margin: 0;
+    padding: 0.45rem 0.85rem;
+    border-block-start: 1px solid var(--border-light);
+}
+
+#indexer-tab-section
+    #indexer-stats-wrap
+    .degoog-stat-grid:not(.degoog-stat-grid--types)
+    > div:first-child
+    dt,
+#indexer-tab-section
+    #indexer-stats-wrap
+    .degoog-stat-grid:not(.degoog-stat-grid--types)
+    > div:first-child
+    dd {
+    border-block-start: none;
+}
+
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid:not(.degoog-stat-grid--types) dt {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid:not(.degoog-stat-grid--types) dd {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text-primary);
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+}
+
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid--types {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
     margin: 0;
     padding: 0;
 }
 
-#indexer-tab-section .degoog-stat-grid--types {
-    grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
-}
-
-#indexer-tab-section .degoog-stat-grid > div {
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid--types > div {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     margin: 0;
-    padding: 17px;
-    border-radius: var(--theme-radius-xs);
-    background: var(--lg-settings-row-bg);
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--theme-radius-pill);
+    background: var(--lg-sidebar-row-surface);
 }
 
-#indexer-tab-section .degoog-stat-grid:not(.degoog-stat-grid--types) > div:nth-child(1) {
-    border-start-start-radius: var(--theme-radius-xl);
-}
-
-#indexer-tab-section .degoog-stat-grid:not(.degoog-stat-grid--types) > div:nth-child(2) {
-    border-start-end-radius: var(--theme-radius-xl);
-}
-
-#indexer-tab-section .degoog-stat-grid:not(.degoog-stat-grid--types) > div:nth-child(3) {
-    border-end-start-radius: var(--theme-radius-xl);
-}
-
-#indexer-tab-section .degoog-stat-grid:not(.degoog-stat-grid--types) > div:nth-child(4) {
-    border-end-end-radius: var(--theme-radius-xl);
-}
-
-#indexer-tab-section .degoog-stat-grid dt {
-    margin: 0 0 0.35rem;
-    font-size: 0.8125rem;
-    font-weight: 400;
-    color: var(--text-secondary);
-}
-
-#indexer-tab-section .degoog-stat-grid dd {
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid--types dt {
     margin: 0;
-    font-size: 1.125rem;
+    font-size: 0.75rem;
     font-weight: 500;
-    line-height: 1.2;
+    color: var(--text-secondary);
+    text-transform: lowercase;
+}
+
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid--types dd {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
 }
 
-#indexer-tab-section .degoog-stat-grid--types:empty {
+#indexer-tab-section #indexer-stats-wrap .degoog-stat-grid--types:empty {
     display: none;
 }
 
-[data-theme="light"] #indexer-tab-section .degoog-stat-grid > div {
-    background: white;
+[data-theme="light"] #indexer-tab-section #indexer-stats-wrap .degoog-stat-grid:not(.degoog-stat-grid--types) {
+    background: #ffffff;
+}
+
+[data-theme="light"] #indexer-tab-section #indexer-stats-wrap .degoog-stat-grid--types > div {
+    background: #ffffff;
 }
 
 #indexer-tab-section .degoog-action-row--buttons {

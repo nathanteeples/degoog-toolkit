@@ -133,8 +133,8 @@ JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so 
 ### Results meta row (`#results-meta`)
 
 - The meta row is a **shared skeleton** across Web, Images, and Videos. Keep its horizontal alignment rules **simple and global**.
-- Default behavior (Web): `#results-meta` uses the same `--literallygoogle-results-content-inline-*` paddings as the tabs row; `.results-meta-stats` sits on the **right via `margin-inline-start: auto`**. On desktop Web, `syncWebMetaStatsGap()` sets `--lg-web-meta-stats-right-inset` so “About X results” aligns with the **right edge of the content rail below it**:
-  - **Two-column:** right edge of `#sidebar-col` (the sidebar panel track).
+- Default behavior (Web): `#results-meta` uses the same `--literallygoogle-results-content-inline-*` paddings as the tabs row; `.results-meta-stats` sits on the **right via `margin-inline-start: auto`**. On desktop Web, `syncWebMetaStatsGap()` measures **`.results-meta-stats`’s right edge** (not `#results-meta`’s border — padding left inset at `0`) and sets `--lg-web-meta-stats-right-inset` so “About X results” aligns with the **right edge of the content rail below it**:
+  - **Two-column:** right edge of `#sidebar-col > .sticky` (the visible sidebar panel, excluding the scroll lane).
   - **Single-column (`lg-results-layout-single`):** right edge of the stacked sidebar / layout content (e.g. Engine Performance panel), via `#sidebar-col` or `#results-layout` padding box — not `#results-main`’s narrower column.
 - **Images/Videos (desktop):** `scripts/search.js` sets `--lg-media-meta-right-gap` so `.results-meta-stats` aligns to a **stable content rail** — the right edge of `#results-layout`’s content box (`getMediaContentRailRightEdge()`), not the preview panel’s bounding box (which includes scrollbar overflow and caused “About X results” to jump when the preview opened).
 - Engine pills live in `#lg-media-engine-pills` inside the meta row; stats stay pinned to the rail right edge via flex + the gap variable above.
@@ -148,7 +148,8 @@ On Images (desktop, sticky sidebar enabled), engine stat rows are mirrored as sc
 | Behaviour | Detail |
 | --- | --- |
 | Sticky detach | Pills use `position: fixed` once the meta row scrolls past the header/tabs stack. An in-flow **placeholder** (`lg-media-engine-rail-placeholder`) preserves meta row height so the grid does not jump (no `padding-bottom` on `#results-meta`). |
-| Width expansion | On stick, pills start at their natural flex width/position. Over the next **50px** of document scroll (`STICKY_RAIL_REVEAL_DISTANCE`), width and `left` interpolate toward the full grid span (`getMediaResultsRightEdge()`). At progress `0`, nothing changes visually. |
+| Width expansion | On stick, pills start at their natural flex width/position. Over the next **50px** of document scroll (`STICKY_RAIL_REVEAL_DISTANCE`), width and `left` interpolate toward the full grid span (`getMediaResultsRightEdge()`). At progress `0`, nothing changes visually. When the docked preview pane is open, skip the reveal animation (`revealProgress = 1`) and constrain width to the preview’s left edge immediately. |
+| Placeholders | Only one in-flow `lg-media-engine-rail-placeholder` may follow `#lg-media-engine-pills`. `ensureMediaEnginePillsHost()` must not re-`insertBefore` an already-mounted host — duplicate placeholders steal flex space and leave the meta row shrunk after scroll/preview. |
 | Stats | Always aligned via `--lg-media-meta-right-gap` to the layout rail — independent of pill width animation. |
 
 Do not snap pills to full viewport width on stick, and do not add meta `padding-bottom` to reserve sticky height.
@@ -190,6 +191,12 @@ Use `var(--bg)` (page inset), not `--bg-light`, when nested inside the updates p
 ### Store catalog filter bar (light mode only)
 
 `.store-search-input`, extension-tab `.store-filter-bar > .degoog-search-bar--square-advanced`, and `.store-filter-select` use the same white search shell as settings extension search: `background: var(--bg)` (`#ffffff`), `border: 1px solid var(--border)`, `box-shadow: var(--lg-search-shadow)`. Dark mode keeps core tokens (`--search-bar-bg`, `--bg-light`) — do not add `:root:not([data-theme="dark"])` rules without a `prefers-color-scheme: light` guard.
+
+### Indexer tab
+
+Indexer **forms** stay flat: section fieldsets with pill/rounded inputs only — do not wrap filters, storage limits, or toggles in stacked row panels like Server/General.
+
+**Index stats** (`#indexer-stats-wrap` only): summary metrics use a compact bordered pill-table (label column + right-aligned values); per-type counts use lowercase chips in a flex wrap. Do not apply stats chrome to `#indexer-storage-wrap` (core shares `degoog-indexer-stats` class name).
 
 ### Server / General settings inputs (not Indexer tab)
 
