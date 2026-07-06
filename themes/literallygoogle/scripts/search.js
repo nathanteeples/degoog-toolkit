@@ -4434,10 +4434,6 @@ function wrapResultsStats(meta) {
         return document.getElementById("sidebar-col");
     }
 
-    function sidebarScrollSurface(sidebar = sidebarCol()) {
-        return sidebar?.querySelector(":scope > .sticky") ?? null;
-    }
-
     function sidebarStickyTop(sidebar) {
         const parsed = Number.parseFloat(getComputedStyle(sidebar).top);
         if (Number.isFinite(parsed)) return parsed;
@@ -4447,33 +4443,6 @@ function wrapResultsStats(meta) {
             root.getPropertyValue("--literallygoogle-sticky-header-offset"),
         );
         return Number.isFinite(fallback) ? fallback : 0;
-    }
-
-    function sidebarAvailableHeight(sidebar) {
-        const offset = sidebarStickyTop(sidebar);
-        return Math.max(0, window.innerHeight - 2 * offset);
-    }
-
-    function syncSidebarScrollHeight(sidebar = sidebarCol()) {
-        if (!(sidebar instanceof HTMLElement)) return;
-
-        sidebar.style.removeProperty("height");
-        const surface = sidebarScrollSurface(sidebar);
-        surface?.style.removeProperty("max-height");
-        surface?.style.removeProperty("height");
-
-        if (!sidebar.classList.contains(STUCK_CLASS)) {
-            sidebar.style.removeProperty("max-height");
-            return;
-        }
-
-        const available = sidebarAvailableHeight(sidebar);
-        const contentHeight = surface instanceof HTMLElement ? surface.scrollHeight : sidebar.scrollHeight;
-        if (contentHeight > available + 1) {
-            sidebar.style.maxHeight = `${Math.round(available)}px`;
-        } else {
-            sidebar.style.removeProperty("max-height");
-        }
     }
 
     function isSidebarColStuck(sidebar) {
@@ -4494,10 +4463,8 @@ function wrapResultsStats(meta) {
         if (!(sidebar instanceof HTMLElement)) return;
         sidebar.classList.remove(ACTIVE_CLASS);
         sidebar.scrollTop = 0;
-        const surface = sidebarScrollSurface(sidebar);
-        if (surface instanceof HTMLElement) {
-            surface.scrollTop = 0;
-        }
+        const sticky = sidebar.querySelector(":scope > .sticky");
+        if (sticky instanceof HTMLElement) sticky.scrollTop = 0;
     }
 
     function syncSidebarStuckState() {
@@ -4511,16 +4478,10 @@ function wrapResultsStats(meta) {
 
         if (stuck !== wasStuck) {
             resetSidebarScroll(sidebar);
+            sidebar.style.removeProperty("max-height");
             if (stuck) {
-                requestAnimationFrame(() => {
-                    resetSidebarScroll(sidebar);
-                    syncSidebarScrollHeight(sidebar);
-                });
-            } else {
-                syncSidebarScrollHeight(sidebar);
+                requestAnimationFrame(() => resetSidebarScroll(sidebar));
             }
-        } else if (stuck) {
-            syncSidebarScrollHeight(sidebar);
         }
     }
 
@@ -4529,13 +4490,8 @@ function wrapResultsStats(meta) {
         stuckFrame = requestAnimationFrame(syncSidebarStuckState);
     }
 
-    function canScroll(sidebar) {
-        if (!(sidebar instanceof HTMLElement) || !sidebar.classList.contains(STUCK_CLASS)) {
-            return false;
-        }
-        const surface = sidebarScrollSurface(sidebar);
-        const contentHeight = surface instanceof HTMLElement ? surface.scrollHeight : sidebar.scrollHeight;
-        return contentHeight > sidebar.clientHeight + 1;
+    function canScroll(el) {
+        return el.classList.contains(STUCK_CLASS) && el.scrollHeight > el.clientHeight + 1;
     }
 
     function atScrollEdge(el, deltaY) {
@@ -4587,16 +4543,8 @@ function wrapResultsStats(meta) {
         window.addEventListener("scroll", scheduleSidebarStuckSync, { passive: true });
         window.addEventListener("resize", scheduleSidebarStuckSync, { passive: true });
         window.addEventListener("lg-results-layout-changed", scheduleSidebarStuckSync);
-        window.addEventListener("degoog-results-ready", () => {
-            scheduleSidebarStuckSync();
-            const sidebar = document.getElementById("sidebar-col");
-            if (sidebar instanceof HTMLElement) syncSidebarScrollHeight(sidebar);
-        });
-        new MutationObserver(() => {
-            scheduleSidebarStuckSync();
-            const sidebar = document.getElementById("sidebar-col");
-            if (sidebar instanceof HTMLElement) syncSidebarScrollHeight(sidebar);
-        }).observe(
+        window.addEventListener("degoog-results-ready", scheduleSidebarStuckSync);
+        new MutationObserver(scheduleSidebarStuckSync).observe(
             document.getElementById("sidebar-col") || document.documentElement,
             { attributes: true, attributeFilter: ["class", "style"] },
         );
