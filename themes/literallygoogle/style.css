@@ -4812,11 +4812,8 @@ body {
 }
 
 /* Core sticky sidebar setting.
-   Grid column = panel width + scroll lane. Internal scroll only after the column
-   has physically stuck (lg-sidebar-is-stuck); until then the page scrolls.
-   Top gap = `top` (--literallygoogle-sticky-header-offset, ~74px). Bottom gap
-   matches when content overflows: JS sets max-height to 100vh minus twice that
-   offset only when scrollHeight exceeds the available viewport band. */
+   Grid column = panel width + scroll lane. #sidebar-col sticks and scrolls; the
+   inner .sticky wrapper must not stretch (flex: 0 0 auto) when the column caps. */
 
 @media (min-width: 768px) {
     #sidebar-col.is-sticky {
@@ -4826,18 +4823,17 @@ body {
             calc(50px + 1.5rem)
         );
         align-self: start;
-        height: fit-content;
-        overflow: visible;
-        max-height: none;
-    }
-
-    #sidebar-col.is-sticky:not(.lg-sidebar-is-stuck) {
-        overflow: visible !important;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        height: auto;
         max-height: none !important;
+        overflow: visible !important;
     }
 
     #sidebar-col.is-sticky.lg-sidebar-is-stuck {
         min-height: 0;
+        height: auto;
         overflow-x: hidden;
         overflow-y: hidden;
         overscroll-behavior: auto;
@@ -4860,8 +4856,12 @@ body {
     }
 
     #sidebar-col.is-sticky > .sticky {
+        flex: 0 0 auto;
+        align-self: start;
         width: var(--literallygoogle-results-sidebar-max);
         max-width: var(--literallygoogle-results-sidebar-max);
+        height: auto;
+        min-height: 0;
         max-height: none;
         overflow: visible;
         box-sizing: border-box;

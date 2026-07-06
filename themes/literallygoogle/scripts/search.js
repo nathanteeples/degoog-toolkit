@@ -4430,6 +4430,14 @@ function wrapResultsStats(meta) {
     const wired = new WeakSet();
     let stuckFrame = 0;
 
+    function sidebarCol() {
+        return document.getElementById("sidebar-col");
+    }
+
+    function sidebarScrollSurface(sidebar = sidebarCol()) {
+        return sidebar?.querySelector(":scope > .sticky") ?? null;
+    }
+
     function sidebarStickyTop(sidebar) {
         const parsed = Number.parseFloat(getComputedStyle(sidebar).top);
         if (Number.isFinite(parsed)) return parsed;
@@ -4446,8 +4454,13 @@ function wrapResultsStats(meta) {
         return Math.max(0, window.innerHeight - 2 * offset);
     }
 
-    function syncSidebarScrollHeight(sidebar) {
+    function syncSidebarScrollHeight(sidebar = sidebarCol()) {
         if (!(sidebar instanceof HTMLElement)) return;
+
+        sidebar.style.removeProperty("height");
+        const surface = sidebarScrollSurface(sidebar);
+        surface?.style.removeProperty("max-height");
+        surface?.style.removeProperty("height");
 
         if (!sidebar.classList.contains(STUCK_CLASS)) {
             sidebar.style.removeProperty("max-height");
@@ -4455,7 +4468,7 @@ function wrapResultsStats(meta) {
         }
 
         const available = sidebarAvailableHeight(sidebar);
-        const contentHeight = sidebar.scrollHeight;
+        const contentHeight = surface instanceof HTMLElement ? surface.scrollHeight : sidebar.scrollHeight;
         if (contentHeight > available + 1) {
             sidebar.style.maxHeight = `${Math.round(available)}px`;
         } else {
@@ -4477,11 +4490,14 @@ function wrapResultsStats(meta) {
         return sidebar.getBoundingClientRect().top <= sidebarStickyTop(sidebar) + 1;
     }
 
-    function resetSidebarScroll(sidebar) {
+    function resetSidebarScroll(sidebar = sidebarCol()) {
+        if (!(sidebar instanceof HTMLElement)) return;
         sidebar.classList.remove(ACTIVE_CLASS);
         sidebar.scrollTop = 0;
-        const sticky = sidebar.querySelector(":scope > .sticky");
-        if (sticky instanceof HTMLElement) sticky.scrollTop = 0;
+        const surface = sidebarScrollSurface(sidebar);
+        if (surface instanceof HTMLElement) {
+            surface.scrollTop = 0;
+        }
     }
 
     function syncSidebarStuckState() {
@@ -4501,7 +4517,7 @@ function wrapResultsStats(meta) {
                     syncSidebarScrollHeight(sidebar);
                 });
             } else {
-                sidebar.style.removeProperty("max-height");
+                syncSidebarScrollHeight(sidebar);
             }
         } else if (stuck) {
             syncSidebarScrollHeight(sidebar);
@@ -4513,8 +4529,13 @@ function wrapResultsStats(meta) {
         stuckFrame = requestAnimationFrame(syncSidebarStuckState);
     }
 
-    function canScroll(el) {
-        return el.classList.contains(STUCK_CLASS) && el.scrollHeight > el.clientHeight + 1;
+    function canScroll(sidebar) {
+        if (!(sidebar instanceof HTMLElement) || !sidebar.classList.contains(STUCK_CLASS)) {
+            return false;
+        }
+        const surface = sidebarScrollSurface(sidebar);
+        const contentHeight = surface instanceof HTMLElement ? surface.scrollHeight : sidebar.scrollHeight;
+        return contentHeight > sidebar.clientHeight + 1;
     }
 
     function atScrollEdge(el, deltaY) {
@@ -4526,7 +4547,7 @@ function wrapResultsStats(meta) {
     }
 
     function bindScrollTarget(el) {
-        if (!el || wired.has(el)) return;
+        if (!(el instanceof HTMLElement) || wired.has(el)) return;
         wired.add(el);
 
         el.addEventListener("pointerleave", () => {
@@ -4540,14 +4561,11 @@ function wrapResultsStats(meta) {
 
                 const { deltaY } = event;
 
-                // At the top/bottom edge, allow normal page scroll chaining.
                 if (atScrollEdge(el, deltaY)) {
                     el.classList.remove(ACTIVE_CLASS);
                     return;
                 }
 
-                // Otherwise we take over so the sidebar scroll doesn't cancel
-                // page momentum and doesn't require moving the pointer.
                 el.classList.add(ACTIVE_CLASS);
                 event.preventDefault();
                 el.scrollTop += deltaY;
