@@ -52,8 +52,6 @@ var {
         var(--literallygoogle-results-sidebar-max) + var(--lg-sidebar-scrollbar-size)
     );
     --literallygoogle-results-column-gap: 2rem;
-    /* Space below #results-meta + above #results-layout — mirror on sidebar bottom. */
-    --lg-sidebar-rail-inset: calc(0.75rem + 0.5rem);
     --literallygoogle-media-filter-width: 15rem;
     --literallygoogle-media-row-gap: 0.5rem;
     --literallygoogle-row-padding: 14px;
@@ -1177,17 +1175,6 @@ html[dir="rtl"] #image-filters-bar.open {
 :is(#results-sidebar, #image-engine-panel) .sidebar-panel {
     border: none !important;
     box-shadow: none !important;
-}
-
-/* Core `.degoog-panel--stack-item` adds 1rem between panels — match 2px row stack. */
-#results-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-#results-sidebar > .sidebar-panel.degoog-panel--stack-item {
-    margin-bottom: 0 !important;
 }
 
 /* No placeholder chrome while related queries are still loading. */
@@ -4853,8 +4840,7 @@ body {
                 var(
                     --literallygoogle-sticky-header-offset,
                     calc(50px + 1.5rem)
-                ) -
-                var(--lg-sidebar-rail-inset)
+                )
         );
         overflow-x: visible;
         overflow-y: hidden;
