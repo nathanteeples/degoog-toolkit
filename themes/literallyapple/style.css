@@ -1252,6 +1252,7 @@ body {
 #results-header {
     position: relative;
     z-index: 120;
+    background: var(--bg) !important;
 }
 
 /* Settings gear hover spin: cancel the small upward nudge. */

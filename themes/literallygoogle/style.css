@@ -1274,6 +1274,7 @@ body {
 #results-header {
     position: relative;
     z-index: 120;
+    background: var(--bg) !important;
 }
 
 @media (max-width: 767px) {
