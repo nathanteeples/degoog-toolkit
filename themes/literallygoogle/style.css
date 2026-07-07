@@ -3794,6 +3794,21 @@ body {
         pointer-events: auto;
     }
 
+    #results-tabs .lg-results-tabs-rail::before {
+        display: none !important;
+    }
+
+    #results-tabs .lg-results-tabs__scroll > .tools-wrap::before {
+        content: "" !important;
+        display: inline-block !important;
+        width: 1px !important;
+        height: 12px !important;
+        background: var(--border-light) !important;
+        margin-inline-start: 0.25rem !important;
+        margin-inline-end: 0.5rem !important;
+        vertical-align: middle !important;
+    }
+
     #results-tabs .lg-filters-wrap {
         position: static;
         background: none;
