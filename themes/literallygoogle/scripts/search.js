@@ -4597,7 +4597,7 @@ function wrapResultsStats(meta) {
     let fluidVarsKey = "";
 
     function isWebResultsPage(page) {
-        if (!page) return false;
+        if (!page || window.innerWidth < DESKTOP_MIN) return false;
         const type = (page.getAttribute("data-lg-search-type") || "web").toLowerCase();
         if (type === "images" || type === "videos") return false;
         if (page.classList.contains("lg-command-mode")) return false;
