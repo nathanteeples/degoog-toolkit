@@ -2666,12 +2666,14 @@ function wrapResultsStats(meta) {
                 childList: true,
             });
         }
-        mobileQuery.addEventListener?.("change", syncTabsRail);
-        window.addEventListener("resize", () => updateTabsNavState(), { passive: true });
     }
 
-    onReady(init);
-    window.addEventListener("degoog-results-ready", syncTabsRail);
+    onReady(() => {
+        init();
+        mobileQuery.addEventListener?.("change", syncTabsRail);
+        window.addEventListener("resize", () => updateTabsNavState(), { passive: true });
+    });
+    window.addEventListener("degoog-results-ready", init);
 })();
 
 /* ── 5. Media-preview (mp2) bar enhancements ────────────────────────────── */
