@@ -1011,10 +1011,7 @@ function wrapResultsStats(meta) {
         const sidebar = document.getElementById("sidebar-col");
         if (!sidebar) return;
 
-        if (
-            window.matchMedia("(max-width: 767px)").matches ||
-            getResultsPage()?.classList.contains("lg-results-layout-single")
-        ) {
+        if (window.matchMedia("(max-width: 989px)").matches) {
             sidebar.style.removeProperty("grid-row");
             return;
         }
@@ -4449,10 +4446,7 @@ function wrapResultsStats(meta) {
         if (!(sidebar instanceof HTMLElement) || !sidebar.classList.contains("is-sticky")) {
             return false;
         }
-        if (
-            window.matchMedia("(max-width: 767px)").matches ||
-            getResultsPage()?.classList.contains("lg-results-layout-single")
-        ) {
+        if (window.matchMedia("(max-width: 989px)").matches) {
             return false;
         }
         if (getComputedStyle(sidebar).position !== "sticky") return false;
@@ -4578,14 +4572,9 @@ function wrapResultsStats(meta) {
     onReady(init);
 })();
 
-/* ── 5e. Web results layout: fluid sidebar, then fluid main ─────────────── */
+/* ── 5e. Web results layout: fluid sidebar, then fluid main (≥990px only) ── */
 (() => {
-    const MAIN_MIN_PX = 450;
-    const STACK_HYSTERESIS_PX = 80;
-    const STACK_VIEWPORT_ENTER_PX = 990;
-    const SINGLE_CLASS = "lg-results-layout-single";
-    const DESKTOP_MIN = 768;
-    const SEARCHING_ATTR = "data-lg-sidebar-searching";
+    const TWO_COL_MIN = 990;
     const SIDEBAR_MAX_REM = 20;
     const SIDEBAR_MIN_REM = 16;
     const SIDEBAR_BONUS_PX = 5;
@@ -4593,11 +4582,11 @@ function wrapResultsStats(meta) {
     const COLUMN_GAP_REM = 2;
     const SCROLLBAR_REM = 0.75;
     let frame = 0;
-    let stackIsSingle = false;
+    let fluidActive = false;
     let fluidVarsKey = "";
 
     function isWebResultsPage(page) {
-        if (!page || window.innerWidth < DESKTOP_MIN) return false;
+        if (!page || window.innerWidth < TWO_COL_MIN) return false;
         const type = (page.getAttribute("data-lg-search-type") || "web").toLowerCase();
         if (type === "images" || type === "videos") return false;
         if (page.classList.contains("lg-command-mode")) return false;
@@ -4620,28 +4609,6 @@ function wrapResultsStats(meta) {
         fluidVarsKey = "";
     }
 
-    function resetSingleColumnGridState(page, layout, { entering }) {
-        const sidebar = document.getElementById("sidebar-col");
-        const main = document.getElementById("results-main");
-        if (layout) {
-            layout.style.removeProperty("grid-template-columns");
-        }
-        if (main) {
-            main.style.removeProperty("grid-column");
-            main.style.removeProperty("grid-row");
-        }
-        if (sidebar) {
-            sidebar.style.removeProperty("grid-column");
-            sidebar.style.removeProperty("grid-row");
-            if (entering) {
-                sidebar.classList.remove("lg-sidebar-is-stuck", "lg-sidebar-scroll-active");
-            }
-        }
-        if (entering) {
-            page?.classList.remove("lg-results-sidebar-compact");
-        }
-    }
-
     function targetGridInnerWidth(layout) {
         const px = remPx();
         const style = getComputedStyle(layout);
@@ -4653,35 +4620,6 @@ function wrapResultsStats(meta) {
             Math.max(0, window.innerWidth - rect.left - padEnd),
         );
         return Math.max(0, outerMax - padStart - padEnd);
-    }
-
-    /** Viewport-only width for stack decisions — no layout/page DOM reads. */
-    function stableStackInnerWidth() {
-        const px = remPx();
-        const layoutMax = 76 * px;
-        const viewport = document.documentElement.clientWidth;
-        return Math.max(0, Math.min(layoutMax, viewport));
-    }
-
-    function minTwoColumnInnerWidth() {
-        const px = remPx();
-        return (
-            SIDEBAR_MIN_REM * px +
-            SIDEBAR_BONUS_PX +
-            COLUMN_GAP_REM * px +
-            SCROLLBAR_REM * px +
-            MAIN_MIN_PX
-        );
-    }
-
-    function shouldUseSingleColumn(stableInnerWidth) {
-        const minTwoCol = Math.max(minTwoColumnInnerWidth(), STACK_VIEWPORT_ENTER_PX);
-        const { mainCol } = computeFluidColumns(stableInnerWidth);
-
-        if (stackIsSingle) {
-            return stableInnerWidth < minTwoCol + STACK_HYSTERESIS_PX;
-        }
-        return stableInnerWidth < minTwoCol || mainCol < MAIN_MIN_PX;
     }
 
     function computeFluidColumns(innerWidth) {
@@ -4710,6 +4648,10 @@ function wrapResultsStats(meta) {
         return { sidebarPanel, mainCol };
     }
 
+    function sidebarColRem(sidebarRem) {
+        return `${(sidebarRem + SCROLLBAR_REM).toFixed(3)}rem`;
+    }
+
     function applyFluidLayout(page, { sidebarPanel, mainCol }) {
         const px = remPx();
         const sidebarRem = sidebarPanel / px;
@@ -4731,10 +4673,6 @@ function wrapResultsStats(meta) {
         return true;
     }
 
-    function sidebarColRem(sidebarRem) {
-        return `${(sidebarRem + SCROLLBAR_REM).toFixed(3)}rem`;
-    }
-
     function sync() {
         frame = 0;
         const page = getResultsPage();
@@ -4742,45 +4680,24 @@ function wrapResultsStats(meta) {
         if (!page || !layout) return;
 
         if (!isWebResultsPage(page)) {
-            const hadStack = stackIsSingle;
-            stackIsSingle = false;
-            page.classList.remove(SINGLE_CLASS);
+            const hadFluid = fluidActive;
+            fluidActive = false;
             clearFluidLayoutVars(page);
-            resetSingleColumnGridState(page, layout, { entering: false });
-            if (hadStack) {
+            if (hadFluid) {
                 window.dispatchEvent(new Event("lg-results-layout-changed"));
             }
             window.dispatchEvent(new Event("lg-sync-sidebar-row"));
             return;
         }
 
-        const decisionWidth = stableStackInnerWidth();
-        const searching = document.documentElement.hasAttribute(SEARCHING_ATTR);
-        const wantSingle = searching ? stackIsSingle : shouldUseSingleColumn(decisionWidth);
-        const modeChanged = wantSingle !== stackIsSingle;
+        const innerWidth = targetGridInnerWidth(layout);
+        const fluid = computeFluidColumns(innerWidth);
+        const wasActive = fluidActive;
+        fluidActive = true;
 
-        if (wantSingle) {
-            if (modeChanged) {
-                stackIsSingle = true;
-                page.classList.add(SINGLE_CLASS);
-                clearFluidLayoutVars(page);
-                resetSingleColumnGridState(page, layout, { entering: true });
-            }
-        } else {
-            const layoutWidth = targetGridInnerWidth(layout);
-            const applyWidth = Math.min(decisionWidth, layoutWidth);
-            const fluid = computeFluidColumns(applyWidth);
+        applyFluidLayout(page, fluid);
 
-            if (modeChanged) {
-                stackIsSingle = false;
-                page.classList.remove(SINGLE_CLASS);
-                resetSingleColumnGridState(page, layout, { entering: false });
-            }
-
-            applyFluidLayout(page, fluid);
-        }
-
-        if (modeChanged) {
+        if (!wasActive) {
             window.dispatchEvent(new Event("lg-results-layout-changed"));
             window.dispatchEvent(new Event("lg-sync-sidebar-row"));
         }
@@ -4792,14 +4709,12 @@ function wrapResultsStats(meta) {
     }
 
     function init() {
-        const page = getResultsPage();
-        stackIsSingle = page?.classList.contains(SINGLE_CLASS) ?? false;
-
         requestAnimationFrame(() => requestAnimationFrame(schedule));
         window.addEventListener("resize", schedule, { passive: true });
         window.addEventListener("degoog-results-ready", schedule, { passive: true });
         window.addEventListener("lg-sync-search-type", schedule, { passive: true });
 
+        const page = getResultsPage();
         if (!page) return;
         new MutationObserver(mutations => {
             if (

@@ -110,33 +110,50 @@ Semantic tokens are set on `:root` (dark default), `[data-theme="dark"]`, `[data
 - Desktop side content should read as a rail of stacked cards, not floating boxes with mixed spacing.
 - Mobile panels should become drawers or stacked blocks. Do not keep desktop popovers on phone widths when the content is important.
 
-### Web two-column shrink order (desktop)
+### Results layout states
 
-On the Web tab, `scripts/search.js` sets fluid `--literallygoogle-results-sidebar-max` and `--literallygoogle-results-main-col-max` on `#results-page`:
+The Web tab has **two layout states**. There is no intermediate desktop "stack band" — below the two-column minimum the layout falls through to mobile single-column.
+
+| State | Viewport | `#results-page` markers | Layout |
+| --- | --- | --- | --- |
+| **Two-column** | ≥990px | `degoog-fullwidth-slot-shell`, fluid vars set inline | CSS grid: main column + sidebar column (`grid-template-columns: var(--lg-results-grid-columns)`). Sidebar sticky. |
+| **Mobile single-column** | <990px | `degoog-fullwidth-slot-shell`, no fluid vars | Base mobile CSS: single column, sidebar below main via core `order: -1`. No sticky sidebar. |
+
+The `lg-results-layout-single` class **no longer exists**. Do not re-add it — see **Removed: desktop stack band** below.
+
+Tabs scroll rail, `#results-meta` two-column grid, and sticky-sidebar mechanics engage at **768px** and are independent of the two-column body grid (which engages at 990px). In the 768–990px band the body is mobile-stacked while the tabs/meta chrome stays desktop-styled.
+
+### Web two-column shrink order (≥990px only)
+
+On the Web tab, `scripts/search.js` sets fluid `--literallygoogle-results-sidebar-max` and `--literallygoogle-results-main-col-max` on `#results-page`. The fluid logic only runs ≥990px (where the two-column grid is active); below 990px fluid vars are cleared and mobile CSS owns the layout.
 
 1. **Wide:** sidebar panel `calc(20rem + 5px)`, main column up to `48rem`.
 2. **Tighten:** shrink the **sidebar first** from max down to `calc(16rem + 5px)` while main stays at `48rem`.
 3. **Tighter:** sidebar holds at `16rem`; main column (glance, URLs, results) shrinks below `48rem`.
-4. **Stack:** switch to single-column before smush using a hysteresis band on **`document.documentElement.clientWidth`** (capped at 76rem) — not search-bar width. Enter when viewport is below **~990px** (or cannot fit sidebar min + gap + 450px main, whichever is larger) or when main at that width would drop below 450px; exit only when ~80px past that threshold (~1070px). **Freeze** the stack mode while `data-lg-sidebar-searching` is set so streaming results / skeleton swaps do not toggle layout mid-search. Layout sync runs on **resize**, **degoog-results-ready**, and **search-type** changes only — not on every subtree mutation.
 
-**Viewport fit:** fluid column **sizes** are computed from `min(stable viewport width, layout inner width)` so the sidebar’s right edge never extends past the viewport when the window is narrowed. Stack **mode** uses viewport width alone. The sidebar shrinks fluidly (20rem → 16rem) before the main column gives way; do not lock the sidebar at 20rem.
+**Viewport fit:** fluid column **sizes** are computed from `min(layout inner width, viewport width)` so the sidebar's right edge never extends past the viewport when the window is narrowed. The sidebar shrinks fluidly (20rem → 16rem) before the main column gives way; do not lock the sidebar at 20rem.
 
-Do not reintroduce filter-tab overlap snapping (`lg-results-sidebar-compact`) or abrupt sidebar jumps — the fluid vars are the only width mechanism.
+JS also sets `--lg-results-grid-columns` and `--lg-results-meta-grid-columns` to fixed `main sidebar` track sizes so CSS grid cannot shrink the main column before the sidebar. Layout sync runs on **resize**, **degoog-results-ready**, and **search-type** changes only — not on every subtree mutation.
 
-JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so CSS grid cannot shrink the main column before the sidebar. When stacking (`lg-results-layout-single`, desktop web **≥768px** only):
+### Removed: desktop stack band (`lg-results-layout-single`)
 
-- Clear inline `grid-row` / `grid-column` on `#sidebar-col` and `#results-main`; switch `#results-layout` to a **two-row grid** (not a single flex column).
-- **Stack layout:** `#slot-above-results` spans full width; `#at-a-glance` and `#sidebar-col` share the top row (main + sidebar columns — same relationship as two-column grid); `#results-list`, `#slot-below-results`, and `#pagination` span full width below. Implemented with `display: contents` on `#results-main` plus `grid-template-areas`.
-- Disable sticky sidebar behaviour (`position: static`, no `lg-sidebar-is-stuck` internal scroll).
-- Sidebar accordion open/collapse (`§7` in `search.js`) keys off **viewport width** (`>=768px` → desktop theme attrs), not `lg-results-layout-single`. Single-column stack at ~990px still uses desktop panel defaults.
-- Reset content gutters to the mobile `0.75rem` inset — do not keep the wide logo-based `--literallygoogle-results-content-inline-start` padding in this mode.
-- Never leave `grid-row: 1 / span 30` or a two-column grid active; that produces the smushed side-by-side columns users report at ~791px viewport widths.
+A previous version of this theme had a third layout state — a "desktop stack band" at ~768–990px that used `display: contents` on `#results-main` plus a `grid-template-areas` stack (`stack-above` / `stack-glance stack-sidebar` / `stack-results` / `stack-below` / `stack-pager`). **This was removed** because:
+
+- **URL overlap:** long unbroken result URLs (`.result-cite`, `.breadcrumb-trail`) overflowed the main grid cell and painted over the sidebar column during the 990↔1070px hysteresis transitions, when fluid vars were cleared but the base 768px two-column grid was still active.
+- **Not a real desktop state:** the band had no sticky sidebar, full-bleed results (violating the stable-content-gutter rule), and a hybrid "desktop tabs rail + stacked body" chrome that read as a broken layout.
+- **Smushed columns:** the 80px hysteresis band could leave a two-column grid active at ~791px viewport widths, producing side-by-side columns too narrow to read.
+
+Below the two-column minimum (990px) the layout now falls straight to mobile single-column. Sidebar accordion open/collapse (`§7` in `search.js`) still keys off **768px** for desktop panel defaults — that is independent of the body grid.
+
+**Cleanup candidates (not yet addressed):**
+
+- The `:has()` full-width-slot panel counter in `style.css` (lines ~1506–1562) counts 1st/2nd/3rd `.slot-full-width` child to decide `#sidebar-col`'s `grid-row`. It is brittle and only handles up to 3 panels. A future refactor should replace it with a single robust rule.
 
 ### Results meta row (`#results-meta`)
 
 - The meta row is a **shared skeleton** across Web, Images, and Videos. Keep its horizontal alignment rules **simple and global**.
-- **Web (desktop, two-column):** `#results-meta` shrink-wraps to `--lg-results-meta-grid-columns` (main + **panel only** — no scrollbar lane). `#results-layout` keeps `--lg-results-grid-columns` (main + panel + scrollbar). `.results-meta-stats` sits in **meta grid column 2** with `justify-self: end` so the line ends at `#sidebar-col > .sticky`, not `#sidebar-col`. No runtime inset JS.
-- **Web (single-column, `lg-results-layout-single`):** stats span the row with `text-align: end` so they align with the sidebar column on the right (same horizontal padding as the stack grid).
+- **Web (desktop, two-column ≥990px):** `#results-meta` shrink-wraps to `--lg-results-meta-grid-columns` (main + **panel only** — no scrollbar lane). `#results-layout` keeps `--lg-results-grid-columns` (main + panel + scrollbar). `.results-meta-stats` sits in **meta grid column 2** with `justify-self: end` so the line ends at `#sidebar-col > .sticky`, not `#sidebar-col`. No runtime inset JS.
+- **Web (single-column <990px):** stats span the row with `text-align: end` via the baseline flex layout.
 - Default padding uses `--literallygoogle-results-content-inline-*` like the tabs row; spell-check and engine chrome stay in column 1 on two-column Web.
 - **Images/Videos (desktop):** `scheduleMediaMetaRightGap()` sets `--lg-media-meta-right-gap` from `#results-meta`’s **border-box right** to `getMediaContentRailRightEdge()` — never from `.results-meta-stats.getBoundingClientRect()` (that moved the text you were measuring). Updates run on layout/resize/tab change only, **not** on scroll or sticky pill frames.
 - Engine pills live in `#lg-media-engine-pills` inside the meta row; stats stay pinned to the rail right edge via flex + the gap variable above.
@@ -285,7 +302,7 @@ The Web sidebar can be `position: sticky` and taller than the viewport. Without 
 4. **Mid-range capture.** Between edges, `preventDefault` and apply `deltaY` to the pane’s `scrollTop` so trackpad momentum over the pane scrolls the pane, not the page.
 5. **Scrollbar visibility.** CSS keeps `overflow-y: hidden` while stuck but idle; `*-scroll-active` (set on wheel, cleared on `pointerleave`) enables `overflow-y: auto` + thin scrollbar. Use `overscroll-behavior: auto` — not `contain` — so browser chaining still works at edges.
 6. **Reset on stick/unstick.** When `*-is-stuck` toggles, reset `scrollTop` to `0` (sidebar also clears its inner `.sticky` child).
-7. **Disabled contexts.** Sidebar chaining is off below `768px` and in `lg-results-layout-single`.
+7. **Disabled contexts.** Sidebar chaining is off below `990px` (the two-column grid engages at 990px; below that the layout is single-column with no sticky sidebar).
 
 | Target | Stuck class | Active class | Scroll element |
 | --- | --- | --- | --- |
@@ -418,6 +435,31 @@ Scoped to `#results-page` only — do not leak to settings:
 
 Sidebar row surfaces use `--lg-sidebar-row-surface` (alias of `--bg-light`).
 
+### Full-width slot parent frame (`degoog-fullwidth-slot-shell`)
+
+When a plugin renders a `.slot-full-width` card in `#slot-above-results`, the theme must **flatten the parent `.results-slot-panel`** — no border, no background, no radius, no shadow. The plugin owns its own card chrome (per AGENTS.md). Every full-width plugin in this repo already flattens the parent itself (currency, color-translator, weather, periodic-table, tip-calculator set `border:0; background:transparent` on `:has(.slot-full-width)`; stocks, sports, osm render their own inner card frame).
+
+The theme's only job on the parent panel is:
+
+```css
+#slot-above-results > .results-slot-panel:has(.slot-full-width) {
+    grid-column: 1 / -1;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+```
+
+Do **not** re-add `border`, `background`, `border-radius`, or `box-shadow` to the parent — that double-frames plugins which already paint their own card. (A previous version added a themed frame here and special-cased `tipcalc` out; the special case is gone because the rule itself is gone.)
+
+### Result URL wrapping
+
+Long unbroken URL paths in `.result-cite` and `.breadcrumb-trail` must wrap — they must never overflow the main grid cell into the sidebar column. The theme sets `overflow-wrap: anywhere; word-break: break-word` on these elements as defense-in-depth, regardless of layout state.
+
 ## 4play plugin chrome
 
 See `4play.css` — scoped under `.lg-fourplay-*`, uses semantic vars with transparent borders on cards.
@@ -425,9 +467,11 @@ See `4play.css` — scoped under `.lg-fourplay-*`, uses semantic vars with trans
 ## What to avoid
 
 - New one-off radii or hex colors outside the token table.
-- `#37393b` or ad-hoc grays for list rows — use `--lg-settings-row-bg`.
+- Ad-hoc grays for list rows — use `--lg-settings-row-bg`.
 - Blue text on settings buttons or chips.
 - Random shadows that do not match the search bar or card system.
 - Critical controls that only work when an icon font loads.
 - Desktop-only UI patterns reused unchanged on mobile.
+- Re-adding `lg-results-layout-single` or any intermediate desktop stack band (see **Removed: desktop stack band**).
+- Adding a themed frame to the full-width slot parent panel (see **Full-width slot parent frame**).
 - Big explanatory comments inside theme files.

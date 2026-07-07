@@ -1422,15 +1422,14 @@ body {
     #results-page #results-meta {
         padding-block: 0.75rem;
     }
+}
 
-    /* Two-column grid tabs (Web, News, File, custom engines — not Images/Videos). */
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-results-layout-single):not(
-            .lg-command-mode
-        )
+/* Two-column grid container: shrink-to-fit + left-align, engaging with the
+   two-column body grid at 990px. Below 990px the layout is full-width mobile. */
+@media (min-width: 990px) {
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta,
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-results-layout-single):not(
-            .lg-command-mode
-        )
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-layout {
         width: fit-content;
         max-width: min(100%, var(--literallygoogle-results-layout-max));
@@ -1439,11 +1438,12 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   RESULTS LAYOUT (DESKTOP)
+   RESULTS LAYOUT (DESKTOP — two-column grid engages at 990px)
    Two-column grid + optional full-width above-results slot.
+   Below 990px the base mobile single-column CSS owns the layout.
    ══════════════════════════════════════════════════════════════════════════ */
 
-@media (min-width: 768px) {
+@media (min-width: 990px) {
     /*
      * Two-column grid: main column (slot + results) never shares width with the
      * sidebar. Absolute sidebar overlap is avoided — column 2 is reserved.
@@ -1775,187 +1775,6 @@ body {
         width: 100%;
         max-width: none;
         box-sizing: border-box;
-    }
-}
-
-/* ══════════════════════════════════════════════════════════════════════════
-   WEB RESULTS SINGLE-COLUMN STACK (desktop stack band, ≥768px)
-   Triggered by JS class lg-results-layout-single — not used on mobile web.
-   ══════════════════════════════════════════════════════════════════════════ */
-@media (min-width: 768px) {
-    #results-page.lg-results-layout-single {
-        --literallygoogle-results-content-inline-start: 0.75rem;
-        --literallygoogle-results-content-inline-end: 0.75rem;
-        --lg-stack-gap: 1rem;
-    }
-
-    #results-page.lg-results-layout-single #results-tabs,
-    #results-page.lg-results-layout-single #results-meta {
-        padding-inline: 0.75rem;
-    }
-
-    #results-page.lg-results-layout-single:not(:has(#results-layout.media-mode)):not(
-            .lg-command-mode
-        )
-        #results-meta
-        .results-meta-stats {
-        flex: 1 1 auto;
-        width: 100%;
-        margin-inline-start: 0;
-        text-align: end;
-    }
-
-    #results-page.lg-results-layout-single #results-layout {
-        display: grid !important;
-        grid-template-columns: minmax(0, 1fr) minmax(
-            16rem,
-            var(--literallygoogle-results-sidebar-max, 20rem)
-        );
-        grid-template-areas:
-            "stack-above stack-above"
-            "stack-glance stack-sidebar"
-            "stack-results stack-results"
-            "stack-below stack-below"
-            "stack-pager stack-pager";
-        gap: var(--lg-stack-gap);
-        max-width: none;
-        margin-top: 0;
-        margin-inline: 0;
-        padding-inline: 0.75rem;
-    }
-
-    #results-page.lg-results-layout-single #slot-above-results:empty {
-        display: none !important;
-    }
-
-    #results-page.lg-results-layout-single #results-layout > #slot-above-results {
-        grid-area: stack-above;
-    }
-
-    /* Flatten #results-main so glance/results/pagination join the stack grid. */
-    #results-page.lg-results-layout-single #results-main {
-        display: contents;
-        max-width: none !important;
-    }
-
-    #results-page.lg-results-layout-single #at-a-glance {
-        grid-area: stack-glance;
-        min-width: 0;
-    }
-
-    #results-page.lg-results-layout-single #sidebar-col {
-        grid-area: stack-sidebar;
-        position: static !important;
-        align-self: start;
-        padding-bottom: 0 !important;
-        min-width: 0;
-    }
-
-    #results-page.lg-results-layout-single #results-list {
-        grid-area: stack-results;
-    }
-
-    #results-page.lg-results-layout-single #slot-below-results {
-        grid-area: stack-below;
-    }
-
-    #results-page.lg-results-layout-single #pagination {
-        grid-area: stack-pager;
-    }
-
-    #results-page.lg-results-layout-single #results-layout > #slot-above-results {
-        display: flex;
-        flex-direction: column;
-        gap: var(--lg-stack-gap);
-    }
-
-    #results-page.lg-results-layout-single #slot-above-results > .results-slot-panel {
-        grid-column: auto !important;
-        grid-row: auto !important;
-        max-width: none;
-    }
-
-    #results-page.lg-results-layout-single #slot-above-results:not(:empty) {
-        margin-bottom: 0;
-    }
-
-    #results-page.lg-results-layout-single #at-a-glance,
-    #results-page.lg-results-layout-single #results-list,
-    #results-page.lg-results-layout-single #slot-below-results,
-    #results-page.lg-results-layout-single #pagination,
-    #results-page.lg-results-layout-single #sidebar-col {
-        width: 100%;
-        max-width: none;
-        min-width: 0;
-    }
-
-    #results-page.lg-results-layout-single #sidebar-col.is-sticky,
-    #results-page.lg-results-layout-single #sidebar-col.is-sticky.lg-sidebar-is-stuck,
-    #results-page.lg-results-layout-single #sidebar-col.is-sticky.lg-sidebar-scroll-active {
-        position: static !important;
-        top: auto !important;
-        max-height: none !important;
-        min-height: 0;
-        overflow: visible !important;
-    }
-
-    #results-page.lg-results-layout-single #at-a-glance:empty {
-        display: none !important;
-    }
-
-    #results-page.lg-results-layout-single #results-main .glance-box,
-    #results-page.lg-results-layout-single #results-main .skeleton-card,
-    #results-page.lg-results-layout-single #results-list,
-    #results-page.lg-results-layout-single #at-a-glance,
-    #results-page.lg-results-layout-single #at-a-glance .glance-box,
-    #results-page.lg-results-layout-single #at-a-glance .skeleton-glance,
-    #results-page.lg-results-layout-single #at-a-glance .degoog-panel {
-        max-width: none;
-        width: 100%;
-    }
-
-    #results-page.lg-results-layout-single #results-list {
-        max-width: none !important;
-    }
-
-    #results-page.lg-results-layout-single #sidebar-col > .sticky {
-        width: 100%;
-        max-width: 100%;
-        margin-inline: 0;
-        padding-bottom: 0 !important;
-    }
-
-    #results-page.lg-results-layout-single #sidebar-col.is-sticky.lg-sidebar-is-stuck > .sticky {
-        padding-bottom: 0 !important;
-    }
-
-    /* One gap token everywhere (sidebar panels, main→sidebar). */
-    #results-page.lg-results-layout-single #sidebar-col > .sticky,
-    #results-page.lg-results-layout-single #results-sidebar,
-    #results-page.lg-results-layout-single #at-a-glance {
-        display: flex;
-        flex-direction: column;
-        gap: var(--lg-stack-gap);
-    }
-
-    /* Core hides sidebar toggles on desktop; keep them visible in the stack band. */
-    #results-page.lg-results-layout-single #results-sidebar
-        .sidebar-accordion-toggle.degoog-accordion-toggle--sidebar {
-        display: flex !important;
-    }
-
-    #results-page.lg-results-layout-single
-        :is(#results-sidebar, #at-a-glance, #slot-above-sidebar, #slot-below-sidebar)
-        > :is(.degoog-panel--stack-item, .sidebar-panel, .results-slot-panel) {
-        margin-bottom: 0 !important;
-    }
-
-    #results-page.lg-results-layout-single #at-a-glance:not(:empty) {
-        margin-bottom: 0 !important;
-    }
-
-    #results-page.lg-results-layout-single #results-main + #sidebar-col {
-        margin-top: 0;
     }
 }
 
@@ -3070,6 +2889,104 @@ body {
     }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   NARROW BAND (768–989px): single-column layout, same as mobile.
+   The two-column grid engages at 990px. Below that, core degoog switches
+   #results-layout to flex-direction: row with a 21.25rem sidebar at 768px —
+   this block reverts to mobile single-column so the 768–989px band reads
+   as mobile, not as a broken two-column with no fluid vars.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) and (max-width: 989px) {
+    #results-page {
+        --literallygoogle-results-content-inline-start: 0.75rem;
+        --literallygoogle-results-content-inline-end: 0.75rem;
+    }
+
+    #results-page #results-tabs,
+    #results-page #results-meta {
+        padding-inline: 0.75rem;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-layout {
+        display: flex;
+        flex-direction: column;
+        padding-block: 0;
+        padding-inline: 0.75rem;
+        gap: 1rem;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #sidebar-col {
+        width: 100%;
+        flex-shrink: 0;
+        order: -1;
+        padding-bottom: 0.5rem;
+        position: static;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #sidebar-col.is-sticky {
+        position: static;
+        top: auto;
+        max-height: none;
+        overflow: visible;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-main {
+        flex: 0 0 auto;
+        max-width: none !important;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-sidebar
+        > :is(.degoog-panel--stack-item, .sidebar-panel) {
+        margin-bottom: 0 !important;
+    }
+
+    #slot-above-results:not(:empty) {
+        margin-bottom: 1rem;
+    }
+
+    #slot-above-results {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-list {
+        max-width: var(--literallygoogle-results-main-col-max, 48rem);
+        width: 100%;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #at-a-glance {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #at-a-glance .glance-box,
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #at-a-glance .skeleton-glance,
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #at-a-glance .glance-ai-skeleton,
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #at-a-glance .degoog-panel {
+        max-width: none !important;
+        width: 100% !important;
+    }
+}
+
 /* Mobile results */
 @media (max-width: 767px) {
     #results-meta {
@@ -3111,8 +3028,7 @@ body {
         padding-inline: 0.75rem;
     }
 
-    /* Mobile web: core puts sidebar first (order: -1). Normalize gaps only — do not
-       reorder; stack band rules (lg-results-layout-single) are desktop ≥768px only. */
+    /* Mobile web: core puts sidebar first (order: -1). Normalize gaps only. */
     #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode) {
         --lg-stack-gap: 1rem;
     }
@@ -3717,40 +3633,22 @@ body {
 
 #slot-above-results
     > .results-slot-panel:has(.slot-full-width) {
-    background: var(--bg-light);
-    border: 1px solid var(--border-light);
-    border-radius: var(--theme-radius-lg);
     overflow: visible;
     margin-top: 0;
     margin-inline: 0;
     padding: 0;
-    box-shadow:
-        inset 0 1px 0 color-mix(in srgb, var(--text-primary) 4%, transparent),
-        0 1px 2px color-mix(in srgb, var(--text-primary) 8%, transparent);
+    border: 0;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
 }
 
 #slot-above-results
     > .results-slot-panel:has(.slot-full-width)
     > .results-slot-panel-body {
-    padding: 16px;
-    --slot-inset-bg: var(--bg);
-    --slot-inset-border: color-mix(
-        in srgb,
-        var(--border-light) 70%,
-        var(--text-primary) 16%
-    );
-}
-
-/* Tip calculator adds its own full-width card chrome — avoid double frames. */
-#results-page.degoog-fullwidth-slot-shell
-    #slot-above-results
-    > .results-slot-panel:has(.tipcalc-card)
-    .tipcalc-card {
-    border: none;
-    background: transparent;
-    border-radius: 0;
-    margin: 0;
     padding: 0;
+    width: 100%;
+    max-width: none;
 }
 
 /* Spell check: appended dynamically to #results-meta to sit side-by-side */
@@ -3772,11 +3670,12 @@ body {
         flex-wrap: nowrap;
         max-width: none;
     }
+}
 
+/* Two-column meta grid engages with the two-column body grid at 990px. */
+@media (min-width: 990px) {
     /* Sidebar-grid tabs: stats row mirrors main + panel columns (no scrollbar lane). */
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-results-layout-single):not(
-            .lg-command-mode
-        )
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta {
         display: grid;
         justify-content: start;
@@ -3791,35 +3690,20 @@ body {
         box-sizing: border-box;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-results-layout-single):not(
-            .lg-command-mode
-        )
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta
         :is(.spell-check-notice, #lg-media-engine-pills) {
         grid-column: 1;
         margin-inline-end: 0;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-results-layout-single):not(
-            .lg-command-mode
-        )
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta
         .results-meta-stats {
         grid-column: 2;
         justify-self: end;
         margin-inline-start: 0;
         margin-inline-end: 0;
-    }
-
-    #results-page.lg-results-layout-single:not(:has(#results-layout.media-mode)):not(
-            .lg-command-mode
-        )
-        #results-meta
-        .results-meta-stats {
-        flex: 1 1 auto;
-        width: 100%;
-        margin-inline-start: 0;
-        text-align: end;
     }
 }
 
@@ -4986,6 +4870,18 @@ body {
 #slot-below-results,
 #pagination {
     min-width: 0;
+}
+
+/* Long unbroken URL paths must wrap — never overflow the main grid cell into
+   the sidebar column. Defense-in-depth regardless of layout state. */
+.result-cite,
+.breadcrumb-trail {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.bc-item {
+    word-break: break-word;
 }
 
 #pagination {
