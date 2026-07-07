@@ -4919,11 +4919,8 @@ function wrapResultsStats(meta) {
     const USER_ATTR_KNOWLEDGE = "data-lg-sidebar-user-knowledge";
     let lastIsDesktop = null;
 
-    function isDesktop() {
-        return (
-            window.innerWidth >= DESKTOP_MIN &&
-            !getResultsPage()?.classList.contains("lg-results-layout-single")
-        );
+    function isDesktopViewport() {
+        return window.innerWidth >= DESKTOP_MIN;
     }
 
     function sidebarRoots() {
@@ -5009,25 +5006,25 @@ function wrapResultsStats(meta) {
 
     function getEngineMode(root) {
         if (isImageEngineRoot(root)) {
-            const attr = isDesktop() ? ENGINE_MODE_IMAGES_DESKTOP : ENGINE_MODE_IMAGES_MOBILE;
+            const attr = isDesktopViewport() ? ENGINE_MODE_IMAGES_DESKTOP : ENGINE_MODE_IMAGES_MOBILE;
             return normalizeEngineMode(document.documentElement.getAttribute(attr) || "open");
         }
-        const attr = isDesktop() ? ENGINE_MODE_DESKTOP : ENGINE_MODE_MOBILE;
+        const attr = isDesktopViewport() ? ENGINE_MODE_DESKTOP : ENGINE_MODE_MOBILE;
         return normalizeEngineMode(
             document.documentElement.getAttribute(attr) || "collapse-on-complete",
         );
     }
 
     function getRelatedMode() {
-        const attr = isDesktop() ? RELATED_MODE_DESKTOP : RELATED_MODE_MOBILE;
-        const fallback = isDesktop() ? "open" : "collapsed";
+        const attr = isDesktopViewport() ? RELATED_MODE_DESKTOP : RELATED_MODE_MOBILE;
+        const fallback = isDesktopViewport() ? "open" : "collapsed";
         const raw = document.documentElement.getAttribute(attr) || fallback;
         return raw === "open" ? "open" : "collapsed";
     }
 
     function getKnowledgeMode() {
-        const attr = isDesktop() ? KNOWLEDGE_MODE_DESKTOP : KNOWLEDGE_MODE_MOBILE;
-        const fallback = isDesktop() ? "open" : "collapsed";
+        const attr = isDesktopViewport() ? KNOWLEDGE_MODE_DESKTOP : KNOWLEDGE_MODE_MOBILE;
+        const fallback = isDesktopViewport() ? "open" : "collapsed";
         const raw = document.documentElement.getAttribute(attr) || fallback;
         return raw === "open" ? "open" : "collapsed";
     }
@@ -5262,7 +5259,7 @@ function wrapResultsStats(meta) {
 
     function init() {
         if (!isThemeEnabled()) return;
-        lastIsDesktop = isDesktop();
+        lastIsDesktop = isDesktopViewport();
         bindRoots();
         wireImageLoadHandlers();
         window.addEventListener("degoog-results-ready", onSearchTypeOrResultsChange);
@@ -5286,14 +5283,14 @@ function wrapResultsStats(meta) {
         });
         observeSearchLifecycle();
         window.addEventListener("resize", () => {
-            const nowDesktop = isDesktop();
+            const nowDesktop = isDesktopViewport();
             if (nowDesktop === lastIsDesktop) return;
             lastIsDesktop = nowDesktop;
             clearUserOverrides();
             scheduleSync();
         });
         window.addEventListener("lg-results-layout-changed", () => {
-            const nowDesktop = isDesktop();
+            const nowDesktop = isDesktopViewport();
             if (nowDesktop !== lastIsDesktop) {
                 lastIsDesktop = nowDesktop;
                 clearUserOverrides();
