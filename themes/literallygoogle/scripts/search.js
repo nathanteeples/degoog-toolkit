@@ -2618,17 +2618,20 @@ function wrapResultsStats(meta) {
         const scrollEl = rail.querySelector(TABS_SCROLL_SELECTOR);
         if (!scrollEl) return;
 
-        collectTabNodes(tabs).forEach(tab => scrollEl.appendChild(tab));
+        // Only move nodes that are not already in the right parent. Moving a
+        // node to the same parent still fires a childList mutation, which the
+        // observer below re-enters as another syncTabsRail() call — an infinite
+        // loop. Guard every appendChild with a parent check.
+        for (const tab of collectTabNodes(tabs)) {
+            if (tab.parentElement !== scrollEl) scrollEl.appendChild(tab);
+        }
 
         const toolsBar = tabs.querySelector("#tools-bar");
         const wantMobile = mobileQuery.matches;
         if (toolsBar) {
-            if (wantMobile) {
-                // Mobile: filters is the last tab in the scroll list.
-                scrollEl.appendChild(toolsBar);
-            } else {
-                // Desktop: filters sits in grid column 2 (right-aligned).
-                tabs.appendChild(toolsBar);
+            const wantParent = wantMobile ? scrollEl : tabs;
+            if (toolsBar.parentElement !== wantParent) {
+                wantParent.appendChild(toolsBar);
             }
         }
 
