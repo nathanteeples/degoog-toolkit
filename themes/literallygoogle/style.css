@@ -2890,7 +2890,6 @@ body {
         padding-inline: 0.75rem;
     }
 
-
     /* Never show the legacy scale(0.18) miniature sidebar on image search. */
     #results-page:is(
             [data-lg-search-type="images"],
@@ -6719,13 +6718,51 @@ select.settings-server-preset-select:hover,
         pointer-events: none;
         opacity: 1;
         visibility: visible;
-        transform: translateX(1.6rem) scale(0.975);
-        animation: lg-preview-panel-fade-out 280ms ease forwards;
-        transition:
-            transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
-            box-shadow 220ms ease,
-            border-color 220ms ease,
-            background-color 220ms ease;
+        animation: lg-preview-panel-fade-out-desktop 280ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    #results-page:has(#results-layout.media-mode) #media-preview-panel.lg-preview-closing .mp2-bar,
+    #results-page:has(#results-layout.media-mode) #media-preview-panel.lg-preview-closing .mp2-body {
+        animation: lg-preview-content-fade-out-desktop 240ms ease forwards;
+    }
+
+    html[dir="rtl"] #results-page:has(#results-layout.media-mode) #media-preview-panel.lg-preview-closing {
+        animation: lg-preview-panel-fade-out-desktop-rtl 280ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    @keyframes lg-preview-panel-fade-out-desktop {
+        from {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+            visibility: visible;
+        }
+        to {
+            opacity: 0;
+            transform: translateX(4rem) scale(0.95);
+            visibility: visible;
+        }
+    }
+
+    @keyframes lg-preview-panel-fade-out-desktop-rtl {
+        from {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+            visibility: visible;
+        }
+        to {
+            opacity: 0;
+            transform: translateX(-4rem) scale(0.95);
+            visibility: visible;
+        }
+    }
+
+    @keyframes lg-preview-content-fade-out-desktop {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+        }
     }
 
     #results-page:has(#results-layout.media-mode)

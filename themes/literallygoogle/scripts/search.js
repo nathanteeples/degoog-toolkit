@@ -2652,6 +2652,7 @@ function wrapResultsStats(meta) {
         const containerWidth = scrollEl.clientWidth;
         const currentScroll = scrollEl.scrollLeft;
         const maxScroll = scrollEl.scrollWidth - containerWidth;
+        const containerRect = scrollEl.getBoundingClientRect();
 
         const children = [...scrollEl.children].filter(
             child => child instanceof HTMLElement && !child.hasAttribute("hidden")
@@ -2665,7 +2666,6 @@ function wrapResultsStats(meta) {
             let targetChild = null;
             for (const child of children) {
                 const childRect = child.getBoundingClientRect();
-                const containerRect = scrollEl.getBoundingClientRect();
                 const childLeft = childRect.left - containerRect.left + currentScroll;
                 if (childLeft >= rightBoundary - 20) {
                     targetChild = child;
@@ -2673,7 +2673,6 @@ function wrapResultsStats(meta) {
                 }
             }
             if (targetChild) {
-                const containerRect = scrollEl.getBoundingClientRect();
                 const targetChildRect = targetChild.getBoundingClientRect();
                 targetScroll = targetChildRect.left - containerRect.left + currentScroll;
             } else {
@@ -2688,7 +2687,6 @@ function wrapResultsStats(meta) {
             for (let i = children.length - 1; i >= 0; i--) {
                 const child = children[i];
                 const childRect = child.getBoundingClientRect();
-                const containerRect = scrollEl.getBoundingClientRect();
                 const childRight = childRect.right - containerRect.left + currentScroll;
                 if (childRight <= leftBoundary + 20) {
                     targetChild = child;
@@ -2696,7 +2694,6 @@ function wrapResultsStats(meta) {
                 }
             }
             if (targetChild) {
-                const containerRect = scrollEl.getBoundingClientRect();
                 const targetChildRect = targetChild.getBoundingClientRect();
                 const childLeft = targetChildRect.left - containerRect.left + currentScroll;
                 const childWidth = targetChildRect.width;
@@ -2721,11 +2718,8 @@ function wrapResultsStats(meta) {
             tabs.dataset.lgTabsInsertBeforeOverridden = "1";
             const originalInsertBefore = tabs.insertBefore;
             tabs.insertBefore = function (newNode, referenceNode) {
-                const toolsBar = document.getElementById("tools-bar");
-                if (referenceNode && referenceNode === toolsBar && toolsBar.parentElement !== this) {
-                    if (toolsBar.parentElement) {
-                        return toolsBar.parentElement.insertBefore(newNode, toolsBar);
-                    }
+                if (referenceNode && referenceNode.id === "tools-bar" && referenceNode.parentElement !== this) {
+                    return referenceNode.parentElement.insertBefore(newNode, referenceNode);
                 }
                 return originalInsertBefore.call(this, newNode, referenceNode);
             };
