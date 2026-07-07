@@ -699,7 +699,7 @@ html[data-image-mode-desktop-layout="fab-right"] {
 }
 
 #results-page .sidebar-panel,
-#results-page .results-slot-panel,
+#results-page .results-slot-panel:not(:has(.slot-full-width)),
 #results-page .degoog-panel,
 #results-page .glance-box,
 #results-page .glance-ai,
