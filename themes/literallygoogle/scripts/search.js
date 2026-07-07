@@ -2647,9 +2647,70 @@ function wrapResultsStats(meta) {
         if (!rail || !scrollEl) return;
         event.preventDefault();
         event.stopPropagation();
+
         const dir = scrollNav.getAttribute("data-lg-tabs-scroll");
-        const delta = dir === "prev" ? -horizontalTabsScrollStep(scrollEl) : horizontalTabsScrollStep(scrollEl);
-        scrollEl.scrollBy({ left: delta, behavior: "smooth" });
+        const containerWidth = scrollEl.clientWidth;
+        const currentScroll = scrollEl.scrollLeft;
+        const maxScroll = scrollEl.scrollWidth - containerWidth;
+
+        const children = [...scrollEl.children].filter(
+            child => child instanceof HTMLElement && !child.hasAttribute("hidden")
+        );
+        if (!children.length) return;
+
+        let targetScroll = currentScroll;
+
+        if (dir === "next") {
+            const rightBoundary = currentScroll + containerWidth;
+            let targetChild = null;
+            for (const child of children) {
+                const childRect = child.getBoundingClientRect();
+                const containerRect = scrollEl.getBoundingClientRect();
+                const childLeft = childRect.left - containerRect.left + currentScroll;
+                if (childLeft >= rightBoundary - 20) {
+                    targetChild = child;
+                    break;
+                }
+            }
+            if (targetChild) {
+                const containerRect = scrollEl.getBoundingClientRect();
+                const targetChildRect = targetChild.getBoundingClientRect();
+                targetScroll = targetChildRect.left - containerRect.left + currentScroll;
+            } else {
+                targetScroll = maxScroll;
+            }
+            if (targetScroll - currentScroll < 80) {
+                targetScroll = Math.min(maxScroll, currentScroll + 120);
+            }
+        } else {
+            const leftBoundary = currentScroll;
+            let targetChild = null;
+            for (let i = children.length - 1; i >= 0; i--) {
+                const child = children[i];
+                const childRect = child.getBoundingClientRect();
+                const containerRect = scrollEl.getBoundingClientRect();
+                const childRight = childRect.right - containerRect.left + currentScroll;
+                if (childRight <= leftBoundary + 20) {
+                    targetChild = child;
+                    break;
+                }
+            }
+            if (targetChild) {
+                const containerRect = scrollEl.getBoundingClientRect();
+                const targetChildRect = targetChild.getBoundingClientRect();
+                const childLeft = targetChildRect.left - containerRect.left + currentScroll;
+                const childWidth = targetChildRect.width;
+                targetScroll = childLeft + childWidth - containerWidth;
+            } else {
+                targetScroll = 0;
+            }
+            if (currentScroll - targetScroll < 80) {
+                targetScroll = Math.max(0, currentScroll - 120);
+            }
+        }
+
+        targetScroll = Math.max(0, Math.min(maxScroll, targetScroll));
+        scrollEl.scrollTo({ left: targetScroll, behavior: "smooth" });
     }
 
     function init() {
