@@ -698,12 +698,12 @@ html[data-image-mode-desktop-layout="fab-right"] {
     text-transform: none !important;
 }
 
-#results-page .sidebar-panel,
+#results-page .sidebar-panel:not(:has(.slot-full-width)),
 #results-page .results-slot-panel:not(:has(.slot-full-width)),
-#results-page .degoog-panel,
-#results-page .glance-box,
-#results-page .glance-ai,
-#results-page .skeleton-sidebar-panel {
+#results-page .degoog-panel:not(:has(.slot-full-width)),
+#results-page .glance-box:not(:has(.slot-full-width)),
+#results-page .glance-ai:not(:has(.slot-full-width)),
+#results-page .skeleton-sidebar-panel:not(:has(.slot-full-width)) {
     border-radius: var(--theme-radius-lg) !important;
     background: var(--bg-light) !important;
 }
