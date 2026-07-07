@@ -1445,10 +1445,12 @@ body {
 
 @media (min-width: 990px) {
     /*
-     * Two-column grid: main column (slot + results) never shares width with the
-     * sidebar. Absolute sidebar overlap is avoided — column 2 is reserved.
+     * Two-column grid (engages only when scripts/search.js has added
+     * .lg-fluid-active to #results-page with computed fluid column vars):
+     * main column (slot + results) never shares width with the sidebar.
+     * Absolute sidebar overlap is avoided — column 2 is reserved.
      */
-    #results-layout {
+    #results-page.lg-fluid-active #results-layout {
         position: relative;
         display: grid;
         grid-template-columns: var(
@@ -2890,24 +2892,26 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   NARROW BAND (768–989px): single-column layout, same as mobile.
-   The two-column grid engages at 990px. Below that, core degoog switches
-   #results-layout to flex-direction: row with a 21.25rem sidebar at 768px —
-   this block reverts to mobile single-column so the 768–989px band reads
-   as mobile, not as a broken two-column with no fluid vars.
+   FLUID GATE: single-column fallback for any viewport ≥768px where the
+   fluid two-column layout has not engaged. scripts/search.js adds
+   .lg-fluid-active to #results-page once it computes fluid sidebar/main
+   column vars on a web results page ≥990px. Until that class is present,
+   this block holds the layout at mobile single-column so the 768–989px band
+   (and any ≥990px width before JS runs) reads as mobile, not as a broken
+   two-column with no fluid vars. Media-mode and lg-command-mode are exempt.
    ══════════════════════════════════════════════════════════════════════════ */
-@media (min-width: 768px) and (max-width: 989px) {
-    #results-page {
+@media (min-width: 768px) {
+    #results-page:not(.lg-fluid-active) {
         --literallygoogle-results-content-inline-start: 0.75rem;
         --literallygoogle-results-content-inline-end: 0.75rem;
     }
 
-    #results-page #results-tabs,
-    #results-page #results-meta {
+    #results-page:not(.lg-fluid-active) #results-tabs,
+    #results-page:not(.lg-fluid-active) #results-meta {
         padding-inline: 0.75rem;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-layout {
         display: flex;
         flex-direction: column;
@@ -2916,7 +2920,7 @@ body {
         gap: 1rem;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #sidebar-col {
         width: 100%;
         flex-shrink: 0;
@@ -2925,7 +2929,7 @@ body {
         position: static;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #sidebar-col.is-sticky {
         position: static;
         top: auto;
@@ -2933,54 +2937,54 @@ body {
         overflow: visible;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-main {
         flex: 0 0 auto;
         max-width: none !important;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-sidebar {
         display: flex;
         flex-direction: column;
         gap: 1rem;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-sidebar
         > :is(.degoog-panel--stack-item, .sidebar-panel) {
         margin-bottom: 0 !important;
     }
 
-    #slot-above-results:not(:empty) {
+    #results-page:not(.lg-fluid-active) #slot-above-results:not(:empty) {
         margin-bottom: 1rem;
     }
 
-    #slot-above-results {
+    #results-page:not(.lg-fluid-active) #slot-above-results {
         display: flex;
         flex-direction: column;
         gap: 12px;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-list {
         max-width: var(--literallygoogle-results-main-col-max, 48rem);
         width: 100%;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #at-a-glance {
         width: 100% !important;
         max-width: none !important;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #at-a-glance .glance-box,
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #at-a-glance .skeleton-glance,
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #at-a-glance .glance-ai-skeleton,
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #at-a-glance .degoog-panel {
         max-width: none !important;
         width: 100% !important;
@@ -3672,10 +3676,11 @@ body {
     }
 }
 
-/* Two-column meta grid engages with the two-column body grid at 990px. */
+/* Two-column meta grid engages with the two-column body grid at 990px (only
+   when scripts/search.js has added .lg-fluid-active — see body grid above). */
 @media (min-width: 990px) {
     /* Sidebar-grid tabs: stats row mirrors main + panel columns (no scrollbar lane). */
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page.lg-fluid-active:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta {
         display: grid;
         justify-content: start;
@@ -3690,14 +3695,14 @@ body {
         box-sizing: border-box;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page.lg-fluid-active:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta
         :is(.spell-check-notice, #lg-media-engine-pills) {
         grid-column: 1;
         margin-inline-end: 0;
     }
 
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page.lg-fluid-active:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta
         .results-meta-stats {
         grid-column: 2;
