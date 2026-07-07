@@ -125,8 +125,8 @@ Do not reintroduce filter-tab overlap snapping (`lg-results-sidebar-compact`) or
 
 JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so CSS grid cannot shrink the main column before the sidebar. When stacking (`lg-results-layout-single`, desktop web **≥768px** only):
 
-- Clear inline `grid-row` / `grid-column` on `#sidebar-col` and `#results-main`; force `#results-layout` to `display: flex` (column) with `grid-template-columns: none`.
-- **Stack order (top → bottom):** `#slot-above-results` → `#results-main` (at-a-glance + URL results + pagination) → `#sidebar-col` (engine stats, related queries). Matches two-column reading order: main column first, sidebar rail below.
+- Clear inline `grid-row` / `grid-column` on `#sidebar-col` and `#results-main`; switch `#results-layout` to a **two-row grid** (not a single flex column).
+- **Stack layout:** `#slot-above-results` spans full width; `#at-a-glance` and `#sidebar-col` share the top row (main + sidebar columns — same relationship as two-column grid); `#results-list`, `#slot-below-results`, and `#pagination` span full width below. Implemented with `display: contents` on `#results-main` plus `grid-template-areas`.
 - Disable sticky sidebar behaviour (`position: static`, no `lg-sidebar-is-stuck` internal scroll).
 - Sidebar accordion open/collapse (`§7` in `search.js`) keys off **viewport width** (`>=768px` → desktop theme attrs), not `lg-results-layout-single`. Single-column stack at ~990px still uses desktop panel defaults.
 - Reset content gutters to the mobile `0.75rem` inset — do not keep the wide logo-based `--literallygoogle-results-content-inline-start` padding in this mode.
@@ -136,7 +136,7 @@ JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so 
 
 - The meta row is a **shared skeleton** across Web, Images, and Videos. Keep its horizontal alignment rules **simple and global**.
 - **Web (desktop, two-column):** `#results-meta` shrink-wraps to `--lg-results-meta-grid-columns` (main + **panel only** — no scrollbar lane). `#results-layout` keeps `--lg-results-grid-columns` (main + panel + scrollbar). `.results-meta-stats` sits in **meta grid column 2** with `justify-self: end` so the line ends at `#sidebar-col > .sticky`, not `#sidebar-col`. No runtime inset JS.
-- **Web (single-column, `lg-results-layout-single`):** stats span the row with `text-align: end` so they align with the stacked sidebar below (same horizontal padding).
+- **Web (single-column, `lg-results-layout-single`):** stats span the row with `text-align: end` so they align with the sidebar column on the right (same horizontal padding as the stack grid).
 - Default padding uses `--literallygoogle-results-content-inline-*` like the tabs row; spell-check and engine chrome stay in column 1 on two-column Web.
 - **Images/Videos (desktop):** `scheduleMediaMetaRightGap()` sets `--lg-media-meta-right-gap` from `#results-meta`’s **border-box right** to `getMediaContentRailRightEdge()` — never from `.results-meta-stats.getBoundingClientRect()` (that moved the text you were measuring). Updates run on layout/resize/tab change only, **not** on scroll or sticky pill frames.
 - Engine pills live in `#lg-media-engine-pills` inside the meta row; stats stay pinned to the rail right edge via flex + the gap variable above.

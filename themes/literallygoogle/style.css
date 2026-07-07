@@ -1806,14 +1806,22 @@ body {
     }
 
     #results-page.lg-results-layout-single #results-layout {
-        display: flex !important;
-        flex-direction: column;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(
+            16rem,
+            var(--literallygoogle-results-sidebar-max, 20rem)
+        );
+        grid-template-areas:
+            "stack-above stack-above"
+            "stack-glance stack-sidebar"
+            "stack-results stack-results"
+            "stack-below stack-below"
+            "stack-pager stack-pager";
         gap: var(--lg-stack-gap);
         max-width: none;
         margin-top: 0;
         margin-inline: 0;
         padding-inline: 0.75rem;
-        grid-template-columns: none !important;
     }
 
     #results-page.lg-results-layout-single #slot-above-results:empty {
@@ -1821,23 +1829,38 @@ body {
     }
 
     #results-page.lg-results-layout-single #results-layout > #slot-above-results {
-        order: 0;
+        grid-area: stack-above;
     }
 
+    /* Flatten #results-main so glance/results/pagination join the stack grid. */
     #results-page.lg-results-layout-single #results-main {
-        order: 1;
-        display: flex;
-        flex-direction: column;
-        gap: var(--lg-stack-gap);
+        display: contents;
         max-width: none !important;
-        flex: 0 0 auto;
+    }
+
+    #results-page.lg-results-layout-single #at-a-glance {
+        grid-area: stack-glance;
+        min-width: 0;
     }
 
     #results-page.lg-results-layout-single #sidebar-col {
-        order: 2;
+        grid-area: stack-sidebar;
         position: static !important;
-        align-self: stretch;
+        align-self: start;
         padding-bottom: 0 !important;
+        min-width: 0;
+    }
+
+    #results-page.lg-results-layout-single #results-list {
+        grid-area: stack-results;
+    }
+
+    #results-page.lg-results-layout-single #slot-below-results {
+        grid-area: stack-below;
+    }
+
+    #results-page.lg-results-layout-single #pagination {
+        grid-area: stack-pager;
     }
 
     #results-page.lg-results-layout-single #results-layout > #slot-above-results {
@@ -1856,13 +1879,13 @@ body {
         margin-bottom: 0;
     }
 
-    #results-page.lg-results-layout-single #results-main,
+    #results-page.lg-results-layout-single #at-a-glance,
+    #results-page.lg-results-layout-single #results-list,
+    #results-page.lg-results-layout-single #slot-below-results,
+    #results-page.lg-results-layout-single #pagination,
     #results-page.lg-results-layout-single #sidebar-col {
         width: 100%;
         max-width: none;
-        grid-column: auto !important;
-        grid-row: auto !important;
-        flex: 0 0 auto;
         min-width: 0;
     }
 
