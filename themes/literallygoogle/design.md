@@ -117,16 +117,16 @@ On the Web tab, `scripts/search.js` sets fluid `--literallygoogle-results-sideba
 1. **Wide:** sidebar panel `calc(20rem + 5px)`, main column up to `48rem`.
 2. **Tighten:** shrink the **sidebar first** from max down to `calc(16rem + 5px)` while main stays at `48rem`.
 3. **Tighter:** sidebar holds at `16rem`; main column (glance, URLs, results) shrinks below `48rem`.
-4. **Stack:** switch to single-column before smush using a hysteresis band on **`document.documentElement.clientWidth`** (capped at 76rem) — not search-bar width. Enter when viewport is below **~990px** (or cannot fit sidebar min + gap + 450px main, whichever is larger) or when main at that width would drop below 450px; exit only when ~80px past that threshold (~1070px). **Freeze** the stack mode while `data-lg-sidebar-searching` is set so streaming results / skeleton swaps do not toggle layout mid-search. Layout sync runs on **resize**, **degoog-results-ready**, and **search-type** changes only — not on every subtree mutation.
+4. **Stack:** switch to single-column before smush using a hysteresis band on **`document.documentElement.clientWidth`** (capped at 76rem) — not search-bar width. Enter when viewport is below **~990px** (or cannot fit sidebar min + gap + 450px main, whichever is larger) or when main at that width would drop below 450px; exit only when ~80px past that threshold (~1070px). **Mobile web** (`<768px`) always uses stack mode. **Freeze** the stack mode while `data-lg-sidebar-searching` is set so streaming results / skeleton swaps do not toggle layout mid-search. Layout sync runs on **resize**, **degoog-results-ready**, and **search-type** changes only — not on every subtree mutation.
 
 **Viewport fit:** fluid column **sizes** are computed from `min(stable viewport width, layout inner width)` so the sidebar’s right edge never extends past the viewport when the window is narrowed. Stack **mode** uses viewport width alone. The sidebar shrinks fluidly (20rem → 16rem) before the main column gives way; do not lock the sidebar at 20rem.
 
 Do not reintroduce filter-tab overlap snapping (`lg-results-sidebar-compact`) or abrupt sidebar jumps — the fluid vars are the only width mechanism.
 
-JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so CSS grid cannot shrink the main column before the sidebar. When stacking (`lg-results-layout-single`):
+JS also sets `--lg-results-grid-columns` to fixed `main sidebar` track sizes so CSS grid cannot shrink the main column before the sidebar. When stacking (`lg-results-layout-single`, **all viewport widths**):
 
 - Clear inline `grid-row` / `grid-column` on `#sidebar-col` and `#results-main`; force `#results-layout` to `display: flex` (column) with `grid-template-columns: none`.
-- **Stack order (top → bottom):** `#slot-above-results` → `#results-main` (glance + URLs) → `#sidebar-col` (engine stats, related queries). Match two-column reading order: main column first, sidebar rail below.
+- **Stack order (top → bottom):** `#slot-above-results` → `#at-a-glance` → `#sidebar-col` (engine stats, related queries) → `#results-list` → pagination. Implemented with `display: contents` on `#results-main` so the sidebar rail is not buried below the full URL list. CSS for this mode lives **outside** the desktop `@media (min-width: 768px)` block so mobile web gets the same order and `--lg-stack-gap` spacing (overrides core `order: -1` on `#sidebar-col`).
 - Disable sticky sidebar behaviour (`position: static`, no `lg-sidebar-is-stuck` internal scroll).
 - Sidebar accordion open/collapse (`§7` in `search.js`) keys off **viewport width** (`>=768px` → desktop theme attrs), not `lg-results-layout-single`. Single-column stack at ~990px still uses desktop panel defaults.
 - Reset content gutters to the mobile `0.75rem` inset — do not keep the wide logo-based `--literallygoogle-results-content-inline-start` padding in this mode.
