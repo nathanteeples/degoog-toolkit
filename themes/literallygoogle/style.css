@@ -2890,14 +2890,6 @@ body {
         padding-inline: 0.75rem;
     }
 
-    #results-meta .results-meta-stats {
-        margin-inline-start: 0;
-        text-align: start;
-    }
-
-    #results-meta .spell-check-notice {
-        flex-grow: 1;
-    }
 
     /* Never show the legacy scale(0.18) miniature sidebar on image search. */
     #results-page:is(
@@ -4273,6 +4265,16 @@ body {
 
 #results-meta .spell-check-notice a::before {
     content: none;
+}
+
+@media (max-width: 767px) {
+    #results-meta .results-meta-stats {
+        margin-inline-start: 0 !important;
+        text-align: start !important;
+    }
+    #results-meta .spell-check-notice {
+        flex-grow: 1 !important;
+    }
 }
 
 #sidebar-col > .sticky > div:empty {

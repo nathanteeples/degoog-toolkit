@@ -2655,6 +2655,21 @@ function wrapResultsStats(meta) {
     function init() {
         const tabs = getResultsTabs();
         if (!tabs) return;
+
+        if (!tabs.dataset.lgTabsInsertBeforeOverridden) {
+            tabs.dataset.lgTabsInsertBeforeOverridden = "1";
+            const originalInsertBefore = tabs.insertBefore;
+            tabs.insertBefore = function (newNode, referenceNode) {
+                const toolsBar = document.getElementById("tools-bar");
+                if (referenceNode && referenceNode === toolsBar && toolsBar.parentElement !== this) {
+                    if (toolsBar.parentElement) {
+                        return toolsBar.parentElement.insertBefore(newNode, toolsBar);
+                    }
+                }
+                return originalInsertBefore.call(this, newNode, referenceNode);
+            };
+        }
+
         syncTabsRail();
         if (!tabs.dataset.lgTabsRailClickWired) {
             tabs.dataset.lgTabsRailClickWired = "1";
