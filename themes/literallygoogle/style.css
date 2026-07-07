@@ -3593,15 +3593,35 @@ body {
     #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-tabs
         > .lg-results-tabs-rail {
-        grid-column: 1;
+        grid-column: 1 / 3;
+        grid-row: 1;
         min-width: 0;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-tabs:has(> #tools-bar:not([hidden]))
+        > .lg-results-tabs-rail {
+        margin-inline-end: 6.5rem;
+    }
+
+    /* If tools-bar is hidden on command pages or image FAB page, remove the margin */
+    #results-page:is(
+        :has(#results-list .command-result),
+        :has(#results-list .command-help-table),
+        [data-lg-search-type="images"].lg-image-fab-filters
+    )
+        #results-tabs
+        > .lg-results-tabs-rail {
+        margin-inline-end: 0;
     }
 
     #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-tabs
         > #tools-bar {
         grid-column: 2;
+        grid-row: 1;
         justify-self: end;
+        z-index: 10;
     }
 }
 
@@ -3773,11 +3793,12 @@ body {
         opacity: 1;
         pointer-events: auto;
     }
-    @media (hover: none) {
-        #results-page #results-tabs .lg-results-tabs-rail .lg-media-engine-nav:not(:disabled) {
-            opacity: 1;
-            pointer-events: auto;
-        }
+
+    #results-tabs .lg-filters-wrap {
+        position: static;
+        background: none;
+        box-shadow: none;
+        padding-inline-start: 0;
     }
 }
 
@@ -3874,9 +3895,6 @@ body {
     color: var(--text-primary);
 }
 
-#results-tabs .tools-toggle.is-open {
-    font-weight: 700;
-}
 
 #results-tabs .tools-toggle.active:not(.is-open) {
     color: var(--text-primary);
