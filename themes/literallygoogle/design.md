@@ -112,22 +112,18 @@ Semantic tokens are set on `:root` (dark default), `[data-theme="dark"]`, `[data
 
 ### Results layout states
 
-The Web tab has **two layout states**. There is no intermediate desktop "stack band". The CSS gate is the runtime class **`lg-fluid-active`** on `#results-page`, which `scripts/search.js` adds only when it has computed fluid sidebar/main column vars for a web results page ≥990px.
+The Web tab has **two layout states** keyed off a single 768px breakpoint.
 
 | State | Viewport | `#results-page` markers | Layout |
 | --- | --- | --- | --- |
-| **Two-column** | ≥990px | `degoog-fullwidth-slot-shell` **+ `lg-fluid-active`**, fluid vars set inline | CSS grid: main column + sidebar column (`grid-template-columns: var(--lg-results-grid-columns)`). Sidebar sticky. |
-| **Mobile single-column** | any width where `lg-fluid-active` is absent (i.e. <990px, or ≥990px before JS has run, or non-web/command/media results) | `degoog-fullwidth-slot-shell`, no `lg-fluid-active`, no fluid vars | Mobile single column: sidebar below main via core `order: -1`. No sticky sidebar. |
+| **Two-column** | ≥768px | `degoog-fullwidth-slot-shell`, fluid vars set inline | CSS grid: main column + sidebar column (`grid-template-columns: var(--lg-results-grid-columns)`). Sidebar sticky. |
+| **Mobile single-column** | <768px | `degoog-fullwidth-slot-shell`, no fluid vars | Core mobile single-column: sidebar below main via `order: -1`. No sticky sidebar. |
 
-The `lg-results-layout-single` class **no longer exists**. Do not re-add it — see **Removed: desktop stack band** below.
+Below the two-column minimum (768px) the layout falls straight to mobile single-column. There is no intermediate "stack band" and no runtime class gate — the two-column grid and `#results-meta` two-column grid both engage at `@media (min-width: 768px)` and are scoped with `:not(:has(#results-layout.media-mode)):not(.lg-command-mode)` so Images/Videos and bang-command pages keep the full-width flex layout.
 
-**Fluid gate contract:** the two-column grid (`display: grid` on `#results-layout`) and the two-column `#results-meta` grid are **both scoped to `#results-page.lg-fluid-active`** in `style.css`. The "FLUID GATE" bridge block (`@media (min-width: 768px)`) — scoped to `#results-page:not(.lg-fluid-active)` — forces the mobile single-column layout ( overriding core's flex-row + 21.25rem sidebar) for **any** ≥768px viewport while the fluid class is absent. This means the 768–989px band reads as mobile, and so does a ≥990px viewport during the brief window before `search.js` adds `lg-fluid-active`. Once JS adds the class and sets fluid vars, the bridge is excluded (via `:not(.lg-fluid-active)`) and the two-column grid engages. Exempt from the gate: `#results-layout.media-mode` (Images/Videos) and `.lg-command-mode`.
+### Web two-column shrink order (≥768px)
 
-Tabs scroll rail, `#results-meta` two-column grid, and sticky-sidebar mechanics engage at **768px** and are independent of the two-column body grid (which engages at 990px when fluid-active). In the 768–989px band the body is mobile-stacked while the tabs/meta chrome stays desktop-styled.
-
-### Web two-column shrink order (≥990px + `lg-fluid-active`)
-
-On the Web tab, `scripts/search.js` sets fluid `--literallygoogle-results-sidebar-max` and `--literallygoogle-results-main-col-max` on `#results-page` and adds `lg-fluid-active` to it. The fluid logic only runs ≥990px (where the two-column grid is active); below 990px (or any non-web/command/media case) fluid vars are cleared, `lg-fluid-active` is removed, and mobile CSS owns the layout.
+On the Web tab, `scripts/search.js` sets fluid `--literallygoogle-results-sidebar-max` and `--literallygoogle-results-main-col-max` on `#results-page`. The fluid logic only runs ≥768px (where the two-column grid is active); below 768px (or any non-web/command/media case) fluid vars are cleared and mobile CSS owns the layout.
 
 1. **Wide:** sidebar panel `calc(20rem + 5px)`, main column up to `48rem`.
 2. **Tighten:** shrink the **sidebar first** from max down to `calc(16rem + 5px)` while main stays at `48rem`.
@@ -137,25 +133,22 @@ On the Web tab, `scripts/search.js` sets fluid `--literallygoogle-results-sideba
 
 JS also sets `--lg-results-grid-columns` and `--lg-results-meta-grid-columns` to fixed `main sidebar` track sizes so CSS grid cannot shrink the main column before the sidebar. Layout sync runs on **resize**, **degoog-results-ready**, and **search-type** changes only — not on every subtree mutation.
 
+### Results tabs row (`#results-tabs`)
+
+- The tabs row mirrors the `#results-meta` two-column grid at ≥768px: tabs rail in column 1, Filters control (`#tools-bar`) in column 2 with `justify-self: end`. This aligns the Filters control's right edge with the sidebar's right edge, the same way `.results-meta-stats` ("About x results") aligns on every non-image tab. The horizontally-scrolling rail lives in its own grid cell and **cannot scroll behind the Filters control**.
+- The rail uses edge-aware prev/next arrow buttons (built by `syncTabsRail()` in `scripts/search.js`), not a visible scrollbar (hidden via `scrollbar-width: none` + `::-webkit-scrollbar { display: none }`).
+- Below 768px the grid is removed and `#results-tabs` flows as a normal stacked member of the mobile layout (no sticky pinning, no horizontal rail).
+- Images/Videos (`media-mode`) and bang-command pages are exempt from the grid — `#results-tabs` keeps its full-width flex layout there.
+
 ### Removed: desktop stack band (`lg-results-layout-single`)
 
-A previous version of this theme had a third layout state — a "desktop stack band" at ~768–990px that used `display: contents` on `#results-main` plus a `grid-template-areas` stack (`stack-above` / `stack-glance stack-sidebar` / `stack-results` / `stack-below` / `stack-pager`). **This was removed** because:
-
-- **URL overlap:** long unbroken result URLs (`.result-cite`, `.breadcrumb-trail`) overflowed the main grid cell and painted over the sidebar column during the 990↔1070px hysteresis transitions, when fluid vars were cleared but the base 768px two-column grid was still active.
-- **Not a real desktop state:** the band had no sticky sidebar, full-bleed results (violating the stable-content-gutter rule), and a hybrid "desktop tabs rail + stacked body" chrome that read as a broken layout.
-- **Smushed columns:** the 80px hysteresis band could leave a two-column grid active at ~791px viewport widths, producing side-by-side columns too narrow to read.
-
-Below the two-column minimum (990px) the layout now falls straight to mobile single-column. Sidebar accordion open/collapse (`§7` in `search.js`) still keys off **768px** for desktop panel defaults — that is independent of the body grid.
-
-**Cleanup candidates (not yet addressed):**
-
-- The `:has()` full-width-slot panel counter in `style.css` (lines ~1506–1562) counts 1st/2nd/3rd `.slot-full-width` child to decide `#sidebar-col`'s `grid-row`. It is brittle and only handles up to 3 panels. A future refactor should replace it with a single robust rule.
+A previous version of this theme had a third layout state — a "desktop stack band" at ~768–990px that used `display: contents` on `#results-main` plus a `grid-template-areas` stack. It was removed because long unbroken result URLs overflowed the main grid cell during the 990↔1070px hysteresis transitions, the band had no sticky sidebar / full-bleed results (violating the stable-content-gutter rule), and the 80px hysteresis band could leave a two-column grid active at ~791px producing smushed columns. The `lg-results-layout-single` class no longer exists — do not re-add it. Below 768px the layout now falls straight to mobile single-column.
 
 ### Results meta row (`#results-meta`)
 
 - The meta row is a **shared skeleton** across Web, Images, and Videos. Keep its horizontal alignment rules **simple and global**.
-- **Web (desktop, two-column ≥990px + `lg-fluid-active`):** `#results-meta` shrink-wraps to `--lg-results-meta-grid-columns` (main + **panel only** — no scrollbar lane). `#results-layout` keeps `--lg-results-grid-columns` (main + panel + scrollbar). `.results-meta-stats` sits in **meta grid column 2** with `justify-self: end` so the line ends at `#sidebar-col > .sticky`, not `#sidebar-col`. No runtime inset JS. Both grids are scoped to `#results-page.lg-fluid-active`.
-- **Web (single-column, any width without `lg-fluid-active`):** stats span the row with `text-align: end` via the baseline flex layout.
+- **Web (desktop, two-column ≥768px):** `#results-meta` shrink-wraps to `--lg-results-meta-grid-columns` (main + **panel only** — no scrollbar lane). `#results-layout` keeps `--lg-results-grid-columns` (main + panel + scrollbar). `.results-meta-stats` sits in **meta grid column 2** with `justify-self: end` so the line ends at `#sidebar-col > .sticky`, not `#sidebar-col`. No runtime inset JS.
+- **Web (single-column <768px):** stats span the row with `text-align: end` via the baseline flex layout.
 - Default padding uses `--literallygoogle-results-content-inline-*` like the tabs row; spell-check and engine chrome stay in column 1 on two-column Web.
 - **Images/Videos (desktop):** `scheduleMediaMetaRightGap()` sets `--lg-media-meta-right-gap` from `#results-meta`’s **border-box right** to `getMediaContentRailRightEdge()` — never from `.results-meta-stats.getBoundingClientRect()` (that moved the text you were measuring). Updates run on layout/resize/tab change only, **not** on scroll or sticky pill frames.
 - Engine pills live in `#lg-media-engine-pills` inside the meta row; stats stay pinned to the rail right edge via flex + the gap variable above.
@@ -304,7 +297,7 @@ The Web sidebar can be `position: sticky` and taller than the viewport. Without 
 4. **Mid-range capture.** Between edges, `preventDefault` and apply `deltaY` to the pane’s `scrollTop` so trackpad momentum over the pane scrolls the pane, not the page.
 5. **Scrollbar visibility.** CSS keeps `overflow-y: hidden` while stuck but idle; `*-scroll-active` (set on wheel, cleared on `pointerleave`) enables `overflow-y: auto` + thin scrollbar. Use `overscroll-behavior: auto` — not `contain` — so browser chaining still works at edges.
 6. **Reset on stick/unstick.** When `*-is-stuck` toggles, reset `scrollTop` to `0` (sidebar also clears its inner `.sticky` child).
-7. **Disabled contexts.** Sidebar chaining is off below `990px` (the two-column grid engages at 990px; below that the layout is single-column with no sticky sidebar).
+7. **Disabled contexts.** Sidebar chaining is off below `768px` (the two-column grid engages at 768px; below that the layout is single-column with no sticky sidebar).
 
 | Target | Stuck class | Active class | Scroll element |
 | --- | --- | --- | --- |

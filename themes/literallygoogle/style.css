@@ -1425,8 +1425,10 @@ body {
 }
 
 /* Two-column grid container: shrink-to-fit + left-align, engaging with the
-   two-column body grid at 990px. Below 990px the layout is full-width mobile. */
-@media (min-width: 990px) {
+   two-column body grid at 768px. Below 768px the layout is full-width mobile. */
+@media (min-width: 768px) {
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-tabs,
     #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta,
     #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
@@ -1437,20 +1439,12 @@ body {
     }
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   RESULTS LAYOUT (DESKTOP — two-column grid engages at 990px)
-   Two-column grid + optional full-width above-results slot.
-   Below 990px the base mobile single-column CSS owns the layout.
-   ══════════════════════════════════════════════════════════════════════════ */
+/* RESULTS LAYOUT (DESKTOP — two-column grid engages at 768px) */
 
-@media (min-width: 990px) {
-    /*
-     * Two-column grid (engages only when scripts/search.js has added
-     * .lg-fluid-active to #results-page with computed fluid column vars):
-     * main column (slot + results) never shares width with the sidebar.
-     * Absolute sidebar overlap is avoided — column 2 is reserved.
-     */
-    #results-page.lg-fluid-active #results-layout {
+@media (min-width: 768px) {
+    /* Two-column grid: main column (slot + results) never shares width with the
+       sidebar. Absolute sidebar overlap is avoided — column 2 is reserved. */
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode) #results-layout {
         position: relative;
         display: grid;
         grid-template-columns: var(
@@ -2891,106 +2885,6 @@ body {
     }
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   FLUID GATE: single-column fallback for any viewport ≥768px where the
-   fluid two-column layout has not engaged. scripts/search.js adds
-   .lg-fluid-active to #results-page once it computes fluid sidebar/main
-   column vars on a web results page ≥990px. Until that class is present,
-   this block holds the layout at mobile single-column so the 768–989px band
-   (and any ≥990px width before JS runs) reads as mobile, not as a broken
-   two-column with no fluid vars. Media-mode and lg-command-mode are exempt.
-   ══════════════════════════════════════════════════════════════════════════ */
-@media (min-width: 768px) {
-    #results-page:not(.lg-fluid-active) {
-        --literallygoogle-results-content-inline-start: 0.75rem;
-        --literallygoogle-results-content-inline-end: 0.75rem;
-    }
-
-    #results-page:not(.lg-fluid-active) #results-tabs,
-    #results-page:not(.lg-fluid-active) #results-meta {
-        padding-inline: 0.75rem;
-    }
-
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #results-layout {
-        display: flex;
-        flex-direction: column;
-        padding-block: 0;
-        padding-inline: 0.75rem;
-        gap: 1rem;
-    }
-
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #sidebar-col {
-        width: 100%;
-        flex-shrink: 0;
-        order: -1;
-        padding-bottom: 0.5rem;
-        position: static;
-    }
-
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #sidebar-col.is-sticky {
-        position: static;
-        top: auto;
-        max-height: none;
-        overflow: visible;
-    }
-
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #results-main {
-        flex: 0 0 auto;
-        max-width: none !important;
-    }
-
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #results-sidebar {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #results-sidebar
-        > :is(.degoog-panel--stack-item, .sidebar-panel) {
-        margin-bottom: 0 !important;
-    }
-
-    #results-page:not(.lg-fluid-active) #slot-above-results:not(:empty) {
-        margin-bottom: 1rem;
-    }
-
-    #results-page:not(.lg-fluid-active) #slot-above-results {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #results-list {
-        max-width: var(--literallygoogle-results-main-col-max, 48rem);
-        width: 100%;
-    }
-
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #at-a-glance {
-        width: 100% !important;
-        max-width: none !important;
-    }
-
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #at-a-glance .glance-box,
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #at-a-glance .skeleton-glance,
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #at-a-glance .glance-ai-skeleton,
-    #results-page:not(.lg-fluid-active):not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #at-a-glance .degoog-panel {
-        max-width: none !important;
-        width: 100% !important;
-    }
-}
-
 /* Mobile results */
 @media (max-width: 767px) {
     #results-meta {
@@ -3676,11 +3570,50 @@ body {
     }
 }
 
-/* Two-column meta grid engages with the two-column body grid at 990px (only
-   when scripts/search.js has added .lg-fluid-active — see body grid above). */
-@media (min-width: 990px) {
+/* Two-column tabs grid: mirror main + panel columns so the tabs rail sits in
+   column 1 and the Filters control sits in column 2. The Filters' right edge
+   then aligns with the sidebar's right edge (same as the meta stats row), and
+   the horizontally-scrolling rail cannot slide behind the Filters control. */
+@media (min-width: 768px) {
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-tabs {
+        display: grid;
+        grid-template-columns: var(
+            --lg-results-meta-grid-columns,
+            minmax(0, var(--literallygoogle-results-main-col-max))
+                minmax(0, var(--literallygoogle-results-sidebar-max))
+        );
+        column-gap: var(--literallygoogle-results-column-gap);
+        align-items: center;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-tabs
+        > .lg-results-tabs-rail {
+        grid-column: 1;
+        min-width: 0;
+    }
+
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-tabs
+        > #tools-bar {
+        grid-column: 2;
+        justify-self: end;
+    }
+
+    /* When no rail is mounted (e.g. too few tabs to scroll), the tab buttons
+       are direct children of #results-tabs; let them flow in column 1. */
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+        #results-tabs:not(:has(.lg-results-tabs-rail))
+        > .results-tab {
+        grid-column: 1;
+    }
+}
+
+/* Two-column meta grid engages with the two-column body grid at 768px. */
+@media (min-width: 768px) {
     /* Sidebar-grid tabs: stats row mirrors main + panel columns (no scrollbar lane). */
-    #results-page.lg-fluid-active:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta {
         display: grid;
         justify-content: start;
@@ -3695,14 +3628,14 @@ body {
         box-sizing: border-box;
     }
 
-    #results-page.lg-fluid-active:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta
         :is(.spell-check-notice, #lg-media-engine-pills) {
         grid-column: 1;
         margin-inline-end: 0;
     }
 
-    #results-page.lg-fluid-active:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
+    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta
         .results-meta-stats {
         grid-column: 2;

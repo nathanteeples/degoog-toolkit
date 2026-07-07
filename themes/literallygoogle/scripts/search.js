@@ -1011,8 +1011,7 @@ function wrapResultsStats(meta) {
         const sidebar = document.getElementById("sidebar-col");
         if (!sidebar) return;
 
-        const page = document.getElementById("results-page");
-        if (!page || !page.classList.contains("lg-fluid-active")) {
+        if (window.matchMedia("(max-width: 767px)").matches) {
             sidebar.style.removeProperty("grid-row");
             return;
         }
@@ -4447,6 +4446,7 @@ function wrapResultsStats(meta) {
         if (!(sidebar instanceof HTMLElement) || !sidebar.classList.contains("is-sticky")) {
             return false;
         }
+        if (window.matchMedia("(max-width: 767px)").matches) return false;
         if (getComputedStyle(sidebar).position !== "sticky") return false;
         return sidebar.getBoundingClientRect().top <= sidebarStickyTop(sidebar) + 1;
     }
@@ -4570,10 +4570,9 @@ function wrapResultsStats(meta) {
     onReady(init);
 })();
 
-/* ── 5e. Web results layout: fluid sidebar, then fluid main (≥990px only) ── */
+/* ── 5e. Web results layout: fluid sidebar, then fluid main (≥768px only) ── */
 (() => {
-    const TWO_COL_MIN = 990;
-    const FLUID_CLASS = "lg-fluid-active";
+    const TWO_COL_MIN = 768;
     const SIDEBAR_MAX_REM = 20;
     const SIDEBAR_MIN_REM = 16;
     const SIDEBAR_BONUS_PX = 5;
@@ -4681,7 +4680,6 @@ function wrapResultsStats(meta) {
         if (!isWebResultsPage(page)) {
             const hadFluid = fluidActive;
             fluidActive = false;
-            page.classList.remove(FLUID_CLASS);
             clearFluidLayoutVars(page);
             if (hadFluid) {
                 window.dispatchEvent(new Event("lg-results-layout-changed"));
@@ -4694,7 +4692,6 @@ function wrapResultsStats(meta) {
         const fluid = computeFluidColumns(innerWidth);
         const wasActive = fluidActive;
         fluidActive = true;
-        page.classList.add(FLUID_CLASS);
 
         applyFluidLayout(page, fluid);
 
