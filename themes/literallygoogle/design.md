@@ -135,9 +135,10 @@ JS also sets `--lg-results-grid-columns` and `--lg-results-meta-grid-columns` to
 
 ### Results tabs row (`#results-tabs`)
 
-- The tabs row mirrors the `#results-meta` two-column grid at ≥768px: tabs rail in column 1, Filters control (`#tools-bar`) in column 2 with `justify-self: end`. This aligns the Filters control's right edge with the sidebar's right edge, the same way `.results-meta-stats` ("About x results") aligns on every non-image tab. The horizontally-scrolling rail lives in its own grid cell and **cannot scroll behind the Filters control**.
-- The rail uses edge-aware prev/next arrow buttons (built by `syncTabsRail()` in `scripts/search.js`), not a visible scrollbar (hidden via `scrollbar-width: none` + `::-webkit-scrollbar { display: none }`).
-- Below 768px the grid is removed and `#results-tabs` flows as a normal stacked member of the mobile layout (no sticky pinning, no horizontal rail).
+- `#results-tabs` stays **full width** so its `border-bottom` spans edge to edge of the viewport (it is deliberately NOT included in the shrink-to-fit container block that constrains `#results-meta` / `#results-layout`).
+- **Desktop (≥768px):** `#results-tabs` becomes a CSS grid mirroring `--lg-results-meta-grid-columns` (same fluid main + panel columns the JS sets), with `padding-inline-start: var(--literallygoogle-results-content-inline-start)` so the grid content aligns with the layout below. The tabs rail sits in column 1 and the Filters control (`#tools-bar`) in column 2 with `justify-self: end`, so the Filters' right edge aligns with the sidebar's right edge (the same way `.results-meta-stats` "About x results" aligns on every non-image tab). Because the rail and Filters are separate grid cells, the rail **cannot scroll behind the Filters control**. Edge-aware nav arrows are hidden at desktop (there is room).
+- **Mobile (<768px):** the grid is removed. `syncTabsRail()` in `scripts/search.js` mounts the scroll rail (with edge-aware prev/next arrows) and appends the Filters control as the **last item in the scroll list**, so tabs (Web, Images, …) and Filters read as one joint horizontal list. The arrows appear only here, on skinny screens where the list overflows.
+- The rail is mounted at **all** widths (it owns the scroll container and the grid grouping); the difference is just what lives inside the scroll and whether the arrows are visible.
 - Images/Videos (`media-mode`) and bang-command pages are exempt from the grid — `#results-tabs` keeps its full-width flex layout there.
 
 ### Removed: desktop stack band (`lg-results-layout-single`)

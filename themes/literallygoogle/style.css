@@ -1425,10 +1425,9 @@ body {
 }
 
 /* Two-column grid container: shrink-to-fit + left-align, engaging with the
-   two-column body grid at 768px. Below 768px the layout is full-width mobile. */
+   two-column body grid at 768px. Below 768px the layout is full-width mobile.
+   #results-tabs stays full width (so its border-bottom spans edge to edge). */
 @media (min-width: 768px) {
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #results-tabs,
     #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
         #results-meta,
     #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
@@ -3585,6 +3584,10 @@ body {
         );
         column-gap: var(--literallygoogle-results-column-gap);
         align-items: center;
+        padding-inline-start: var(
+            --literallygoogle-results-content-inline-start
+        );
+        padding-inline-end: 0;
     }
 
     #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
@@ -3599,14 +3602,6 @@ body {
         > #tools-bar {
         grid-column: 2;
         justify-self: end;
-    }
-
-    /* When no rail is mounted (e.g. too few tabs to scroll), the tab buttons
-       are direct children of #results-tabs; let them flow in column 1. */
-    #results-page:not(:has(#results-layout.media-mode)):not(.lg-command-mode)
-        #results-tabs:not(:has(.lg-results-tabs-rail))
-        > .results-tab {
-        grid-column: 1;
     }
 }
 
@@ -3719,53 +3714,65 @@ body {
     z-index: 110;
 }
 
+/* Tabs scroll rail (mounted at all widths by syncTabsRail). The rail groups
+   the tab buttons so the grid (>=768px) can place it in column 1; on mobile
+   it also owns the horizontal scroll + edge-aware arrows, and the Filters
+   control is appended as the last scroll item (see scripts/search.js). */
+#results-page #results-tabs:has(.lg-results-tabs-rail) {
+    overflow: visible;
+}
+
+#results-page #results-tabs .lg-results-tabs-rail {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+}
+
+#results-page #results-tabs .lg-results-tabs__scroll {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 0.25rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-inline-end: 1rem;
+}
+
+#results-page #results-tabs .lg-results-tabs__scroll::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+#results-page #results-tabs .lg-results-tabs-rail .lg-media-engine-nav--prev {
+    inset-inline-start: 0;
+}
+
+#results-page #results-tabs .lg-results-tabs-rail .lg-media-engine-nav--next {
+    inset-inline-end: 0;
+}
+
+/* Edge-aware arrows are a mobile-only affordance (skinny screens where the
+   tab list overflows). On desktop there is room and the rail is a passive
+   grid grouping — hide the nav buttons entirely. */
 @media (min-width: 768px) {
-    #results-page #results-tabs:has(.lg-results-tabs-rail) {
-        overflow: visible;
-    }
-
-    #results-page #results-tabs .lg-results-tabs-rail {
-        flex: 1 1 auto;
-        min-width: 0;
-        display: flex;
-        align-items: center;
-        position: relative;
-        z-index: 1;
-    }
-
-    #results-page #results-tabs .lg-results-tabs__scroll {
-        display: flex;
-        align-items: center;
-        flex: 1 1 auto;
-        min-width: 0;
-        gap: 0.25rem;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        padding-inline-end: 1rem;
-    }
-
-    #results-page #results-tabs .lg-results-tabs__scroll::-webkit-scrollbar {
+    #results-page #results-tabs .lg-results-tabs-rail .lg-media-engine-nav {
         display: none;
-        width: 0;
-        height: 0;
     }
+}
 
-    #results-page #results-tabs .lg-results-tabs-rail .lg-media-engine-nav--prev {
-        inset-inline-start: 0;
-    }
-
-    #results-page #results-tabs .lg-results-tabs-rail .lg-media-engine-nav--next {
-        inset-inline-end: 0;
-    }
-
+@media (max-width: 767px) {
     #results-page #results-tabs .lg-results-tabs-rail:hover .lg-media-engine-nav:not(:disabled),
     #results-page #results-tabs .lg-results-tabs-rail:focus-within .lg-media-engine-nav:not(:disabled) {
         opacity: 1;
         pointer-events: auto;
     }
-
     @media (hover: none) {
         #results-page #results-tabs .lg-results-tabs-rail .lg-media-engine-nav:not(:disabled) {
             opacity: 1;

@@ -2532,11 +2532,11 @@ function wrapResultsStats(meta) {
     }
 })();
 
-/* ── 4b. Results tabs scroll rail (desktop) ─────────────────────────────── */
+/* ── 4b. Results tabs scroll rail (mobile arrows + desktop grid grouping) ── */
 (() => {
     const TABS_SCROLL_SELECTOR = ".lg-results-tabs__scroll";
     const TABS_RAIL_CLASS = "lg-results-tabs-rail";
-    const desktopQuery = window.matchMedia("(min-width: 768px)");
+    const mobileQuery = window.matchMedia("(max-width: 767px)");
     const NAV_ICON_PREV =
         `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>`;
     const NAV_ICON_NEXT =
@@ -2604,19 +2604,11 @@ function wrapResultsStats(meta) {
         const tabs = getResultsTabs();
         if (!tabs) return;
 
-        if (!desktopQuery.matches) {
-            const rail = tabs.querySelector(`.${TABS_RAIL_CLASS}`);
-            if (!rail) return;
-            const scrollEl = rail.querySelector(TABS_SCROLL_SELECTOR);
-            if (scrollEl) {
-                [...scrollEl.querySelectorAll(":scope > .results-tab")].forEach(tab =>
-                    tabs.insertBefore(tab, rail),
-                );
-            }
-            rail.remove();
-            return;
-        }
-
+        // The rail is always mounted: it groups the tab buttons so the desktop
+        // grid can place it in column 1, and on mobile it owns the horizontal
+        // scroll + edge-aware arrows. The Filters control (#tools-bar) is a
+        // sibling of the rail on desktop (grid column 2, right-aligned) and
+        // the last item in the scroll list on mobile.
         let rail = tabs.querySelector(`.${TABS_RAIL_CLASS}`);
         if (!rail) {
             rail = createTabsRail();
@@ -2626,10 +2618,18 @@ function wrapResultsStats(meta) {
         const scrollEl = rail.querySelector(TABS_SCROLL_SELECTOR);
         if (!scrollEl) return;
 
-        const toolsBar = tabs.querySelector("#tools-bar");
         collectTabNodes(tabs).forEach(tab => scrollEl.appendChild(tab));
-        if (toolsBar && toolsBar.parentElement !== tabs) {
-            tabs.appendChild(toolsBar);
+
+        const toolsBar = tabs.querySelector("#tools-bar");
+        const wantMobile = mobileQuery.matches;
+        if (toolsBar) {
+            if (wantMobile) {
+                // Mobile: filters is the last tab in the scroll list.
+                scrollEl.appendChild(toolsBar);
+            } else {
+                // Desktop: filters sits in grid column 2 (right-aligned).
+                tabs.appendChild(toolsBar);
+            }
         }
 
         initTabsRail(rail);
@@ -2663,7 +2663,7 @@ function wrapResultsStats(meta) {
                 childList: true,
             });
         }
-        desktopQuery.addEventListener?.("change", syncTabsRail);
+        mobileQuery.addEventListener?.("change", syncTabsRail);
         window.addEventListener("resize", () => updateTabsNavState(), { passive: true });
     }
 
