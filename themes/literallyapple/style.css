@@ -4149,9 +4149,32 @@ button.mp2-item[hidden] {
 
 @media (min-width: 768px) {
     #results-page #results-tabs {
-        padding-inline-start: var(--literallyapple-results-content-inline-start);
-        padding-inline-end: 1.25rem;
+        padding-inline-start: var(--literallyapple-results-content-inline-start) !important;
+        padding-inline-end: 1.25rem !important;
     }
+}
+
+#results-page #results-tabs {
+    align-items: stretch;
+}
+
+#results-page #results-tabs > #tools-bar {
+    align-self: stretch;
+    display: flex;
+    border-inline-start: 0 !important;
+}
+
+#results-page #results-tabs > #tools-bar::before,
+#results-page #results-tabs > #tools-bar::after {
+    content: none !important;
+    display: none !important;
+}
+
+#results-page #results-tabs > #tools-bar .tools-toggle {
+    flex: 1 1 auto;
+    min-height: 0;
+    text-align: center;
+    justify-content: center;
 }
 
 #results-page #tools-panel .tools-field-toggle {
@@ -4168,6 +4191,50 @@ button.mp2-item[hidden] {
     > .sidebar-accordion-toggle {
     border-end-start-radius: var(--theme-radius-pill);
     border-end-end-radius: var(--theme-radius-pill);
+}
+
+#results-page #results-sidebar .sidebar-accordion.open > .sidebar-accordion-body {
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--border-light);
+    border-radius: var(--theme-radius-xl);
+}
+
+/* Image-result engine controls wrap as independent pills instead of using a
+   scroll rail with arrow buttons. */
+#results-page .lg-media-engine-rail {
+    display: block;
+    width: 100%;
+}
+
+#results-page .lg-media-engine-nav {
+    display: none !important;
+}
+
+#results-page .lg-media-engine-pills__scroll {
+    overflow: visible !important;
+}
+
+#results-page .lg-media-engine-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+#results-page .lg-media-engine-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    background: var(--la-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--theme-radius-pill);
+    color: var(--text-secondary);
+}
+
+#results-page .lg-media-engine-pill:hover,
+#results-page .lg-media-engine-pill.is-active {
+    background: var(--la-fill-secondary);
+    color: var(--text-primary);
 }
 
 #results-page :is(
