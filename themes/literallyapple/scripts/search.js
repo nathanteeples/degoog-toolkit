@@ -2580,6 +2580,33 @@ function wrapResultsStats(meta) {
     window.addEventListener("degoog-results-ready", init);
 })();
 
+/* ── 4c. Normalize the core's expandable result control ────────────────── */
+(() => {
+    const READ_MORE_CLASS = "theme-read-more-control";
+
+    function markReadMoreControls(root = document) {
+        const scope = root instanceof Element ? root : document;
+        scope.querySelectorAll("#results-list button, #results-list [role=button], #results-list a").forEach(control => {
+            const label = (control.textContent || "").trim().replace(/\s+/g, " ");
+            if (/^read more\b/i.test(label)) control.classList.add(READ_MORE_CLASS);
+        });
+    }
+
+    function init() {
+        const results = getResultsList();
+        markReadMoreControls();
+        if (!results || results.dataset.themeReadMoreObserver === "1") return;
+        results.dataset.themeReadMoreObserver = "1";
+        new MutationObserver(() => markReadMoreControls()).observe(results, {
+            childList: true,
+            subtree: true,
+        });
+    }
+
+    onReady(init);
+    window.addEventListener("degoog-results-ready", init);
+})();
+
 /* ── 5. Media-preview (mp2) bar enhancements ────────────────────────────── */
 (() => {
     let toastTimer = null;

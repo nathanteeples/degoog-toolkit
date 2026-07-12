@@ -4059,7 +4059,7 @@ button.mp2-item[hidden] {
 #results-page #results-tabs > #tools-bar {
     display: block;
     flex: 0 0 auto;
-    order: -1;
+    order: 1;
 }
 
 #results-page #results-tabs > #tools-bar .tools-toggle {
@@ -4145,4 +4145,43 @@ button.mp2-item[hidden] {
     border-top: 0;
     border-start-start-radius: 0;
     border-start-end-radius: 0;
+}
+
+@media (min-width: 768px) {
+    #results-page #results-tabs {
+        padding-inline-start: var(--literallyapple-results-content-inline-start);
+        padding-inline-end: 1.25rem;
+    }
+}
+
+#results-page #tools-panel .tools-field-toggle {
+    border-radius: var(--theme-radius-pill);
+}
+
+#results-page #results-sidebar .sidebar-accordion > .sidebar-accordion-toggle {
+    border-radius: var(--theme-radius-pill);
+}
+
+#results-page
+    #results-sidebar
+    .sidebar-accordion.open
+    > .sidebar-accordion-toggle {
+    border-end-start-radius: var(--theme-radius-pill);
+    border-end-end-radius: var(--theme-radius-pill);
+}
+
+#results-page :is(
+    .theme-read-more-control,
+    .read-more,
+    .read-more-btn,
+    .read-more-button,
+    .result-read-more,
+    .result-expand,
+    .result-expand-btn,
+    .snippet-expand
+) {
+    align-self: center;
+    width: auto !important;
+    inline-size: fit-content !important;
+    margin-inline: auto;
 }
