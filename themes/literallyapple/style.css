@@ -4333,6 +4333,16 @@ button.mp2-item[hidden] {
     color: var(--text-primary) !important;
 }
 
+/* The AI Summary extension hides this control after expanding. Preserve that
+   state even though the theme's visible pill declaration uses !important. */
+#results-page .theme-read-more-control[hidden] {
+    display: none !important;
+}
+
+#results-page #at-a-glance .glance-ai-input.degoog-input--chat {
+    border-radius: var(--theme-radius-pill) !important;
+}
+
 #results-page :is(
     .theme-read-more-control,
     .read-more,
