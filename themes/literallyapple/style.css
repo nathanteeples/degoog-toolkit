@@ -3320,6 +3320,7 @@ button.mp2-item[hidden] {
         transform: none !important;
     }
 }
+
 .mp2-toast {
     position: fixed;
     bottom: 2rem;
@@ -4027,4 +4028,121 @@ button.mp2-item[hidden] {
         transition-duration: 0.001ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* ── SERP detail polish ────────────────────────────────────────────────── */
+/* Keep search types together in a wrapping capsule; Filters remains its own
+   dropdown pill, placed before the group in the visual order. */
+#results-page #results-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.5rem;
+    border: 0;
+    margin-top: 0.75rem;
+    padding: 0;
+}
+
+#results-page #results-tabs .theme-results-tabs-group {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    max-width: 100%;
+    padding: 0.25rem;
+    background: var(--la-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--theme-radius-pill);
+}
+
+#results-page #results-tabs > #tools-bar {
+    display: block;
+    flex: 0 0 auto;
+    order: -1;
+}
+
+#results-page #results-tabs > #tools-bar .tools-toggle {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.875rem;
+    background: var(--la-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--theme-radius-pill);
+    color: var(--text-primary);
+    box-shadow: none;
+}
+
+#results-page #results-tabs > #tools-bar .tools-toggle:hover,
+#results-page #results-tabs > #tools-bar .tools-toggle.is-open {
+    background: var(--la-card-hover);
+}
+
+#results-page #results-tabs .results-tab {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0.5rem 0.875rem;
+    border: 0;
+    border-radius: var(--theme-radius-pill);
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+#results-page #results-tabs .results-tab:hover {
+    background: var(--la-fill-tertiary);
+    color: var(--text-primary);
+}
+
+#results-page #results-tabs .results-tab.active,
+#results-page #results-tabs .results-tab[aria-selected="true"] {
+    background: var(--la-fill-secondary);
+    border-bottom-color: transparent;
+    color: var(--text-primary);
+}
+
+/* The core's expandable result control has used these class names across
+   versions. Treat it as a compact capsule rather than a full-width strip. */
+#results-page :is(
+    .read-more,
+    .read-more-btn,
+    .read-more-button,
+    .result-read-more,
+    .result-expand,
+    .result-expand-btn,
+    .snippet-expand
+) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-height: 2.25rem;
+    padding: 0.4rem 0.875rem;
+    background: var(--la-fill-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--theme-radius-pill);
+    color: var(--text-secondary);
+}
+
+#results-page :is(
+    .read-more,
+    .read-more-btn,
+    .read-more-button,
+    .result-read-more,
+    .result-expand,
+    .result-expand-btn,
+    .snippet-expand
+):hover {
+    background: var(--la-fill-tertiary);
+    color: var(--text-primary);
+}
+
+/* The accordion body already owns the shared outline; a second top border
+   creates the short exposed seams visible beside an open related-searches row. */
+#results-page
+    #results-sidebar
+    .sidebar-accordion:has(.related-search-link).open
+    > .sidebar-accordion-body {
+    border-top: 0;
+    border-start-start-radius: 0;
+    border-start-end-radius: 0;
 }
