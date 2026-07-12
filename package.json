@@ -18,6 +18,17 @@
   ],
   "plugins": [
     {
+      "path": "plugins/google-shopping-tab",
+      "name": "Shopping",
+      "description": "Google Shopping-style product tab with transport-aware fetching, sponsored-result removal, merchant quality controls, and a clean sortable grid.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
+      "version": "1.0.0",
+      "type": "search-result-tab",
+      "minDegoogVersion": "0.23.0",
+      "dependencies": [
+        "https://github.com/nathanteeples/degoog-toolkit/engines/google-shopping"
+      ]
+    },
+    {
       "path": "plugins/weather-slot",
       "name": "Weather",
       "description": "Current weather with interactive charts (temperature, precipitation, wind, humidity), a 7-day forecast and configurable units (imperial by default — Fahrenheit, mph, mmHg, inch). Supports !weather <city>, leading phrases like 'weather in rome', and trailing-keyword queries like 'rome weather' or 'london forecast today'.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
@@ -188,6 +199,13 @@
   ],
   "engines": [
     {
+      "path": "engines/google-shopping",
+      "name": "Google Shopping",
+      "description": "Organic Google Shopping product results fetched through your selected degoog transport, with ads, sponsored cards, duplicates, and configured merchants removed.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
+      "version": "1.0.0",
+      "minDegoogVersion": "0.23.0"
+    },
+    {
       "path": "engines/searxng-search",
       "name": "SearXNG",
       "description": "Search through your SearXNG instance via the JSON API.\n\nIf you love [degoog-toolkit](https://github.com/SoPat712/degoog-toolkit), leave a star!",
@@ -219,5 +237,9 @@
     }
   ],
   "repo-image": "repo-toolbox.svg",
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "cheerio": "1.2.0",
+    "jsdom": "29.1.1"
+  }
 }
