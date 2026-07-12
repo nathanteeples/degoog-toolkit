@@ -2584,20 +2584,23 @@ function wrapResultsStats(meta) {
 (() => {
     const READ_MORE_CLASS = "theme-read-more-control";
 
-    function markReadMoreControls(root = document) {
-        const scope = root instanceof Element ? root : document;
-        scope.querySelectorAll("#results-list button, #results-list [role=button], #results-list a, #results-list summary").forEach(control => {
-            const label = (control.textContent || "").trim().replace(/\s+/g, " ");
-            if (/^read more\b/i.test(label)) control.classList.add(READ_MORE_CLASS);
+    function markReadMoreControls(root = getResultsPage()) {
+        const scope = root instanceof Element ? root : getResultsPage();
+        if (!scope) return;
+        scope.querySelectorAll("#at-a-glance, #results-list").forEach(container => {
+            container.querySelectorAll("button, [role=button], a, summary").forEach(control => {
+                const label = (control.textContent || "").trim().replace(/\s+/g, " ");
+                if (/^read more\b/i.test(label)) control.classList.add(READ_MORE_CLASS);
+            });
         });
     }
 
     function init() {
-        const results = getResultsList();
-        markReadMoreControls();
-        if (!results || results.dataset.themeReadMoreObserver === "1") return;
-        results.dataset.themeReadMoreObserver = "1";
-        new MutationObserver(() => markReadMoreControls()).observe(results, {
+        const page = getResultsPage();
+        markReadMoreControls(page);
+        if (!page || page.dataset.themeReadMoreObserver === "1") return;
+        page.dataset.themeReadMoreObserver = "1";
+        new MutationObserver(() => markReadMoreControls(page)).observe(page, {
             childList: true,
             subtree: true,
         });
