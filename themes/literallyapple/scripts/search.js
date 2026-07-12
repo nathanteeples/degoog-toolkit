@@ -2586,7 +2586,7 @@ function wrapResultsStats(meta) {
 
     function markReadMoreControls(root = document) {
         const scope = root instanceof Element ? root : document;
-        scope.querySelectorAll("#results-list button, #results-list [role=button], #results-list a").forEach(control => {
+        scope.querySelectorAll("#results-list button, #results-list [role=button], #results-list a, #results-list summary").forEach(control => {
             const label = (control.textContent || "").trim().replace(/\s+/g, " ");
             if (/^read more\b/i.test(label)) control.classList.add(READ_MORE_CLASS);
         });
