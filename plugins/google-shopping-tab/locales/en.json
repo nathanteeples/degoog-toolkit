@@ -1,0 +1,13 @@
+{
+  "google-shopping-tab": {
+    "controls-label": "Shopping result controls",
+    "sort-label": "Sort",
+    "sort-relevance": "Relevance",
+    "sort-price-low": "Price: low to high",
+    "sort-price-high": "Price: high to low",
+    "merchant-label": "Merchant",
+    "all-merchants": "All merchants",
+    "product-count-one": "1 product",
+    "product-count-many": "{count} products"
+  }
+}
