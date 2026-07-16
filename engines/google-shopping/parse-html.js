@@ -355,15 +355,28 @@ const collectCandidates = ($) => {
 };
 
 export const isGoogleShoppingInterstitial = (html, finalUrl = "") => {
-  const sample = `${finalUrl}\n${String(html ?? "").slice(0, 12000)}`.toLowerCase();
-  return [
-    "/httpservice/retry/enablejs",
+  const source = String(html ?? "").toLowerCase();
+  const sample = `${finalUrl}\n${source.slice(0, 12000)}`.toLowerCase();
+  const isHardBlock = [
     "unusual traffic from your computer network",
     "/sorry/index",
     "g-recaptcha",
     "consent.google.com",
     "before you continue to google",
   ].some((signature) => sample.includes(signature));
+  if (isHardBlock) return true;
+
+  if (!sample.includes("/httpservice/retry/enablejs")) return false;
+
+  // Google keeps this noscript fallback in otherwise valid, rendered result
+  // pages. It is only a challenge when the transport returned no product DOM.
+  return ![
+    "data-product-id",
+    "data-docid",
+    "data-id=\"mosaic\"",
+    "data-id='mosaic'",
+    "/shopping/product/",
+  ].some((signature) => source.includes(signature));
 };
 
 export const parseGoogleShoppingHtml = (

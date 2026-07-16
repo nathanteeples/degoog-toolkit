@@ -10,4 +10,4 @@ The parser rejects sponsored labels, ad modules, Google ad-click URLs, tracking-
 
 ## Recommended transport
 
-Choose the engine's outgoing transport under **Settings → Engines → Google Shopping → Advanced**. Google often challenges plain fetch/curl clients; use a browser-backed transport when available. Consent, CAPTCHA, and unrecognized response pages fail explicitly instead of being displayed as product results.
+The engine defaults to degoog's built-in **Curl Impersonate** transport because Google often challenges plain fetch/curl clients. You can choose another outgoing transport under **Settings → Engines → Google Shopping → Advanced**; a browser-backed transport is the best fallback when one is installed. Consent, CAPTCHA, and unrecognized response pages fail explicitly instead of being displayed as product results.

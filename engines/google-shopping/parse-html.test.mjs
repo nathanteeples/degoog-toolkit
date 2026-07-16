@@ -159,5 +159,20 @@ test("detects explicit empty pages and Google interstitials", () => {
     isGoogleShoppingInterstitial("unusual traffic from your computer network"),
     true,
   );
+  assert.equal(
+    isGoogleShoppingInterstitial(
+      fixture.replace(
+        "<body>",
+        '<body><noscript><a href="/httpservice/retry/enablejs">Enable JavaScript</a></noscript>',
+      ),
+    ),
+    false,
+  );
+  assert.equal(
+    isGoogleShoppingInterstitial(
+      '<html><noscript><a href="/httpservice/retry/enablejs">Enable JavaScript</a></noscript></html>',
+    ),
+    true,
+  );
   assert.equal(isGoogleShoppingInterstitial(fixture), false);
 });

@@ -41,7 +41,7 @@ Click a plugin name to expand screenshots and previews.
 <details>
 <summary><strong>Shopping</strong> — Google Shopping product results without sponsored or malformed listings</summary>
 
-The Shopping tab uses a companion Google Shopping engine to fetch product pages through the outgoing transport selected in **Settings → Engines → Google Shopping → Advanced**. A browser-backed transport is recommended because Google often challenges plain HTTP clients.
+The Shopping tab uses a companion Google Shopping engine to fetch product pages through degoog's **Curl Impersonate** transport by default. You can select another transport in **Settings → Engines → Google Shopping → Advanced**; a browser-backed transport is recommended when Google challenges other HTTP clients.
 
 Results appear in a responsive product grid with local price sorting and merchant filtering. The engine removes sponsored/ad modules, ad-click destinations, malformed cards, duplicate products, and merchants or domains on your configurable blocklist. Installing the tab automatically installs the engine.
 

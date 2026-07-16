@@ -40,6 +40,10 @@ const makeContext = (body = fixture) => {
 test("declares a transport-backed shopping engine", async () => {
   assert.equal(type, "shopping");
   const engine = new GoogleShoppingEngine();
+  const transportField = engine.settingsSchema.find(
+    (field) => field.key === "outgoingTransport",
+  );
+  assert.equal(transportField.default, "curl-impersonate");
   const context = makeContext();
 
   const results = await engine.executeSearch("wireless phone", 2, undefined, context);
@@ -97,9 +101,26 @@ test("requires degoog's injected transport", async () => {
 test("keeps the standard timeout default when its advanced field is blank", () => {
   const engine = new GoogleShoppingEngine();
   engine.configure({ timeoutMs: "" });
-  assert.equal(engine.requestTimeoutMs, 10_000);
+  assert.equal(engine.requestTimeoutMs, 30_000);
   engine.configure({ timeoutMs: "25000" });
   assert.equal(engine.requestTimeoutMs, 25_000);
+});
+
+test("accepts rendered Shopping results that retain Google's noscript fallback", async () => {
+  const engine = new GoogleShoppingEngine();
+  const renderedPage = fixture.replace(
+    "<body>",
+    '<body><noscript><a href="/httpservice/retry/enablejs">Enable JavaScript</a></noscript>',
+  );
+
+  const results = await engine.executeSearch(
+    "phone",
+    1,
+    undefined,
+    makeContext(renderedPage),
+  );
+
+  assert.equal(results.length, 3);
 });
 
 test("surfaces interstitial and parser failures", async () => {

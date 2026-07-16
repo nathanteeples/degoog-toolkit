@@ -86,15 +86,17 @@ export default class GoogleShoppingEngine {
   blockedMerchants = [];
   maxPerMerchant = 4;
   minimumRating = 0;
-  requestTimeoutMs = 10_000;
+  requestTimeoutMs = 30_000;
 
   settingsSchema = [
     {
       key: "outgoingTransport",
       label: "Outgoing HTTP client transport",
       type: "select",
-      options: ["fetch", "curl", "curl-fallback"],
-      default: "curl",
+      options: ["curl-impersonate", "fetch", "curl", "curl-fallback"],
+      default: "curl-impersonate",
+      description:
+        "Curl Impersonate is the safest built-in default for Google's TLS and JavaScript challenges. Browser-backed transports can be selected when installed.",
       advanced: true,
     },
     {
@@ -158,7 +160,7 @@ export default class GoogleShoppingEngine {
     );
     this.minimumRating = clampNumber(settings.minimumRating, 0, 0, 5);
     this.requestTimeoutMs = Math.round(
-      clampNumber(settings.timeoutMs, 10_000, 1_000, 120_000),
+      clampNumber(settings.timeoutMs, 30_000, 1_000, 120_000),
     );
   }
 

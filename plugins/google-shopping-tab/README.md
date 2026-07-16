@@ -8,7 +8,7 @@ The engine fetches Google Shopping on the server and removes sponsored cards, ad
 
 ## Transport setup
 
-Google frequently serves consent or JavaScript challenges to basic HTTP clients. Open **Settings → Engines → Google Shopping → Advanced** and select the outgoing HTTP client transport you want degoog to use. A browser-backed transport such as 4play, Browserless, or Camoufox is the most reliable choice when one is installed.
+Google frequently serves consent or JavaScript challenges to basic HTTP clients, so the engine defaults to degoog's built-in **Curl Impersonate** transport. Open **Settings → Engines → Google Shopping → Advanced** to choose a different outgoing HTTP client. A browser-backed transport such as 4play, Browserless, or Camoufox is the most reliable fallback when one is installed.
 
 All Shopping requests use that selected engine transport. The extension does not make a direct browser request to Google and does not fall back to an unconfigured transport.
 
